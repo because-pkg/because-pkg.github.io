@@ -25,6 +25,20 @@
 #' If provided, these will override the `layout` algorithm.
 #'
 #' @return A `ggplot` object that can be further customized with standard ggplot2 functions (e.g., `+ theme_...()`, `+ ggtitle(...)`).
+#'
+#' @details
+#' Interaction terms (e.g. \code{BM:M}) and \code{I()} transformations are
+#' rendered as **explicit intermediate nodes** (grey diamonds), following the
+#' Interaction DAG (IDAG) convention of Attia, Holliday & Oldmeadow (2022).
+#' This makes the deterministic nature of these terms visually clear and is
+#' consistent with how \code{because_dsep} treats them for d-separation.
+#'
+#' @references
+#' Attia, J., Holliday, E., & Oldmeadow, C. (2022). A proposal for capturing
+#' interaction and effect modification using DAGs.
+#' \emph{International Journal of Epidemiology}, 51(4), 1047--1053.
+#' \doi{10.1093/ije/dyac105}
+#'
 #' @export
 #' @importFrom stats terms formula
 #'
@@ -137,11 +151,13 @@ plot_dag <- function(
                 obj$input$induced_correlations
         }
 
-        dag_str <- equations_to_dag_string(
+        dag_result <- equations_to_dag_string(
             eqs,
             induced_cors,
             family = current_family
         )
+        dag_str <- dag_result$dag_string
+        interaction_nodes <- dag_result$interaction_nodes
         dag_obj <- dagitty::dagitty(dag_str)
 
         # Apply coordinates if provided
@@ -181,8 +197,16 @@ plot_dag <- function(
             }
         }
 
-        # Label Processing: Wrap text (replace _ with \n)
+        # Label Processing: Wrap text (replace _ with \n) for regular nodes
         dag_data$label_display <- gsub("_", "\n", dag_data$name)
+        # Override for interaction/deterministic nodes: show "BM\u00d7M" etc.
+        if (length(interaction_nodes) > 0) {
+            for (iname in names(interaction_nodes)) {
+                dag_data$label_display[
+                    dag_data$name == iname
+                ] <- interaction_nodes[[iname]]
+            }
+        }
         # Override for occupancy latent nodes to just 'p' and 'psi'
         if (length(occ_vars) > 0) {
             dag_data$label_display <- ifelse(
@@ -219,10 +243,16 @@ plot_dag <- function(
         dag_data$edge_label <- NA_character_ # Initialize edge_label column
         dag_data$significant <- NA # Logical placeholder
 
-        # Mark node types (Observed vs Latent)
+        # Mark node types (Observed vs Latent vs Interaction)
         dag_data$type <- "Observed"
         if (!is.null(current_latent)) {
             dag_data$type[dag_data$name %in% current_latent] <- "Latent"
+        }
+        # Interaction/deterministic nodes are distinct from both
+        if (length(interaction_nodes) > 0) {
+            dag_data$type[
+                dag_data$name %in% names(interaction_nodes)
+            ] <- "Interaction"
         }
 
         # 3. Add coefficients if available
@@ -383,10 +413,10 @@ plot_dag <- function(
         }
     }
 
-    # Ensure type is a factor
+    # Ensure type is a factor (Observed, Latent, Interaction)
     combined_dag_data$type <- factor(
         combined_dag_data$type,
-        levels = c("Observed", "Latent")
+        levels = c("Observed", "Latent", "Interaction")
     )
 
     # Calculate uniform node size for plotting and caps
@@ -615,23 +645,32 @@ plot_dag <- function(
     }
 
     # Nodes Layer (Final, Single Layer)
+    # Interaction nodes (Attia et al. 2022) get a distinct diamond shape + grey fill
     p <- p +
         ggplot2::geom_point(
-            ggplot2::aes(shape = type), # Map shape to observed/latent
+            ggplot2::aes(shape = type, fill = type),
             size = uniform_node_size,
             color = node_color,
-            fill = node_fill,
             stroke = node_stroke
         ) +
         ggdag::geom_dag_text(
             ggplot2::aes(label = label_display),
             size = text_size,
-            colour = "black" # Text color
+            colour = "black"
         ) +
-        # Map shapes: Square (22) for Observed, Circle (21) for Latent
+        # Observed = square (22), Latent = circle (21), Interaction = diamond (23)
         ggplot2::scale_shape_manual(
-            values = c(Observed = 22, Latent = 21),
-            guide = "none" # Remove legend
+            values = c(Observed = 22, Latent = 21, Interaction = 23),
+            guide = "none"
+        ) +
+        # Interaction nodes get a light grey fill to distinguish them
+        ggplot2::scale_fill_manual(
+            values = c(
+                Observed = node_fill,
+                Latent = node_fill,
+                Interaction = "grey85"
+            ),
+            guide = "none"
         )
 
     return(p)
@@ -639,8 +678,24 @@ plot_dag <- function(
 
 
 #' Convert Equations List to DAGitty String
+#'
+#' Implements the Attia, Holliday & Oldmeadow (2022) IDAG convention:
+#' interaction terms (e.g. \code{BM:M}) and \code{I()} terms are represented as
+#' explicit intermediate nodes rather than collapsed to direct component->response
+#' edges.
+#'
 #' @param equations List of formulas
 #' @param induced_cors List of character vectors (pairs) for bidirected edges
+#' @param family Optional named character vector of family distributions
+#' @return A named list:
+#'   \itemize{
+#'     \item \code{dag_string} — dagitty-compatible DAG string
+#'     \item \code{interaction_nodes} — named list: internal_name -> display label
+#'   }
+#' @references
+#'   Attia, J., Holliday, E., & Oldmeadow, C. (2022). A proposal for capturing
+#'   interaction and effect modification using DAGs.
+#'   \emph{International Journal of Epidemiology}, 51(4), 1047--1053.
 #' @noRd
 equations_to_dag_string <- function(
     equations,
@@ -648,57 +703,101 @@ equations_to_dag_string <- function(
     family = NULL
 ) {
     edges <- c()
+    interaction_nodes <- list() # internal_name -> display label (e.g. "BM\u00d7M")
+
     occ_vars <- c()
     if (!is.null(family)) {
         occ_vars <- names(family)[family == "occupancy"]
     }
 
+    # Helper: make a dagitty-safe node name from a term string
+    make_internal_name <- function(term) {
+        nm <- gsub(":", "_x_", term) # BM:M  -> BM_x_M
+        nm <- gsub("[^a-zA-Z0-9_]", "_", nm) # I(x^2) -> I_x_2_
+        nm <- gsub("__+", "_", nm)
+        nm <- sub("_+$", "", nm)
+        nm
+    }
+
+    # Helper: human-readable display label (× for :, keep I() as-is)
+    make_display_label <- function(term) {
+        gsub(":", "\u00d7", term) # "BM:M" -> "BM\u00d7M"
+    }
+
     for (eq in equations) {
         resp <- all.vars(eq)[1]
-        predictors <- all.vars(eq)[-1]
+        trm_lbls <- attr(terms(eq), "term.labels")
 
-        # If response is occupancy, it's actually psi_response
-        # unless it's already p_response
-        actual_resp <- resp
-        if (resp %in% occ_vars) {
-            actual_resp <- paste0("psi_", resp)
-        }
+        actual_resp <- if (resp %in% occ_vars) paste0("psi_", resp) else resp
 
-        for (pred in predictors) {
-            actual_pred <- pred
-            # Handle p_ and psi_ aliases
-            if (pred %in% occ_vars) {
-                actual_pred <- paste0("psi_", pred)
+        if (length(trm_lbls) == 0) {
+            next
+        } # intercept-only, nothing to draw
+
+        for (term in trm_lbls) {
+            is_interaction <- grepl(":", term, fixed = TRUE) &&
+                !grepl("^I\\(", term)
+            is_I_call <- grepl("^I\\(", term)
+
+            if (is_interaction || is_I_call) {
+                # --- Deterministic / interaction node ---
+                iname <- make_internal_name(term)
+                d_label <- make_display_label(term)
+                interaction_nodes[[iname]] <- d_label
+
+                # Component variables: split on : for interactions, all.vars for I()
+                if (is_interaction) {
+                    components <- strsplit(term, ":", fixed = TRUE)[[1]]
+                } else {
+                    components <- all.vars(stats::as.formula(paste("~", term)))
+                }
+
+                for (comp in components) {
+                    actual_comp <- if (comp %in% occ_vars) {
+                        paste0("psi_", comp)
+                    } else {
+                        comp
+                    }
+                    edges <- c(edges, paste(iname, "<-", actual_comp))
+                }
+                edges <- c(edges, paste(actual_resp, "<-", iname))
+            } else {
+                # --- Regular predictor ---
+                actual_pred <- if (term %in% occ_vars) {
+                    paste0("psi_", term)
+                } else {
+                    term
+                }
+                edges <- c(edges, paste(actual_resp, "<-", actual_pred))
             }
-            edges <- c(edges, paste(actual_resp, "<-", actual_pred))
         }
     }
 
-    # Ensure p_Species exists for every occupancy variable
-    # even if it's just an intercept-only 1
+    # Occupancy p_ nodes (visual grouping only)
     for (v in occ_vars) {
-        p_name <- paste0("p_", v)
-        # We don't strictly need internal edges if they aren't in equations,
-        # but for the visual "box", we need both nodes to exist.
-        # Adding a self-loop or just an edge between p and psi if they are both in dag?
-        # Actually, adding any edge involving p_name ensures it's in the DAG.
+        # p_node existence is implied by its edges elsewhere
     }
 
     if (!is.null(induced_cors)) {
         for (pair in induced_cors) {
             if (length(pair) == 2) {
-                p1 <- pair[1]
-                p2 <- pair[2]
-                if (p1 %in% occ_vars) {
-                    p1 <- paste0("psi_", p1)
+                p1 <- if (pair[1] %in% occ_vars) {
+                    paste0("psi_", pair[1])
+                } else {
+                    pair[1]
                 }
-                if (p2 %in% occ_vars) {
-                    p2 <- paste0("psi_", p2)
+                p2 <- if (pair[2] %in% occ_vars) {
+                    paste0("psi_", pair[2])
+                } else {
+                    pair[2]
                 }
                 edges <- c(edges, paste(p1, "<->", p2))
             }
         }
     }
 
-    return(paste("dag {", paste(unique(edges), collapse = "; "), "}"))
+    list(
+        dag_string = paste("dag {", paste(unique(edges), collapse = "; "), "}"),
+        interaction_nodes = interaction_nodes
+    )
 }

@@ -27,7 +27,18 @@
 #' (Shipley & Douma 2021) to identify m-separation statements and induced correlations
 #' among observed variables that arise from shared latent common causes.
 #'
+#' Deterministic nodes (interaction terms such as \code{A:B}, and arithmetic
+#' transformations such as \code{I(A^2)}) are kept as **explicit intermediate
+#' nodes** in the DAG, following the D-separation extension of
+#' Geiger, Verma & Pearl (1990).  This ensures that the basis set includes
+#' independence tests that condition on the deterministic term itself
+#' (e.g. \eqn{TL \perp BM \mid \{BM{:}M\}}), which would be silently dropped
+#' if the interaction were collapsed to its component variables.
+#'
 #' @references
+#' Geiger, D., Verma, T., & Pearl, J. (1990). Identifying independence in
+#' Bayesian Networks. \emph{Networks}, 20(5), 507--534.
+#'
 #' Shipley, B. (2000). A new inferential test for path models based on
 #' directed acyclic graphs. Structural Equation Modeling, 7(2), 206-218.
 #'
@@ -39,7 +50,7 @@
 #'
 #' Shipley, B., & Douma, J. C. (2021). Testing Piecewise Structural Equations
 #' Models in the Presence of Latent Variables and Including Correlated Errors.
-#' Structural Equation Modeling: A Multidisciplinary Journal, 28(4), 582–589.
+#' Structural Equation Modeling: A Multidisciplinary Journal, 28(4), 582-589.
 #' https://doi.org/10.1080/10705511.2020.1871355
 #'
 
@@ -114,24 +125,22 @@ dsep_standard <- function(
     grouping_vars <- unique(sapply(random_terms, function(x) x$group))
   }
 
-  # Extract polynomial internal variables to exclude
-  poly_internal_vars <- NULL
-  # Use passed poly_terms if available, otherwise detect automatically
+  # Extract ALL deterministic terms (interactions + I() calls).
+  # These are kept as explicit intermediate nodes in the DAG, following
+  # Geiger, Verma & Pearl (1990), so that tests like TL ⊥ BM | {BM:M}
+  # appear in the basis set.
   if (!is.null(poly_terms)) {
     all_poly_terms <- poly_terms
   } else {
     all_poly_terms <- get_all_polynomial_terms(equations)
   }
+  all_det_terms <- extract_deterministic_terms(equations)
 
-  if (!is.null(all_poly_terms)) {
-    poly_internal_vars <- sapply(all_poly_terms, function(x) x$internal_name)
-  }
-
-  # Combine exclusions
-  exclude_vars <- c(grouping_vars, poly_internal_vars)
+  # Grouping variables are excluded from the DAG; deterministic nodes are NOT
+  # excluded — they are kept as explicit nodes (see equations_to_dag).
+  exclude_vars <- grouping_vars
 
   # Normalize equations for DAG using Modular Family Logic
-  # Example: Map occupancy Species to psi_Species and p_Species
   norm_equations <- equations
   if (!is.null(family)) {
     unique_dists <- unique(family)
@@ -148,7 +157,11 @@ dsep_standard <- function(
     }
   }
 
-  dag <- equations_to_dag(norm_equations, exclude_vars = exclude_vars)
+  dag <- equations_to_dag(
+    norm_equations,
+    exclude_vars = exclude_vars,
+    deterministic_terms = all_det_terms
+  )
 
   # Use ggm::basiSet to get the correct d-separation basis set
   if (!requireNamespace("ggm", quietly = TRUE)) {
@@ -157,33 +170,43 @@ dsep_standard <- function(
 
   basis <- ggm::basiSet(dag)
 
-  # Check for polynomial term injection in conditioning sets
+  # Remove any test where the primary variable (response) is a deterministic
+  # intermediate node (e.g. X_pow2, BM_x_M). These nodes are deterministic
+  # functions of their parents and are not free variables — they should only
+  # ever appear in conditioning sets, never as response or test variable.
+  if (!is.null(all_det_terms) && length(all_det_terms) > 0 && !is.null(basis)) {
+    det_internal_names <- sapply(all_det_terms, function(x) x$internal_name)
+    basis <- Filter(
+      function(test) {
+        !(test[1] %in% det_internal_names || test[2] %in% det_internal_names)
+      },
+      basis
+    )
+  }
+
+  # Polynomial-term injection into conditioning sets (for I(x^2) type terms)
+  # With explicit det nodes in the DAG this is now largely handled structurally,
+  # but we keep the injection for any residual polynomial terms.
   if (!is.null(all_poly_terms) && length(basis) > 0) {
     basis <- lapply(basis, function(test) {
       if (length(test) > 2) {
         cond_vars <- test[3:length(test)]
         new_cond_vars <- cond_vars
-
-        # Check each conditioning variable
         for (cv in cond_vars) {
-          # Find any polynomial terms derived from this variable
           for (pt in all_poly_terms) {
             if (pt$base_var == cv) {
               new_cond_vars <- c(new_cond_vars, pt$internal_name)
             }
           }
         }
-        new_cond_vars <- unique(new_cond_vars)
-
-        # Reconstruct test vector
-        return(c(test[1:2], new_cond_vars))
+        return(c(test[1:2], unique(new_cond_vars)))
       } else {
         return(test)
       }
     })
   }
-  # Filter out random effect grouping variables from basis set conditioning sets
-  # (Grouping variables are technical nodes, not causal ones in d-sep sense)
+
+  # Filter out random effect grouping variables from conditioning sets
   if (length(random_terms) > 0 && !is.null(basis)) {
     basis <- lapply(basis, function(test) {
       if (length(test) > 2) {
@@ -196,14 +219,18 @@ dsep_standard <- function(
   }
 
   # Convert basis set to formula list
-  # We reuse mag_basis_to_formulas as the format is identical (list of vectors)
+  # Root nodes (no parents in the DAG) should always be predictors, not responses.
+  root_vars <- rownames(dag)[colSums(dag) == 0]
+
   tests <- mag_basis_to_formulas(
     basis,
     categorical_vars = categorical_vars,
-    family = family
+    family = family,
+    deterministic_terms = all_det_terms,
+    root_vars = root_vars
   )
 
-  # Append random terms if relevant (same logic as in with_latents)
+  # Append random terms if relevant
   if (length(random_terms) > 0 && length(tests) > 0) {
     new_tests <- list()
     for (t_idx in seq_along(tests)) {
@@ -228,8 +255,6 @@ dsep_standard <- function(
         f_str <- paste(deparse(t_eq), collapse = " ")
         f_str <- paste0(f_str, " + ", rand_str)
         new_eq <- as.formula(f_str)
-        # Preserve attribute
-        # Re-attach test_var from original
         attr(new_eq, "test_var") <- attr(t_eq, "test_var")
         new_tests[[t_idx]] <- new_eq
       } else {
@@ -270,7 +295,6 @@ dsep_with_latents <- function(
   quiet = FALSE
 ) {
   # --- Modular Graph Transformation ---
-  # Normalize equations for DAG using Modular Family Logic (e.g. Occupancy)
   augmented_equations <- equations
   if (!is.null(family)) {
     unique_dists <- unique(family)
@@ -293,27 +317,25 @@ dsep_with_latents <- function(
     grouping_vars <- unique(sapply(random_terms, function(x) x$group))
   }
 
-  # Extract polynomial internal variables to exclude from DAG
-  # They're deterministic transformations, not causal nodes
-  poly_internal_vars <- NULL
-  # Use passed poly_terms if available, otherwise detect automatically
+  # Extract ALL deterministic terms (interactions + I() calls).
+  # Kept as explicit nodes in the DAG following Geiger, Verma & Pearl (1990).
   if (!is.null(poly_terms)) {
     all_poly_terms <- poly_terms
   } else {
     all_poly_terms <- get_all_polynomial_terms(equations)
   }
+  all_det_terms <- extract_deterministic_terms(equations)
 
-  if (!is.null(all_poly_terms)) {
-    poly_internal_vars <- sapply(all_poly_terms, function(x) x$internal_name)
-  }
+  # Only grouping vars are excluded; deterministic nodes remain in the graph.
+  exclude_vars <- grouping_vars
 
-  # Combine exclusions
-  exclude_vars <- c(grouping_vars, poly_internal_vars)
+  dag <- equations_to_dag(
+    augmented_equations,
+    exclude_vars = exclude_vars,
+    deterministic_terms = all_det_terms
+  )
 
-  # Convert equations to ggm DAG format (excluding grouping & polynomial variables)
-  dag <- equations_to_dag(augmented_equations, exclude_vars = exclude_vars)
-
-  # Always suppress DAG.to.MAG output - we'll print our own filtered version
+  # Always suppress DAG.to.MAG output
   invisible(capture.output(
     {
       mag <- suppressMessages(DAG.to.MAG(dag, latents = latent))
@@ -329,42 +351,42 @@ dsep_with_latents <- function(
     type = "output"
   ))
 
-  # Check for polynomial term injection in conditioning sets
+  # Filter out tests where a deterministic intermediate node is the response
+  if (!is.null(all_det_terms) && length(all_det_terms) > 0 && !is.null(basis)) {
+    det_internal_names <- sapply(all_det_terms, function(x) x$internal_name)
+    basis <- Filter(
+      function(test) {
+        !(test[1] %in% det_internal_names || test[2] %in% det_internal_names)
+      },
+      basis
+    )
+  }
+
+  # Polynomial-term injection in conditioning sets
   if (!is.null(all_poly_terms) && length(basis) > 0) {
     basis <- lapply(basis, function(test) {
       if (length(test) > 2) {
         cond_vars <- test[3:length(test)]
         new_cond_vars <- cond_vars
-
-        # Check each conditioning variable
         for (cv in cond_vars) {
-          # Find any polynomial terms derived from this variable
           for (pt in all_poly_terms) {
             if (pt$base_var == cv) {
               new_cond_vars <- c(new_cond_vars, pt$internal_name)
             }
           }
         }
-        new_cond_vars <- unique(new_cond_vars)
-
-        # Reconstruct test vector
-        return(c(test[1:2], new_cond_vars))
+        return(c(test[1:2], unique(new_cond_vars)))
       } else {
         return(test)
       }
     })
   }
 
-  # Filter out random effect grouping variables from basis set conditioning sets
-  # These should not be treated as causal/fixed predictors
+  # Filter out random effect grouping variables from conditioning sets
   if (length(random_terms) > 0 && !is.null(basis)) {
     grouping_vars <- unique(sapply(random_terms, function(x) x$group))
-
-    # basis is a list where each element is c(var1, var2, cond_var1, cond_var2, ...)
-    # Remove grouping variables from conditioning sets (positions 3+)
     basis <- lapply(basis, function(test) {
       if (length(test) > 2) {
-        # Keep var1 and var2, filter conditioning variables
         cond_vars <- test[3:length(test)]
         filtered_cond <- cond_vars[!cond_vars %in% grouping_vars]
         c(test[1:2], filtered_cond)
@@ -375,25 +397,28 @@ dsep_with_latents <- function(
   }
 
   # Identify variables that are direct children of latent variables
-  # These should be predictors (not responses) in independence tests
   latent_children <- character(0)
   if (!is.null(latent) && length(latent) > 0) {
     all_vars <- rownames(dag)
     for (lat in latent) {
       if (lat %in% all_vars) {
-        # Find children of this latent (dag[latent, child] == 1)
         children <- all_vars[dag[lat, ] == 1]
         latent_children <- unique(c(latent_children, children))
       }
     }
   }
 
-  # Convert to formula format, with variable ordering preference
+  # Convert to formula format
+  # Root nodes (no parents in the DAG) should always be predictors, not responses.
+  root_vars <- rownames(dag)[colSums(dag) == 0]
+
   tests <- mag_basis_to_formulas(
     basis,
     latent_children = latent_children,
     categorical_vars = categorical_vars,
-    family = family
+    family = family,
+    deterministic_terms = all_det_terms,
+    root_vars = root_vars
   )
 
   # Save tests without random effects for clean display
@@ -406,7 +431,6 @@ dsep_with_latents <- function(
       t_eq <- tests[[t_idx]]
       resp <- as.character(t_eq)[2]
 
-      # Find random terms for response (handle both Species and psi_Species)
       base_resp <- sub("^psi_", "", resp)
       vocab_rand <- Filter(
         function(x) x$response == resp || x$response == base_resp,
@@ -420,19 +444,9 @@ dsep_with_latents <- function(
           }),
           collapse = " + "
         )
-
-        # Rebuild formula
-        # deparse might wrap lines
-        # Use reliable string construction
-        # Reconstruct: Resp ~ Preds + Random
-        # Paste to the formula string representation
-
-        # Safe approach: deparse
         f_str <- paste(deparse(t_eq), collapse = " ")
         f_str <- paste0(f_str, " + ", rand_str)
-
         new_eq <- as.formula(f_str)
-
         new_tests[[t_idx]] <- new_eq
       } else {
         new_tests[[t_idx]] <- t_eq
@@ -445,7 +459,6 @@ dsep_with_latents <- function(
   correlations <- extract_bidirected_edges(mag)
 
   # Print basis set if not quiet
-  # Use tests_for_display (without random effects) to avoid showing grouping vars
   if (!quiet) {
     cat("Basis Set for MAG:", "\n")
     cat(
@@ -464,7 +477,7 @@ dsep_with_latents <- function(
   return(list(
     tests = tests,
     correlations = correlations,
-    mag = mag # Include MAG for reference
+    mag = mag
   ))
 }
 

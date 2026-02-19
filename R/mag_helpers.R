@@ -1,30 +1,72 @@
 #' Convert becauseR equations to ggm DAG adjacency matrix
 #'
+#' When \code{deterministic_terms} is supplied (a list returned by
+#' \code{extract_deterministic_terms}), interaction and \code{I()} terms are
+#' kept as **explicit intermediate nodes** in the DAG rather than collapsed to
+#' their component variables.  This is required to produce the correct
+#' conditional independence basis set following Geiger, Verma & Pearl (1990),
+#' which extends d-separation to handle deterministic nodes.
+#'
 #' @param equations List of formulas
-#' @param exclude_vars Character vector of variable names to exclude (e.g., grouping variables)
+#' @param exclude_vars Character vector of variable names to exclude (e.g.,
+#'   grouping variables)
+#' @param deterministic_terms Optional named list returned by
+#'   \code{extract_deterministic_terms}.  Each element must have
+#'   \code{$original} (the R term string, e.g. \code{"BM:M"}) and
+#'   \code{$internal_name} (the JAGS-safe node name, e.g. \code{"BM_x_M"}).
 #' @return Named adjacency matrix in ggm format
+#' @references
+#'   Geiger, D., Verma, T., & Pearl, J. (1990). Identifying independence in
+#'   Bayesian Networks. \emph{Networks}, 20(5), 507–534.
 #' @keywords internal
-equations_to_dag <- function(equations, exclude_vars = NULL) {
+equations_to_dag <- function(
+    equations,
+    exclude_vars = NULL,
+    deterministic_terms = NULL
+) {
     # Helper function to check if a term is a random effect term
     is_random_term <- function(term) {
         # Matches patterns like "(1|var)", "(1 | var)", etc.
         grepl("\\(.*\\|.*\\)", term) || grepl("^\\d+\\s*\\|\\s*\\w+$", term)
     }
 
-    # Parse all variables from both sides of equations
+    # Build a lookup: original R term string -> internal node name
+    # e.g. "BM:M" -> "BM_x_M"
+    det_lookup <- NULL
+    if (!is.null(deterministic_terms) && length(deterministic_terms) > 0) {
+        det_orig <- sapply(deterministic_terms, function(x) x$original)
+        det_iname <- sapply(deterministic_terms, function(x) x$internal_name)
+        det_lookup <- setNames(det_iname, det_orig)
+    }
+
+    # -----------------------------------------------------------------------
+    # Collect all variable names, including deterministic node internal names
+    # -----------------------------------------------------------------------
     all_vars <- unique(c(
+        # Response-side variables
         sapply(equations, function(eq) as.character(eq[[2]])),
+        # Predictor-side variables
         unlist(lapply(equations, function(eq) {
-            # Use delete.response to get predictors safely, handling I() and interactions
-            tf <- stats::terms(eq)
-            rhs <- stats::delete.response(tf)
-
-            # Extract variables
-            # Note: this includes grouping variables from random terms (e.g. 'ID' in 1|ID)
-            # We filter those out if needed, but since excluding random terms is generally handled
-            # by 'exclude_vars' or downstream, getting all PROPER vars is safer than getting "terms".
-
-            vars <- all.vars(rhs)
+            term_labels <- attr(stats::terms(eq), "term.labels")
+            vars <- character(0)
+            for (term in term_labels) {
+                if (is_random_term(term)) {
+                    next
+                }
+                if (!is.null(det_lookup) && term %in% names(det_lookup)) {
+                    # Deterministic term: add internal node name + its components
+                    vars <- c(vars, det_lookup[[term]])
+                    vars <- c(
+                        vars,
+                        all.vars(stats::as.formula(paste("~", term)))
+                    )
+                } else {
+                    vars <- c(
+                        vars,
+                        all.vars(stats::as.formula(paste("~", term)))
+                    )
+                }
+            }
             return(vars)
         }))
     ))
@@ -37,31 +79,18 @@ equations_to_dag <- function(equations, exclude_vars = NULL) {
     n <- length(all_vars)
     dag <- matrix(0, n, n, dimnames = list(all_vars, all_vars))
 
-    # Fill adjacency matrix: parent -> child is coded as dag[parent, child] = 1
+    # -----------------------------------------------------------------------
+    # Fill adjacency matrix
+    # -----------------------------------------------------------------------
     for (eq in equations) {
         child <- as.character(eq[[2]])
-        # Skip if child was excluded
         if (!child %in% all_vars) {
             next
         }
 
-        # Use all.vars(delete.response(terms(eq))) to extract all predictors reliably
-        # This automatically handles I(...), interactions, and functions
-        rhs_formula <- stats::delete.response(stats::terms(eq))
-
-        # We need to handle random effects.
-        # terms(eq) includes random terms like '1 | group'.
-        # all.vars on that returns 'group'.
-        # We want to exclude purely random grouping variables from 'parents'.
-
-        # Strategy: Get all vars from RHS. Then verify if they are ONLY in random terms.
-
-        all_rhs_vars <- all.vars(rhs_formula)
-
-        # Identifty vars that are part of random terms
         term_labels <- attr(stats::terms(eq), "term.labels")
 
-        # Use vapply to ensure logical output even if term_labels is empty
+        # Identify random-effect term positions
         if (length(term_labels) > 0) {
             random_indices <- which(vapply(
                 term_labels,
@@ -71,32 +100,55 @@ equations_to_dag <- function(equations, exclude_vars = NULL) {
         } else {
             random_indices <- integer(0)
         }
-
-        if (length(random_indices) > 0) {
-            # Extract vars from FIXED terms only
-            fixed_terms <- term_labels[-random_indices]
-
-            if (length(fixed_terms) == 0) {
-                parents <- character(0)
-            } else {
-                # Create dummy formula to extract vars from fixed terms
-                # Paste terms together: "A + B + I(C^2)"
-                dummy_rhs <- paste("~", paste(fixed_terms, collapse = " + "))
-                parents <- all.vars(stats::as.formula(dummy_rhs))
-            }
+        fixed_terms <- if (length(random_indices) > 0) {
+            term_labels[-random_indices]
         } else {
-            parents <- all_rhs_vars
+            term_labels
         }
 
-        # Filter out excluded variables from parents
-        if (!is.null(exclude_vars)) {
-            parents <- setdiff(parents, exclude_vars)
-        }
+        for (term in fixed_terms) {
+            if (!is.null(det_lookup) && term %in% names(det_lookup)) {
+                # ---- Deterministic/interaction term ----
+                # Route through the explicit deterministic node:
+                #   component_var -> det_node -> child
+                det_name <- det_lookup[[term]]
 
-        for (parent in parents) {
-            # Only add edge if parent is in all_vars (wasn't excluded)
-            if (parent %in% all_vars) {
-                dag[parent, child] <- 1
+                if (det_name %in% all_vars) {
+                    # Edge: det_node -> child
+                    dag[det_name, child] <- 1
+
+                    # Edges: each component variable -> det_node
+                    comp_vars <- setdiff(
+                        all.vars(stats::as.formula(paste("~", term))),
+                        exclude_vars
+                    )
+                    for (cv in comp_vars) {
+                        if (cv %in% all_vars) {
+                            dag[cv, det_name] <- 1
+                        }
+                    }
+                } else {
+                    # det_name was excluded: fall back to direct edges
+                    comp_vars <- setdiff(
+                        all.vars(stats::as.formula(paste("~", term))),
+                        exclude_vars
+                    )
+                    for (cv in comp_vars) {
+                        if (cv %in% all_vars) dag[cv, child] <- 1
+                    }
+                }
+            } else {
+                # ---- Regular term ----
+                term_vars <- tryCatch(
+                    setdiff(
+                        all.vars(stats::as.formula(paste("~", term))),
+                        exclude_vars
+                    ),
+                    error = function(e) character(0)
+                )
+                for (v in term_vars) {
+                    if (v %in% all_vars) dag[v, child] <- 1
+                }
             }
         }
     }
@@ -133,16 +185,46 @@ extract_bidirected_edges <- function(mag) {
 
 #' Convert MAG basis set to becauseR formula format
 #'
-#' @param basis_set Basis set from basiSet.mag()
+#' @param basis_set Basis set from basiSet.mag() or ggm::basiSet()
 #' @param latent_children Optional character vector of variables that are direct children of latents
+#' @param categorical_vars Optional named list of categorical variable info
+#' @param family Optional named character vector of family distributions
+#' @param deterministic_terms Optional named list from \code{extract_deterministic_terms}.
+#'   Internal node names (e.g. \code{"BM_x_M"}) are rendered back to their
+#'   original R syntax (e.g. \code{"BM:M"}) in the output formulas, following
+#'   Geiger, Verma & Pearl (1990).
+#' @param root_vars Optional character vector of root (exogenous) node names
+#'   — nodes with no parents in the DAG.  If var1 is a root node and var2 is
+#'   not, they are swapped so the non-root (downstream) variable becomes the
+#'   response.  This enforces the convention that parent-only variables should
+#'   always be predictors rather than responses in independence tests.
 #' @return List of formulas with test_var attribute
 #' @keywords internal
 mag_basis_to_formulas <- function(
     basis_set,
     latent_children = NULL,
     categorical_vars = NULL,
-    family = NULL
+    family = NULL,
+    deterministic_terms = NULL,
+    root_vars = NULL
 ) {
+    # Build reverse lookup: internal_name -> original R syntax
+    # e.g. "BM_x_M" -> "BM:M"
+    det_rev_lookup <- NULL
+    if (!is.null(deterministic_terms) && length(deterministic_terms) > 0) {
+        det_iname <- sapply(deterministic_terms, function(x) x$internal_name)
+        det_orig <- sapply(deterministic_terms, function(x) x$original)
+        det_rev_lookup <- setNames(det_orig, det_iname)
+    }
+
+    # Helper: translate an internal node name back to displayable R syntax
+    resolve_var <- function(v) {
+        if (!is.null(det_rev_lookup) && v %in% names(det_rev_lookup)) {
+            return(det_rev_lookup[[v]])
+        }
+        return(v)
+    }
+
     if (is.null(basis_set) || length(basis_set) == 0) {
         return(list())
     }
@@ -156,13 +238,26 @@ mag_basis_to_formulas <- function(
         cond_vars <- if (length(test) > 2) test[3:length(test)] else NULL
 
         # Apply ordering rule: if var1 is a latent child and var2 is not,
-        # swap them so the latent child becomes the predictor (test variable)
+        # swap them so the latent child becomes the predictor (test variable).
         if (!is.null(latent_children)) {
             var1_is_latent_child <- var1 %in% latent_children
             var2_is_latent_child <- var2 %in% latent_children
 
-            # Swap if var1 is latent child but var2 is not
             if (var1_is_latent_child && !var2_is_latent_child) {
+                temp <- var1
+                var1 <- var2
+                var2 <- temp
+            }
+        }
+
+        # Root-node rule: exogenous variables (no parents in the DAG) should
+        # always be predictors, never responses.  If var1 is a root node and
+        # var2 is not, swap so the non-root (downstream) variable is the response.
+        if (!is.null(root_vars)) {
+            var1_is_root <- var1 %in% root_vars
+            var2_is_root <- var2 %in% root_vars
+
+            if (var1_is_root && !var2_is_root) {
                 temp <- var1
                 var1 <- var2
                 var2 <- temp
@@ -243,20 +338,25 @@ mag_basis_to_formulas <- function(
         }
 
         if (is.null(cond_vars) || length(cond_vars) == 0) {
-            formula_str <- paste(var1, "~", var2)
+            # Resolve internal names to R syntax for both var2 and cond_vars
+            var2_r <- resolve_var(var2)
+            formula_str <- paste(var1, "~", var2_r)
         } else {
             # Sort conditioning variables for a canonical representation and stable deduplication
             sorted_cond <- sort(cond_vars)
+            # Resolve internal node names to original R syntax (e.g. BM_x_M -> BM:M)
+            sorted_cond_r <- sapply(sorted_cond, resolve_var)
+            var2_r <- resolve_var(var2)
             formula_str <- paste(
                 var1,
                 "~",
-                var2,
+                var2_r,
                 "+",
-                paste(sorted_cond, collapse = " + ")
+                paste(sorted_cond_r, collapse = " + ")
             )
         }
         f <- stats::as.formula(formula_str)
-        attr(f, "test_var") <- var2 # The variable being tested for independence
+        attr(f, "test_var") <- var2_r # The variable being tested for independence
 
         formulas[[length(formulas) + 1]] <- f
     }
