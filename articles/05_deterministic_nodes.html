@@ -549,9 +549,13 @@ your structural assumption.</li>
 <span><span class="co">#&gt; d-separation Tests</span></span>
 <span><span class="co">#&gt; ==================</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Test: Age _||_ Rank | {AgeClass} </span></span>
-<span><span class="co">#&gt;      Parameter Estimate LowerCI UpperCI Indep     P  Rhat n.eff</span></span>
-<span><span class="co">#&gt;  beta_Age_Rank   -0.171  -0.864   0.404   Yes 0.675 1.761    24</span></span>
+<span><span class="co">#&gt; Test: AgeClass _||_ Age | {I(1 * (Age &lt; 1),2 * (Age &gt;= 1 &amp; Age &lt; 2),3 * (Age &gt;= 2 &amp; Age &lt; 5),4 * (Age &gt;= 5))} </span></span>
+<span><span class="co">#&gt;          Parameter Estimate LowerCI UpperCI Indep     P  Rhat n.eff</span></span>
+<span><span class="co">#&gt;  beta_AgeClass_Age   -0.001  -0.017    0.02   Yes 0.942 1.053    51</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Test: Rank _||_ Age | {AgeClass} </span></span>
+<span><span class="co">#&gt;      Parameter Estimate LowerCI UpperCI Indep    P  Rhat n.eff</span></span>
+<span><span class="co">#&gt;  beta_Rank_Age   -0.026  -0.084   0.027   Yes 0.35 1.059   120</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Legend:</span></span>

@@ -97,9 +97,9 @@ ind_tests <- because_dsep(equations)
 #> Basis Set for DAG: 
 #> I(X,Y|Z) means X is d-separated from Y given the set Z in the DAG 
 #> I( RS , BM |  ) 
-#> I( RS , DD | NL ) 
-#> I( RS , LS | BM ) 
-#> I( BM , DD | NL ) 
+#> I( DD , RS | NL ) 
+#> I( LS , RS | BM ) 
+#> I( DD , BM | NL ) 
 #> I( NL , LS | BM, RS ) 
 #> I( DD , LS | BM, NL ) 
 

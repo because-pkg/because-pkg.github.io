@@ -426,9 +426,13 @@ summary(fit_multi_dsep)
 #> d-separation Tests
 #> ==================
 #> 
-#> Test: Age _||_ Rank | {AgeClass} 
-#>      Parameter Estimate LowerCI UpperCI Indep     P  Rhat n.eff
-#>  beta_Age_Rank   -0.171  -0.864   0.404   Yes 0.675 1.761    24
+#> Test: AgeClass _||_ Age | {I(1 * (Age < 1),2 * (Age >= 1 & Age < 2),3 * (Age >= 2 & Age < 5),4 * (Age >= 5))} 
+#>          Parameter Estimate LowerCI UpperCI Indep     P  Rhat n.eff
+#>  beta_AgeClass_Age   -0.001  -0.017    0.02   Yes 0.942 1.053    51
+#> 
+#> Test: Rank _||_ Age | {AgeClass} 
+#>      Parameter Estimate LowerCI UpperCI Indep    P  Rhat n.eff
+#>  beta_Rank_Age   -0.026  -0.084   0.027   Yes 0.35 1.059   120
 #> 
 #> 
 #> Legend:
