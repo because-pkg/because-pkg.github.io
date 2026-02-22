@@ -3106,6 +3106,23 @@ because_model <- function(
     )
   }
 
+  # Emit any extra prior declarations from extension packages (e.g., community
+  # hyperparameters from because.occupancy's build_community_hyperpriors()).
+  # Convention: entries in `priors` whose name starts with "__community__"
+  # are emitted verbatim as JAGS lines (the value is a raw JAGS statement).
+  if (!is.null(priors)) {
+    community_extras <- priors[startsWith(names(priors), "__community__")]
+    if (length(community_extras) > 0) {
+      model_lines <- c(
+        model_lines,
+        "  # Community hyperparameter declarations (from extension package)"
+      )
+      for (line in unlist(community_extras)) {
+        model_lines <- c(model_lines, paste0("  ", line))
+      }
+    }
+  }
+
   # Zero vectors for multivariate normals
   # Check if we need zero_vec (for induced_correlations OR multinomial)
   need_zero_vec <- !is.null(induced_correlations)
