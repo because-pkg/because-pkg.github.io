@@ -64,7 +64,7 @@ Sampler) installed on your machine.
 
 After installing JAGS, you can install `because` from GitHub.
 
-To install the **stable release** (`v1.0.0`):
+To install the **stable release** (`v1.0.1`):
 
 ``` r
 remotes::install_github("because-pkg/because@v1.0.0", build_vignettes = TRUE)
