@@ -27,7 +27,7 @@ The focus of `because` is on causal inference, providing tools to facilitate the
 
 ## Installation
 
-To install the **stable release** (`v0.9.9`), run:
+To install the **stable release** (`v1.0.0`), run:
 
 ``` r
 remotes::install_github("because-pkg/because@v0.9.9", build_vignettes = TRUE)
