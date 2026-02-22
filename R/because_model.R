@@ -347,29 +347,56 @@ because_model <- function(
         vars_in_expr <- all.vars(parse(text = dt$original))
         current_N <- main_loop_N
 
+        # Determine the finest level involved in this expression
+        finest_level_of_expr <- NULL
         if (!is.null(hierarchical_info)) {
           h_levels <- trimws(strsplit(hierarchical_info$hierarchy, ">")[[1]])
           h_levels_rev <- rev(h_levels) # Finest first
 
-          found_level <- NULL
           for (lvl in h_levels_rev) {
-            # Check if any var is in this level
             lvl_vars <- hierarchical_info$levels[[lvl]]
             if (any(vars_in_expr %in% lvl_vars)) {
-              found_level <- lvl
+              finest_level_of_expr <- lvl
               break
             }
           }
 
-          if (!is.null(found_level)) {
-            current_N <- paste0("N_", found_level)
+          if (!is.null(finest_level_of_expr)) {
+            current_N <- paste0("N_", finest_level_of_expr)
+          }
+        }
+
+        # Rebuild the expression using hierarchical-aware indexing.
+        # dt$expression was generated with plain [i] for all vars; we need to
+        # replace each variable's [i] with the correct cross-level index.
+        # This matters when, e.g., EOS (enviro level) appears in an interaction
+        # with AgeClass (individual level) — EOS needs enviro_idx_individual[i].
+        expr_hierarchical <- dt$expression
+        if (!is.null(hierarchical_info) && !is.null(finest_level_of_expr)) {
+          # Sort vars by length descending to avoid partial replacements
+          vars_sorted <- vars_in_expr[order(
+            nchar(vars_in_expr),
+            decreasing = TRUE
+          )]
+          for (v in vars_sorted) {
+            correct_idx <- get_pred_index(
+              v,
+              finest_level_of_expr,
+              hierarchical_info
+            )
+            # Replace the plain v[i] with the correct hierarchical index
+            expr_hierarchical <- gsub(
+              paste0("\\b", v, "\\[i\\]"),
+              correct_idx,
+              expr_hierarchical
+            )
           }
         }
 
         model_lines <- c(
           model_lines,
           paste0("  for (i in 1:", current_N, ") {"),
-          sprintf("    %s[i] <- %s", dt$internal_name, dt$expression),
+          sprintf("    %s[i] <- %s", dt$internal_name, expr_hierarchical),
           "  }"
         )
       }
