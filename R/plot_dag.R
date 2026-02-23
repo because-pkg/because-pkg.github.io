@@ -762,6 +762,9 @@ equations_to_dag_string <- function(
 
             if (is_interaction || is_I_call) {
                 # --- Deterministic / interaction node (within a mixed equation) ---
+                # X:Y interactions get a diamond per Attia et al. (2022).
+                # I(age^2) also gets a diamond so the fitted coefficient is visible.
+                # D-sep exclusion of I() polynomial terms is handled in because_dsep.
                 iname <- make_internal_name(term)
                 d_label <- make_display_label(term)
                 interaction_nodes[[iname]] <- d_label
