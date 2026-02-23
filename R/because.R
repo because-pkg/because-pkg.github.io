@@ -3106,7 +3106,8 @@ because <- function(
       latent = latent,
       distribution = distribution,
       family = family,
-      variability = variability
+      variability = variability,
+      poly_terms = all_poly_terms # Needed by plot_dag to reconstruct diamond nodes
     ),
     samples = samples,
     summary = sum_stats,

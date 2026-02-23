@@ -117,6 +117,7 @@ plot_dag <- function(
         # 1. Extract Equations and Latent Info
         current_latent <- latent
         current_family <- family
+        current_poly_terms <- NULL
 
         if (inherits(obj, "because")) {
             eqs <- obj$parameter_map$equations %||%
@@ -135,6 +136,9 @@ plot_dag <- function(
             if (is.null(current_family)) {
                 current_family <- obj$input$family
             }
+            # Read stored poly_terms so diamond nodes are reconstructed correctly
+            # (because() expands I(age^2) -> age_pow2 before storing equations)
+            current_poly_terms <- obj$input$poly_terms
         } else {
             # List of formulas
             eqs <- obj
@@ -163,7 +167,8 @@ plot_dag <- function(
         dag_result <- equations_to_dag_string(
             eqs,
             induced_cors,
-            family = current_family
+            family = current_family,
+            poly_terms = current_poly_terms
         )
         dag_str <- dag_result$dag_string
         interaction_nodes <- dag_result$interaction_nodes
@@ -709,10 +714,21 @@ plot_dag <- function(
 equations_to_dag_string <- function(
     equations,
     induced_cors = NULL,
-    family = NULL
+    family = NULL,
+    poly_terms = NULL # list from get_all_polynomial_terms; used for fitted models
+    # where equations are already expanded (I(age^2) -> age_pow2)
 ) {
     edges <- c()
     interaction_nodes <- list() # internal_name -> display label (e.g. "BM\u00d7M")
+
+    # Build lookup: internal_name -> poly term info, for reconstructing diamond
+    # nodes when equations are already expanded (fitted model path).
+    poly_lookup <- list()
+    if (!is.null(poly_terms)) {
+        for (pt in poly_terms) {
+            poly_lookup[[pt$internal_name]] <- pt
+        }
+    }
 
     occ_vars <- c()
     if (!is.null(family)) {
@@ -840,12 +856,49 @@ equations_to_dag_string <- function(
                 }
             } else {
                 # --- Regular predictor ---
-                actual_pred <- if (term %in% occ_vars) {
-                    paste0("psi_", term)
+                # Check if this term is an expanded poly internal name
+                # (e.g. age_pow2 from fitted model expanded equations).
+                # If so, render it as a diamond node like I(age^2) would be.
+                if (term %in% names(poly_lookup)) {
+                    pt <- poly_lookup[[term]]
+                    iname <- pt$internal_name # e.g. age_pow2
+                    # Build a display label identical to make_display_label("I(age^2)")
+                    superscripts <- c(
+                        "\u2070",
+                        "\u00b9",
+                        "\u00b2",
+                        "\u00b3",
+                        "\u2074",
+                        "\u2075",
+                        "\u2076",
+                        "\u2077",
+                        "\u2078",
+                        "\u2079"
+                    )
+                    n <- as.integer(pt$power)
+                    d_label <- if (!is.na(n) && n >= 0 && n <= 9) {
+                        paste0(pt$base_var, superscripts[n + 1])
+                    } else {
+                        iname
+                    }
+                    interaction_nodes[[iname]] <- d_label
+                    # base_var -> poly_node edge
+                    base_actual <- if (pt$base_var %in% occ_vars) {
+                        paste0("psi_", pt$base_var)
+                    } else {
+                        pt$base_var
+                    }
+                    edges <- c(edges, paste(iname, "<-", base_actual))
+                    # poly_node -> response edge
+                    edges <- c(edges, paste(actual_resp, "<-", iname))
                 } else {
-                    term
+                    actual_pred <- if (term %in% occ_vars) {
+                        paste0("psi_", term)
+                    } else {
+                        term
+                    }
+                    edges <- c(edges, paste(actual_resp, "<-", actual_pred))
                 }
-                edges <- c(edges, paste(actual_resp, "<-", actual_pred))
             }
         }
     }
