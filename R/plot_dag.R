@@ -8,7 +8,16 @@
 #' * Edge thickness scales with the absolute effect size.
 #'
 #' @param x A list of formulas (equations), a `because` model object, or a list of these.
-#' @param layout The layout algorithm to use (default "sugiyama"). See \code{\link[ggdag]{ggdag}}.
+#' @param layout The layout algorithm to use for positioning nodes (default \code{"kk"}, Kamada-Kawai).
+#'   Any layout name accepted by \code{\link[ggraph]{create_layout}} can be used, including:
+#'   \itemize{
+#'     \item \code{"kk"} — Kamada-Kawai spring layout (default; good general-purpose layout).
+#'     \item \code{"sugiyama"} — hierarchical/layered layout; useful for simple chains.
+#'     \item \code{"fr"} — Fruchterman-Reingold spring layout.
+#'     \item \code{"nicely"} — automatic choice based on graph properties.
+#'     \item \code{"circle"} — nodes arranged in a circle.
+#'   }
+#'   Override node positions entirely with the \code{coords} argument.
 #' @param latent Character vector of latent variable names. Overrides the model's latent variables if provided.
 #' @param node_size Size of the nodes (default 14).
 #' @param node_color Color of the node border (default "black").
@@ -59,7 +68,7 @@
 #'
 plot_dag <- function(
     x,
-    layout = "sugiyama",
+    layout = "kk",
     latent = NULL,
     node_size = 14,
     node_color = "black",
@@ -711,16 +720,44 @@ equations_to_dag_string <- function(
     }
 
     # Helper: make a dagitty-safe node name from a term string
-    make_internal_name <- function(term) {
-        nm <- gsub(":", "_x_", term) # BM:M  -> BM_x_M
-        nm <- gsub("[^a-zA-Z0-9_]", "_", nm) # I(x^2) -> I_x_2_
-        nm <- gsub("__+", "_", nm)
-        nm <- sub("_+$", "", nm)
-        nm
-    }
+    # make_internal_name must match sanitize_term_name() from deterministic_nodes.R
+    # so that node names in the plot align with JAGS parameter names like beta_weight_g_age_pow2.
+    make_internal_name <- function(term) sanitize_term_name(term)
 
-    # Helper: human-readable display label (× for :, keep I() as-is)
+    # Helper: human-readable display label
+    # For interactions: BM:M   -> BM×M
+    # For I() powers:   I(age^2) -> age²  I(x^3) -> x³
+    # For other I():    I(x+y)  -> I(x+y)  (keep as-is)
     make_display_label <- function(term) {
+        if (grepl("^I\\(", term)) {
+            # Check for simple power pattern: I(var^N)
+            m <- regmatches(
+                term,
+                regexpr("^I\\(([a-zA-Z_][a-zA-Z0-9_]*)\\^([0-9]+)\\)$", term)
+            )
+            if (length(m) > 0) {
+                inner <- sub("^I\\((.*)\\)$", "\\1", term)
+                base <- sub("\\^.*$", "", inner)
+                exp_n <- sub("^.*\\^", "", inner)
+                superscripts <- c(
+                    "\u2070",
+                    "\u00b9",
+                    "\u00b2",
+                    "\u00b3",
+                    "\u2074",
+                    "\u2075",
+                    "\u2076",
+                    "\u2077",
+                    "\u2078",
+                    "\u2079"
+                )
+                n <- as.integer(exp_n)
+                if (!is.na(n) && n >= 0 && n <= 9) {
+                    return(paste0(base, superscripts[n + 1]))
+                }
+            }
+            return(term) # fallback: keep as-is for complex I() expressions
+        }
         gsub(":", "\u00d7", term) # "BM:M" -> "BM\u00d7M"
     }
 
@@ -762,9 +799,7 @@ equations_to_dag_string <- function(
 
             if (is_interaction || is_I_call) {
                 # --- Deterministic / interaction node (within a mixed equation) ---
-                # X:Y interactions get a diamond per Attia et al. (2022).
-                # I(age^2) also gets a diamond so the fitted coefficient is visible.
-                # D-sep exclusion of I() polynomial terms is handled in because_dsep.
+                # X:Y interactions and I() polynomial terms get a diamond node.
                 iname <- make_internal_name(term)
                 d_label <- make_display_label(term)
                 interaction_nodes[[iname]] <- d_label
@@ -784,7 +819,25 @@ equations_to_dag_string <- function(
                     }
                     edges <- c(edges, paste(iname, "<-", actual_comp))
                 }
+                # Route through the deterministic node: response <- iname
+                # For X:Y interactions, components may not appear as separate
+                # explicit predictors, so also add comp -> resp edges.
+                # For I() polynomial terms (e.g. I(age^2)), the base variable
+                # (age) is typically an explicit separate term in the same equation,
+                # so comp -> resp is already added by the regular-predictor branch.
+                # Adding it again here creates a redundant hidden edge that
+                # collides with the direct age -> weight_g arrow in the layout.
                 edges <- c(edges, paste(actual_resp, "<-", iname))
+                if (is_interaction) {
+                    for (comp in components) {
+                        actual_comp <- if (comp %in% occ_vars) {
+                            paste0("psi_", comp)
+                        } else {
+                            comp
+                        }
+                        edges <- c(edges, paste(actual_resp, "<-", actual_comp))
+                    }
+                }
             } else {
                 # --- Regular predictor ---
                 actual_pred <- if (term %in% occ_vars) {
