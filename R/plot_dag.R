@@ -734,13 +734,34 @@ equations_to_dag_string <- function(
             next
         } # intercept-only, nothing to draw
 
+        # Detect pure deterministic declaration: entire RHS is a single I() call.
+        # e.g.  AgeClass ~ I(0 * (age < 0.02) + 1 * (age >= 0.02))
+        # Mark the LHS itself as the deterministic/interaction node and draw edges
+        # from the component variables directly — avoids a giant intermediate node.
+        is_pure_det <- length(trm_lbls) == 1 && grepl("^I\\(", trm_lbls[1])
+
+        if (is_pure_det) {
+            term <- trm_lbls[1]
+            interaction_nodes[[actual_resp]] <- actual_resp # LHS is the det. node
+            components <- all.vars(stats::as.formula(paste("~", term)))
+            for (comp in components) {
+                actual_comp <- if (comp %in% occ_vars) {
+                    paste0("psi_", comp)
+                } else {
+                    comp
+                }
+                edges <- c(edges, paste(actual_resp, "<-", actual_comp))
+            }
+            next
+        }
+
         for (term in trm_lbls) {
             is_interaction <- grepl(":", term, fixed = TRUE) &&
                 !grepl("^I\\(", term)
             is_I_call <- grepl("^I\\(", term)
 
             if (is_interaction || is_I_call) {
-                # --- Deterministic / interaction node ---
+                # --- Deterministic / interaction node (within a mixed equation) ---
                 iname <- make_internal_name(term)
                 d_label <- make_display_label(term)
                 interaction_nodes[[iname]] <- d_label
