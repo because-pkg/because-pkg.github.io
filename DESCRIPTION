@@ -1,7 +1,7 @@
 Package: because
 Type: Package
 Title: Bayesian Estimation of Causal Effects
-Version: 1.0.1
+Version: 1.0.2
 Authors@R: c(
     person(
       "Achaz", "von Hardenberg",
@@ -11,9 +11,9 @@ Authors@R: c(
   )
 Description: Provides tools for specifying and fitting Bayesian Structural Equation Models
     using JAGS. The 'because' package allows causal inference in complex ecological and 
-    evolutionary analyses, accounting for phylogenetic uncertainty, spatial autocorrelation, 
-    and other covariance structures. Implements and expands on the methods described in
-    von Hardenberg and Gonzalez-Voyer (2025) <doi:10.1111/2041-210X.70044>.
+    evolutionary analyses, accounting for phylogenetic uncertainty (through the because.phybase extension), spatial autocorrelation, 
+    and other covariance structures.
+
 SystemRequirements: JAGS (>= 4.0.0)
 License: GPL (>= 3)
 Encoding: UTF-8
