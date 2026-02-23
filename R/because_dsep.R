@@ -170,15 +170,27 @@ dsep_standard <- function(
 
   basis <- ggm::basiSet(dag)
 
-  # Remove any test where the primary variable (response) is a deterministic
-  # intermediate node (e.g. X_pow2, BM_x_M). These nodes are deterministic
-  # functions of their parents and are not free variables — they should only
-  # ever appear in conditioning sets, never as response or test variable.
-  if (!is.null(all_det_terms) && length(all_det_terms) > 0 && !is.null(basis)) {
-    det_internal_names <- sapply(all_det_terms, function(x) x$internal_name)
+  # Build combined exclusion list:
+  #   1. Deterministic interaction/I() nodes from extract_deterministic_terms.
+  #   2. Poly term internal names (e.g. age_pow2) — needed when because() has
+  #      already expanded equations (I(age^2) -> age_pow2) before calling here,
+  #      so extract_deterministic_terms no longer finds them.
+  excl_names <- unique(c(
+    if (!is.null(all_det_terms) && length(all_det_terms) > 0) {
+      sapply(all_det_terms, function(x) x$internal_name)
+    } else {
+      character(0)
+    },
+    if (!is.null(all_poly_terms) && length(all_poly_terms) > 0) {
+      sapply(all_poly_terms, function(x) x$internal_name)
+    } else {
+      character(0)
+    }
+  ))
+  if (length(excl_names) > 0 && !is.null(basis)) {
     basis <- Filter(
       function(test) {
-        !(test[1] %in% det_internal_names || test[2] %in% det_internal_names)
+        !(test[1] %in% excl_names || test[2] %in% excl_names)
       },
       basis
     )
@@ -351,12 +363,23 @@ dsep_with_latents <- function(
     type = "output"
   ))
 
-  # Filter out tests where a deterministic intermediate node is the response
-  if (!is.null(all_det_terms) && length(all_det_terms) > 0 && !is.null(basis)) {
-    det_internal_names <- sapply(all_det_terms, function(x) x$internal_name)
+  # Build combined exclusion list (same logic as dsep_standard)
+  excl_names <- unique(c(
+    if (!is.null(all_det_terms) && length(all_det_terms) > 0) {
+      sapply(all_det_terms, function(x) x$internal_name)
+    } else {
+      character(0)
+    },
+    if (!is.null(all_poly_terms) && length(all_poly_terms) > 0) {
+      sapply(all_poly_terms, function(x) x$internal_name)
+    } else {
+      character(0)
+    }
+  ))
+  if (length(excl_names) > 0 && !is.null(basis)) {
     basis <- Filter(
       function(test) {
-        !(test[1] %in% det_internal_names || test[2] %in% det_internal_names)
+        !(test[1] %in% excl_names || test[2] %in% excl_names)
       },
       basis
     )
