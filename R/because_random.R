@@ -201,11 +201,15 @@ expand_nesting_syntax <- function(rhs) {
 parse_random_part <- function(part) {
     # Check if part contains a pipe character (random effect indicator)
     if (grepl("\\|", part)) {
-        # Remove parentheses if present
-        inner <- if (grepl("^\\(.*\\)$", part)) {
-            sub("^\\((.*)\\)$", "\\1", part)
-        } else {
-            part
+        # Remove parentheses and leading ~ if present
+        inner <- part
+        # Strip leading tilde if present
+        if (grepl("^~", inner)) {
+            inner <- sub("^~", "", inner)
+        }
+        # Strip outer parentheses
+        if (grepl("^\\(.*\\)$", inner)) {
+            inner <- sub("^\\((.*)\\)$", "\\1", inner)
         }
 
         split_term <- strsplit(inner, "\\|")[[1]]

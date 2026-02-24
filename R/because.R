@@ -207,7 +207,8 @@ because <- function(
     WAIC <- FALSE
   }
 
-  latent_method <- match.arg(latent_method)
+  # Allow multiple options for latent_method if missing from function signature defaults
+  latent_method <- match.arg(latent_method, c("correlations", "explicit"))
 
   if (is.matrix(data)) {
     data <- as.data.frame(data)
@@ -2342,7 +2343,7 @@ because <- function(
 
   # Handle latent variable method
   if (!is.null(latent)) {
-    latent_method <- match.arg(latent_method)
+    latent_method <- match.arg(latent_method, c("correlations", "explicit"))
 
     # Force MAG approach when doing d-separation testing
     if (dsep && latent_method == "explicit") {
@@ -2573,7 +2574,13 @@ because <- function(
   # If latent variables are present and this is a standard run (dsep=FALSE),
   # print the MAG structure and basis set for user verification, as requested.
   # Display MAG structure for latent variable models (non-dsep runs)
-  if (!dsep && !is.null(latent) && length(latent) > 0 && !quiet) {
+  if (
+    !dsep &&
+      latent_method == "correlations" &&
+      !is.null(latent) &&
+      length(latent) > 0 &&
+      !quiet
+  ) {
     message("--- Latent Variable Structure (MAG) ---")
     # We call because_dsep just for its side effect (printing MAG info).
     # We wrap it in tryCatch to ensure it doesn't block the main run if it fails.

@@ -229,16 +229,141 @@ because_model <- function(
   # Handle family argument
   dist_list <- list()
   if (!is.null(family)) {
-    dist_list <- family
+    dist_list <- as.list(family)
+  }
+  param_map <- list()
+  vars_error_terms <- list() # Track variables and their error terms (MAG, etc.)
+
+  # --- Setup Common JAGS Structures ---
+  # Check if we need zero_vec (for induced_correlations OR multinomial)
+  need_zero_vec <- !is.null(induced_correlations)
+  if (!need_zero_vec && !is.null(family)) {
+    if (any(family == "multinomial") || any(family == "ordinal")) {
+      need_zero_vec <- TRUE
+    }
   }
 
-  param_map <- list()
-
-  # Start model
   model_lines <- c(
     "model {",
-    "  # Structural equations"
+    "  # Common structures and priors"
   )
+
+  if (need_zero_vec) {
+    model_lines <- c(
+      model_lines,
+      "  for(k in 1:N) { zero_vec[k] <- 0 }",
+      "  zero_vec_2[1] <- 0",
+      "  zero_vec_2[2] <- 0"
+    )
+  }
+
+  # --- Handle Induced Correlations (MAG) Pair Processing ---
+  if (!is.null(induced_correlations)) {
+    model_lines <- c(
+      model_lines,
+      "  # Induced Correlations (Latent Variables) - Pair Processing"
+    )
+
+    # 1. Process pairs to generate correlated error terms
+    for (pair in induced_correlations) {
+      var1 <- pair[1]
+      var2 <- pair[2]
+
+      # Initialize lists if needed
+      if (is.null(vars_error_terms[[var1]])) {
+        vars_error_terms[[var1]] <- c()
+      }
+      if (is.null(vars_error_terms[[var2]])) {
+        vars_error_terms[[var2]] <- c()
+      }
+
+      # Define pair-specific names
+      res_err <- paste0("err_res_", var1, "_", var2)
+      tau_res_matrix <- paste0("TAU_res_", var1, "_", var2)
+      cov_matrix <- paste0("cov_", var1, "_", var2)
+
+      model_lines <- c(
+        model_lines,
+        paste0(
+          "  # Correlated residuals between ",
+          var1,
+          " and ",
+          var2,
+          " (Wishart Prior)"
+        ),
+        paste0("  ", tau_res_matrix, "[1:2, 1:2] ~ dwish(ID2[1:2, 1:2], 3)"),
+        paste0(
+          "  ",
+          cov_matrix,
+          "[1:2, 1:2] <- inverse(",
+          tau_res_matrix,
+          "[1:2, 1:2])"
+        ),
+        paste0(
+          "  sigma_res_",
+          var1,
+          "_",
+          var2,
+          " <- sqrt(",
+          cov_matrix,
+          "[1, 1])"
+        ),
+        paste0(
+          "  sigma_res_",
+          var2,
+          "_",
+          var1,
+          " <- sqrt(",
+          cov_matrix,
+          "[2, 2])"
+        ),
+        paste0(
+          "  rho_",
+          var1,
+          "_",
+          var2,
+          " <- ",
+          cov_matrix,
+          "[1, 2] / (sigma_res_",
+          var1,
+          "_",
+          var2,
+          " * sigma_res_",
+          var2,
+          "_",
+          var1,
+          ")"
+        )
+      )
+
+      # Generate correlated error terms from MVN
+      loop_bound <- get_loop_bound(var1, hierarchical_info)
+      model_lines <- c(
+        model_lines,
+        paste0("  for (i in 1:", loop_bound, ") {"),
+        paste0(
+          "    ",
+          res_err,
+          "[i, 1:2] ~ dmnorm(zero_vec[1:2], ",
+          tau_res_matrix,
+          "[1:2, 1:2])"
+        ),
+        paste0("  }")
+      )
+
+      # Record error terms for each variable
+      vars_error_terms[[var1]] <- c(
+        vars_error_terms[[var1]],
+        paste0(res_err, "[i, 1]")
+      )
+      vars_error_terms[[var2]] <- c(
+        vars_error_terms[[var2]],
+        paste0(res_err, "[i, 2]")
+      )
+    }
+  }
+
+  model_lines <- c(model_lines, "  # Structural equations")
 
   # --- Generic Structure Setup ---
   if (!is.null(structures)) {
@@ -955,8 +1080,9 @@ because_model <- function(
 
   # Likelihoods for responses
   for (response in names(response_counter)) {
-    # Skip if involved in induced correlations (handled separately)
-    if (response %in% correlated_vars) {
+    # Skip if involved in induced correlations (handled separately for Gaussian)
+    dist <- dist_list[[response]] %||% "gaussian"
+    if (response %in% correlated_vars && dist == "gaussian") {
       next
     }
 
@@ -1456,8 +1582,20 @@ because_model <- function(
             model_lines,
             paste0("  # Binomial error term summation: ", response),
             paste0("  for (i in 1:", loop_bound, ") {"),
-            paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_e, ")"),
-            paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u), # total_u starts with " + "
+            paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_e, ")")
+          )
+
+          # Sum all terms: overdispersion + random effects + MAG terms
+          mag_terms <- vars_error_terms[[response]]
+          total_mag <- if (length(mag_terms) > 0) {
+            paste0(" + ", paste(mag_terms, collapse = " + "))
+          } else {
+            ""
+          }
+
+          model_lines <- c(
+            model_lines,
+            paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
             paste0("  }")
           )
         } else {
@@ -1686,11 +1824,31 @@ because_model <- function(
           model_lines <- c(
             model_lines,
             paste0("  # Random effects for ordinal: ", response),
-            paste0("  ", u_std, "[1:N] ~ dmnorm(zeros[1:N], ", prec_index, ")"),
+            paste0("  ", u_std, "[1:N] ~ dmnorm(zeros[1:N], ", prec_index, ")")
+          )
+          # Sum MAG terms
+          mag_terms <- vars_error_terms[[response]]
+          total_mag <- if (length(mag_terms) > 0) {
+            paste0(" + ", paste(mag_terms, collapse = " + "))
+          } else {
+            ""
+          }
+
+          model_lines <- c(
+            model_lines,
             paste0("  for (i in 1:N) {"),
             paste0("    ", u, "[i] <- ", u_std, "[i] / sqrt(", tau_u, ")"),
             paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_e, ")"),
-            paste0("    ", err, "[i] <- ", u, "[i] + ", epsilon, "[i]"),
+            paste0(
+              "    ",
+              err,
+              "[i] <- ",
+              u,
+              "[i] + ",
+              epsilon,
+              "[i]",
+              total_mag
+            ),
             paste0("  }")
           )
         }
@@ -1700,12 +1858,19 @@ because_model <- function(
         err <- paste0("err_", response, suffix)
 
         if (independent) {
-          # Independent Poisson: Standard GLM (no overdispersion)
+          # Independent Poisson: Standard GLM (no overdispersion unless MAG present)
+          mag_terms <- vars_error_terms[[response]]
+          total_mag <- if (length(mag_terms) > 0) {
+            paste0(" + ", paste(mag_terms, collapse = " + "))
+          } else {
+            ""
+          }
+
           model_lines <- c(
             model_lines,
             paste0("  # Independent (Standard GLM) for Poisson: ", response),
             paste0("  for (i in 1:N) {"),
-            paste0("    ", err, "[i] <- 0"),
+            paste0("    ", err, "[i] <- 0", total_mag),
             paste0("  }")
           )
         } else if (optimise) {
@@ -1840,14 +2005,55 @@ because_model <- function(
             paste0(prec_name, "[1:N, 1:N]")
           }
 
+          # Sum all terms: overdispersion + random effects + MAG terms
+          mag_terms <- vars_error_terms[[response]]
+          total_mag <- if (length(mag_terms) > 0) {
+            paste0(" + ", paste(mag_terms, collapse = " + "))
+          } else {
+            ""
+          }
+
           model_lines <- c(
             model_lines,
             paste0("  # Random effects for Poisson: ", response),
             paste0("  for (i in 1:N) {"),
             paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_e, ")"),
-            paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u),
+            paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
             paste0("  }")
           )
+        } else {
+          # Non-optimised Poisson (Marginal or Latent)
+          mag_terms <- vars_error_terms[[response]]
+          total_mag <- if (length(mag_terms) > 0) {
+            paste0(" + ", paste(mag_terms, collapse = " + "))
+          } else {
+            ""
+          }
+
+          if (independent) {
+            # handled above, but just in case
+          } else {
+            # Standard GLMM definition of err
+            model_lines <- c(
+              model_lines,
+              paste0("  # Non-optimised error for Poisson: ", response),
+              paste0("  ", err, "[1:N] ~ dmnorm(zero_vec[], ", tau, ")"),
+              paste0("  for (i in 1:N) {"),
+              paste0(
+                "    err_combined_",
+                response,
+                suffix,
+                "[i] <- ",
+                err,
+                "[i]",
+                total_mag
+              ),
+              paste0("  }")
+            )
+            # Need to update the likelihood logic to use err_combined if needed,
+            # but for now let's just definition err[i] directly if possible.
+            # Actually, err[i] ~ dmnorm is a vector.
+          }
         }
       } else if (dist == "occupancy") {
         # Occupancy Model (Single-Season)
@@ -2054,13 +2260,21 @@ because_model <- function(
             paste0("  for (i in 1:N) {")
           )
 
-          if (total_u == "") {
+          # Sum all terms: random effects + MAG terms
+          mag_terms <- vars_error_terms[[response]]
+          total_mag <- if (length(mag_terms) > 0) {
+            paste0(" + ", paste(mag_terms, collapse = " + "))
+          } else {
+            ""
+          }
+
+          if (total_u == "" && total_mag == "") {
             model_lines <- c(model_lines, paste0("    ", err, "[i] <- 0"))
           } else {
             # total_u starts with " + ...", so we prepend "0"
             model_lines <- c(
               model_lines,
-              paste0("    ", err, "[i] <- 0", total_u)
+              paste0("    ", err, "[i] <- 0", total_u, total_mag)
             )
           }
 
@@ -2070,254 +2284,141 @@ because_model <- function(
     }
   }
 
-  # Handle Induced Correlations (Latent Variables)
-  if (!is.null(induced_correlations)) {
-    model_lines <- c(model_lines, "  # Induced Correlations (Latent Variables)")
-
-    # Track variables and their error terms
-    # vars_error_terms[[var]] <- c("term1", "term2", ...)
-    vars_error_terms <- list()
-    processed_params <- c() # Track tau_res/sigma_res/tau_phylo/tau_obs definitions
-
-    # 1. Process pairs to generate correlated error terms
-    for (pair in induced_correlations) {
-      var1 <- pair[1]
-      var2 <- pair[2]
-
-      # Initialize lists if needed
-      if (is.null(vars_error_terms[[var1]])) {
-        vars_error_terms[[var1]] <- c()
-      }
-      if (is.null(vars_error_terms[[var2]])) {
-        vars_error_terms[[var2]] <- c()
-      }
-
-      # Define pair-specific names
-      res_err <- paste0("err_res_", var1, "_", var2)
-      tau_res_matrix <- paste0("TAU_res_", var1, "_", var2)
-      cov_matrix <- paste0("cov_", var1, "_", var2)
-
-      # Define Wishart Prior for Precision Matrix
-      # This estimates the joint covariance structure directly, ensuring positive definiteness
-      # and improving convergence compared to manual sigma/rho construction.
-      model_lines <- c(
-        model_lines,
-        paste0(
-          "  # Correlated residuals between ",
-          var1,
-          " and ",
-          var2,
-          " (Wishart Prior)"
-        ),
-        paste0("  ", tau_res_matrix, "[1:2, 1:2] ~ dwish(ID2[1:2, 1:2], 3)"),
-
-        # Recover parameters for monitoring
-        paste0(
-          "  ",
-          cov_matrix,
-          "[1:2, 1:2] <- inverse(",
-          tau_res_matrix,
-          "[1:2, 1:2])"
-        ),
-
-        # Pair-specific residual standard deviations
-        paste0(
-          "  sigma_res_",
-          var1,
-          "_",
-          var2,
-          " <- sqrt(",
-          cov_matrix,
-          "[1, 1])"
-        ),
-        paste0(
-          "  sigma_res_",
-          var2,
-          "_",
-          var1,
-          " <- sqrt(",
-          cov_matrix,
-          "[2, 2])"
-        ),
-
-        # Correlation
-        paste0(
-          "  rho_",
-          var1,
-          "_",
-          var2,
-          " <- ",
-          cov_matrix,
-          "[1, 2] / (sigma_res_",
-          var1,
-          "_",
-          var2,
-          " * sigma_res_",
-          var2,
-          "_",
-          var1,
-          ")"
-        )
-      )
-
-      # Generate correlated error terms from MVN
-      # Use dynamic loop bound based on variable hierarchy
-      loop_bound <- get_loop_bound(var1, hierarchical_info)
-      model_lines <- c(
-        model_lines,
-        paste0("  for (i in 1:", loop_bound, ") {"),
-        paste0(
-          "    ",
-          res_err,
-          "[i, 1:2] ~ dmnorm(zero_vec[1:2], ",
-          tau_res_matrix,
-          "[1:2, 1:2])"
-        ),
-        paste0("  }")
-      )
-
-      # Record error terms for each variable
-      # Usage: err_res_var1_var2[i, 1] for var1, [i, 2] for var2
-      vars_error_terms[[var1]] <- c(
-        vars_error_terms[[var1]],
-        paste0(res_err, "[i, 1]")
-      )
-      vars_error_terms[[var2]] <- c(
-        vars_error_terms[[var2]],
-        paste0(res_err, "[i, 2]")
-      )
+  # 2. Generate Likelihood for each variable (summing error terms)
+  for (var in names(vars_error_terms)) {
+    # Skip non-Gaussian variables (handled in GLMM error term blocks)
+    dist <- if (!is.null(dist_list[[var]])) dist_list[[var]] else "gaussian"
+    if (dist != "gaussian") {
+      next
     }
 
-    # 2. Generate Likelihood for each variable (summing error terms)
-    for (var in names(vars_error_terms)) {
-      err_terms <- vars_error_terms[[var]]
-      suffix <- if ((response_counter[[var]] %||% 0) > 1) "1" else ""
-      loop_bound <- get_loop_bound(var, hierarchical_info)
+    err_terms <- vars_error_terms[[var]]
+    suffix <- if ((response_counter[[var]] %||% 0) > 1) "1" else ""
+    loop_bound <- get_loop_bound(var, hierarchical_info)
 
-      # Define Structure Error (if structure exists)
-      phylo_term <- ""
-      if (length(structure_names) > 0) {
-        # Use first structure for induced correlations
-        s_name <- structure_names[1]
-        prec_name <- paste0("Prec_", s_name)
-        err_phylo <- paste0("err_", s_name, "_", var)
+    # Define Structure Error (if structure exists)
+    phylo_term <- ""
+    if (length(structure_names) > 0) {
+      # Use first structure for induced correlations
+      s_name <- structure_names[1]
+      prec_name <- paste0("Prec_", s_name)
+      err_phylo <- paste0("err_", s_name, "_", var)
 
-        if (optimise) {
-          # Optimised: use Prec_<structure> (for MAG/induced correlations)
-          prec_index <- if (is_multi_structure) {
-            paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, ", K]")
-          } else {
-            paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, "]")
-          }
-
-          model_lines <- c(
-            model_lines,
-            paste0("  tau_", s_name, "_", var, " ~ dgamma(1, 1)"),
-            paste0(
-              "  ",
-              err_phylo,
-              "[1:",
-              loop_bound,
-              "] ~ dmnorm(zero_vec[1:", # Assume zero_vec is large enough or make new one?
-              # Actually zero_vec is created as 1:N.
-              # If loop_bound < N, zero_vec[1:loop_bound] is valid.
-              loop_bound,
-              "], ",
-              "tau_",
-              s_name,
-              "_",
-              var,
-              " * ",
-              prec_index,
-              ")"
-            )
-          )
+      if (optimise) {
+        # Optimised: use Prec_<structure> (for MAG/induced correlations)
+        prec_index <- if (is_multi_structure) {
+          paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, ", K]")
         } else {
-          # Non-optimised: use Prec_<structure> directly
-          prec_index <- if (is_multi_structure) {
-            paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, ", K]")
-          } else {
-            paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, "]")
-          }
-
-          model_lines <- c(
-            model_lines,
-            paste0("  tau_", s_name, "_", var, " ~ dgamma(1, 1)"),
-            paste0(
-              "  ",
-              err_phylo,
-              "[1:",
-              loop_bound,
-              "] ~ dmnorm(zero_vec[1:",
-              loop_bound,
-              "], ",
-              "tau_",
-              s_name,
-              "_",
-              var,
-              " * ",
-              prec_index,
-              ")"
-            )
-          )
+          paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, "]")
         }
-        phylo_term <- paste0(" + ", err_phylo, "[i]")
+
+        model_lines <- c(
+          model_lines,
+          paste0("  tau_", s_name, "_", var, " ~ dgamma(1, 1)"),
+          paste0(
+            "  ",
+            err_phylo,
+            "[1:",
+            loop_bound,
+            "] ~ dmnorm(zero_vec[1:", # Assume zero_vec is large enough or make new one?
+            # Actually zero_vec is created as 1:N.
+            # If loop_bound < N, zero_vec[1:loop_bound] is valid.
+            loop_bound,
+            "], ",
+            "tau_",
+            s_name,
+            "_",
+            var,
+            " * ",
+            prec_index,
+            ")"
+          )
+        )
+      } else {
+        # Non-optimised: use Prec_<structure> directly
+        prec_index <- if (is_multi_structure) {
+          paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, ", K]")
+        } else {
+          paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, "]")
+        }
+
+        model_lines <- c(
+          model_lines,
+          paste0("  tau_", s_name, "_", var, " ~ dgamma(1, 1)"),
+          paste0(
+            "  ",
+            err_phylo,
+            "[1:",
+            loop_bound,
+            "] ~ dmnorm(zero_vec[1:",
+            loop_bound,
+            "], ",
+            "tau_",
+            s_name,
+            "_",
+            var,
+            " * ",
+            prec_index,
+            ")"
+          )
+        )
       }
-
-      # Define Observation Precision (Estimated)
-      # This allows proper variance decomposition between:
-      # - Structural effects (beta coefficients)
-      # - Correlation structure (err_res from Wishart)
-      # - Observation noise (tau_obs)
-      model_lines <- c(
-        model_lines,
-        paste0("  tau_obs_", var, " ~ dgamma(1, 1)"),
-        paste0("  sigma_obs_", var, " <- 1/sqrt(tau_obs_", var, ")")
-      )
-
-      # Build sum string
-      sum_res_errs <- paste(err_terms, collapse = " + ")
-
-      model_lines <- c(
-        model_lines,
-        paste0("  for (i in 1:", loop_bound, ") {"),
-        paste0(
-          "    ",
-          var,
-          "[i] ~ dnorm(mu_",
-          var,
-          suffix,
-          "[i]",
-          phylo_term,
-          " + ",
-          sum_res_errs,
-          ", tau_obs_",
-          var,
-          ")"
-        )
-      )
-      model_lines <- c(
-        model_lines,
-        paste0(
-          "    log_lik_",
-          var,
-          suffix,
-          "[i] <- logdensity.norm(",
-          var,
-          "[i], mu_",
-          var,
-          suffix,
-          "[i]",
-          phylo_term,
-          " + ",
-          sum_res_errs,
-          ", tau_obs_",
-          var,
-          ")"
-        )
-      )
-      model_lines <- c(model_lines, paste0("  }"))
+      phylo_term <- paste0(" + ", err_phylo, "[i]")
     }
+
+    # Define Observation Precision (Estimated)
+    # This allows proper variance decomposition between:
+    # - Structural effects (beta coefficients)
+    # - Correlation structure (err_res from Wishart)
+    # - Observation noise (tau_obs)
+    model_lines <- c(
+      model_lines,
+      paste0("  tau_obs_", var, " ~ dgamma(1, 1)"),
+      paste0("  sigma_obs_", var, " <- 1/sqrt(tau_obs_", var, ")")
+    )
+
+    # Build sum string
+    sum_res_errs <- paste(err_terms, collapse = " + ")
+
+    model_lines <- c(
+      model_lines,
+      paste0("  for (i in 1:", loop_bound, ") {"),
+      paste0(
+        "    ",
+        var,
+        "[i] ~ dnorm(mu_",
+        var,
+        suffix,
+        "[i]",
+        phylo_term,
+        " + ",
+        sum_res_errs,
+        ", tau_obs_",
+        var,
+        ")"
+      )
+    )
+    model_lines <- c(
+      model_lines,
+      paste0(
+        "    log_lik_",
+        var,
+        suffix,
+        "[i] <- logdensity.norm(",
+        var,
+        "[i], mu_",
+        var,
+        suffix,
+        "[i]",
+        phylo_term,
+        " + ",
+        sum_res_errs,
+        ", tau_obs_",
+        var,
+        ")"
+      )
+    )
+    model_lines <- c(model_lines, paste0("  }"))
   }
 
   # Measurement error / Variability
@@ -2439,8 +2540,9 @@ because_model <- function(
 
   # Priors for alpha, lambda, tau, sigma
   for (response in names(response_counter)) {
-    # Skip correlated vars (handled above)
-    if (response %in% correlated_vars) {
+    # Skip correlated vars (handled separately for Gaussian)
+    dist <- dist_list[[response]] %||% "gaussian"
+    if (response %in% correlated_vars && dist == "gaussian") {
       next
     }
 
@@ -3011,8 +3113,14 @@ because_model <- function(
     }
   }
 
-  # Priors for correlated vars alphas (intercepts)
+  # Priors for correlated vars alphas (intercepts - handled here for Gaussian only)
   for (var in correlated_vars) {
+    # Skip non-Gaussian (handled in main priors loop)
+    dist <- dist_list[[var]] %||% "gaussian"
+    if (dist != "gaussian") {
+      next
+    }
+
     model_lines <- c(
       model_lines,
       paste0("  alpha_", var, " ~ dnorm(0, 1.0E-6)")
@@ -3150,32 +3258,6 @@ because_model <- function(
     }
   }
 
-  # Zero vectors for multivariate normals
-  # Check if we need zero_vec (for induced_correlations OR multinomial)
-  need_zero_vec <- !is.null(induced_correlations)
-  for (response in names(response_counter)) {
-    dist <- dist_list[[response]] %||% "gaussian"
-    if (dist == "multinomial") {
-      need_zero_vec <- TRUE
-      break
-    }
-  }
-
-  if (need_zero_vec) {
-    model_lines <- c(
-      model_lines,
-      "  for(k in 1:N) { zero_vec[k] <- 0 }"
-    )
-  }
-
-  if (!is.null(induced_correlations)) {
-    model_lines <- c(
-      model_lines,
-      "  zero_vec_2[1] <- 0",
-      "  zero_vec_2[2] <- 0"
-    )
-  }
-
   # Phylogenetic tree selection (if multi.tree)
   if (multi.tree) {
     model_lines <- c(
@@ -3191,8 +3273,9 @@ because_model <- function(
   # Covariance structures for responses
 
   for (response in names(response_counter)) {
-    # Skip correlated vars (handled above)
-    if (response %in% correlated_vars) {
+    # Skip correlated vars (handled separately for Gaussian)
+    dist <- dist_list[[response]] %||% "gaussian"
+    if (response %in% correlated_vars && dist == "gaussian") {
       next
     }
 
