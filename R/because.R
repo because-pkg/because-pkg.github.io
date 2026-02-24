@@ -2512,9 +2512,9 @@ because <- function(
           # Convert formula to character for manipulation
           eq_str <- paste(deparse(eq), collapse = " ")
 
-          # Replace categorical variable with its dummies
+          # Replace categorical variable with its dummies (wrapped in parentheses for proper interaction expansion like A*B)
           pattern <- paste0("\\b", var, "\\b")
-          replacement <- paste(dummies, collapse = " + ")
+          replacement <- paste0("(", paste(dummies, collapse = " + "), ")")
           eq_str <- gsub(pattern, replacement, eq_str)
 
           # Convert back to formula

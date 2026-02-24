@@ -13,7 +13,6 @@ Description: Provides tools for specifying and fitting Bayesian Structural Equat
     using JAGS. The 'because' package allows causal inference in complex ecological and 
     evolutionary analyses, accounting for phylogenetic uncertainty (through the because.phybase extension), spatial autocorrelation, 
     and other covariance structures.
-
 SystemRequirements: JAGS (>= 4.0.0)
 License: GPL (>= 3)
 Encoding: UTF-8
@@ -54,5 +53,3 @@ Suggests:
 VignetteBuilder: knitr, rmarkdown
 URL: https://because-pkg.github.io/because/, https://github.com/because-pkg/because
 BugReports: https://github.com/because-pkg/because/issues
-
-
