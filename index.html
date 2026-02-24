@@ -16,8 +16,8 @@
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Bayesian Estimation of Causal Effects">
-<meta name="description" content="Provides tools for specifying and fitting Bayesian Structural Equation Models using JAGS. The because package allows causal inference in complex ecological and evolutionary analyses, accounting for phylogenetic uncertainty, spatial autocorrelation, and other covariance structures. Implements and expands on the methods described in von Hardenberg and Gonzalez-Voyer (2025) &lt;doi:10.1111/2041-210X.70044&gt;.">
-<meta property="og:description" content="Provides tools for specifying and fitting Bayesian Structural Equation Models using JAGS. The because package allows causal inference in complex ecological and evolutionary analyses, accounting for phylogenetic uncertainty, spatial autocorrelation, and other covariance structures. Implements and expands on the methods described in von Hardenberg and Gonzalez-Voyer (2025) &lt;doi:10.1111/2041-210X.70044&gt;.">
+<meta name="description" content="Provides tools for specifying and fitting Bayesian Structural Equation Models using JAGS. The because package allows causal inference in complex ecological and evolutionary analyses, accounting for phylogenetic uncertainty (through the because.phybase extension), spatial autocorrelation, and other covariance structures.">
+<meta property="og:description" content="Provides tools for specifying and fitting Bayesian Structural Equation Models using JAGS. The because package allows causal inference in complex ecological and evolutionary analyses, accounting for phylogenetic uncertainty (through the because.phybase extension), spatial autocorrelation, and other covariance structures.">
 <meta property="og:image" content="https://because-pkg.github.io/because/logo.png">
 </head>
 <body>
@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -112,9 +112,9 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>To install the <strong>stable release</strong> (<code>v1.0.1</code>), run:</p>
+<p>To install the <strong>stable release</strong> (<code>v1.0.2</code>), run:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"because-pkg/because@v1.0.1"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"because-pkg/because@v1.0.2"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>To install the <strong>latest development version</strong> (unstable), run:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"because-pkg/because"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
