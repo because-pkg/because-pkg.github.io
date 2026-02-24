@@ -298,7 +298,7 @@ summary.because <- function(
             # We filter OUT things that look like nodes if they are not structural.
 
             is_structural <- grepl(
-                "^(alpha|beta|sigma|tau|lambda|rho|psi|p_|r_|z_|cutpoint)",
+                "^(alpha|beta|sigma|tau|lambda|rho|psi|r_|cutpoint)",
                 rownames(combined)
             )
             is_random <- grepl("^u_", rownames(combined))
