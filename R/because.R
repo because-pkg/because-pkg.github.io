@@ -234,6 +234,15 @@ because <- function(
     stop("Argument 'equations' must be provided.")
   }
 
+  # --- Clean Data: Coerce 1D matrices (e.g., from scale()) to vectors ---
+  if (is.data.frame(data)) {
+    for (nm in names(data)) {
+      if (is.matrix(data[[nm]]) && ncol(data[[nm]]) == 1) {
+        data[[nm]] <- as.numeric(data[[nm]])
+      }
+    }
+  }
+
   # --- Backward Compatibility: distribution -> family ---
   if (!is.null(distribution)) {
     warning(
