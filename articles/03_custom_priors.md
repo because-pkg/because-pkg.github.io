@@ -385,6 +385,7 @@ fit_check$model
 #> JAGS model:
 #> 
 #> model {
+#>   # Common structures and priors
 #>   # Structural equations
 #> 
 #>   for (i in 1:N) {

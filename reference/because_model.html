@@ -160,6 +160,7 @@ If FALSE, use original marginal covariance formulation.</p></dd>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">eqs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">BR</span> <span class="op">~</span> <span class="va">BM</span>, <span class="va">S</span> <span class="op">~</span> <span class="va">BR</span>, <span class="va">G</span> <span class="op">~</span> <span class="va">BR</span>, <span class="va">L</span> <span class="op">~</span> <span class="va">BR</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu">because_model</span><span class="op">(</span><span class="va">eqs</span>, multi.tree <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">model</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> model {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   # Common structures and priors</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   # Structural equations</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   for (i in 1:N) {</span>

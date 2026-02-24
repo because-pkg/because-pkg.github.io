@@ -146,6 +146,7 @@ The generated model includes:
 eqs <- list(BR ~ BM, S ~ BR, G ~ BR, L ~ BR)
 cat(because_model(eqs, multi.tree = TRUE)$model)
 #> model {
+#>   # Common structures and priors
 #>   # Structural equations
 #> 
 #>   for (i in 1:N) {
