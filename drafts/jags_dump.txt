@@ -1,0 +1,165 @@
+model {
+  # Common structures and priors
+  # Structural equations
+    # Deterministic nodes (Interactions / Logic)
+  for (i in 1:N_obs) {
+    Temperature_minus_Thermal_Tol[i] <- Temperature[site_idx_obs[i]] - Thermal_Tol[i]
+  }
+
+  for (i in 1:N_site) {
+    mu_U_Resource[i] <- alpha_U_Resource + beta_U_Resource_Elevation_s*Elevation_s[i]
+  }
+  for (i in 1:N_site) {
+    mu_Temperature[i] <- alpha_Temperature + beta_Temperature_Elevation_s*Elevation_s[i]
+  }
+  for (i in 1:N_site) {
+    mu_NDVI[i] <- alpha_NDVI + beta_NDVI_U_Resource*U_Resource[i] + beta_NDVI_Elevation_s*Elevation_s[i]
+  }
+  for (i in 1:N_species) {
+    mu_Body_Mass_s[i] <- alpha_Body_Mass_s
+  }
+  for (i in 1:N_obs) {
+    mu_Metabolic_Rate[i] <- alpha_Metabolic_Rate + beta_Metabolic_Rate_Temperature*Temperature[site_idx_obs[i]] + beta_Metabolic_Rate_Body_Mass_s*Body_Mass_s[species_idx_obs[i]]
+  }
+  for (i in 1:N_obs) {
+    mu_Thermal_Tol[i] <- alpha_Thermal_Tol + beta_Thermal_Tol_Temperature*Temperature[site_idx_obs[i]] + beta_Thermal_Tol_Elevation_s*Elevation_s[site_idx_obs[i]]
+  }
+  for (i in 1:N_obs) {
+    mu_Foraging_Intensity[i] <- alpha_Foraging_Intensity + beta_Foraging_Intensity_U_Resource*U_Resource[site_idx_obs[i]] + beta_Foraging_Intensity_Metabolic_Rate*Metabolic_Rate[i]
+  }
+  for (i in 1:N_obs) {
+    # Poisson log link for Abundance
+    log(mu_Abundance[i]) <- alpha_Abundance + beta_Abundance_U_Resource*U_Resource[site_idx_obs[i]] + beta_Abundance_Foraging_Intensity*Foraging_Intensity[i] + beta_Abundance_Temperature_minus_Thermal_Tol*Temperature_minus_Thermal_Tol[i] + err_Abundance[i]
+    Abundance[i] ~ dpois(mu_Abundance[i])
+    log_lik_Abundance[i] <- logdensity.pois(Abundance[i], mu_Abundance[i])
+  }
+  # Multivariate normal likelihoods
+  u_std_U_Resource_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (i in 1:N_site) { u_U_Resource_spatial[i] <- u_std_U_Resource_spatial[i] / sqrt(tau_u_U_Resource_spatial) }
+  for (i in 1:N_site) {
+    U_Resource[i] ~ dnorm(mu_U_Resource[i] + u_U_Resource_spatial[i], tau_e_U_Resource)
+    log_lik_U_Resource[i] <- logdensity.norm(U_Resource[i], mu_U_Resource[i] + u_U_Resource_spatial[i], tau_e_U_Resource)
+  }
+  u_std_Temperature_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (i in 1:N_site) { u_Temperature_spatial[i] <- u_std_Temperature_spatial[i] / sqrt(tau_u_Temperature_spatial) }
+  for (i in 1:N_site) {
+    Temperature[i] ~ dnorm(mu_Temperature[i] + u_Temperature_spatial[i], tau_e_Temperature)
+    log_lik_Temperature[i] <- logdensity.norm(Temperature[i], mu_Temperature[i] + u_Temperature_spatial[i], tau_e_Temperature)
+  }
+  u_std_NDVI_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (i in 1:N_site) { u_NDVI_spatial[i] <- u_std_NDVI_spatial[i] / sqrt(tau_u_NDVI_spatial) }
+  for (i in 1:N_site) {
+    NDVI[i] ~ dnorm(mu_NDVI[i] + u_NDVI_spatial[i], tau_e_NDVI)
+    log_lik_NDVI[i] <- logdensity.norm(NDVI[i], mu_NDVI[i] + u_NDVI_spatial[i], tau_e_NDVI)
+  }
+  u_std_Body_Mass_s_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (i in 1:N_species) { u_Body_Mass_s_spatial[i] <- u_std_Body_Mass_s_spatial[site_idx_species[i]] / sqrt(tau_u_Body_Mass_s_spatial) }
+  u_std_Body_Mass_s_Species[1:N_Species] ~ dmnorm(zeros_Species[1:N_Species], Prec_Species[1:N_Species, 1:N_Species])
+  for (g in 1:N_Species) {
+    u_Body_Mass_s_Species[g] <- u_std_Body_Mass_s_Species[g] / sqrt(tau_u_Body_Mass_s_Species)
+  }
+  for (i in 1:N_species) {
+    Body_Mass_s[i] ~ dnorm(mu_Body_Mass_s[i] + u_Body_Mass_s_spatial[i] + u_Body_Mass_s_Species[group_Species[i]], tau_e_Body_Mass_s)
+    log_lik_Body_Mass_s[i] <- logdensity.norm(Body_Mass_s[i], mu_Body_Mass_s[i] + u_Body_Mass_s_spatial[i] + u_Body_Mass_s_Species[group_Species[i]], tau_e_Body_Mass_s)
+  }
+  u_std_Metabolic_Rate_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (i in 1:N_obs) { u_Metabolic_Rate_spatial[i] <- u_std_Metabolic_Rate_spatial[site_idx_obs[i]] / sqrt(tau_u_Metabolic_Rate_spatial) }
+  for (i in 1:N_obs) {
+    Metabolic_Rate[i] ~ dnorm(mu_Metabolic_Rate[i] + u_Metabolic_Rate_spatial[i], tau_e_Metabolic_Rate)
+    log_lik_Metabolic_Rate[i] <- logdensity.norm(Metabolic_Rate[i], mu_Metabolic_Rate[i] + u_Metabolic_Rate_spatial[i], tau_e_Metabolic_Rate)
+  }
+  u_std_Thermal_Tol_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (i in 1:N_obs) { u_Thermal_Tol_spatial[i] <- u_std_Thermal_Tol_spatial[site_idx_obs[i]] / sqrt(tau_u_Thermal_Tol_spatial) }
+  for (i in 1:N_obs) {
+    Thermal_Tol[i] ~ dnorm(mu_Thermal_Tol[i] + u_Thermal_Tol_spatial[i], tau_e_Thermal_Tol)
+    log_lik_Thermal_Tol[i] <- logdensity.norm(Thermal_Tol[i], mu_Thermal_Tol[i] + u_Thermal_Tol_spatial[i], tau_e_Thermal_Tol)
+  }
+  u_std_Foraging_Intensity_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (i in 1:N_obs) { u_Foraging_Intensity_spatial[i] <- u_std_Foraging_Intensity_spatial[site_idx_obs[i]] / sqrt(tau_u_Foraging_Intensity_spatial) }
+  for (i in 1:N_obs) {
+    Foraging_Intensity[i] ~ dnorm(mu_Foraging_Intensity[i] + u_Foraging_Intensity_spatial[i], tau_e_Foraging_Intensity)
+    log_lik_Foraging_Intensity[i] <- logdensity.norm(Foraging_Intensity[i], mu_Foraging_Intensity[i] + u_Foraging_Intensity_spatial[i], tau_e_Foraging_Intensity)
+  }
+  u_std_Abundance_spatial[1:N_obs] ~ dmnorm(zeros_site[1:N_obs], Prec_spatial[1:N_site, 1:N_site])
+  for (i in 1:N) { u_Abundance_spatial[i] <- u_std_Abundance_spatial[site_idx_obs[i]] / sqrt(tau_u_Abundance_spatial) }
+  u_std_Abundance_Species[1:N_Species] ~ dmnorm(zeros_Species[1:N_Species], Prec_Species[1:N_Species, 1:N_Species])
+  for (g in 1:N_Species) {
+    u_Abundance_Species[g] <- u_std_Abundance_Species[g] / sqrt(tau_u_Abundance_Species)
+  }
+  # Random effects for Poisson: Abundance
+  for (i in 1:N) {
+    epsilon_Abundance[i] ~ dnorm(0, tau_e_Abundance)
+    err_Abundance[i] <- epsilon_Abundance[i] + u_Abundance_spatial[i] + u_Abundance_Species[group_Species[species_idx_obs[i]]]
+  }
+  # Priors for structural parameters
+  alpha_U_Resource ~ dnorm(0, 1.0E-6)
+  tau_e_U_Resource ~ dgamma(1, 1)
+  tau_u_U_Resource_spatial ~ dgamma(1, 1)
+  sigma_U_Resource_spatial <- 1/sqrt(tau_u_U_Resource_spatial)
+  tau_u_U_Resource_Species ~ dgamma(1, 1)
+  sigma_U_Resource_Species <- 1/sqrt(tau_u_U_Resource_Species)
+  sigma_U_Resource_res <- 1/sqrt(tau_e_U_Resource)
+  alpha_Temperature ~ dnorm(0, 1.0E-6)
+  tau_e_Temperature ~ dgamma(1, 1)
+  tau_u_Temperature_spatial ~ dgamma(1, 1)
+  sigma_Temperature_spatial <- 1/sqrt(tau_u_Temperature_spatial)
+  tau_u_Temperature_Species ~ dgamma(1, 1)
+  sigma_Temperature_Species <- 1/sqrt(tau_u_Temperature_Species)
+  sigma_Temperature_res <- 1/sqrt(tau_e_Temperature)
+  alpha_NDVI ~ dnorm(0, 1.0E-6)
+  tau_e_NDVI ~ dgamma(1, 1)
+  tau_u_NDVI_spatial ~ dgamma(1, 1)
+  sigma_NDVI_spatial <- 1/sqrt(tau_u_NDVI_spatial)
+  tau_u_NDVI_Species ~ dgamma(1, 1)
+  sigma_NDVI_Species <- 1/sqrt(tau_u_NDVI_Species)
+  sigma_NDVI_res <- 1/sqrt(tau_e_NDVI)
+  alpha_Body_Mass_s ~ dnorm(0, 1.0E-6)
+  tau_e_Body_Mass_s ~ dgamma(1, 1)
+  tau_u_Body_Mass_s_spatial ~ dgamma(1, 1)
+  sigma_Body_Mass_s_spatial <- 1/sqrt(tau_u_Body_Mass_s_spatial)
+  tau_u_Body_Mass_s_Species ~ dgamma(1, 1)
+  sigma_Body_Mass_s_Species <- 1/sqrt(tau_u_Body_Mass_s_Species)
+  sigma_Body_Mass_s_res <- 1/sqrt(tau_e_Body_Mass_s)
+  alpha_Metabolic_Rate ~ dnorm(0, 1.0E-6)
+  tau_e_Metabolic_Rate ~ dgamma(1, 1)
+  tau_u_Metabolic_Rate_spatial ~ dgamma(1, 1)
+  sigma_Metabolic_Rate_spatial <- 1/sqrt(tau_u_Metabolic_Rate_spatial)
+  tau_u_Metabolic_Rate_Species ~ dgamma(1, 1)
+  sigma_Metabolic_Rate_Species <- 1/sqrt(tau_u_Metabolic_Rate_Species)
+  sigma_Metabolic_Rate_res <- 1/sqrt(tau_e_Metabolic_Rate)
+  alpha_Thermal_Tol ~ dnorm(0, 1.0E-6)
+  tau_e_Thermal_Tol ~ dgamma(1, 1)
+  tau_u_Thermal_Tol_spatial ~ dgamma(1, 1)
+  sigma_Thermal_Tol_spatial <- 1/sqrt(tau_u_Thermal_Tol_spatial)
+  tau_u_Thermal_Tol_Species ~ dgamma(1, 1)
+  sigma_Thermal_Tol_Species <- 1/sqrt(tau_u_Thermal_Tol_Species)
+  sigma_Thermal_Tol_res <- 1/sqrt(tau_e_Thermal_Tol)
+  alpha_Foraging_Intensity ~ dnorm(0, 1.0E-6)
+  tau_e_Foraging_Intensity ~ dgamma(1, 1)
+  tau_u_Foraging_Intensity_spatial ~ dgamma(1, 1)
+  sigma_Foraging_Intensity_spatial <- 1/sqrt(tau_u_Foraging_Intensity_spatial)
+  tau_u_Foraging_Intensity_Species ~ dgamma(1, 1)
+  sigma_Foraging_Intensity_Species <- 1/sqrt(tau_u_Foraging_Intensity_Species)
+  sigma_Foraging_Intensity_res <- 1/sqrt(tau_e_Foraging_Intensity)
+  alpha_Abundance ~ dnorm(0, 1.0E-6)
+  tau_e_Abundance ~ dgamma(1, 1)
+  tau_u_Abundance_spatial ~ dgamma(1, 1)
+  sigma_Abundance_spatial <- 1/sqrt(tau_u_Abundance_spatial)
+  tau_u_Abundance_Species ~ dgamma(1, 1)
+  sigma_Abundance_Species <- 1/sqrt(tau_u_Abundance_Species)
+  sigma_Abundance_res <- 1/sqrt(tau_e_Abundance)
+  beta_U_Resource_Elevation_s ~ dnorm(0, 1.0E-6)
+  beta_Temperature_Elevation_s ~ dnorm(0, 1.0E-6)
+  beta_NDVI_U_Resource ~ dnorm(0, 1.0E-6)
+  beta_NDVI_Elevation_s ~ dnorm(0, 1.0E-6)
+  beta_Metabolic_Rate_Temperature ~ dnorm(0, 1.0E-6)
+  beta_Metabolic_Rate_Body_Mass_s ~ dnorm(0, 1.0E-6)
+  beta_Thermal_Tol_Temperature ~ dnorm(0, 1.0E-6)
+  beta_Thermal_Tol_Elevation_s ~ dnorm(0, 1.0E-6)
+  beta_Foraging_Intensity_U_Resource ~ dnorm(0, 1.0E-6)
+  beta_Foraging_Intensity_Metabolic_Rate ~ dnorm(0, 1.0E-6)
+  beta_Abundance_U_Resource ~ dnorm(0, 1.0E-6)
+  beta_Abundance_Foraging_Intensity ~ dnorm(0, 1.0E-6)
+  beta_Abundance_Temperature_minus_Thermal_Tol ~ dnorm(0, 1.0E-6)
+  # Predictor priors for imputation
+}
