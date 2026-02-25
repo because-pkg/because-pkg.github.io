@@ -49,6 +49,36 @@ transform_graph_for_dsep <- function(family, equations, ...) {
 
 #' Default Method for Structure Definition (Independent Model)
 #' @export
+#' Method for Structure Data Preparation (Matrix)
+#' @export
+prepare_structure_data.matrix <- function(
+    structure,
+    data,
+    optimize = TRUE,
+    ...
+) {
+    # Treat matrix as covariance, invert to get Precision
+    # Precision matrix is expected by dmnorm
+    return(list(data_list = list(Prec = solve(structure))))
+}
+
+#' Method for JAGS Structure Definition (Matrix)
+#' @export
+jags_structure_definition.matrix <- function(
+    structure,
+    variable_name = "err",
+    optimize = TRUE,
+    ...
+) {
+    # Matrix structures use dmnorm with the provided Precision matrix
+    return(list(
+        setup_code = NULL,
+        error_prior = "dmnorm"
+    ))
+}
+
+#' Default Method for D-Sep Transformation
+#' @export
 jags_structure_definition.default <- function(
     structure,
     variable_name = "err",

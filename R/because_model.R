@@ -118,6 +118,37 @@ because_model <- function(
     return(paste0("N_", lvl))
   }
 
+  # Helper: Get zeros vector name (zeros or zeros_<Level>)
+  get_zeros_name <- function(response, h_info) {
+    if (is.null(h_info)) {
+      return("zeros")
+    }
+    lvl <- get_var_level(response, h_info)
+    if (is.null(lvl)) {
+      return("zeros")
+    }
+    return(paste0("zeros_", lvl))
+  }
+
+  # Helper: Get level for a structure
+  get_struct_lvl <- function(s_name, h_info) {
+    if (is.null(h_info) || is.null(h_info$structure_levels)) {
+      return(NULL)
+    }
+    return(h_info$structure_levels[[s_name]])
+  }
+
+  # Helper: Get index for mapping structure levels to response levels
+  get_struct_index <- function(s_name, response, h_info) {
+    s_lvl <- get_struct_lvl(s_name, h_info)
+    r_lvl <- get_var_level(response, h_info)
+    if (is.null(s_lvl) || is.null(r_lvl) || s_lvl == r_lvl) {
+      return("i")
+    }
+    # Level mismatch: use the indicator mapping e.g. site_idx_obs[i]
+    return(paste0(s_lvl, "_idx_", r_lvl, "[i]"))
+  }
+
   # Helper: Get index expression for accessing a predictor from a coarser level
   # Returns "pred[Coarser_idx_Finer[i]]" or "pred[i]" if same level
   get_pred_index <- function(pred, response_level, h_info) {
@@ -1202,16 +1233,32 @@ because_model <- function(
             additive_terms <- ""
 
             for (s_name in structure_names) {
+              # Structure properties
+              s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+              s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
+              s_zeros <- if (is.null(s_lvl)) {
+                "zeros"
+              } else {
+                paste0("zeros_", s_lvl)
+              }
               s_suffix <- paste0("_", s_name)
               u_std <- paste0("u_std_", response, suffix, s_suffix)
               u <- paste0("u_", response, suffix, s_suffix)
               tau_u <- paste0("tau_u_", response, suffix, s_suffix)
 
+              s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+              s_bound <- if (is.null(s_lvl)) loop_bound else paste0("N_", s_lvl)
+              s_zeros <- if (is.null(s_lvl)) {
+                "zeros"
+              } else {
+                paste0("zeros_", s_lvl)
+              }
+
               prec_name <- paste0("Prec_", s_name)
               prec_index <- if (multi.tree && is_multi_structure) {
-                paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, ", K]")
+                paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
               } else {
-                paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, "]")
+                paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
               }
 
               model_lines <- c(
@@ -1220,9 +1267,11 @@ because_model <- function(
                   "  ",
                   u_std,
                   "[1:",
-                  loop_bound,
-                  "] ~ dmnorm(zeros[1:",
-                  loop_bound,
+                  s_bound,
+                  "] ~ dmnorm(",
+                  s_zeros,
+                  "[1:",
+                  s_bound,
                   "], ",
                   prec_index,
                   ")"
@@ -1234,7 +1283,9 @@ because_model <- function(
                   u,
                   "[i] <- ",
                   u_std,
-                  "[i] / sqrt(",
+                  "[",
+                  get_struct_index(s_name, response, hierarchical_info),
+                  "] / sqrt(",
                   tau_u,
                   ") }"
                 )
@@ -1462,6 +1513,10 @@ because_model <- function(
 
           # Phylogenetic / N-dim Structures
           for (s_name in structure_names) {
+            # Structure properties
+            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+            s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
+            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
             s_suffix <- paste0("_", s_name)
             u_std <- paste0("u_std_", response, suffix, s_suffix)
             u <- paste0("u_", response, suffix, s_suffix)
@@ -1469,9 +1524,9 @@ because_model <- function(
 
             prec_name <- paste0("Prec_", s_name)
             prec_index <- if (multi.tree && is_multi_structure) {
-              paste0(prec_name, "[1:N, 1:N, K]")
+              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
             } else {
-              paste0(prec_name, "[1:N, 1:N]")
+              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
             }
 
             model_lines <- c(
@@ -1479,7 +1534,13 @@ because_model <- function(
               paste0(
                 "  ",
                 u_std,
-                "[1:N] ~ dmnorm(zeros[1:N], ",
+                "[1:",
+                get_loop_bound(response, hierarchical_info),
+                "] ~ dmnorm(",
+                s_zeros,
+                "[1:",
+                get_loop_bound(response, hierarchical_info),
+                "], ",
                 prec_index,
                 ")"
               ),
@@ -1488,7 +1549,9 @@ because_model <- function(
                 u,
                 "[i] <- ",
                 u_std,
-                "[i] / sqrt(",
+                "[",
+                get_struct_index(s_name, response, hierarchical_info),
+                "] / sqrt(",
                 tau_u,
                 ") }"
               )
@@ -1642,6 +1705,10 @@ because_model <- function(
 
           # Phylogenetic / N-dim Structures
           for (s_name in structure_names) {
+            # Structure properties
+            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+            s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
+            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
             s_suffix <- paste0("_", s_name)
             u_std <- paste0("u_std_", response, suffix, s_suffix)
             u <- paste0("u_", response, suffix, s_suffix)
@@ -1651,7 +1718,7 @@ because_model <- function(
             prec_index <- if (multi.tree && is_multi_structure) {
               paste0(prec_name, "[1:N, 1:N, k]")
             } else {
-              paste0(prec_name, "[1:N, 1:N]")
+              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
             }
 
             model_lines <- c(
@@ -1659,7 +1726,13 @@ because_model <- function(
               paste0(
                 "    ",
                 u_std,
-                "[1:N, k] ~ dmnorm(zeros[1:N], ",
+                "[1:",
+                get_loop_bound(response, hierarchical_info),
+                ", k] ~ dmnorm(zeros_",
+                get_var_level(response, hierarchical_info) %||% "obs",
+                "[1:",
+                get_loop_bound(response, hierarchical_info),
+                "], ",
                 prec_index,
                 ")"
               ),
@@ -1816,15 +1889,27 @@ because_model <- function(
           }
           prec_name <- paste0("Prec_", s_name)
           prec_index <- if (is_multi_structure) {
-            paste0(prec_name, "[1:N, 1:N, K]")
+            paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
           } else {
-            paste0(prec_name, "[1:N, 1:N]")
+            paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
           }
 
           model_lines <- c(
             model_lines,
             paste0("  # Random effects for ordinal: ", response),
-            paste0("  ", u_std, "[1:N] ~ dmnorm(zeros[1:N], ", prec_index, ")")
+            paste0(
+              "  ",
+              u_std,
+              "[1:",
+              get_loop_bound(response, hierarchical_info),
+              "] ~ dmnorm(",
+              s_zeros,
+              "[1:",
+              get_loop_bound(response, hierarchical_info),
+              "], ",
+              prec_index,
+              ")"
+            )
           )
           # Sum MAG terms
           mag_terms <- vars_error_terms[[response]]
@@ -1837,7 +1922,17 @@ because_model <- function(
           model_lines <- c(
             model_lines,
             paste0("  for (i in 1:N) {"),
-            paste0("    ", u, "[i] <- ", u_std, "[i] / sqrt(", tau_u, ")"),
+            paste0(
+              "    ",
+              u,
+              "[i] <- ",
+              u_std,
+              "[",
+              get_struct_index(s_name, response, hierarchical_info),
+              "] / sqrt(",
+              tau_u,
+              ")"
+            ),
             paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_e, ")"),
             paste0(
               "    ",
@@ -1883,6 +1978,10 @@ because_model <- function(
 
           # Phylogenetic / N-dim Structures
           for (s_name in structure_names) {
+            # Structure properties
+            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+            s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
+            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
             s_suffix <- paste0("_", s_name)
             u_std <- paste0("u_std_", response, suffix, s_suffix)
             u <- paste0("u_", response, suffix, s_suffix)
@@ -1890,9 +1989,9 @@ because_model <- function(
 
             prec_name <- paste0("Prec_", s_name)
             prec_index <- if (multi.tree && is_multi_structure) {
-              paste0(prec_name, "[1:N, 1:N, K]")
+              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
             } else {
-              paste0(prec_name, "[1:N, 1:N]")
+              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
             }
 
             model_lines <- c(
@@ -1900,7 +1999,13 @@ because_model <- function(
               paste0(
                 "  ",
                 u_std,
-                "[1:N] ~ dmnorm(zeros[1:N], ",
+                "[1:",
+                get_loop_bound(response, hierarchical_info),
+                "] ~ dmnorm(",
+                s_zeros,
+                "[1:",
+                get_loop_bound(response, hierarchical_info),
+                "], ",
                 prec_index,
                 ")"
               ),
@@ -1909,7 +2014,9 @@ because_model <- function(
                 u,
                 "[i] <- ",
                 u_std,
-                "[i] / sqrt(",
+                "[",
+                get_struct_index(s_name, response, hierarchical_info),
+                "] / sqrt(",
                 tau_u,
                 ") }"
               )
@@ -2000,9 +2107,9 @@ because_model <- function(
           }
           prec_name <- paste0("Prec_", s_name)
           prec_index <- if (is_multi_structure) {
-            paste0(prec_name, "[1:N, 1:N, K]")
+            paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
           } else {
-            paste0(prec_name, "[1:N, 1:N]")
+            paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
           }
 
           # Sum all terms: overdispersion + random effects + MAG terms
@@ -2141,6 +2248,10 @@ because_model <- function(
 
           # Phylogenetic / N-dim Structures
           for (s_name in structure_names) {
+            # Structure properties
+            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+            s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
+            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
             s_suffix <- paste0("_", s_name)
             u_std <- paste0("u_std_", response, suffix, s_suffix)
             u <- paste0("u_", response, suffix, s_suffix)
@@ -2148,9 +2259,9 @@ because_model <- function(
 
             prec_name <- paste0("Prec_", s_name)
             prec_index <- if (multi.tree && is_multi_structure) {
-              paste0(prec_name, "[1:N, 1:N, K]")
+              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
             } else {
-              paste0(prec_name, "[1:N, 1:N]")
+              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
             }
 
             model_lines <- c(
@@ -2158,7 +2269,13 @@ because_model <- function(
               paste0(
                 "  ",
                 u_std,
-                "[1:N] ~ dmnorm(zeros[1:N], ",
+                "[1:",
+                get_loop_bound(response, hierarchical_info),
+                "] ~ dmnorm(",
+                s_zeros,
+                "[1:",
+                get_loop_bound(response, hierarchical_info),
+                "], ",
                 prec_index,
                 ")"
               ),
@@ -2167,7 +2284,9 @@ because_model <- function(
                 u,
                 "[i] <- ",
                 u_std,
-                "[i] / sqrt(",
+                "[",
+                get_struct_index(s_name, response, hierarchical_info),
+                "] / sqrt(",
                 tau_u,
                 ") }"
               )
@@ -2703,6 +2822,10 @@ because_model <- function(
 
           # Generate Structure Priors
           for (s_name in structure_names) {
+            # Structure properties
+            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+            s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
+            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
             # Always use structure name suffix to match model generation
             s_suffix <- paste0("_", s_name)
 
@@ -2892,6 +3015,14 @@ because_model <- function(
 
             # Phylogenetic / N-dim Structures
             for (s_name in structure_names) {
+              # Structure properties
+              s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+              s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
+              s_zeros <- if (is.null(s_lvl)) {
+                "zeros"
+              } else {
+                paste0("zeros_", s_lvl)
+              }
               s_suffix <- paste0("_", s_name)
               tau_u <- paste0("tau_u_", response, s_suffix) # Suffix handled outside loop
               # Wait, suffix is from k=1..response_counter. But here we are in k=2..K_var (categories).
@@ -3262,11 +3393,11 @@ because_model <- function(
   if (multi.tree) {
     model_lines <- c(
       model_lines,
-      "",
+      "  # Phylogenetic uncertainty weighting",
       "  for (k in 1:Ntree) {",
-      "    p[k] <- 1 / Ntree",
+      "    p_tree[k] <- 1/Ntree",
       "  }",
-      "  K ~ dcat(p[])"
+      "  K ~ dcat(p_tree[1:Ntree])"
     )
   }
 
@@ -3865,6 +3996,10 @@ because_model <- function(
           }
 
           for (s_name in structure_names) {
+            # Structure properties
+            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+            s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
+            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
             s_suffix <- paste0("_", s_name)
             tau_u <- paste0("tau_u_", var, s_suffix)
             model_lines <- c(

@@ -449,11 +449,14 @@ because <- function(
       }
     }
   } else {
-    # Single-level data - ensure levels/hierarchy not mistakenly provided
-    if (!is.null(levels) || !is.null(hierarchy)) {
-      warning(
-        "'levels' or 'hierarchy' provided but 'data' is not hierarchical. ",
-        "Ignoring these arguments."
+    # Single-level data - check if hierarchical metadata was provided anyway (e.g. for d-sep tests)
+    if (!is.null(levels) && !is.null(hierarchy)) {
+      is_hierarchical <- FALSE # Data is flat, so NOT hierarchical for prep purposes
+      hierarchical_info <- list(
+        data = data,
+        levels = levels,
+        hierarchy = hierarchy,
+        link_vars = link_vars
       )
     }
   }
@@ -1111,7 +1114,20 @@ because <- function(
     structures <- tree
     # Check for multi-objects in the list
     for (s in structures) {
-      if (is.list(s) && length(s) > 1) is_multiple <- TRUE
+      if (inherits(s, "multiPhylo")) {
+        cat("\nDEBUG: Hit multiPhylo\n")
+        is_multiple <- TRUE
+      } else if (is.list(s) && length(s) > 1 && !inherits(s, "phylo")) {
+        cat(
+          "\nDEBUG: Hit generic list of structures. Class(s): ",
+          class(s),
+          " length(s): ",
+          length(s),
+          "\n"
+        )
+        # Generic list with multiple items (likely replicates)
+        is_multiple <- TRUE
+      }
     }
   } else {
     # Any other S3 object (phylo, spatial_knn, etc.) - use class name
@@ -1142,6 +1158,7 @@ because <- function(
       )
     }
   } else {
+    structure_levels <- list()
     # Use S3 Generic for Processing
     for (s_name in structure_names) {
       structure_obj <- structures[[s_name]]
@@ -1153,11 +1170,23 @@ because <- function(
         quiet = quiet
       )
 
-      # Merge data updates
+      # Merge data updates with prefix if generic
       if (!is.null(prep_res$data_list)) {
         for (d_name in names(prep_res$data_list)) {
-          data[[d_name]] <- prep_res$data_list[[d_name]]
+          # Only add prefix if it's a generic structural name
+          # (to avoid Prec_phylo -> Prec_phylo_phylo)
+          if (d_name %in% c("Prec", "VCV", "multiVCV", "Prec_multiPhylo")) {
+            prefixed_name <- paste0(d_name, "_", s_name)
+          } else {
+            prefixed_name <- d_name
+          }
+          data[[prefixed_name]] <- prep_res$data_list[[d_name]]
         }
+      } else {
+        # Structure was incompatible or ignored (e.g. dimensions mismatch in d-sep test)
+        structures[[s_name]] <- NULL
+        structure_names <- setdiff(structure_names, s_name)
+        next
       }
 
       # Determine N from the processed structure
@@ -1177,15 +1206,36 @@ because <- function(
       # If still NULL, check for 'n' attribute (safe way)
       if (is.null(current_N)) {
         n_attr <- attr(structure_obj, "n")
-        if (!is.null(n_attr) && is.numeric(n_attr)) {
+        if (!is.numeric(n_attr)) {
+          n_attr <- NULL
+        } # Validate
+        if (!is.null(n_attr)) {
           current_N <- n_attr
         }
       }
 
+      # [NEW] Determine level for this structure
+      s_level <- NULL
+      if (!is.null(hierarchical_info) && !is.null(current_N)) {
+        # Check which level matches this count
+        for (lvl in names(hierarchical_info$levels)) {
+          # Heuristic: Find level with matching N
+          # In truly hierarchical models, we have the counts.
+          # For now, let's assume if there's a match, it's the intended level.
+          n_name <- paste0("N_", lvl)
+          if (!is.null(data[[n_name]]) && data[[n_name]] == current_N) {
+            s_level <- lvl
+            break
+          }
+        }
+      }
+      structure_levels[[s_name]] <- s_level
+
       if (!is.null(current_N)) {
         if (is.null(N)) {
           N <- current_N
-        } else if (N != current_N) {
+        } else if (N != current_N && is.null(hierarchical_info)) {
+          # Only stop if NOT hierarchical (in hierarchical, multi-N is expected)
           stop(paste("Dimension mismatch in structure:", s_name))
         }
       }
@@ -1194,6 +1244,10 @@ because <- function(
       if (!is.null(prep_res$structure_object)) {
         structures[[s_name]] <- prep_res$structure_object
       }
+    }
+
+    if (!is.null(hierarchical_info)) {
+      hierarchical_info$structure_levels <- structure_levels
     }
 
     if (optimise) {
@@ -1221,6 +1275,21 @@ because <- function(
     }
   }
   data$N <- N
+
+  # Ensure level-specific zeros and loop bounds are available to JAGS
+  # (Crucial for d-separation tests on flat data frames)
+  if (!is.null(hierarchical_info)) {
+    for (lvl_name in names(hierarchical_info$levels)) {
+      z_name <- paste0("zeros_", lvl_name)
+      if (is.null(data[[z_name]])) {
+        data[[z_name]] <- rep(0, N)
+      }
+      n_name <- paste0("N_", lvl_name)
+      if (is.null(data[[n_name]])) {
+        data[[n_name]] <- N
+      }
+    }
+  }
   # Only add 'zeros' vector if using ZIP or ZINB (Poisson trick)
   # OR if we have structures (which often use dmnorm(zeros, ...))
   if (!is.null(N)) {
@@ -2947,6 +3016,9 @@ because <- function(
             )
           )
         })
+
+        # DEBUG: Dump JAGS model string
+        writeLines(readLines(model_file), "drafts/jags_dump.txt")
 
         rjags::jags.model(
           model_file,

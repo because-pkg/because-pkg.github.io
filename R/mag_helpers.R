@@ -369,14 +369,80 @@ mag_basis_to_formulas <- function(
 
         for (i in seq_along(formulas)) {
             f <- formulas[[i]]
-            # Handle potential multiple terms on RHS, get the first one (test var)
-            # Actually, `f` constructed above is `var1 ~ var2 (+ conds)`
-            # But `as.character(f)` yields c("~", "var1", "var2 + conds")
-            # We stored `test_var` as attribute! Use that.
+            test_var_r <- attr(f, "test_var") # Original R syntax or internal name
+            resp_var <- as.character(f)[2]
 
-            test_var <- attr(f, "test_var")
-            resp_var <- as.character(f)[2] # Response is reliable from formula structure
+            resp_var <- as.character(f)[2]
 
+            # -------------------------------------------------------------
+            # 1. CYCLE PREVENTION: Detect Deterministic Descendants
+            # -------------------------------------------------------------
+            # If a conditioning variable is a deterministic term (e.g. BM:M)
+            # and it contains the response or test_var as a component,
+            # conditioning on it in a regression creates a JAGS cycle.
+            if (!is.null(deterministic_terms)) {
+                # [FIX] Use labels(terms(f)) instead of all.vars(f) to get the ACTUAL terms
+                # on the RHS (including interactions and I(...) calls), otherwise they
+                # are decomposed into components and the match fails.
+                rhs_terms <- labels(terms(f))
+
+                for (cv in rhs_terms) {
+                    # Check if cv matches an original R syntax OR an internal JAGS name
+                    det_match <- Filter(
+                        function(dt) {
+                            dt$original == cv || dt$internal_name == cv
+                        },
+                        deterministic_terms
+                    )
+
+                    if (length(det_match) > 0) {
+                        # Extract components of the deterministic node
+                        orig_cv <- det_match[[1]]$original
+                        components <- all.vars(stats::as.formula(paste(
+                            "~",
+                            orig_cv
+                        )))
+
+                        orig_cv <- det_match[[1]]$original
+                        components <- all.vars(stats::as.formula(paste(
+                            "~",
+                            orig_cv
+                        )))
+
+                        # Robust check: identify if EITHER the response OR the test variable
+                        # is a parent/component of this deterministic conditioning node.
+                        bad_components <- unique(c(
+                            resp_var,
+                            test_var_r,
+                            sub("^psi_", "", resp_var),
+                            sub("^psi_", "", test_var_r),
+                            sub("^p_", "", resp_var),
+                            sub("^p_", "", test_var_r)
+                        ))
+
+                        if (any(bad_components %in% components)) {
+                            keep_indices[i] <- FALSE
+                            message(paste0(
+                                "  (Safety) Dropping cyclic d-sep test: ",
+                                resp_var,
+                                " ~ ",
+                                test_var_r,
+                                " | ",
+                                cv,
+                                " (conditioned on own component)"
+                            ))
+                            break
+                        }
+                    }
+                }
+            }
+            if (!keep_indices[i]) {
+                next
+            }
+
+            # -------------------------------------------------------------
+            # 2. OCCUPANCY PARAMETER COUPLING
+            # -------------------------------------------------------------
             # Helper to extract species name from p_Species or psi_Species or Species
             get_species <- function(x) {
                 x <- sub("^p_", "", x)
@@ -386,13 +452,13 @@ mag_basis_to_formulas <- function(
             }
 
             s1 <- get_species(resp_var)
-            s2 <- get_species(test_var)
+            s2 <- get_species(test_var_r)
 
             # Check if one is p_ and the other is a state variable (psi, z, or raw species name)
             is_p1 <- grepl("^p_", resp_var)
-            is_p2 <- grepl("^p_", test_var)
+            is_p2 <- grepl("^p_", test_var_r)
 
-            is_state1 <- !is_p1 # Simplified: if not p, it's state (psi, z, or observed)
+            is_state1 <- !is_p1
             is_state2 <- !is_p2
 
             # Condition: Same species AND one is p, one is state

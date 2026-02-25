@@ -159,14 +159,21 @@ validate_hierarchical_data <- function(data, levels, hierarchy, link_vars) {
 
     # Validate link_vars if provided
     if (!is.null(link_vars)) {
-        for (dataset in data) {
-            missing_links <- setdiff(link_vars, colnames(dataset))
-            if (length(missing_links) > 0) {
-                stop(
-                    "Link variables not found in all datasets: ",
-                    paste(missing_links, collapse = ", ")
-                )
-            }
+        # Convert list to vector if needed
+        link_vec <- if (is.list(link_vars)) unlist(link_vars) else link_vars
+
+        # We cannot strictly enforce that EVERY link var is in EVERY dataset
+        # because of multi-membership (e.g., Species and Site are independent levels)
+        # Instead, verify that each dataset has AT LEAST one link variable,
+        # UNLESS it's the very top level of a single hierarchy.
+        # Actually, the safest validation is just ensuring they exist *somewhere* in the data
+        all_cols <- unique(unlist(lapply(data, colnames)))
+        missing_links <- setdiff(link_vec, all_cols)
+        if (length(missing_links) > 0) {
+            stop(
+                "Link variables not found in any dataset: ",
+                paste(missing_links, collapse = ", ")
+            )
         }
     }
 
@@ -176,8 +183,14 @@ validate_hierarchical_data <- function(data, levels, hierarchy, link_vars) {
             stop("'hierarchy' must be a single character string")
         }
 
-        # Parse hierarchy (e.g., "site_year > individual")
-        hierarchy_levels <- strsplit(hierarchy, "\\s*>\\s*")[[1]]
+        # Parse hierarchy (e.g., "site_year > individual" or "site > obs; species > obs")
+        # First split by semicolon for multiple independent hierarchies
+        hierarchy_paths <- strsplit(hierarchy, "\\s*;\\s*")[[1]]
+
+        # Then extract all unique levels across all paths
+        hierarchy_levels <- unique(unlist(lapply(hierarchy_paths, function(h) {
+            strsplit(h, "\\s*>\\s*")[[1]]
+        })))
 
         # Check all hierarchy levels exist in data
         missing_h <- setdiff(hierarchy_levels, names(data))
@@ -232,6 +245,13 @@ get_data_for_variables <- function(
     hierarchy,
     link_vars
 ) {
+    # If data is already a flat data.frame, just return the requested columns
+    if (is.data.frame(data)) {
+        # Return only the columns that exist in the flat data
+        existing_vars <- intersect(variables, names(data))
+        return(data[, existing_vars, drop = FALSE])
+    }
+
     # Determine which level each variable belongs to
     var_levels <- sapply(variables, function(v) {
         infer_variable_level(v, levels)
@@ -246,13 +266,26 @@ get_data_for_variables <- function(
     }
 
     # Multiple levels - need to determine which is finest grain and join
-    # Parse hierarchy to get ordering
-    hierarchy_order <- strsplit(hierarchy, "\\s*>\\s*")[[1]]
+    # Parse hierarchy to get ordering (handling multi-membership like "site > obs; species > obs")
+    hierarchy_paths <- strsplit(hierarchy, "\\s*;\\s*")[[1]]
 
-    # Find the finest grain level among those needed
-    # (furthest right in hierarchy string)
-    finest_idx <- max(match(needed_levels, hierarchy_order))
-    finest_level <- hierarchy_order[finest_idx]
+    # Flatten to get a unified order for ranking depth (further right = finer grain)
+    # We assign a depth score based on maximum index across all paths
+    level_depths <- list()
+    for (path in hierarchy_paths) {
+        levels_in_path <- strsplit(path, "\\s*>\\s*")[[1]]
+        for (i in seq_along(levels_in_path)) {
+            lvl <- levels_in_path[i]
+            if (is.null(level_depths[[lvl]]) || i > level_depths[[lvl]]) {
+                level_depths[[lvl]] <- i
+            }
+        }
+    }
+
+    # Find the finest grain level among those needed (highest depth score)
+    needed_depths <- sapply(needed_levels, function(l) level_depths[[l]] %||% 0)
+    finest_idx <- which.max(needed_depths)
+    finest_level <- needed_levels[finest_idx]
 
     # Start with finest grain dataset
     result <- data[[finest_level]]
