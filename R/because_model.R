@@ -149,6 +149,28 @@ because_model <- function(
     return(paste0(s_lvl, "_idx_", r_lvl, "[i]"))
   }
 
+  # Helper: Validate if a structure's level can map to a response's level
+  is_valid_structure_mapping <- function(s_lvl, r_lvl, h_info) {
+    if (is.null(s_lvl) || is.null(r_lvl) || s_lvl == r_lvl) {
+      return(TRUE)
+    }
+    if (is.null(h_info) || is.null(h_info$hierarchy)) {
+      return(TRUE)
+    }
+
+    paths <- strsplit(h_info$hierarchy, "\\s*;\\s*")[[1]]
+    for (path in paths) {
+      levels <- trimws(strsplit(path, "\\s*>\\s*")[[1]])
+      s_idx <- match(s_lvl, levels)
+      r_idx <- match(r_lvl, levels)
+      # Structure must be at or above response in the hierarchy
+      if (!is.na(s_idx) && !is.na(r_idx) && s_idx <= r_idx) {
+        return(TRUE)
+      }
+    }
+    return(FALSE)
+  }
+
   # Helper: Get index expression for accessing a predictor from a coarser level
   # Returns "pred[Coarser_idx_Finer[i]]" or "pred[i]" if same level
   get_pred_index <- function(pred, response_level, h_info) {
@@ -185,16 +207,61 @@ because_model <- function(
       return(TRUE)
     } # Assume true if unknown
 
-    h_levels <- trimws(strsplit(h_info$hierarchy, ">")[[1]])
-    # Rank: index in list. 1=Coarsest. N=Finest.
-    resp_rank <- match(resp_lvl, h_levels)
-    grp_rank <- match(grp_lvl, h_levels)
+    # Use the robust checker
+    return(is_valid_structure_mapping(grp_lvl, resp_lvl, h_info))
+  }
 
-    if (is.na(resp_rank) || is.na(grp_rank)) {
-      return(TRUE)
+  # Helper: Get the finest level that is a descendant of all given variables' levels
+  get_finest_level_of_vars <- function(vars, h_info) {
+    if (is.null(h_info) || is.null(h_info$hierarchy)) {
+      return(NULL)
     }
 
-    return(grp_rank <= resp_rank)
+    v_lvls <- unique(na.omit(sapply(vars, function(v) {
+      get_var_level(v, h_info)
+    })))
+    if (length(v_lvls) == 0) {
+      return(NULL)
+    }
+    if (length(v_lvls) == 1) {
+      return(v_lvls)
+    }
+
+    # Find all levels that are descendants of ALL v_lvls
+    paths <- strsplit(h_info$hierarchy, "\\s*;\\s*")[[1]]
+    path_list <- lapply(paths, function(p) {
+      trimws(strsplit(p, "\\s*>\\s*")[[1]])
+    })
+    all_lvls <- unique(unlist(path_list))
+
+    candidates <- c()
+    for (lvl in all_lvls) {
+      match_all <- TRUE
+      for (v_lvl in v_lvls) {
+        if (!is_valid_structure_mapping(v_lvl, lvl, h_info)) {
+          match_all <- FALSE
+          break
+        }
+      }
+      if (match_all) {
+        candidates <- c(candidates, lvl)
+      }
+    }
+
+    if (length(candidates) == 0) {
+      return(NULL)
+    }
+
+    # Return the coarsest of the descendants (the intersection)
+    coarsest <- candidates[1]
+    if (length(candidates) > 1) {
+      for (i in 2:length(candidates)) {
+        if (is_valid_structure_mapping(candidates[i], coarsest, h_info)) {
+          coarsest <- candidates[i]
+        }
+      }
+    }
+    return(coarsest)
   }
 
   # Compute main loop N once for use throughout
@@ -504,22 +571,13 @@ because_model <- function(
         current_N <- main_loop_N
 
         # Determine the finest level involved in this expression
-        finest_level_of_expr <- NULL
-        if (!is.null(hierarchical_info)) {
-          h_levels <- trimws(strsplit(hierarchical_info$hierarchy, ">")[[1]])
-          h_levels_rev <- rev(h_levels) # Finest first
+        finest_level_of_expr <- get_finest_level_of_vars(
+          vars_in_expr,
+          hierarchical_info
+        )
 
-          for (lvl in h_levels_rev) {
-            lvl_vars <- hierarchical_info$levels[[lvl]]
-            if (any(vars_in_expr %in% lvl_vars)) {
-              finest_level_of_expr <- lvl
-              break
-            }
-          }
-
-          if (!is.null(finest_level_of_expr)) {
-            current_N <- paste0("N_", finest_level_of_expr)
-          }
+        if (!is.null(finest_level_of_expr)) {
+          current_N <- paste0("N_", finest_level_of_expr)
         }
 
         # Rebuild the expression using hierarchical-aware indexing.
@@ -1233,6 +1291,15 @@ because_model <- function(
             additive_terms <- ""
 
             for (s_name in structure_names) {
+              if (
+                !is_valid_structure_mapping(
+                  get_struct_lvl(s_name, hierarchical_info),
+                  get_var_level(response, hierarchical_info),
+                  hierarchical_info
+                )
+              ) {
+                next
+              }
               # Structure properties
               s_lvl <- get_struct_lvl(s_name, hierarchical_info)
               s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
@@ -1513,6 +1580,15 @@ because_model <- function(
 
           # Phylogenetic / N-dim Structures
           for (s_name in structure_names) {
+            if (
+              !is_valid_structure_mapping(
+                get_struct_lvl(s_name, hierarchical_info),
+                get_var_level(response, hierarchical_info),
+                hierarchical_info
+              )
+            ) {
+              next
+            }
             # Structure properties
             s_lvl <- get_struct_lvl(s_name, hierarchical_info)
             s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
@@ -1535,11 +1611,11 @@ because_model <- function(
                 "  ",
                 u_std,
                 "[1:",
-                get_loop_bound(response, hierarchical_info),
+                s_bound,
                 "] ~ dmnorm(",
                 s_zeros,
                 "[1:",
-                get_loop_bound(response, hierarchical_info),
+                s_bound,
                 "], ",
                 prec_index,
                 ")"
@@ -1705,6 +1781,15 @@ because_model <- function(
 
           # Phylogenetic / N-dim Structures
           for (s_name in structure_names) {
+            if (
+              !is_valid_structure_mapping(
+                get_struct_lvl(s_name, hierarchical_info),
+                get_var_level(response, hierarchical_info),
+                hierarchical_info
+              )
+            ) {
+              next
+            }
             # Structure properties
             s_lvl <- get_struct_lvl(s_name, hierarchical_info)
             s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
@@ -1727,21 +1812,25 @@ because_model <- function(
                 "    ",
                 u_std,
                 "[1:",
-                get_loop_bound(response, hierarchical_info),
-                ", k] ~ dmnorm(zeros_",
-                get_var_level(response, hierarchical_info) %||% "obs",
+                s_bound,
+                ", k] ~ dmnorm(",
+                s_zeros,
                 "[1:",
-                get_loop_bound(response, hierarchical_info),
+                s_bound,
                 "], ",
                 prec_index,
                 ")"
               ),
               paste0(
-                "    for (i in 1:N) { ",
+                "    for (i in 1:",
+                get_loop_bound(response, hierarchical_info),
+                ") { ",
                 u,
                 "[i, k] <- ",
                 u_std,
-                "[i, k] / sqrt(",
+                "[",
+                get_struct_index(s_name, response, hierarchical_info),
+                ", k] / sqrt(",
                 tau_u,
                 "[k]) }"
               )
@@ -1887,6 +1976,11 @@ because_model <- function(
           } else {
             "struct"
           }
+
+          s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+          s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
+          s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
+
           prec_name <- paste0("Prec_", s_name)
           prec_index <- if (is_multi_structure) {
             paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
@@ -1901,11 +1995,11 @@ because_model <- function(
               "  ",
               u_std,
               "[1:",
-              get_loop_bound(response, hierarchical_info),
+              s_bound,
               "] ~ dmnorm(",
               s_zeros,
               "[1:",
-              get_loop_bound(response, hierarchical_info),
+              s_bound,
               "], ",
               prec_index,
               ")"
@@ -1978,6 +2072,15 @@ because_model <- function(
 
           # Phylogenetic / N-dim Structures
           for (s_name in structure_names) {
+            if (
+              !is_valid_structure_mapping(
+                get_struct_lvl(s_name, hierarchical_info),
+                get_var_level(response, hierarchical_info),
+                hierarchical_info
+              )
+            ) {
+              next
+            }
             # Structure properties
             s_lvl <- get_struct_lvl(s_name, hierarchical_info)
             s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
@@ -2000,17 +2103,19 @@ because_model <- function(
                 "  ",
                 u_std,
                 "[1:",
-                get_loop_bound(response, hierarchical_info),
+                s_bound,
                 "] ~ dmnorm(",
                 s_zeros,
                 "[1:",
-                get_loop_bound(response, hierarchical_info),
+                s_bound,
                 "], ",
                 prec_index,
                 ")"
               ),
               paste0(
-                "  for (i in 1:N) { ",
+                "  for (i in 1:",
+                get_loop_bound(response, hierarchical_info),
+                ") { ",
                 u,
                 "[i] <- ",
                 u_std,
@@ -2105,6 +2210,11 @@ because_model <- function(
           } else {
             "struct"
           }
+
+          s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+          s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
+          s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
+
           prec_name <- paste0("Prec_", s_name)
           prec_index <- if (is_multi_structure) {
             paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
@@ -2120,10 +2230,12 @@ because_model <- function(
             ""
           }
 
+          loop_bound <- get_loop_bound(response, hierarchical_info)
+
           model_lines <- c(
             model_lines,
             paste0("  # Random effects for Poisson: ", response),
-            paste0("  for (i in 1:N) {"),
+            paste0("  for (i in 1:", loop_bound, ") {"),
             paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_e, ")"),
             paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
             paste0("  }")
@@ -2248,6 +2360,15 @@ because_model <- function(
 
           # Phylogenetic / N-dim Structures
           for (s_name in structure_names) {
+            if (
+              !is_valid_structure_mapping(
+                get_struct_lvl(s_name, hierarchical_info),
+                get_var_level(response, hierarchical_info),
+                hierarchical_info
+              )
+            ) {
+              next
+            }
             # Structure properties
             s_lvl <- get_struct_lvl(s_name, hierarchical_info)
             s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
@@ -2270,11 +2391,11 @@ because_model <- function(
                 "  ",
                 u_std,
                 "[1:",
-                get_loop_bound(response, hierarchical_info),
+                s_bound,
                 "] ~ dmnorm(",
                 s_zeros,
                 "[1:",
-                get_loop_bound(response, hierarchical_info),
+                s_bound,
                 "], ",
                 prec_index,
                 ")"
@@ -2822,6 +2943,15 @@ because_model <- function(
 
           # Generate Structure Priors
           for (s_name in structure_names) {
+            if (
+              !is_valid_structure_mapping(
+                get_struct_lvl(s_name, hierarchical_info),
+                get_var_level(response, hierarchical_info),
+                hierarchical_info
+              )
+            ) {
+              next
+            }
             # Structure properties
             s_lvl <- get_struct_lvl(s_name, hierarchical_info)
             s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
@@ -3015,6 +3145,15 @@ because_model <- function(
 
             # Phylogenetic / N-dim Structures
             for (s_name in structure_names) {
+              if (
+                !is_valid_structure_mapping(
+                  get_struct_lvl(s_name, hierarchical_info),
+                  get_var_level(response, hierarchical_info),
+                  hierarchical_info
+                )
+              ) {
+                next
+              }
               # Structure properties
               s_lvl <- get_struct_lvl(s_name, hierarchical_info)
               s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
@@ -3996,6 +4135,15 @@ because_model <- function(
           }
 
           for (s_name in structure_names) {
+            if (
+              !is_valid_structure_mapping(
+                get_struct_lvl(s_name, hierarchical_info),
+                get_var_level(response, hierarchical_info),
+                hierarchical_info
+              )
+            ) {
+              next
+            }
             # Structure properties
             s_lvl <- get_struct_lvl(s_name, hierarchical_info)
             s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)

@@ -423,7 +423,13 @@ because <- function(
     # Now validate (with either provided or auto-detected values)
     if (!is.null(levels) && length(levels) > 0) {
       is_hierarchical <- TRUE
-      validate_hierarchical_data(data, levels, hierarchy, link_vars)
+      validate_hierarchical_data(
+        data,
+        levels,
+        hierarchy,
+        link_vars,
+        latent_vars = latent
+      )
       # Try to infer hierarchy from random effects if still not set
       if (is.null(hierarchy)) {
         hierarchy <- parse_hierarchy_from_random(random, data)

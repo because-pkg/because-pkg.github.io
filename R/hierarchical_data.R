@@ -100,7 +100,13 @@ auto_detect_hierarchical <- function(data, eq_vars, quiet = FALSE) {
 #' @param hierarchy Character string specifying nesting (e.g., "site_year > individual")
 #' @param link_vars Character vector of variables that link levels
 #' @keywords internal
-validate_hierarchical_data <- function(data, levels, hierarchy, link_vars) {
+validate_hierarchical_data <- function(
+    data,
+    levels,
+    hierarchy,
+    link_vars,
+    latent_vars = NULL
+) {
     # Check data is a named list of data.frames
     if (!is.list(data) || is.data.frame(data)) {
         stop(
@@ -132,10 +138,14 @@ validate_hierarchical_data <- function(data, levels, hierarchy, link_vars) {
     }
 
     # Check that all variables in levels exist in corresponding datasets
+    # (Unless they are marked as latent)
     for (level_name in names(levels)) {
         vars <- levels[[level_name]]
         dataset <- data[[level_name]]
-        missing_vars <- setdiff(vars, colnames(dataset))
+
+        # Filter out variables that are meant to be latent
+        expected_vars <- setdiff(vars, latent_vars)
+        missing_vars <- setdiff(expected_vars, colnames(dataset))
 
         if (length(missing_vars) > 0) {
             stop(
