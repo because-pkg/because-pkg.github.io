@@ -421,14 +421,11 @@ fit_multi_dsep <- because(
     dsep = TRUE,
     quiet = TRUE
 )
+#>   (Safety) Dropping cyclic d-sep test: AgeClass ~ Age | I(1 * (Age < 1) + 2 * (Age >= 1 & Age < 2) + 3 * (Age >= 2 & Age < 5) + 4 * (Age >= 5)) (conditioned on own component)
 
 summary(fit_multi_dsep)
 #> d-separation Tests
 #> ==================
-#> 
-#> Test: AgeClass _||_ Age | {I(1 * (Age < 1),2 * (Age >= 1 & Age < 2),3 * (Age >= 2 & Age < 5),4 * (Age >= 5))} 
-#>          Parameter Estimate LowerCI UpperCI Indep     P  Rhat n.eff
-#>  beta_AgeClass_Age   -0.001  -0.017    0.02   Yes 0.942 1.053    51
 #> 
 #> Test: Rank _||_ Age | {AgeClass} 
 #>      Parameter Estimate LowerCI UpperCI Indep    P  Rhat n.eff

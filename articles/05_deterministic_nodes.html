@@ -544,14 +544,11 @@ your structural assumption.</li>
 <span>    dsep <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>    quiet <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
+<span><span class="co">#&gt;   (Safety) Dropping cyclic d-sep test: AgeClass ~ Age | I(1 * (Age &lt; 1) + 2 * (Age &gt;= 1 &amp; Age &lt; 2) + 3 * (Age &gt;= 2 &amp; Age &lt; 5) + 4 * (Age &gt;= 5)) (conditioned on own component)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_multi_dsep</span><span class="op">)</span></span>
 <span><span class="co">#&gt; d-separation Tests</span></span>
 <span><span class="co">#&gt; ==================</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Test: AgeClass _||_ Age | {I(1 * (Age &lt; 1),2 * (Age &gt;= 1 &amp; Age &lt; 2),3 * (Age &gt;= 2 &amp; Age &lt; 5),4 * (Age &gt;= 5))} </span></span>
-<span><span class="co">#&gt;          Parameter Estimate LowerCI UpperCI Indep     P  Rhat n.eff</span></span>
-<span><span class="co">#&gt;  beta_AgeClass_Age   -0.001  -0.017    0.02   Yes 0.942 1.053    51</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Test: Rank _||_ Age | {AgeClass} </span></span>
 <span><span class="co">#&gt;      Parameter Estimate LowerCI UpperCI Indep    P  Rhat n.eff</span></span>

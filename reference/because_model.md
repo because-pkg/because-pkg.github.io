@@ -215,10 +215,10 @@ cat(because_model(eqs, multi.tree = TRUE)$model)
 #>   beta_S_BR ~ dnorm(0, 1.0E-6)
 #>   beta_G_BR ~ dnorm(0, 1.0E-6)
 #>   beta_L_BR ~ dnorm(0, 1.0E-6)
-#> 
+#>   # Phylogenetic uncertainty weighting
 #>   for (k in 1:Ntree) {
-#>     p[k] <- 1 / Ntree
+#>     p_tree[k] <- 1/Ntree
 #>   }
-#>   K ~ dcat(p[])
+#>   K ~ dcat(p_tree[1:Ntree])
 #> }
 ```
