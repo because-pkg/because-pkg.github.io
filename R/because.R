@@ -130,8 +130,15 @@
 #'   Useful for handling non-identified models or specific theoretical constraints.
 #'   Example: \code{c(response_var = 1)}.
 #' @param priors Optional named list of character strings specifying custom priors for specific parameters.
-#'   Enables overriding default uninformative priors.
-#'   Example: \code{list(alpha_Response = "dnorm(0, 0.001)", beta_Response_Predictor = "dnorm(1, 10)")}.
+#'   By default, \code{because} uses "boundary-avoiding" regularizing priors for hierarchical variance components:
+#'   \itemize{
+#'     \item \strong{Gaussian}: \code{dgamma(1, 1)} (vague) for residual and random effect precisions.
+#'     \item \strong{Non-Gaussian}: \code{dgamma(10, 10)} for overdispersion and hierarchical random effects (\eqn{\tau}).
+#'           This regularizing prior (Gelman 2006, McElreath 2020) prevents numerical overflow in models
+#'           with exponential or logit link functions by constraining the sampler away from astronomically
+#'           large variances during adaptation.
+#'   }
+#'   Example: \code{list(alpha_Response = "dnorm(0, 0.001)", tau_e_Response = "dgamma(1, 1)")}.
 #' @param reuse_models List of previously fitted 'because' models to scan for reusable d-separation test results.
 #'   If a test in the current run matches a test in a reused model (same formula), the result is copied
 #'   instead of re-running JAGS. **Note**: Ensuring that the data is consistent is the user's responsibility.
@@ -1978,7 +1985,10 @@ because <- function(
         # We need their PARENT variables to fetch the data, then recreate dummies manually.
         dummies_to_create <- list()
 
-        if (!is.null(attr(original_data, "categorical_vars"))) {
+        if (
+          is.data.frame(original_data) &&
+            !is.null(attr(original_data, "categorical_vars"))
+        ) {
           cat_vars <- attr(original_data, "categorical_vars")
 
           # Check all cat vars to see if their dummies are needed (or if parent is needed)
@@ -2010,9 +2020,21 @@ because <- function(
             vals <- test_data[[parent_var]]
 
             # Recreate dummies: sex_m = as.integer(sex == 2) etc.
-            levels_map <- attr(original_data, "categorical_vars")[[
-              parent_var
-            ]]$levels
+            cat_vars_attr <- if (is.data.frame(original_data)) {
+              attr(original_data, "categorical_vars")
+            } else {
+              NULL
+            }
+            levels_map <- if (
+              !is.null(cat_vars_attr) && parent_var %in% names(cat_vars_attr)
+            ) {
+              cat_vars_attr[[parent_var]]$levels
+            } else {
+              NULL
+            }
+            if (is.null(levels_map)) {
+              next
+            }
 
             for (k in 2:length(levels_map)) {
               # The dummies list generally corresponds to k=2..N
@@ -2031,7 +2053,10 @@ because <- function(
         }
 
         # [FIX] Restore categorical_vars attribute dropped by merge/get_data
-        if (!is.null(attr(original_data, "categorical_vars"))) {
+        if (
+          is.data.frame(original_data) &&
+            !is.null(attr(original_data, "categorical_vars"))
+        ) {
           attr(test_data, "categorical_vars") <- attr(
             original_data,
             "categorical_vars"
@@ -2183,9 +2208,52 @@ because <- function(
         sub_family <- NULL
       }
 
+      # Choose what data to pass to the dsep sub-fit:
+      # If hierarchical_info available, pass the original level-split list.
+      # Otherwise, pass the flat test_data selected for this d-sep test.
+      dsep_data_to_pass <- if (!is.null(hierarchical_info)) {
+        hierarchical_info$data
+      } else {
+        test_data
+      }
+
+      # Only pass tree/phylo structure if test involves species-level variables.
+      # If the d-sep test is survey-level (e.g. Wind ~ BM with merge), we should
+      # not include the phylogenetic random effect as JAGS cannot resolve it for
+      # survey-level outcomes.
+      sub_tree <- tree
+      if (!is.null(tree) && !is.null(hierarchical_info) && !is.null(levels)) {
+        # Detect which level is "species" (i.e. which has the fewest rows = coarsest grain)
+        # and check if any response variables are at that level
+        test_resp_var <- as.character(test_eq)[2]
+        # Find the level of the test response
+        test_resp_level <- tryCatch(
+          {
+            for (lvl_name in names(levels)) {
+              if (test_resp_var %in% levels[[lvl_name]]) {
+                return(lvl_name)
+              }
+            }
+            NULL
+          },
+          error = function(e) NULL
+        )
+
+        # If response is not at species level, don't pass tree
+        if (!is.null(test_resp_level)) {
+          species_level <- names(which.min(sapply(
+            hierarchical_info$data,
+            nrow
+          )))
+          if (!is.null(species_level) && test_resp_level != species_level) {
+            sub_tree <- NULL
+          }
+        }
+      }
+
       fit <- because(
-        data = test_data, # Use selected dataset
-        tree = tree,
+        data = dsep_data_to_pass, # Use hierarchical list or flat data
+        tree = sub_tree, # Only pass tree for species-level tests
         equations = dsep_equations, # Use augmented list
         monitor = monitor_params,
         n.chains = n.chains,
@@ -2335,70 +2403,88 @@ because <- function(
     # Combine results
     combined_models <- list()
 
-    for (result in results) {
-      samples <- result$samples
-      param_map <- result$param_map
-      model_string <- result$model
-      i <- result$test_index
+    for (res_item in results) {
+      if (is.null(res_item)) {
+        next
+      }
 
-      # Store model for this test
-      combined_models[[i]] <- model_string
+      tryCatch(
+        {
+          samples <- res_item$samples
+          param_map <- res_item$param_map
+          model_string <- res_item$model
+          i <- res_item$test_index
 
-      # Rename parameters to include equation index to avoid collisions
-      # e.g., betaRS becomes betaRS_1 for equation 1, betaRS_2 for equation 2
-      for (ch in seq_along(samples)) {
-        chain <- samples[[ch]]
-        colnames_orig <- colnames(chain)
+          # Store model for this test
+          combined_models[[i]] <- model_string
 
-        # Add suffix _i to all beta, alpha, lambda, tau, rho parameters
-        new_colnames <- sapply(colnames_orig, function(name) {
-          if (grepl("^(beta|alpha|lambda|tau|rho|sigma)", name)) {
-            paste0(name, "_", i)
-          } else {
-            name
+          # Rename parameters to include equation index to avoid collisions
+          # e.g., betaRS becomes betaRS_1 for equation 1, betaRS_2 for equation 2
+          for (ch in seq_along(samples)) {
+            chain <- samples[[ch]]
+            colnames_orig <- colnames(chain)
+
+            # Add suffix _i to all beta, alpha, lambda, tau, rho parameters
+            new_colnames <- sapply(colnames_orig, function(name) {
+              if (grepl("^(beta|alpha|lambda|tau|rho|sigma)", name)) {
+                paste0(name, "_", i)
+              } else {
+                name
+              }
+            })
+
+            colnames(chain) <- new_colnames
+            samples[[ch]] <- chain
           }
-        })
 
-        colnames(chain) <- new_colnames
-        samples[[ch]] <- chain
-      }
+          # Update parameter_map to reflect new names
+          if (!is.null(param_map) && nrow(param_map) > 0) {
+            param_map$parameter <- paste0(param_map$parameter, "_", i)
+          }
 
-      # Update parameter_map to reflect new names
-      if (!is.null(param_map) && nrow(param_map) > 0) {
-        param_map$parameter <- paste0(param_map$parameter, "_", i)
-      }
+          # Combine samples (cbind chains)
+          if (is.null(combined_samples)) {
+            combined_samples <- samples
+          } else {
+            # Check if dimensions match
+            if (coda::niter(combined_samples) != coda::niter(samples)) {
+              stop("MCMC iteration mismatch between d-sep tests")
+            }
+            # Combine chains: for each chain, cbind the variables
+            new_samples <- coda::mcmc.list()
+            for (ch in 1:coda::nchain(combined_samples)) {
+              # Combine matrices
+              mat1 <- combined_samples[[ch]]
+              mat2 <- samples[[ch]]
+              # All columns from mat2 should be new (due to renaming)
+              new_mat <- cbind(mat1, mat2)
+              new_samples[[ch]] <- coda::mcmc(
+                new_mat,
+                start = stats::start(mat1),
+                thin = coda::thin(mat1)
+              )
+            }
+            combined_samples <- new_samples
+          }
 
-      # Combine samples (cbind chains)
-      if (is.null(combined_samples)) {
-        combined_samples <- samples
-      } else {
-        # Check if dimensions match
-        if (coda::niter(combined_samples) != coda::niter(samples)) {
-          stop("MCMC iteration mismatch between d-sep tests")
+          # Combine parameter maps
+          if (is.null(combined_map)) {
+            combined_map <- param_map
+          } else {
+            combined_map <- rbind(combined_map, param_map)
+          }
+        },
+        error = function(e) {
+          if (!quiet) {
+            warning(paste(
+              "D-sep result combination error for test index",
+              res_item$test_index,
+              ":",
+              e$message
+            ))
+          }
         }
-        # Combine chains: for each chain, cbind the variables
-        new_samples <- coda::mcmc.list()
-        for (ch in 1:coda::nchain(combined_samples)) {
-          # Combine matrices
-          mat1 <- combined_samples[[ch]]
-          mat2 <- samples[[ch]]
-          # All columns from mat2 should be new (due to renaming)
-          new_mat <- cbind(mat1, mat2)
-          new_samples[[ch]] <- coda::mcmc(
-            new_mat,
-            start = stats::start(mat1),
-            thin = coda::thin(mat1)
-          )
-        }
-        combined_samples <- new_samples
-      }
-
-      # Combine parameter maps
-      if (is.null(combined_map)) {
-        combined_map <- param_map
-      } else {
-        combined_map <- rbind(combined_map, param_map)
-      }
+      )
     }
 
     # Return combined result
@@ -3022,9 +3108,6 @@ because <- function(
             )
           )
         })
-
-        # DEBUG: Dump JAGS model string
-        writeLines(readLines(model_file), "drafts/jags_dump.txt")
 
         rjags::jags.model(
           model_file,

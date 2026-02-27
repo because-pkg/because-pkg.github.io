@@ -262,6 +262,11 @@ get_data_for_variables <- function(
         return(data[, existing_vars, drop = FALSE])
     }
 
+    # Normalize link_vars: if passed as a named list (e.g. list(site="Site")), unlist to character vector
+    if (is.list(link_vars)) {
+        link_vars <- unlist(link_vars, use.names = FALSE)
+    }
+
     # Determine which level each variable belongs to
     var_levels <- sapply(variables, function(v) {
         infer_variable_level(v, levels)
@@ -308,8 +313,19 @@ get_data_for_variables <- function(
         vars_from_this_level <- names(var_levels)[var_levels == coarser_level]
 
         # Select those variables plus link vars from coarser dataset
+        # Only include link_vars that actually exist in the coarser dataset
+        valid_link_vars <- if (!is.null(link_vars)) {
+            intersect(link_vars, names(data[[coarser_level]]))
+        } else {
+            character(0)
+        }
+        cols_to_select <- unique(c(valid_link_vars, vars_from_this_level))
+        cols_to_select <- intersect(
+            cols_to_select,
+            names(data[[coarser_level]])
+        )
         coarser_data <- data[[coarser_level]][,
-            c(link_vars, vars_from_this_level),
+            cols_to_select,
             drop = FALSE
         ]
 
@@ -330,13 +346,22 @@ get_data_for_variables <- function(
         }
 
         # Join to result
-        # Handle by=NULL case explicitly to avoid Cross Join mangling (.x, .y)
-        join_by <- link_vars
-        if (is.null(join_by)) {
-            join_by <- intersect(names(result), names(coarser_data))
+        # The merge key must be columns that exist in BOTH result and coarser_data
+        join_by <- intersect(names(result), names(coarser_data))
+        # Optionally restrict to specified link_vars if provided
+        if (!is.null(link_vars) && length(link_vars) > 0) {
+            join_by_from_links <- intersect(link_vars, join_by)
+            if (length(join_by_from_links) > 0) {
+                join_by <- join_by_from_links
+            }
         }
 
-        result <- merge(result, coarser_data, by = join_by, all.x = TRUE)
+        if (length(join_by) == 0) {
+            # No common columns - do a cross join (all combinations)
+            result <- merge(result, coarser_data, all = FALSE)
+        } else {
+            result <- merge(result, coarser_data, by = join_by, all.x = TRUE)
+        }
     }
 
     return(result)

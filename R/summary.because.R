@@ -26,9 +26,10 @@ summary.because <- function(
     if (!is.null(object$dsep) && object$dsep) {
         tests <- object$dsep_tests
         map <- object$parameter_map
+        dsep_results <- object$dsep_results
 
         # Create a results table
-        results <- data.frame(
+        results_df <- data.frame(
             Test = character(),
             Parameter = character(),
             Estimate = numeric(),
@@ -41,8 +42,6 @@ summary.because <- function(
             stringsAsFactors = FALSE
         )
 
-        dsep_results <- object$dsep_results
-
         # Check if results are available
         if (is.null(dsep_results)) {
             warning("No d-separation test results found in model object.")
@@ -53,7 +52,7 @@ summary.because <- function(
         results_list <- lapply(seq_along(dsep_results), function(i) {
             res_i <- dsep_results[[i]]
 
-            # Skip if result is available
+            # Skip if result is missing
             if (is.null(res_i)) {
                 return(NULL)
             }

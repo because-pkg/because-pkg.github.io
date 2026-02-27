@@ -4,6 +4,53 @@
 #' @name family_definitions
 NULL
 
+#' Get default precision prior for a distribution family
+#'
+#' @param family A family object
+#' @param param_name Name of the parameter (e.g. "tau_e_Abundance")
+#' @param ... Additional arguments
+#' @return Character string; JAGS prior statement (e.g. "tau_e_Abundance ~ dgamma(1, 1)")
+#' @export
+jags_family_precision_prior <- function(family, param_name, ...) {
+    UseMethod("jags_family_precision_prior")
+}
+
+#' @export
+jags_family_precision_prior.default <- function(family, param_name, ...) {
+    # Default to weakly informative but regularizing prior for non-Gaussian/unknown
+    return(paste0(param_name, " ~ dgamma(10, 10)"))
+}
+
+#' @export
+jags_family_precision_prior.because_family_gaussian <- function(
+    family,
+    param_name,
+    ...
+) {
+    # Vague prior is safe for Gaussian
+    return(paste0(param_name, " ~ dgamma(1, 1)"))
+}
+
+#' @export
+jags_family_precision_prior.because_family_poisson <- function(
+    family,
+    param_name,
+    ...
+) {
+    # Regularizing prior for log-link stability
+    return(paste0(param_name, " ~ dgamma(10, 10)"))
+}
+
+#' @export
+jags_family_precision_prior.because_family_binomial <- function(
+    family,
+    param_name,
+    ...
+) {
+    # Regularizing prior for logit-link stability
+    return(paste0(param_name, " ~ dgamma(10, 10)"))
+}
+
 #' Generate JAGS likelihood code for a distribution family
 #'
 #' This generic allows S3 dispatch to generate the appropriate JAGS
@@ -82,7 +129,7 @@ jags_family_likelihood.because_family_gaussian <- function(
         ")"
     )
 
-    prior_code <- paste0("  ", tau_var, " ~ dgamma(1, 1)")
+    prior_code <- jags_family_precision_prior(family, tau_var)
 
     list(
         likelihood_code = likelihood_code,

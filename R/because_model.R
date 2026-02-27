@@ -92,6 +92,20 @@ because_model <- function(
     return(paste0(param_name, " ~ ", default_prior))
   }
 
+  # Helper: Get precision prior by family
+  get_precision_prior <- function(param_name, var_name) {
+    if (!is.null(priors) && param_name %in% names(priors)) {
+      return(paste0(param_name, " ~ ", priors[[param_name]]))
+    }
+    var_family <- if (!is.null(family) && var_name %in% names(family)) {
+      family[[var_name]]
+    } else {
+      "gaussian"
+    }
+    fam_obj <- get_family(var_family)
+    return(jags_family_precision_prior(fam_obj, param_name))
+  }
+
   # Helper: Get hierarchical level for a variable
   get_var_level <- function(var, h_info) {
     if (is.null(h_info)) {
@@ -1388,8 +1402,7 @@ because_model <- function(
                 u <- paste0("u_", response, suffix, s_suffix)
                 tau_u <- paste0("tau_u_", response, suffix, s_suffix)
 
-                n_groups <- paste0("N_", r_name)
-                n_groups <- paste0("N_", r_name)
+                n_groups <- get_loop_bound(r_name, hierarchical_info)
 
                 # Smart Group Index Logic for Hierarchy
                 group_idx <- paste0("group_", r_name, "[i]")
@@ -2554,7 +2567,10 @@ because_model <- function(
 
         model_lines <- c(
           model_lines,
-          paste0("  tau_", s_name, "_", var, " ~ dgamma(1, 1)"),
+          paste0(
+            "  ",
+            get_precision_prior(paste0("tau_", s_name, "_", var), var)
+          ),
           paste0(
             "  ",
             err_phylo,
@@ -2584,7 +2600,10 @@ because_model <- function(
 
         model_lines <- c(
           model_lines,
-          paste0("  tau_", s_name, "_", var, " ~ dgamma(1, 1)"),
+          paste0(
+            "  ",
+            get_precision_prior(paste0("tau_", s_name, "_", var), var)
+          ),
           paste0(
             "  ",
             err_phylo,
@@ -2613,7 +2632,7 @@ because_model <- function(
     # - Observation noise (tau_obs)
     model_lines <- c(
       model_lines,
-      paste0("  tau_obs_", var, " ~ dgamma(1, 1)"),
+      get_precision_prior(paste0("tau_obs_", var), var),
       paste0("  sigma_obs_", var, " <- 1/sqrt(tau_obs_", var, ")")
     )
 
@@ -2767,7 +2786,7 @@ because_model <- function(
         model_lines <- c(
           model_lines,
           paste0("  }"),
-          paste0("  ", var, "_tau ~ dgamma(1, 1)"),
+          get_precision_prior(paste0(var, "_tau"), var),
           paste0("  ", var, "_sigma <- 1/sqrt(", var, "_tau)")
         )
       } else {
@@ -2885,7 +2904,10 @@ because_model <- function(
               model_lines,
               paste0(
                 "  ",
-                get_prior(paste0("tau_e_", response, suffix), "dgamma(1, 1)")
+                get_precision_prior(
+                  paste0("tau_e_", response, suffix),
+                  response
+                )
               )
             )
           }
@@ -2935,7 +2957,10 @@ because_model <- function(
                 model_lines,
                 paste0(
                   "  ",
-                  get_prior(paste0("tau_e_", response, suffix), "dgamma(1, 1)")
+                  get_precision_prior(
+                    paste0("tau_e_", response, suffix),
+                    response
+                  )
                 )
               )
             }
@@ -2963,7 +2988,7 @@ because_model <- function(
 
             model_lines <- c(
               model_lines,
-              paste0("  ", tau_u, " ~ dgamma(1, 1)"),
+              paste0("  ", get_precision_prior(tau_u, response)),
               paste0(
                 "  sigma_",
                 response,
@@ -3012,7 +3037,7 @@ because_model <- function(
 
             model_lines <- c(
               model_lines,
-              paste0("  ", tau_u, " ~ dgamma(1, 1)"),
+              paste0("  ", get_precision_prior(tau_u, response)),
               paste0(
                 "  sigma_",
                 response,
@@ -3049,7 +3074,7 @@ because_model <- function(
             ),
             paste0(
               "  ",
-              get_prior(paste0("tau", response, suffix), "dgamma(1, 1)")
+              get_precision_prior(paste0("tau", response, suffix), response)
             ),
             paste0(
               "  sigma",
@@ -3094,7 +3119,10 @@ because_model <- function(
         } else {
           tau_line <- paste0(
             "    ",
-            get_prior(paste0("tau_e_", response, "[k]"), "dgamma(1, 1)")
+            paste0(
+              "    ",
+              get_precision_prior(paste0("tau_e_", response, "[k]"), response)
+            )
           )
         }
 
@@ -3127,7 +3155,10 @@ because_model <- function(
             " # Fixed"
           )
         } else {
-          tau_line <- paste0("    tau_e_", response, "[k] ~ dgamma(1, 1)")
+          tau_line <- paste0(
+            "    ",
+            get_precision_prior(paste0("tau_e_", response, "[k]"), response)
+          )
         }
 
         model_lines <- c(
@@ -3171,7 +3202,10 @@ because_model <- function(
 
               prior_lines <- c(
                 prior_lines,
-                paste0("    ", get_prior(paste0(tau_u, "[k]"), "dgamma(1, 1)")),
+                paste0(
+                  "    ",
+                  get_precision_prior(paste0(tau_u, "[k]"), response)
+                ),
                 paste0(
                   "    sigma_",
                   response,
@@ -3190,7 +3224,10 @@ because_model <- function(
 
               prior_lines <- c(
                 prior_lines,
-                paste0("    ", tau_u, "[k] ~ dgamma(1, 1)"),
+                paste0(
+                  "    ",
+                  get_precision_prior(paste0(tau_u, "[k]"), response)
+                ),
                 paste0(
                   "    sigma_",
                   response,
@@ -3236,7 +3273,10 @@ because_model <- function(
           paste0("    lambda_", response, "[k] ~ dunif(0, 1)"),
           paste0(
             "    ",
-            get_prior(paste0("tau_", response, "[k]"), "dgamma(1, 1)")
+            paste0(
+              "    ",
+              get_precision_prior(paste0("tau_", response, "[k]"), response)
+            )
           ),
           "  }"
         )
@@ -3305,7 +3345,13 @@ because_model <- function(
           if (independent) {
             # Independent: Only tau_e
             c(
-              paste0("  tau_e_", response, suffix, " ~ dgamma(1, 1)"),
+              paste0(
+                "  ",
+                get_precision_prior(
+                  paste0("tau_e_", response, suffix),
+                  response
+                )
+              ),
               paste0("  # No tau_u or lambda for independent model")
             )
           } else {
@@ -3313,11 +3359,17 @@ because_model <- function(
             c(
               paste0(
                 "  ",
-                get_prior(paste0("tau_u_", response, suffix), "dgamma(1, 1)")
+                get_precision_prior(
+                  paste0("tau_u_", response, suffix),
+                  response
+                )
               ),
               paste0(
                 "  ",
-                get_prior(paste0("tau_e_", response, suffix), "dgamma(1, 1)")
+                get_precision_prior(
+                  paste0("tau_e_", response, suffix),
+                  response
+                )
               ),
               # Derived lambda
               paste0(
@@ -3637,8 +3689,8 @@ because_model <- function(
         # Priors
         model_lines <- c(
           model_lines,
-          paste0("  ", tau_res, " ~ dgamma(1, 1)"),
-          paste0("  ", tau_struct, " ~ dgamma(1, 1)"),
+          paste0("  ", get_precision_prior(tau_res, var)),
+          paste0("  ", get_precision_prior(tau_struct, var)),
           # Calculate lambda for reporting
           paste0(
             "  lambda",
@@ -3918,7 +3970,7 @@ because_model <- function(
 
     model_lines <- c(
       model_lines,
-      paste0("  for (i in 1:N) {"),
+      paste0("  for (i in 1:", get_loop_bound(var, hierarchical_info), ") {"),
       paste0("    mu", var, "[i] <- 0"),
       paste0("  }")
     )
@@ -3929,7 +3981,11 @@ because_model <- function(
         # Use N(0,1) prior for standardized latent variable
         model_lines <- c(
           model_lines,
-          paste0("  for (i in 1:N) {"),
+          paste0(
+            "  for (i in 1:",
+            get_loop_bound(var, hierarchical_info),
+            ") {"
+          ),
           paste0(
             "    ",
             var,
@@ -3940,7 +3996,11 @@ because_model <- function(
       } else {
         model_lines <- c(
           model_lines,
-          paste0("  for (i in 1:N) {"),
+          paste0(
+            "  for (i in 1:",
+            get_loop_bound(var, hierarchical_info),
+            ") {"
+          ),
           paste0("    ", var, "[i] ~ dnorm(mu", var, "[i], tau_e_", var, ")"),
           paste0("  }")
         )
@@ -3953,7 +4013,11 @@ because_model <- function(
       if (is_latent && standardize_latent) {
         model_lines <- c(
           model_lines,
-          paste0("  for (i in 1:N) {"),
+          paste0(
+            "  for (i in 1:",
+            get_loop_bound(var, hierarchical_info),
+            ") {"
+          ),
           paste0(
             "    ",
             var,
@@ -3991,7 +4055,11 @@ because_model <- function(
 
         model_lines <- c(
           model_lines,
-          paste0("  for (i in 1:N) {"),
+          paste0(
+            "  for (i in 1:",
+            get_loop_bound(var, hierarchical_info),
+            ") {"
+          ),
           paste0(
             "    ",
             var,
@@ -4092,7 +4160,10 @@ because_model <- function(
             " # Fixed residual variance"
           )
         } else {
-          tau_line <- paste0("  tau_e_", var, " ~ dgamma(1, 1)")
+          tau_line <- paste0(
+            "  ",
+            get_precision_prior(paste0("tau_e_", var), var)
+          )
         }
 
         # Independent Predictor Prior
@@ -4123,7 +4194,10 @@ because_model <- function(
               " # Fixed residual variance"
             )
           } else {
-            tau_line <- paste0("  tau_e_", var, " ~ dgamma(1, 1)")
+            tau_line <- paste0(
+              "  ",
+              get_precision_prior(paste0("tau_e_", var), var)
+            )
           }
 
           # Multiple Structures: Estimate independent variance components
@@ -4152,7 +4226,7 @@ because_model <- function(
             tau_u <- paste0("tau_u_", var, s_suffix)
             model_lines <- c(
               model_lines,
-              paste0("  ", tau_u, " ~ dgamma(1, 1)"),
+              paste0("  ", get_precision_prior(tau_u, var)),
               paste0("  sigma_", var, s_suffix, " <- 1/sqrt(", tau_u, ")")
             )
           }
@@ -4169,7 +4243,7 @@ because_model <- function(
             # No residual variance (e.g. occupancy), so just estimate tau_u directly
             model_lines <- c(
               model_lines,
-              paste0("  tau_u_", var, " ~ dgamma(1, 1)"),
+              paste0("  ", get_precision_prior(paste0("tau_u_", var), var)),
               paste0("  sigma", var, " <- 1/sqrt(tau_u_", var, ")")
             )
           } else {
@@ -4177,7 +4251,7 @@ because_model <- function(
             model_lines <- c(
               model_lines,
               paste0("  lambda", var, " ~ dunif(0, 1)"),
-              paste0("  tau", var, " ~ dgamma(1, 1)"),
+              paste0("  ", get_precision_prior(paste0("tau", var), var)),
               paste0("  tau_u_", var, " <- tau", var, "/lambda", var),
               paste0("  tau_e_", var, " <- tau", var, "/(1-lambda", var, ")"),
               paste0("  sigma", var, " <- 1/sqrt(tau", var, ")")
@@ -4193,7 +4267,7 @@ because_model <- function(
         # Need to define tau_u for this variable
         model_lines <- c(
           model_lines,
-          paste0("  ", tau_u, " ~ dgamma(1, 1)"),
+          paste0("  ", get_precision_prior(tau_u, var)),
           paste0("  sigma_", var, s_suffix, " <- 1/sqrt(", tau_u, ")")
         )
 
@@ -4217,7 +4291,7 @@ because_model <- function(
         } else {
           model_lines <- c(
             model_lines,
-            paste0("  tau_e_", var, " ~ dgamma(1, 1)")
+            paste0("  ", get_precision_prior(paste0("tau_e_", var), var))
           )
         }
 
