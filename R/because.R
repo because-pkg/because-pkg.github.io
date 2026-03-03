@@ -2769,21 +2769,31 @@ because <- function(
   # Monitor parameters
   # Handle monitor mode
   monitor_mode <- NULL
-  if (
-    is.character(monitor) &&
-      length(monitor) == 1 &&
-      monitor %in% c("interpretable", "all")
-  ) {
-    monitor_mode <- monitor
-    monitor <- NULL # Will be auto-detected based on mode
-  }
+  custom_monitors <- character(0)
 
-  # Default mode is "interpretable"
-  if (is.null(monitor_mode) && is.null(monitor)) {
+  if (!is.null(monitor)) {
+    if (is.character(monitor)) {
+      if ("interpretable" %in% monitor) {
+        monitor_mode <- "interpretable"
+        custom_monitors <- setdiff(monitor, "interpretable")
+      } else if ("all" %in% monitor) {
+        monitor_mode <- "all"
+        custom_monitors <- setdiff(monitor, "all")
+      } else if (identical(monitor, "")) {
+        monitor_mode <- "interpretable"
+      } else {
+        # Entirely custom vector
+        custom_monitors <- monitor
+      }
+    }
+  } else {
     monitor_mode <- "interpretable"
   }
 
-  if (is.null(monitor)) {
+  if (
+    is.null(monitor) ||
+      (!is.null(monitor_mode) && monitor_mode %in% c("interpretable", "all"))
+  ) {
     lines <- unlist(strsplit(model_string, "\n"))
 
     extract_names <- function(pattern) {
@@ -2874,6 +2884,15 @@ because <- function(
         })
         monitor <- unique(c(monitor, adj_response_vars))
       }
+    }
+  }
+
+  # Add custom monitors provided by the user
+  if (length(custom_monitors) > 0) {
+    if (!is.null(monitor)) {
+      monitor <- unique(c(monitor, custom_monitors))
+    } else {
+      monitor <- custom_monitors
     }
   }
 

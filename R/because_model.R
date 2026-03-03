@@ -1335,8 +1335,22 @@ because_model <- function(
                 paste0("zeros_", s_lvl)
               }
 
+              # Call Generic to define the error term u ~ dmnorm(...)
+              def <- jags_structure_definition(
+                structures[[s_name]],
+                variable_name = u_std,
+                optimize = optimise,
+                precision_parameter = tau_u
+              )
+
+              if (!is.null(def$setup_code)) {
+                model_lines <- c(model_lines, def$setup_code)
+              }
+
               prec_name <- paste0("Prec_", s_name)
-              prec_index <- if (multi.tree && is_multi_structure) {
+              prec_index <- if (!is.null(def$prec_index)) {
+                def$prec_index
+              } else if (multi.tree && is_multi_structure) {
                 paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
               } else {
                 paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
@@ -1611,8 +1625,22 @@ because_model <- function(
             u <- paste0("u_", response, suffix, s_suffix)
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
 
+            # Call Generic
+            def <- jags_structure_definition(
+              structures[[s_name]],
+              variable_name = u_std,
+              optimize = optimise,
+              precision_parameter = tau_u
+            )
+
+            if (!is.null(def$setup_code)) {
+              model_lines <- c(model_lines, def$setup_code)
+            }
+
             prec_name <- paste0("Prec_", s_name)
-            prec_index <- if (multi.tree && is_multi_structure) {
+            prec_index <- if (!is.null(def$prec_index)) {
+              def$prec_index
+            } else if (multi.tree && is_multi_structure) {
               paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
             } else {
               paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
