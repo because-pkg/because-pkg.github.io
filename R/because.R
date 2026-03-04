@@ -685,6 +685,11 @@ because <- function(
       prep_res <- prepare_hierarchical_jags_data(hierarchical_info, eq_vars)
       data <- prep_res$data_list
 
+      # Restore categorical_vars attribute lost during list conversion
+      if (exists("cat_vars") && !is.null(cat_vars)) {
+        attr(data, "categorical_vars") <- cat_vars
+      }
+
       # Add sample sizes to data list
       data <- c(data, prep_res$n_vec)
 

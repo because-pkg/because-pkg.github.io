@@ -117,6 +117,20 @@ because_model <- function(
       }
     }
 
+    # If not found directly, check if it's a dummy variable generated from a parent categorical variable
+    if (!is.null(categorical_vars)) {
+      for (cat_name in names(categorical_vars)) {
+        if (
+          var %in%
+            categorical_vars[[cat_name]]$dummies ||
+            var == paste0(cat_name, "_dummy")
+        ) {
+          # Found the parent variable. Recursively lookup tracking the parent's level.
+          return(get_var_level(cat_name, h_info))
+        }
+      }
+    }
+
     return(NULL) # Variable not found in any level
   }
 
@@ -266,16 +280,16 @@ because_model <- function(
       return(NULL)
     }
 
-    # Return the coarsest of the descendants (the intersection)
-    coarsest <- candidates[1]
+    # Return the finest of the descendants (the intersection)
+    finest <- candidates[1]
     if (length(candidates) > 1) {
       for (i in 2:length(candidates)) {
-        if (is_valid_structure_mapping(candidates[i], coarsest, h_info)) {
-          coarsest <- candidates[i]
+        if (is_valid_structure_mapping(finest, candidates[i], h_info)) {
+          finest <- candidates[i]
         }
       }
     }
-    return(coarsest)
+    return(finest)
   }
 
   # Compute main loop N once for use throughout
@@ -581,7 +595,22 @@ because_model <- function(
 
         # Determine loop bound. For interactions, use finest level of involved vars.
         # Fallback to main_loop_N if complex.
-        vars_in_expr <- all.vars(parse(text = dt$original))
+
+        # Use simple regex to find all variables in the dt$expression (like A[i] * B[i])
+        # We need the ones BEFORE the [i]
+        vars_in_expr_raw <- unique(gsub(
+          "\\[i\\]",
+          "",
+          unlist(regmatches(
+            dt$expression,
+            gregexpr("\\b\\w+\\[i\\]", dt$expression)
+          ))
+        ))
+        vars_in_expr <- unique(c(
+          all.vars(parse(text = dt$original)),
+          vars_in_expr_raw
+        ))
+
         current_N <- main_loop_N
 
         # Determine the finest level involved in this expression
