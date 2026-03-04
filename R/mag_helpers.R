@@ -206,7 +206,8 @@ mag_basis_to_formulas <- function(
     categorical_vars = NULL,
     family = NULL,
     deterministic_terms = NULL,
-    root_vars = NULL
+    root_vars = NULL,
+    hierarchical_info = NULL
 ) {
     # Build reverse lookup: internal_name -> original R syntax
     # e.g. "BM_x_M" -> "BM:M"
@@ -304,6 +305,52 @@ mag_basis_to_formulas <- function(
                 temp <- var1
                 var1 <- var2
                 var2 <- temp
+            }
+        }
+
+        # HIERARCHY RULE: Finer level variable MUST be the Response (var1)
+        # If var1 is coarser (higher level) than var2, swap them.
+        if (!is.null(hierarchical_info)) {
+            # Find level for var1 and var2
+            var1_lvl <- NULL
+            var2_lvl <- NULL
+            for (lvl_name in names(hierarchical_info$levels)) {
+                if (
+                    resolve_var(var1) %in%
+                        hierarchical_info$levels[[lvl_name]] ||
+                        var1 %in% hierarchical_info$levels[[lvl_name]]
+                ) {
+                    var1_lvl <- lvl_name
+                }
+                if (
+                    resolve_var(var2) %in%
+                        hierarchical_info$levels[[lvl_name]] ||
+                        var2 %in% hierarchical_info$levels[[lvl_name]]
+                ) {
+                    var2_lvl <- lvl_name
+                }
+            }
+
+            if (
+                !is.null(var1_lvl) && !is.null(var2_lvl) && var1_lvl != var2_lvl
+            ) {
+                # Determine hierarchy order. The hierarchy string is "parent > child > grandchild"
+                # so earlier elements are coarser.
+                hier_array <- trimws(strsplit(
+                    hierarchical_info$hierarchy,
+                    ">"
+                )[[1]])
+                var1_idx <- match(var1_lvl, hier_array)
+                var2_idx <- match(var2_lvl, hier_array)
+
+                # If var1 is coarser (smaller index), swap so var2 (finer) becomes response
+                if (
+                    !is.na(var1_idx) && !is.na(var2_idx) && var1_idx < var2_idx
+                ) {
+                    temp <- var1
+                    var1 <- var2
+                    var2 <- temp
+                }
             }
         }
 

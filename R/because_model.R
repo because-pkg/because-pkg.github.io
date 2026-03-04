@@ -1199,6 +1199,7 @@ because_model <- function(
 
       # Determine proper loop bound for this response variable
       loop_bound <- get_loop_bound(response, hierarchical_info)
+      resp_data_idx <- paste0(response, "[i]")
 
       tau <- paste0("TAU", tolower(response), suffix)
 
@@ -1415,8 +1416,7 @@ because_model <- function(
                 u_std <- paste0("u_std_", response, suffix, s_suffix)
                 u <- paste0("u_", response, suffix, s_suffix)
                 tau_u <- paste0("tau_u_", response, suffix, s_suffix)
-
-                n_groups <- get_loop_bound(r_name, hierarchical_info)
+                n_groups <- paste0("N_", r_name)
 
                 # Smart Group Index Logic for Hierarchy
                 group_idx <- paste0("group_", r_name, "[i]")

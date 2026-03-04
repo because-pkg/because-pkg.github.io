@@ -239,7 +239,8 @@ dsep_standard <- function(
     categorical_vars = categorical_vars,
     family = family,
     deterministic_terms = all_det_terms,
-    root_vars = root_vars
+    root_vars = root_vars,
+    hierarchical_info = hierarchical_info
   )
 
   # Append random terms if relevant
@@ -441,7 +442,8 @@ dsep_with_latents <- function(
     categorical_vars = categorical_vars,
     family = family,
     deterministic_terms = all_det_terms,
-    root_vars = root_vars
+    root_vars = root_vars,
+    hierarchical_info = hierarchical_info
   )
 
   # Save tests without random effects for clean display

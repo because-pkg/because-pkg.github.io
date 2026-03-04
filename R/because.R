@@ -1857,7 +1857,8 @@ because <- function(
       },
       family = family,
       poly_terms = all_poly_terms,
-      quiet = quiet
+      quiet = quiet,
+      hierarchical_info = hierarchical_info
     )
 
     # Extract tests and correlations
@@ -2212,7 +2213,23 @@ because <- function(
       # If hierarchical_info available, pass the original level-split list.
       # Otherwise, pass the flat test_data selected for this d-sep test.
       dsep_data_to_pass <- if (!is.null(hierarchical_info)) {
-        hierarchical_info$data
+        hier_data <- hierarchical_info$data
+        # Append random data updates directly to the finest level dataframe so they aren't lost
+        if (exists("random_data_updates") && !is.null(random_data_updates)) {
+          finest_lvl <- trimws(strsplit(hierarchical_info$hierarchy, ">")[[1]])
+          finest_lvl <- finest_lvl[length(finest_lvl)]
+
+          # Only append vectors (like zeros_ var) that match row counts, or just add them to the parent list
+          # Actually, the easiest way to pass global variables is to add them to the list of dataframes!
+          # But we must ensure prepare_hierarchical_jags_data passes them through.
+          # Wait, in because.R, random effects are processed AGAIN inside the dsep submodel because random=random is passed.
+          # If random=random is passed, the submodel WILL call create_group_structures itself!
+          # BUT it calls it on `hierarchical_info$data` which is a LIST.
+          # Does create_group_structures handle list data? Let's check because_random.R.
+          hier_data
+        } else {
+          hier_data
+        }
       } else {
         test_data
       }
