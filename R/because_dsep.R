@@ -109,6 +109,44 @@ because_dsep <- function(
   ))
 }
 
+
+# --- Hierarchical Helpers for D-Sep ---
+
+# Get the level name for a variable
+get_var_level_dsep <- function(var, hierarchical_info) {
+  if (is.null(hierarchical_info) || is.null(hierarchical_info$levels)) {
+    return(NULL)
+  }
+  for (lvl in names(hierarchical_info$levels)) {
+    if (var %in% hierarchical_info$levels[[lvl]]) {
+      return(lvl)
+    }
+  }
+  return(NULL)
+}
+
+# Check if a structure's level can map to a response's level
+is_valid_structure_mapping_dsep <- function(s_lvl, r_lvl, hierarchical_info) {
+  if (is.null(s_lvl) || is.null(r_lvl) || s_lvl == r_lvl) {
+    return(TRUE)
+  }
+  if (is.null(hierarchical_info) || is.null(hierarchical_info$hierarchy)) {
+    return(TRUE)
+  }
+
+  paths <- strsplit(hierarchical_info$hierarchy, "\\s*;\\s*")[[1]]
+  for (path in paths) {
+    levels <- trimws(strsplit(path, "\\s*>\\s*")[[1]])
+    s_idx <- match(s_lvl, levels)
+    r_idx <- match(r_lvl, levels)
+    # Structure must be at or above response in the hierarchy
+    if (!is.na(s_idx) && !is.na(r_idx) && s_idx <= r_idx) {
+      return(TRUE)
+    }
+  }
+  return(FALSE)
+}
+
 # Standard d-separation for DAGs (using ggm::basiSet)
 dsep_standard <- function(
   equations,
@@ -253,7 +291,32 @@ dsep_standard <- function(
       # Find random terms for response (handle both Species and psi_Species)
       base_resp <- sub("^psi_", "", resp)
       vocab_rand <- Filter(
-        function(x) x$response == resp || x$response == base_resp,
+        function(x) {
+          # Must match response name
+          if (x$response != resp && x$response != base_resp) {
+            return(FALSE)
+          }
+
+          # If hierarchical info is present, check level compatibility
+          if (!is.null(hierarchical_info)) {
+            r_lvl <- get_var_level_dsep(base_resp, hierarchical_info)
+            g_lvl <- get_var_level_dsep(x$group, hierarchical_info)
+
+            # If both levels are known, check compatibility (group must be coarser or equal)
+            if (!is.null(r_lvl) && !is.null(g_lvl)) {
+              if (
+                !is_valid_structure_mapping_dsep(
+                  g_lvl,
+                  r_lvl,
+                  hierarchical_info
+                )
+              ) {
+                return(FALSE)
+              }
+            }
+          }
+          return(TRUE)
+        },
         random_terms
       )
 
@@ -460,7 +523,31 @@ dsep_with_latents <- function(
 
       base_resp <- sub("^psi_", "", resp)
       vocab_rand <- Filter(
-        function(x) x$response == resp || x$response == base_resp,
+        function(x) {
+          # Must match response name
+          if (x$response != resp && x$response != base_resp) {
+            return(FALSE)
+          }
+
+          # If hierarchical info is present, check level compatibility
+          if (!is.null(hierarchical_info)) {
+            r_lvl <- get_var_level_dsep(base_resp, hierarchical_info)
+            g_lvl <- get_var_level_dsep(x$group, hierarchical_info)
+
+            if (!is.null(r_lvl) && !is.null(g_lvl)) {
+              if (
+                !is_valid_structure_mapping_dsep(
+                  g_lvl,
+                  r_lvl,
+                  hierarchical_info
+                )
+              ) {
+                return(FALSE)
+              }
+            }
+          }
+          return(TRUE)
+        },
         random_terms
       )
 

@@ -247,9 +247,10 @@ parse_random_part <- function(part) {
 #'
 #' @param random_arg Formula (e.g. ~ (1|Site)) or character string
 #' @param equations List of equations (to identify LHS variables)
+#' @param all_vars Optional character vector of all variables to map to (for d-sep)
 #' @return List of random terms (response, group, type)
 #' @noRd
-parse_global_random <- function(random_arg, equations) {
+parse_global_random <- function(random_arg, equations, all_vars = NULL) {
     if (is.null(random_arg)) {
         return(list())
     }
@@ -277,10 +278,14 @@ parse_global_random <- function(random_arg, equations) {
 
     final_terms <- list()
     if (length(global_terms) > 0) {
-        # Identify all response variables
-        responses <- unique(sapply(equations, function(eq) {
-            as.character(formula(eq))[2]
-        }))
+        # Identify variables to map to
+        if (!is.null(all_vars)) {
+            responses <- unique(all_vars)
+        } else {
+            responses <- unique(sapply(equations, function(eq) {
+                as.character(formula(eq))[2]
+            }))
+        }
 
         for (resp in responses) {
             for (term in global_terms) {
