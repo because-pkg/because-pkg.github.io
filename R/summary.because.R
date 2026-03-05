@@ -83,10 +83,6 @@ summary.because <- function(
                         grepl(paste0("^", test_var, "_"), map_i$predictor)),
             ]
 
-                response,
-                "TestVar:",
-                test_var
-            )
             if (nrow(param_rows) == 0) {
                 # Fallback: scan for any predictor associated with test_var anywhere
                 param_rows <- map_i[
