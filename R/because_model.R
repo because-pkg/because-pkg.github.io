@@ -375,9 +375,18 @@ because_model <- function(
   )
 
   if (need_zero_vec) {
+    # Use the finest level as N for zero_vec
+    zero_vec_N <- if (!is.null(hierarchical_info)) {
+      # Hierarchy is Coarser > Finer. Finest level is at the end.
+      h_parts <- strsplit(hierarchical_info$hierarchy, ">")[[1]]
+      finest_lvl <- trimws(h_parts[length(h_parts)])
+      paste0("N_", finest_lvl)
+    } else {
+      "N"
+    }
     model_lines <- c(
       model_lines,
-      "  for(k in 1:N) { zero_vec[k] <- 0 }",
+      paste0("  for(k in 1:", zero_vec_N, ") { zero_vec[k] <- 0 }"),
       "  zero_vec_2[1] <- 0",
       "  zero_vec_2[2] <- 0"
     )
@@ -535,7 +544,9 @@ because_model <- function(
       model_lines <- c(
         model_lines,
         "  # Priors for exogenous latent variables (variable with error but no parent)",
-        "  for (i in 1:N) {"
+        "  for (i in 1:",
+        if (!is.null(hierarchical_info)) hierarchical_info$counts[[1]] else "N",
+        ") {"
       )
       for (ex_var in exogenous_vars) {
         # Uninformative prior for the latent true value
@@ -784,7 +795,12 @@ because_model <- function(
       for (pred in predictors) {
         # We force a specific name for multinomial betas to ensure array usage
         beta_name <- paste0("beta_", response, "_", pred)
-        linpred_k <- paste0(linpred_k, " + ", beta_name, "[k] * ", pred, "[i]")
+
+        # Get hierarchical-aware predictor index
+        resp_level <- get_var_level(response, hierarchical_info)
+        pred_idx <- get_pred_index(pred, resp_level, hierarchical_info)
+
+        linpred_k <- paste0(linpred_k, " + ", beta_name, "[k] * ", pred_idx)
 
         # Map (only once)
         key <- paste(response, pred, suffix, sep = "_")
@@ -876,13 +892,17 @@ because_model <- function(
       linpred_no_int <- "0"
       for (pred in predictors) {
         beta_name <- paste0("beta_", response, "_", pred)
+
+        # Get hierarchical-aware predictor index
+        resp_level <- get_var_level(response, hierarchical_info)
+        pred_idx <- get_pred_index(pred, resp_level, hierarchical_info)
+
         linpred_no_int <- paste0(
           linpred_no_int,
           " + ",
           beta_name,
           " * ",
-          pred,
-          "[i]"
+          pred_idx
         )
 
         # Map
@@ -1622,7 +1642,8 @@ because_model <- function(
           model_lines <- c(
             model_lines,
             paste0("  # Independent (Standard GLM) for binomial: ", response),
-            paste0("  for (i in 1:N) {"),
+            # eq_loop_N is available here
+            paste0("  for (i in 1:", eq_loop_N, ") {"),
             paste0("    ", err, "[i] <- 0"),
             paste0("  }")
           )
@@ -1691,7 +1712,9 @@ because_model <- function(
                 ")"
               ),
               paste0(
-                "  for (i in 1:N) { ",
+                "  for (i in 1:",
+                eq_loop_N,
+                ") { ",
                 u,
                 "[i] <- ",
                 u_std,
@@ -1812,7 +1835,17 @@ because_model <- function(
           mu_err <- paste0("mu_err_", response, suffix)
           model_lines <- c(
             model_lines,
-            paste0("  ", err, "[1:N] ~ dmnorm(", mu_err, "[], ", tau, ")")
+            paste0(
+              "  ",
+              err,
+              "[1:",
+              eq_loop_N,
+              "] ~ dmnorm(",
+              mu_err,
+              "[], ",
+              tau,
+              ")"
+            )
           )
         }
       } else if (dist == "multinomial") {
@@ -1830,7 +1863,7 @@ because_model <- function(
               response
             ),
             paste0("  for (k in 2:", K_var, ") {"),
-            paste0("    for (i in 1:N) {"),
+            paste0("    for (i in 1:", eq_loop_N, ") {"),
             paste0("      ", err, "[i, k] <- 0"),
             paste0("    }"),
             paste0("  }")
@@ -1871,7 +1904,7 @@ because_model <- function(
 
             prec_name <- paste0("Prec_", s_name)
             prec_index <- if (multi.tree && is_multi_structure) {
-              paste0(prec_name, "[1:N, 1:N, k]")
+              paste0(prec_name, "[1:", eq_loop_N, ", 1:", eq_loop_N, ", k]")
             } else {
               paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
             }
@@ -1994,7 +2027,7 @@ because_model <- function(
 
           model_lines <- c(
             model_lines,
-            paste0("    for (i in 1:N) {"),
+            paste0("    for (i in 1:", eq_loop_N, ") {"),
             paste0("      ", epsilon, "[i, k] ~ dnorm(0, ", tau_e, "[k])"),
             paste0("      ", err, "[i, k] <- ", epsilon, "[i, k]", total_u),
             paste0("    }"),
@@ -2008,7 +2041,9 @@ because_model <- function(
             paste0(
               "    ",
               err,
-              "[1:N, k] ~ dmnorm(zero_vec[], TAU_",
+              "[1:",
+              eq_loop_N,
+              ", k] ~ dmnorm(zero_vec[], TAU_",
               tolower(response),
               "_",
               suffix,
@@ -2027,7 +2062,7 @@ because_model <- function(
           model_lines <- c(
             model_lines,
             paste0("  # Independent (Standard GLM) for ordinal: ", response),
-            paste0("  for (i in 1:N) {"),
+            paste0("  for (i in 1:", eq_loop_N, ") {"),
             paste0("    ", err, "[i] <- 0"),
             paste0("  }")
           )
@@ -2085,7 +2120,7 @@ because_model <- function(
 
           model_lines <- c(
             model_lines,
-            paste0("  for (i in 1:N) {"),
+            paste0("  for (i in 1:", eq_loop_N, ") {"),
             paste0(
               "    ",
               u,
@@ -2128,7 +2163,7 @@ because_model <- function(
           model_lines <- c(
             model_lines,
             paste0("  # Independent (Standard GLM) for Poisson: ", response),
-            paste0("  for (i in 1:N) {"),
+            paste0("  for (i in 1:", eq_loop_N, ") {"),
             paste0("    ", err, "[i] <- 0", total_mag),
             paste0("  }")
           )
@@ -2326,8 +2361,16 @@ because_model <- function(
             model_lines <- c(
               model_lines,
               paste0("  # Non-optimised error for Poisson: ", response),
-              paste0("  ", err, "[1:N] ~ dmnorm(zero_vec[], ", tau, ")"),
-              paste0("  for (i in 1:N) {"),
+              paste0(
+                "  ",
+                err,
+                "[1:",
+                eq_loop_N,
+                "] ~ dmnorm(zero_vec[], ",
+                tau,
+                ")"
+              ),
+              paste0("  for (i in 1:", eq_loop_N, ") {"),
               paste0(
                 "    err_combined_",
                 response,
@@ -2384,7 +2427,8 @@ because_model <- function(
         model_lines <- c(
           model_lines,
           paste0("  # Occupancy Model for ", response),
-          paste0("  for (i in 1:N) {"),
+          # eq_loop_N is available here
+          paste0("  for (i in 1:", eq_loop_N, ") {"),
           paste0(
             "    logit(psi_",
             response,
@@ -2471,7 +2515,9 @@ because_model <- function(
                 ")"
               ),
               paste0(
-                "  for (i in 1:N) { ",
+                "  for (i in 1:",
+                eq_loop_N,
+                ") { ",
                 u,
                 "[i] <- ",
                 u_std,
@@ -2567,7 +2613,7 @@ because_model <- function(
           model_lines <- c(
             model_lines,
             paste0("  # Random effects for Negative Binomial: ", response),
-            paste0("  for (i in 1:N) {")
+            paste0("  for (i in 1:", eq_loop_N, ") {")
           )
 
           # Sum all terms: random effects + MAG terms
@@ -2762,7 +2808,7 @@ because_model <- function(
       if (type == "se") {
         model_lines <- c(
           model_lines,
-          paste0("  for (i in 1:N) {"),
+          paste0("  for (i in 1:", eq_loop_N, ") {"),
           paste0(
             "    ",
             var,
@@ -2802,12 +2848,17 @@ because_model <- function(
         # Then sum them per individual for WAIC
         model_lines <- c(
           model_lines,
-          paste0("  for (i in 1:N) {")
+          paste0("  for (i in 1:", eq_loop_N, ") {")
         )
         # Replaced imperative accumulation with declarative summation
         model_lines <- c(
           model_lines,
-          paste0("    for (j in 1:N_reps_", var, "[i]) {"),
+          paste0(
+            "    for (j in 1:",
+            if (!is.null(hierarchical_info)) "N_reps_" else "N_reps_",
+            var,
+            "[i]) {"
+          ),
           paste0(
             "      ",
             var,
@@ -3779,7 +3830,7 @@ because_model <- function(
             paste0(
               "  ",
               err,
-              "[1:N] ~ dmnorm(",
+              "[1:loop_bound] ~ dmnorm(",
               mu_err,
               "[], TAU_",
               s_name,
@@ -3805,7 +3856,7 @@ because_model <- function(
             paste0(
               "  ",
               err,
-              "[1:N] ~ dmnorm(",
+              "[1:loop_bound] ~ dmnorm(",
               mu_err,
               "[], TAU_",
               s_name,
@@ -3896,22 +3947,32 @@ because_model <- function(
               model_lines,
               paste0("  # Covariance matrices for multinomial"),
               "  # Reference category k=1",
-              "  for (i in 1:N) {",
-              "    for (j in 1:N) {",
+              paste0("  for (i in 1:", loop_bound, ") {"),
+              paste0("    for (j in 1:", loop_bound, ") {"),
               paste0("      Mlam_", response, "[i,j,1] <- ID[i,j]"),
               "    }",
               "  }",
               paste0(
-                "  TAU_",
-                tolower(response),
-                "_",
-                suffix,
-                "[1:N,1:N,1] <- ID[1:N,1:N]"
+                paste0(
+                  "  TAU_",
+                  tolower(response),
+                  "_",
+                  suffix,
+                  "[1:",
+                  loop_bound,
+                  ",1:",
+                  loop_bound,
+                  ",1] <- ID[1:",
+                  loop_bound,
+                  ",1:",
+                  loop_bound,
+                  "]"
+                )
               ),
               "  # Estimated categories k>=2",
               paste0("  for (k in 2:", K_var, ") {"),
-              "    for (i in 1:N) {",
-              "      for (j in 1:N) {",
+              paste0("    for (i in 1:", loop_bound, ") {"),
+              paste0("      for (j in 1:", loop_bound, ") {"),
               paste0(
                 "        Mlam_",
                 response,
@@ -3928,36 +3989,13 @@ because_model <- function(
                 tolower(response),
                 "_",
                 suffix,
-                "[1:N,1:N,k] <- inverse(Mlam_",
+                "[1:",
+                loop_bound,
+                ",1:",
+                loop_bound,
+                ",k] <- inverse(Mlam_",
                 response,
                 "[,,k])"
-              ),
-              "  }"
-            )
-          } else {
-            model_lines <- c(
-              model_lines,
-              paste0("  # Covariance matrices for multinomial"),
-              "  # Reference category k=1",
-              paste0(
-                "  TAU_",
-                tolower(response),
-                "_",
-                suffix,
-                "[1:N,1:N,1] <- ID[1:N,1:N]"
-              ),
-              "  # Estimated categories k>=2",
-              paste0("  for (k in 2:", K_var, ") {"),
-              paste0(
-                "    TAU_",
-                tolower(response),
-                "_",
-                suffix,
-                "[1:N, 1:N, k] <- inverse(lambda_",
-                response,
-                "[k] * VCV + (1 - lambda_",
-                response,
-                "[k]) * ID)"
               ),
               "  }"
             )

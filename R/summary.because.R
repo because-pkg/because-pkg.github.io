@@ -71,17 +71,31 @@ summary.because <- function(
             map_i <- res_i$param_map
 
             # Find the parameter name for this path (response ~ test_var)
-            param_row <- map_i[
+            # We want to match:
+            # 1. Exact matches (for continuous vars)
+            # 2. Dummy variables (start with test_var followed by _)
+            # 3. Multinomial arrays (predictor matches, parameter has [])
+
+            # Robust matching: scan for any predictor that literally matches or looks like a dummy/expanded version
+            param_rows <- map_i[
                 map_i$response == response &
-                    map_i$predictor == test_var,
+                    (map_i$predictor == test_var |
+                        grepl(paste0("^", test_var, "_"), map_i$predictor)),
             ]
 
-            if (nrow(param_row) == 0) {
-                # Fallback: scan for any parameter associated with test_var
-                param_row <- map_i[map_i$predictor == test_var, ]
+                response,
+                "TestVar:",
+                test_var
+            )
+            if (nrow(param_rows) == 0) {
+                # Fallback: scan for any predictor associated with test_var anywhere
+                param_rows <- map_i[
+                    map_i$predictor == test_var |
+                        grepl(paste0("^", test_var, "_"), map_i$predictor),
+                ]
             }
 
-            if (nrow(param_row) == 0) {
+            if (nrow(param_rows) == 0) {
                 warning(paste(
                     "Could not find parameter for test:",
                     format(test_formula)
@@ -89,133 +103,151 @@ summary.because <- function(
                 return(NULL)
             }
 
-            param_name <- param_row$parameter[1] # Take first match
+            # Collect all concrete parameter names from samples
+            # This handles both simple scalars and arrays (multinomial)
+            # Use a flexible regex to handle optional _N suffixes added by d-sep tests
+            all_sample_names <- coda::varnames(res_i$samples)
+            matched_params <- c()
 
-            # Optimize: Subset samples to ONLY the relevant parameter before summarizing
-            # This is CRITICAL for performance. Otherwise we summarize 1000s of latent nodes per test.
-            # We use distinct subsetting that works for mcmc.list
+            for (p_idx in 1:nrow(param_rows)) {
+                p_base <- param_rows$parameter[p_idx]
+                pm_base <- gsub("\\[\\]$", "", p_base)
 
-            # Check if parameter exists in samples
-            if (!param_name %in% coda::varnames(res_i$samples)) {
+                # Flexible regex matches:
+                # - Scalar: beta_var or beta_var_1
+                # - Array: beta_var[2] or beta_var_1[2]
+                p_regex <- paste0("^", pm_base, "(_\\d+)?(\\[\\d+\\])?$")
+
+                matched_params <- c(
+                    matched_params,
+                    grep(p_regex, all_sample_names, value = TRUE)
+                )
+            }
+
+            matched_params <- unique(matched_params)
+
+            if (length(matched_params) == 0) {
                 warning(paste(
-                    "Parameter",
-                    param_name,
-                    "not found in samples for test",
+                    "No parameters matching",
+                    paste(param_rows$parameter, collapse = ", "),
+                    "found in samples for test",
                     i
                 ))
                 return(NULL)
             }
 
-            # Subset to just the parameter of interest
-            # Note: mcmc.list subsetting with [, vars] works in standard coda
-            sub_samples <- res_i$samples[, param_name, drop = FALSE]
+            # Construct label - extract all RHS terms including random effects
+            # Use deparse for robustness
+            formula_str <- paste(deparse(test_formula), collapse = " ")
+            rhs_full <- sub("^[^~]+~\\s*", "", formula_str)
+            all_terms <- trimws(strsplit(rhs_full, "\\+")[[1]])
+            cond_terms <- all_terms[all_terms != test_var]
 
-            # Summarize only this parameter
-            summ_i <- summary(sub_samples)
+            test_str_base <- paste0(
+                response,
+                " _||_ ",
+                test_var,
+                if (length(cond_terms) > 0) {
+                    paste0(" | {", paste(cond_terms, collapse = ","), "}")
+                } else {
+                    " | {} "
+                }
+            )
 
-            # Handle edge case: single parameter returns vector, not matrix
-            if (!is.matrix(summ_i$statistics)) {
-                # Convert to matrix format
-                param_col_name <- colnames(sub_samples[[1]])[1]
-                summ_i$statistics <- matrix(
-                    summ_i$statistics,
-                    nrow = 1,
-                    dimnames = list(param_col_name, names(summ_i$statistics))
-                )
-                summ_i$quantiles <- matrix(
-                    summ_i$quantiles,
-                    nrow = 1,
-                    dimnames = list(param_col_name, names(summ_i$quantiles))
-                )
-            }
+            # Process each matched parameter and return a data frame for this test
+            test_results <- lapply(matched_params, function(param_name) {
+                # Subset to just the parameter of interest
+                sub_samples <- res_i$samples[, param_name, drop = FALSE]
 
-            # Extract statistics
-            if (param_name %in% rownames(summ_i$quantiles)) {
-                est <- summ_i$statistics[param_name, "Mean"]
-                lower <- summ_i$quantiles[param_name, "2.5%"]
-                upper <- summ_i$quantiles[param_name, "97.5%"]
+                # Summarize only this parameter
+                summ_i <- summary(sub_samples)
 
-                # Diagnostics (locally computed for this chain list)
-                # n.chains for this specific run
-                n_chains_i <- coda::nchain(sub_samples)
-
-                # Rhat
-                p_rhat <- NA
-                if (n_chains_i > 1) {
-                    # Handle potential single-parameter Rhat issues
-                    p_rhat <- tryCatch(
-                        {
-                            coda::gelman.diag(
-                                sub_samples,
-                                multivariate = FALSE
-                            )$psrf[param_name, 1]
-                        },
-                        error = function(e) NA
+                # Handle edge case: single parameter returns vector, not matrix
+                if (!is.matrix(summ_i$statistics)) {
+                    param_col_name <- colnames(sub_samples[[1]])[1]
+                    summ_i$statistics <- matrix(
+                        summ_i$statistics,
+                        nrow = 1,
+                        dimnames = list(
+                            param_col_name,
+                            names(summ_i$statistics)
+                        )
+                    )
+                    summ_i$quantiles <- matrix(
+                        summ_i$quantiles,
+                        nrow = 1,
+                        dimnames = list(param_col_name, names(summ_i$quantiles))
                     )
                 }
 
-                # Effective Size
-                p_neff <- NA
-                eff_size_i <- tryCatch(
-                    {
-                        coda::effectiveSize(sub_samples)
-                    },
-                    error = function(e) NULL
-                )
+                # Extract statistics
+                if (param_name %in% rownames(summ_i$quantiles)) {
+                    est <- summ_i$statistics[param_name, "Mean"]
+                    lower <- summ_i$quantiles[param_name, "2.5%"]
+                    upper <- summ_i$quantiles[param_name, "97.5%"]
 
-                if (!is.null(eff_size_i) && param_name %in% names(eff_size_i)) {
-                    p_neff <- eff_size_i[param_name]
-                }
+                    # Diagnostics (locally computed for this chain list)
+                    n_chains_i <- coda::nchain(sub_samples)
 
-                # Independence check
-                indep <- if (lower > 0 || upper < 0) "No" else "Yes"
-
-                # P(~0)
-                # Use sub_samples which already contains only the param of interest
-                samples_matrix <- as.matrix(sub_samples)
-                n_samples <- nrow(samples_matrix)
-                param_samples <- samples_matrix[, param_name]
-                n_above <- sum(param_samples > 0)
-                n_below <- sum(param_samples < 0)
-                p_approx_0 <- 2 * min(n_above, n_below) / n_samples
-
-                # Construct label - extract all RHS terms including random effects
-                # Use deparse to get full formula, then extract RHS
-                formula_str <- paste(deparse(test_formula), collapse = " ")
-                # Split on ~ and get RHS
-                rhs_full <- sub("^[^~]+~\\s*", "", formula_str)
-                # Split on + to get individual terms
-                all_terms <- trimws(strsplit(rhs_full, "\\+")[[1]])
-
-                # Separate test_var from conditioning vars
-                # Remove test_var from all_terms to get conditioning set
-                cond_terms <- all_terms[all_terms != test_var]
-
-                test_str <- paste0(
-                    response,
-                    " _||_ ",
-                    test_var,
-                    if (length(cond_terms) > 0) {
-                        paste0(" | {", paste(cond_terms, collapse = ","), "}")
-                    } else {
-                        " | {} "
+                    # Rhat
+                    p_rhat <- NA
+                    if (n_chains_i > 1) {
+                        p_rhat <- tryCatch(
+                            {
+                                coda::gelman.diag(
+                                    sub_samples,
+                                    multivariate = FALSE
+                                )$psrf[param_name, 1]
+                            },
+                            error = function(e) NA
+                        )
                     }
-                )
 
-                return(data.frame(
-                    Test = test_str,
-                    Parameter = param_name,
-                    Estimate = round(est, 3),
-                    LowerCI = round(lower, 3),
-                    UpperCI = round(upper, 3),
-                    Indep = indep,
-                    P = round(p_approx_0, 3), # Renamed from P_approx_0
-                    Rhat = round(p_rhat, 3),
-                    n.eff = round(p_neff, 0),
-                    stringsAsFactors = FALSE
-                ))
-            }
-            return(NULL)
+                    # Effective Size
+                    p_neff <- NA
+                    eff_size_i <- tryCatch(
+                        {
+                            coda::effectiveSize(sub_samples)
+                        },
+                        error = function(e) NULL
+                    )
+
+                    if (
+                        !is.null(eff_size_i) &&
+                            param_name %in% names(eff_size_i)
+                    ) {
+                        p_neff <- eff_size_i[param_name]
+                    }
+
+                    # Independence check
+                    indep <- if (lower > 0 || upper < 0) "No" else "Yes"
+
+                    # P(~0)
+                    samples_matrix <- as.matrix(sub_samples)
+                    n_samples <- nrow(samples_matrix)
+                    param_samples <- samples_matrix[, param_name]
+                    n_above <- sum(param_samples > 0)
+                    n_below <- sum(param_samples < 0)
+                    p_approx_0 <- 2 * min(n_above, n_below) / n_samples
+
+                    return(data.frame(
+                        Test = test_str_base,
+                        Parameter = param_name,
+                        Estimate = round(est, 3),
+                        LowerCI = round(lower, 3),
+                        UpperCI = round(upper, 3),
+                        Indep = indep,
+                        P = round(p_approx_0, 3), # Renamed from P_approx_0
+                        Rhat = round(p_rhat, 3),
+                        n.eff = round(p_neff, 0),
+                        stringsAsFactors = FALSE
+                    ))
+                }
+                return(NULL)
+            })
+
+            # Bind all matched parameters for this test
+            return(do.call(rbind, test_results))
         })
 
         # Bind all results efficiently
