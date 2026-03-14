@@ -12,6 +12,7 @@ because(
   tree = NULL,
   engine = "jags",
   monitor = "interpretable",
+  nimble_samplers = NULL,
   n.chains = 3,
   n.iter = 12500,
   n.burnin = floor(n.iter/5),
@@ -45,6 +46,9 @@ because(
 \arguments{
 \item{equations}{A list of model formulas describing the structural equation model.}
 
+\item{data}{A data.frame containining the variables in the model. If using hierarchical
+models (see hierarchical section below), this can also be a list of data frames.}
+
 \item{id_col}{Character string specifying the column name in a data.frame containing
 unit identifiers (species, individuals, sites, etc.). This is used to:
 \itemize{
@@ -68,6 +72,13 @@ Ignored when \code{data} is already a list.}
 \item{tree}{(Deprecated alias for \code{structure}). A single phylogenetic tree of class
 \code{"phylo"} or a list of trees. Use \code{structure} instead for new code.}
 
+\item{engine}{Character string specifying the inference engine to use. Supported values:
+\itemize{
+\item \code{"jags"} (default): Use Just Another Gibbs Sampler (via rjags).
+\item \code{"nimble"}: Use the compiled C++ backend (via NIMBLE). Offers significant
+speedups for complex models, parallel execution, and marginalized likelihoods.
+}}
+
 \item{monitor}{Parameter monitoring mode. Options:
 \itemize{
 \item \code{"interpretable"} (default): Monitor only scientifically meaningful parameters:
@@ -76,6 +87,17 @@ responses, and WAIC terms. Excludes variance components (tau) and auxiliary pred
 \item \code{"all"}: Monitor all model parameters including variance components and implicit equation parameters.
 \item Custom vector: Provide a character vector of specific parameter names to monitor.
 \item \code{NULL}: Auto-detect based on model structure (equivalent to "interpretable").
+}}
+
+\item{nimble_samplers}{(NIMBLE-only) A named list specifying custom samplers for specific
+model nodes. Example: \code{nimble_samplers = list(beta_X_Y = "slice")}.
+Common sampler types include:
+\itemize{
+\item \code{"RW"}: Scalar Random-Walk Metropolis-Hastings.
+\item \code{"RW_block"}: Multivariate Random-Walk Metropolis-Hastings.
+\item \code{"slice"}: Scalar slice sampler.
+\item \code{"AF_slice"}: Automated Factor Slice Sampler (multivariate slice).
+\item \code{"categorical"}: Specialized discrete sampler for Multinomial/Ordinal choices.
 }}
 
 \item{n.chains}{Number of MCMC chains (default = 3).}

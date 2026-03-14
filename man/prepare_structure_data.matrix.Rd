@@ -2,10 +2,10 @@
 % Please edit documentation in R/generics.R
 \name{prepare_structure_data.matrix}
 \alias{prepare_structure_data.matrix}
-\title{Default Method for Structure Definition (Independent Model)}
+\title{Method for Structure Data Preparation (Matrix)}
 \usage{
 \method{prepare_structure_data}{matrix}(structure, data, optimize = TRUE, ...)
 }
 \description{
-Default Method for Structure Definition (Independent Model)
+Method for Structure Data Preparation (Matrix)
 }

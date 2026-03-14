@@ -59,8 +59,6 @@ nimble_family_optimization <- function(family, model_string, ...) {
     UseMethod("nimble_family_optimization")
 }
 
-#' Default Method for Structure Definition (Independent Model)
-#' @export
 #' Method for Structure Data Preparation (Matrix)
 #' @export
 prepare_structure_data.matrix <- function(
