@@ -1,8 +1,4 @@
-# Simple test to verify categorical expansion in equations
-
-source("R/because_format_data.R")
-source("R/because.R")
-source("R/because_model.R")
+library(because)
 
 library(ape)
 

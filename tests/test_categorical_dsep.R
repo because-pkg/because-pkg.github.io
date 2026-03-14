@@ -1,11 +1,4 @@
-# Test script for Categorical d-separation
-
-source("R/because_format_data.R")
-source("R/because.R")
-source("R/because_model.R")
-source("R/because_dsep.R")
-source("R/mag_helpers.R")
-source("R/dag_to_mag.R")
+library(because)
 
 library(ape)
 

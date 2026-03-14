@@ -2,7 +2,7 @@
 title: "Mediation Analysis"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Automated Mediation Analysis}
+  %\VignetteIndexEntry{Mediation Analysis}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
