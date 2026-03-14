@@ -1,0 +1,459 @@
+--- Starting Simulation @ Fri Feb 27 17:21:52 CET 2026 ---
+
+  This is piecewiseSEM version 2.3.0.2.
+
+
+  Questions or bugs can be addressed to <jslefche@gmail.com>.
+This is lavaan 0.6-20
+lavaan is FREE software! Please report any bugs.
+Loading required package: Rcpp
+Loading 'brms' package (version 2.22.0). Useful instructions
+can be found by typing help('brms'). A more detailed introduction
+to the package is available through vignette('brms_overview').
+
+Attaching package: ‘brms’
+
+The following object is masked from ‘package:glmmTMB’:
+
+    lognormal
+
+The following object is masked from ‘package:stats’:
+
+    ar
+
+[2026-02-27 17:21:58] ============================================
+[2026-02-27 17:21:58] Starting Cross-Tool Coverage Analysis
+[2026-02-27 17:21:59] N_ITERATIONS = 100
+[2026-02-27 17:21:59] ============================================
+[2026-02-27 17:21:59] Resuming from iteration 34
+[2026-02-27 17:21:59] --- Iteration 34 / 100 ---
+Registered S3 methods overwritten by 'phylolm':
+  method         from 
+  logLik.phylolm MuMIn
+  nobs.phylolm   MuMIn
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:26:01]   Saved incremental results ( 34  rows).
+[2026-02-27 17:26:01] --- Iteration 35 / 100 ---
+NOTE: Stopping adaptation
+
+
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:29:35]   Saved incremental results ( 35  rows).
+[2026-02-27 17:29:35] --- Iteration 36 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:33:13]   Saved incremental results ( 36  rows).
+[2026-02-27 17:33:13] --- Iteration 37 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:35:53]   Saved incremental results ( 37  rows).
+[2026-02-27 17:35:53] --- Iteration 38 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:39:06]   Saved incremental results ( 38  rows).
+[2026-02-27 17:39:06] --- Iteration 39 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:44:08]   Saved incremental results ( 39  rows).
+[2026-02-27 17:44:08] --- Iteration 40 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:46:51]   Saved incremental results ( 40  rows).
+[2026-02-27 17:46:51] --- Iteration 41 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:49:34]   Saved incremental results ( 41  rows).
+[2026-02-27 17:49:34] --- Iteration 42 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:52:18]   Saved incremental results ( 42  rows).
+[2026-02-27 17:52:18] --- Iteration 43 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:55:00]   Saved incremental results ( 43  rows).
+[2026-02-27 17:55:00] --- Iteration 44 / 100 ---
+NOTE: Stopping adaptation
+
+
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 17:57:40]   Saved incremental results ( 44  rows).
+[2026-02-27 17:57:40] --- Iteration 45 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 18:36:38]   Saved incremental results ( 45  rows).
+[2026-02-27 18:36:38] --- Iteration 46 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 18:39:27]   Saved incremental results ( 46  rows).
+[2026-02-27 18:39:27] --- Iteration 47 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 18:51:18]   Saved incremental results ( 47  rows).
+[2026-02-27 18:51:18] --- Iteration 48 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 19:22:58]   Saved incremental results ( 48  rows).
+[2026-02-27 19:22:58] --- Iteration 49 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 19:39:36]   Saved incremental results ( 49  rows).
+[2026-02-27 19:39:36] --- Iteration 50 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 19:56:13]   Saved incremental results ( 50  rows).
+[2026-02-27 19:56:13] --- Iteration 51 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 19:57:42]   Saved incremental results ( 51  rows).
+[2026-02-27 19:57:42] --- Iteration 52 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 20:14:17]   Saved incremental results ( 52  rows).
+[2026-02-27 20:14:17] --- Iteration 53 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 20:30:48]   Saved incremental results ( 53  rows).
+[2026-02-27 20:30:48] --- Iteration 54 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 20:40:25]   Saved incremental results ( 54  rows).
+[2026-02-27 20:40:25] --- Iteration 55 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 20:45:26]   Saved incremental results ( 55  rows).
+[2026-02-27 20:45:26] --- Iteration 56 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 20:50:32]   Saved incremental results ( 56  rows).
+[2026-02-27 20:50:32] --- Iteration 57 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 20:55:28]   Saved incremental results ( 57  rows).
+[2026-02-27 20:55:28] --- Iteration 58 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 21:00:27]   Saved incremental results ( 58  rows).
+[2026-02-27 21:00:27] --- Iteration 59 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 21:18:28]   Saved incremental results ( 59  rows).
+[2026-02-27 21:18:28] --- Iteration 60 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 21:35:40]   Saved incremental results ( 60  rows).
+[2026-02-27 21:35:40] --- Iteration 61 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 21:41:26]   Saved incremental results ( 61  rows).
+[2026-02-27 21:41:26] --- Iteration 62 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 21:58:47]   Saved incremental results ( 62  rows).
+[2026-02-27 21:58:47] --- Iteration 63 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 22:16:15]   Saved incremental results ( 63  rows).
+[2026-02-27 22:16:15] --- Iteration 64 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 22:34:33]   Saved incremental results ( 64  rows).
+[2026-02-27 22:34:33] --- Iteration 65 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 22:36:09]   Saved incremental results ( 65  rows).
+[2026-02-27 22:36:09] --- Iteration 66 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 22:42:35]   Saved incremental results ( 66  rows).
+[2026-02-27 22:42:35] --- Iteration 67 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 22:59:43]   Saved incremental results ( 67  rows).
+[2026-02-27 22:59:43] --- Iteration 68 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 23:01:18]   Saved incremental results ( 68  rows).
+[2026-02-27 23:01:18] --- Iteration 69 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 23:02:59]   Saved incremental results ( 69  rows).
+[2026-02-27 23:02:59] --- Iteration 70 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 23:19:55]   Saved incremental results ( 70  rows).
+[2026-02-27 23:19:55] --- Iteration 71 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 23:36:28]   Saved incremental results ( 71  rows).
+[2026-02-27 23:36:28] --- Iteration 72 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-27 23:43:33]   Saved incremental results ( 72  rows).
+[2026-02-27 23:43:33] --- Iteration 73 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:00:37]   Saved incremental results ( 73  rows).
+[2026-02-28 00:00:37] --- Iteration 74 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:18:19]   Saved incremental results ( 74  rows).
+[2026-02-28 00:18:19] --- Iteration 75 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:19:49]   Saved incremental results ( 75  rows).
+[2026-02-28 00:19:49] --- Iteration 76 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:21:30]   Saved incremental results ( 76  rows).
+[2026-02-28 00:21:30] --- Iteration 77 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:23:16]   Saved incremental results ( 77  rows).
+[2026-02-28 00:23:16] --- Iteration 78 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:24:56]   Saved incremental results ( 78  rows).
+[2026-02-28 00:24:56] --- Iteration 79 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:26:41]   Saved incremental results ( 79  rows).
+[2026-02-28 00:26:41] --- Iteration 80 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+boundary (singular) fit: see help('isSingular')
+[2026-02-28 00:28:27]   Saved incremental results ( 80  rows).
+[2026-02-28 00:28:27] --- Iteration 81 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:30:03]   Saved incremental results ( 81  rows).
+[2026-02-28 00:30:03] --- Iteration 82 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:31:47]   Saved incremental results ( 82  rows).
+[2026-02-28 00:31:47] --- Iteration 83 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:33:33]   Saved incremental results ( 83  rows).
+[2026-02-28 00:33:33] --- Iteration 84 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:35:19]   Saved incremental results ( 84  rows).
+[2026-02-28 00:35:19] --- Iteration 85 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:37:01]   Saved incremental results ( 85  rows).
+[2026-02-28 00:37:01] --- Iteration 86 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 00:44:44]   Saved incremental results ( 86  rows).
+[2026-02-28 00:44:44] --- Iteration 87 / 100 ---
+NOTE: Stopping adaptation
+
+
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:02:06]   Saved incremental results ( 87  rows).
+[2026-02-28 01:02:06] --- Iteration 88 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:19:25]   Saved incremental results ( 88  rows).
+[2026-02-28 01:19:25] --- Iteration 89 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:21:04]   Saved incremental results ( 89  rows).
+[2026-02-28 01:21:04] --- Iteration 90 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:26:42]   Saved incremental results ( 90  rows).
+[2026-02-28 01:26:42] --- Iteration 91 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+boundary (singular) fit: see help('isSingular')
+[2026-02-28 01:37:30]   Saved incremental results ( 91  rows).
+[2026-02-28 01:37:30] --- Iteration 92 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:39:17]   Saved incremental results ( 92  rows).
+[2026-02-28 01:39:17] --- Iteration 93 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:40:53]   Saved incremental results ( 93  rows).
+[2026-02-28 01:40:53] --- Iteration 94 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:42:41]   Saved incremental results ( 94  rows).
+[2026-02-28 01:42:41] --- Iteration 95 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:44:32]   Saved incremental results ( 95  rows).
+[2026-02-28 01:44:32] --- Iteration 96 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:46:22]   Saved incremental results ( 96  rows).
+[2026-02-28 01:46:22] --- Iteration 97 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:48:09]   Saved incremental results ( 97  rows).
+[2026-02-28 01:48:09] --- Iteration 98 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:49:50]   Saved incremental results ( 98  rows).
+[2026-02-28 01:49:50] --- Iteration 99 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:51:44]   Saved incremental results ( 99  rows).
+[2026-02-28 01:51:44] --- Iteration 100 / 100 ---
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Abundance ~ Thermal_Tol | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+[2026-02-28 01:53:30]   Saved incremental results ( 100  rows).
+There were 50 or more warnings (use warnings() to see the first 50)
+[2026-02-28 01:53:30] === Computing Final Summary ===
+[2026-02-28 01:53:30] Final summary written to coverage_summary_final.csv
+    Tool        Parameter Mean_Bias Coverage_Rate Power Mean_Time_s
+1      A             Wind    -0.045          0.99  0.73       105.7
+2      A          Thermal    -0.051          1.00  1.00       105.7
+3      A      MetaThermal     0.015          1.00  0.96       105.7
+4      B      MetaThermal     0.014          1.00  1.00       249.2
+5      E      MetaThermal     0.013          0.79  1.00         0.0
+6      F      MetaThermal     0.259          0.17  1.00         0.1
+7      I      MetaThermal     0.014          0.95  1.00         0.1
+8      I             Wind    -0.018          0.91  0.93         0.1
+9 H_DSep Correct_Model_ID        NA            NA  0.00          NA
+--- Simulation Completed Successfully @ Sat Feb 28 01:53:30 CET 2026 ---

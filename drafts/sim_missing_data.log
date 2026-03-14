@@ -1,0 +1,47 @@
+Loading required package: Matrix
+Induced missingness: 300 out of 1500 observations are missing Thermal_Tol
+
+Fitting GLMM on complete cases (1200 rows retained)...
+boundary (singular) fit: see help('isSingular')
+   Estimate  Std. Error 
+-0.59212985  0.07501075 
+
+Fitting Joint Bayesian Model (because) with Imputation...
+Hierarchical data structure detected: site > survey > obs; species > obs
+Prepared hierarchical data for JAGS: N_site=15, N_survey=30, N_obs=1500, N_species=50
+Standardizing tree (max_bt: 0.05 -> 1.0)
+Calculating phylogenetic precision matrix (optimize=TRUE)...
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+Using MAG approach: marginalized latent variables from structural equations.
+--- Latent Variable Structure (MAG) ---
+(MAG structure display skipped)
+---------------------------------------
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 3155
+   Unobserved stochastic nodes: 1562
+   Total graph size: 26848
+
+Initializing model
+Deleting model
+
+
+CRITICAL JAGS ERROR during compilation:
+Error in node u_std_Abundance_spatial
+Invalid parent values
+
+
+Check your model code syntax or data dimensions.
+
+Error in rjags::jags.model(model_file, data = data, inits = inits_list,  : 
+  Error in node u_std_Abundance_spatial
+Invalid parent values
+
+Calls: because ... tryCatch -> tryCatchList -> tryCatchOne -> <Anonymous>
+In addition: Warning message:
+In rjags::jags.model(model_file, data = data, inits = inits_list,  :
+  Unused variable "zeros" in data
+Execution halted

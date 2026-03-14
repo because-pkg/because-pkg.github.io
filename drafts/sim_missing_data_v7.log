@@ -1,0 +1,41 @@
+Loading required package: Matrix
+Induced missingness: 300 out of 1500 observations are missing Thermal_Tol
+
+Fitting GLMM on complete cases (1200 rows retained)...
+boundary (singular) fit: see help('isSingular')
+  Estimate Std. Error 
+-0.5812417  0.0492304 
+
+Fitting Joint Bayesian Model (because) with Imputation...
+Hierarchical data structure detected: site > survey > obs; species > obs
+Prepared hierarchical data for JAGS: N_site=15, N_survey=30, N_obs=1500, N_species=50
+Standardizing tree (max_bt: 0.01 -> 1.0)
+Calculating phylogenetic precision matrix (optimize=TRUE)...
+  (Safety) Dropping cyclic d-sep test: Temperature ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+  (Safety) Dropping cyclic d-sep test: Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol) (conditioned on own component)
+Using MAG approach: marginalized latent variables from structural equations.
+--- Latent Variable Structure (MAG) ---
+(MAG structure display skipped)
+---------------------------------------
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 3155
+   Unobserved stochastic nodes: 1562
+   Total graph size: 26848
+
+Initializing model
+
+Warning message:
+In rjags::jags.model(model_file, data = data, inits = inits_list,  :
+  Unused variable "zeros" in data
+
+--- True Beta for Mismatch: -0.40 ---
+GLMM (Listwise Deletion) Mismatch Beta:
+     Estimate    Std. Error       z value      Pr(>|z|) 
+-5.812417e-01  4.923040e-02 -1.180656e+01  3.610298e-32 
+
+Because (Imputation) Mismatch Beta:
+          Mean             SD       Naive SE Time-series SE           Rhat 
+  -0.067362167    0.080252371    0.002675079    0.009346258    1.365514445 

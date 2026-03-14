@@ -4,7 +4,13 @@
 \alias{validate_hierarchical_data}
 \title{Validate Hierarchical Data Structure}
 \usage{
-validate_hierarchical_data(data, levels, hierarchy, link_vars)
+validate_hierarchical_data(
+  data,
+  levels,
+  hierarchy,
+  link_vars,
+  latent_vars = NULL
+)
 }
 \arguments{
 \item{data}{List of data.frames at different hierarchical levels}

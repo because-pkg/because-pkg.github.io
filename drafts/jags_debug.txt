@@ -1,0 +1,8 @@
+ℹ Loading because
+ℹ Loading because.phybase
+Loading required package: coda
+Linked to JAGS 4.3.2
+Loaded modules: basemod,bugs
+Error in because(eqs, data = data_list, levels = list(species = c("Body_Mass_s",  : 
+  unused argument (run = FALSE)
+Execution halted

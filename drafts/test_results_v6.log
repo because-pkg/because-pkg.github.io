@@ -1,0 +1,9 @@
+ℹ Loading because
+ℹ Loading because.phybase
+Loading required package: coda
+Linked to JAGS 4.3.2
+Loaded modules: basemod,bugs
+Error in validate_hierarchical_data(data, levels, hierarchy, link_vars) : 
+  Variables not found in site dataset: U_Resource
+Calls: because -> validate_hierarchical_data
+Execution halted

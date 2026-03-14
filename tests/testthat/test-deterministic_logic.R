@@ -56,12 +56,12 @@ test_that("Model fits with logical AND in formula", {
 
     # Identify coefficients
     coefs <- rownames(stats)
-    # Expect beta_Y_A and beta_Y_det_...
-    expect_true(any(grepl("beta_Y_det_", coefs)))
+    # Expect beta_Y_A_gt_2_and_A_lt_5
+    expect_true(any(grepl("beta_Y_A_gt_2", coefs)))
 
     # Check estimate (should be approx 2)
     # finding the specific one
-    det_coef <- coefs[grepl("beta_Y_det_", coefs)]
+    det_coef <- coefs[grepl("beta_Y_A_gt_2", coefs)]
     val <- stats[det_coef, "Mean"]
     expect_equal(val, 2, tolerance = 0.5)
 })

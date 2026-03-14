@@ -19,9 +19,13 @@ get_family_object <- function(family_name) {
 
     # Check for occupancy - require module package
     if (family_name == "occupancy") {
-        if (!requireNamespace("because.occupancy", quietly = TRUE)) {
+        # Check for because.detection (actual name) or because.occupancy (alias/legacy)
+        if (
+            !requireNamespace("because.detection", quietly = TRUE) &&
+                !requireNamespace("because.occupancy", quietly = TRUE)
+        ) {
             stop(
-                "Occupancy models require the 'because.occupancy' package.\n",
+                "Occupancy models require the 'because.detection' package.\n",
                 "Install with:\n",
                 "  remotes::install_github('because-pkg/because.occupancy')\n",
                 "Or:\n",

@@ -1,0 +1,84 @@
+ℹ Loading because
+Warning message:
+Objects listed as exports, but not present in namespace:
+• (Matrix)
+• for
+• Data
+• Method
+• Preparation
+• Structure 
+ℹ Loading because.occupancy
+Simulating data for 50-species phylogenetic occupancy model...
+
+======================================
+Fitting with JAGS (Parallel, 12,000 iterations)...
+======================================
+Running 3 chains in parallel on 3 cores...
+Recompiling model for DIC/WAIC calculation...
+Warning message:
+In rjags::jags.model(model_file, data = data, inits = ic_inits,  :
+  Unused variable "zeros" in data
+JAGS Elapsed: 44.50 seconds
+
+======================================
+Fitting with NIMBLE (Parallel, 3,000 iterations)...
+Current NIMBLE backend uses discrete latent states z[i] and scalar samplers.
+======================================
+nimble version 1.3.0 is loaded.
+For more information on NIMBLE and a User Manual,
+please visit https://R-nimble.org.
+
+Note for advanced users who have written their own MCMC samplers:
+  As of version 0.13.0, NIMBLE's protocol for handling posterior
+  predictive nodes has changed in a way that could affect user-defined
+  samplers in some situations. Please see Section 15.5.1 of the User Manual.
+
+Attaching package: ‘nimble’
+
+The following object is masked from ‘package:stats’:
+
+    simulate
+
+The following object is masked from ‘package:base’:
+
+    declare
+
+Defining model
+  [Note] 'zeros' is provided in 'constants' but not used in the model code and is being ignored.
+  [Note] Registering 'dOccupancy' as a distribution based on its use in BUGS code. If you make changes to the nimbleFunctions for the distribution, you must call 'deregisterDistributions' before using the distribution in BUGS code for those changes to take effect.
+  [Note] Using 'Y_obs' (given within 'constants') as data.
+Building model
+Setting data and initial values
+  [Note] 'z_Y' has initial values but is not a variable in the model and is being ignored.
+Running calculate on model
+  [Note] Any error reports that follow may simply reflect missing values in model variables.
+Checking model sizes and dimensions
+  [Note] This model is not fully initialized. This is not an error.
+         To see which variables are not initialized, use model$initializeInfo().
+         For more information on model initialization, see help(modelInitialization).
+===== Monitors =====
+thin = 1: alpha_p_Y, alpha_Y, beta_p_Y_Trait, beta_Y_Habitat, p_Y, psi_Y
+===== Samplers =====
+RW sampler (4)
+  - alpha_Y
+  - alpha_p_Y
+  - beta_Y_Habitat
+  - beta_p_Y_Trait
+Compiling
+  [Note] This may take a minute.
+  [Note] Use 'showCompilerOutput = TRUE' to see C++ compilation details.
+Compiling
+  [Note] This may take a minute.
+  [Note] Use 'showCompilerOutput = TRUE' to see C++ compilation details.
+Recompiling model for DIC/WAIC calculation...
+Warning message:
+In rjags::jags.model(model_file, data = data, inits = ic_inits,  :
+  Unused variable "zeros" in data
+NIMBLE Elapsed: 93.38 seconds
+
+--- PARAMETER COMPARISON ---
+data frame with 0 columns and 0 rows
+
+--- EFFICIENCY (iters/sec) ---
+JAGS: 269.66
+NIMBLE: 32.13

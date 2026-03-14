@@ -8,13 +8,31 @@ mag_basis_to_formulas(
   basis_set,
   latent_children = NULL,
   categorical_vars = NULL,
-  family = NULL
+  family = NULL,
+  deterministic_terms = NULL,
+  root_vars = NULL,
+  hierarchical_info = NULL
 )
 }
 \arguments{
-\item{basis_set}{Basis set from basiSet.mag()}
+\item{basis_set}{Basis set from basiSet.mag() or ggm::basiSet()}
 
 \item{latent_children}{Optional character vector of variables that are direct children of latents}
+
+\item{categorical_vars}{Optional named list of categorical variable info}
+
+\item{family}{Optional named character vector of family distributions}
+
+\item{deterministic_terms}{Optional named list from \code{extract_deterministic_terms}.
+Internal node names (e.g. \code{"BM_x_M"}) are rendered back to their
+original R syntax (e.g. \code{"BM:M"}) in the output formulas, following
+Geiger, Verma & Pearl (1990).}
+
+\item{root_vars}{Optional character vector of root (exogenous) node names
+— nodes with no parents in the DAG.  If var1 is a root node and var2 is
+not, they are swapped so the non-root (downstream) variable becomes the
+response.  This enforces the convention that parent-only variables should
+always be predictors rather than responses in independence tests.}
 }
 \value{
 List of formulas with test_var attribute

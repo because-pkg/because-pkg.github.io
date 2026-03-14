@@ -10,6 +10,7 @@ because(
   id_col = NULL,
   structure = NULL,
   tree = NULL,
+  engine = "jags",
   monitor = "interpretable",
   n.chains = 3,
   n.iter = 12500,
@@ -194,8 +195,15 @@ Useful for handling non-identified models or specific theoretical constraints.
 Example: \code{c(response_var = 1)}.}
 
 \item{priors}{Optional named list of character strings specifying custom priors for specific parameters.
-Enables overriding default uninformative priors.
-Example: \code{list(alpha_Response = "dnorm(0, 0.001)", beta_Response_Predictor = "dnorm(1, 10)")}.}
+By default, \code{because} uses "boundary-avoiding" regularizing priors for hierarchical variance components:
+\itemize{
+\item \strong{Gaussian}: \code{dgamma(1, 1)} (vague) for residual and random effect precisions.
+\item \strong{Non-Gaussian}: \code{dgamma(10, 10)} for overdispersion and hierarchical random effects (\eqn{\tau}).
+This regularizing prior (Gelman 2006, McElreath 2020) prevents numerical overflow in models
+with exponential or logit link functions by constraining the sampler away from astronomically
+large variances during adaptation.
+}
+Example: \code{list(alpha_Response = "dnorm(0, 0.001)", tau_e_Response = "dgamma(1, 1)")}.}
 
 \item{reuse_models}{List of previously fitted 'because' models to scan for reusable d-separation test results.
 If a test in the current run matches a test in a reused model (same formula), the result is copied

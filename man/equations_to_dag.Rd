@@ -4,17 +4,32 @@
 \alias{equations_to_dag}
 \title{Convert becauseR equations to ggm DAG adjacency matrix}
 \usage{
-equations_to_dag(equations, exclude_vars = NULL)
+equations_to_dag(equations, exclude_vars = NULL, deterministic_terms = NULL)
 }
 \arguments{
 \item{equations}{List of formulas}
 
-\item{exclude_vars}{Character vector of variable names to exclude (e.g., grouping variables)}
+\item{exclude_vars}{Character vector of variable names to exclude (e.g.,
+grouping variables)}
+
+\item{deterministic_terms}{Optional named list returned by
+\code{extract_deterministic_terms}.  Each element must have
+\code{$original} (the R term string, e.g. \code{"BM:M"}) and
+\code{$internal_name} (the JAGS-safe node name, e.g. \code{"BM_x_M"}).}
 }
 \value{
 Named adjacency matrix in ggm format
 }
 \description{
-Convert becauseR equations to ggm DAG adjacency matrix
+When \code{deterministic_terms} is supplied (a list returned by
+\code{extract_deterministic_terms}), interaction and \code{I()} terms are
+kept as \strong{explicit intermediate nodes} in the DAG rather than collapsed to
+their component variables.  This is required to produce the correct
+conditional independence basis set following Geiger, Verma & Pearl (1990),
+which extends d-separation to handle deterministic nodes.
+}
+\references{
+Geiger, D., Verma, T., & Pearl, J. (1990). Identifying independence in
+Bayesian Networks. \emph{Networks}, 20(5), 507–534.
 }
 \keyword{internal}

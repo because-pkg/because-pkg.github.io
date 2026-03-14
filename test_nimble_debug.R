@@ -1,0 +1,10 @@
+library(because)
+devtools::load_all()
+set.seed(123)
+N <- 50
+A <- runif(N, 1, 10)
+Y <- 2 + 3 * A + rnorm(N, sd = 0.5)
+data <- list(Y = Y, A = A)
+eqs <- list(Y ~ A)
+fit_nimble <- because(equations = eqs, data = data, engine = 'nimble', n.iter = 50, n.burnin = 10, n.chains = 2, quiet = FALSE)
+print(fit_nimble$summary$statistics)

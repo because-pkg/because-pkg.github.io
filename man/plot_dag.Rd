@@ -6,7 +6,7 @@
 \usage{
 plot_dag(
   x,
-  layout = "sugiyama",
+  layout = "kk",
   latent = NULL,
   node_size = 14,
   node_color = "black",
@@ -23,7 +23,16 @@ plot_dag(
 \arguments{
 \item{x}{A list of formulas (equations), a \code{because} model object, or a list of these.}
 
-\item{layout}{The layout algorithm to use (default "sugiyama"). See \code{\link[ggdag]{ggdag}}.}
+\item{layout}{The layout algorithm to use for positioning nodes (default \code{"kk"}, Kamada-Kawai).
+Any layout name accepted by \code{\link[ggraph]{create_layout}} can be used, including:
+\itemize{
+\item \code{"kk"} — Kamada-Kawai spring layout (default; good general-purpose layout).
+\item \code{"sugiyama"} — hierarchical/layered layout; useful for simple chains.
+\item \code{"fr"} — Fruchterman-Reingold spring layout.
+\item \code{"nicely"} — automatic choice based on graph properties.
+\item \code{"circle"} — nodes arranged in a circle.
+}
+Override node positions entirely with the \code{coords} argument.}
 
 \item{latent}{Character vector of latent variable names. Overrides the model's latent variables if provided.}
 
@@ -62,6 +71,13 @@ or a fitted \code{because} model. If a fitted model is provided:
 \item Edge thickness scales with the absolute effect size.
 }
 }
+\details{
+Interaction terms (e.g. \code{BM:M}) and \code{I()} transformations are
+rendered as \strong{explicit intermediate nodes} (grey diamonds), following the
+Interaction DAG (IDAG) convention of Attia, Holliday & Oldmeadow (2022).
+This makes the deterministic nature of these terms visually clear and is
+consistent with how \code{because_dsep} treats them for d-separation.
+}
 \examples{
 \dontrun{
 # Basic plotting
@@ -77,4 +93,10 @@ my_coords <- list(
 plot_dag(eq, coords = my_coords)
 }
 
+}
+\references{
+Attia, J., Holliday, E., & Oldmeadow, C. (2022). A proposal for capturing
+interaction and effect modification using DAGs.
+\emph{International Journal of Epidemiology}, 51(4), 1047--1053.
+\doi{10.1093/ije/dyac105}
 }

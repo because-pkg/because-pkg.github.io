@@ -9,6 +9,8 @@
 #' @description
 #' This function fits a Bayesian ...
 #' @param equations A list of model formulas describing the structural equation model.
+#' @param data A data.frame containining the variables in the model. If using hierarchical
+#'   models (see hierarchical section below), this can also be a list of data frames.
 #' @param id_col Character string specifying the column name in a data.frame containing
 #'   unit identifiers (species, individuals, sites, etc.). This is used to:
 #'   \itemize{
@@ -29,6 +31,22 @@
 #'   }
 #' @param tree (Deprecated alias for \code{structure}). A single phylogenetic tree of class
 #'   \code{"phylo"} or a list of trees. Use \code{structure} instead for new code.
+#' @param engine Character string specifying the inference engine to use. Supported values:
+#'   \itemize{
+#'     \item \code{"jags"} (default): Use Just Another Gibbs Sampler (via rjags).
+#'     \item \code{"nimble"}: Use the compiled C++ backend (via NIMBLE). Offers significant
+#'           speedups for complex models, parallel execution, and marginalized likelihoods.
+#'   }
+#' @param nimble_samplers (NIMBLE-only) A named list specifying custom samplers for specific
+#'   model nodes. Example: \code{nimble_samplers = list(beta_X_Y = "slice")}.
+#'   Common sampler types include:
+#'   \itemize{
+#'     \item \code{"RW"}: Scalar Random-Walk Metropolis-Hastings.
+#'     \item \code{"RW_block"}: Multivariate Random-Walk Metropolis-Hastings.
+#'     \item \code{"slice"}: Scalar slice sampler.
+#'     \item \code{"AF_slice"}: Automated Factor Slice Sampler (multivariate slice).
+#'     \item \code{"categorical"}: Specialized discrete sampler for Multinomial/Ordinal choices.
+#'   }
 #' @param monitor Parameter monitoring mode. Options:
 #'   \itemize{
 #'     \item \code{"interpretable"} (default): Monitor only scientifically meaningful parameters:
@@ -155,7 +173,7 @@
 #' @export
 #' @importFrom ape vcv.phylo branching.times
 #' @importFrom rjags jags.model coda.samples dic.samples jags.samples
-#' @importFrom stats na.omit update formula terms setNames start var
+#' @importFrom stats formula terms setNames start var
 #' @importFrom utils capture.output
 #' @importFrom coda gelman.diag effectiveSize
 #' @import coda
@@ -165,7 +183,9 @@ because <- function(
   id_col = NULL,
   structure = NULL,
   tree = NULL,
+  engine = "jags",
   monitor = "interpretable",
+  nimble_samplers = NULL,
   n.chains = 3,
   n.iter = 12500,
   n.burnin = floor(n.iter / 5),
@@ -195,30 +215,15 @@ because <- function(
   priors = NULL, # Optional: custom priors list
   reuse_models = NULL
 ) {
-  # --- Input Validation & Setup ---
-
   # Allow single formula input
   if (inherits(equations, "formula")) {
     equations <- list(equations)
   }
 
+  engine <- match.arg(tolower(engine), c("jags", "nimble"))
+
   if (!quiet) {
     is_list_debug <- is.list(data) && !is.data.frame(data)
-  }
-
-  # WAIC Validity Check: Conditional WAIC (optimise=FALSE) is misleading
-  if (!optimise && WAIC) {
-    warning(
-      "WAIC is calculated using conditional likelihoods when optimise=FALSE, which produces much higher values than marginal pseudo-likelihoods and is NOT comparable to optimise=TRUE results. Disabling WAIC to avoid confusion. Please use DIC for model comparison in this mode."
-    )
-    WAIC <- FALSE
-  }
-
-  # Allow multiple options for latent_method if missing from function signature defaults
-  latent_method <- match.arg(latent_method, c("correlations", "explicit"))
-
-  if (is.matrix(data)) {
-    data <- as.data.frame(data)
   }
 
   # Handle 'structure' alias
@@ -814,8 +819,14 @@ because <- function(
           )
         }
 
-        # Determine the tree to use (first one if list)
-        use_tree <- if (inherits(tree, "multiPhylo")) tree[[1]] else tree
+        # Determine the tree to use (only if it is a phylo object)
+        use_tree <- if (inherits(tree, "multiPhylo")) {
+          tree[[1]]
+        } else if (inherits(tree, "phylo")) {
+          tree
+        } else {
+          NULL # It's a matrix or other structure, don't use as a tree
+        }
 
         formatted_list <- because_format_data(
           data,
@@ -2757,7 +2768,8 @@ because <- function(
       hierarchical_info
     } else {
       NULL
-    }
+    },
+    engine = engine
   )
 
   model_string <- model_output$model
@@ -2989,7 +3001,7 @@ because <- function(
     }
   }
 
-  # Clean up data list: Remove variables not present in the model code to avoid JAGS warnings
+  # Clean up data list: Remove variables not present in the model code to avoid warnings
   model_code_str <- model_output$model
   vars_to_remove <- character(0)
 
@@ -3009,74 +3021,555 @@ because <- function(
   }
 
   if (length(vars_to_remove) > 0) {
-    if (!quiet) {
-      # message(sprintf("Removing unused variables from data: %s", paste(vars_to_remove, collapse=", ")))
-    }
     for (v in vars_to_remove) {
       data[[v]] <- NULL
     }
   }
 
-  # Run MCMC chains (parallel or sequential)
+  # Store MCMC compilation and run results
+  samples <- NULL
+  model <- NULL
 
-  if (parallel && n.cores > 1 && n.chains > 1) {
-    # Parallel execution
-    message(sprintf(
-      "Running %d chains in parallel on %d cores...",
-      n.chains,
-      n.cores
-    ))
-
-    # Setup cluster if not provided
-    if (is.null(cl)) {
-      cl <- parallel::makeCluster(n.cores)
-      on.exit(parallel::stopCluster(cl), add = TRUE)
+  if (engine == "nimble") {
+    # --- NIMBLE EXECUTION PIPELINE ---
+    if (!requireNamespace("nimble", quietly = TRUE)) {
+      stop(
+        "The 'nimble' package is required when engine = 'nimble'.\n",
+        "Please install it using: install.packages('nimble')\n",
+        "For detailed installation instructions and system requirements (e.g. Rtools/Xcode),\n",
+        "see: https://r-nimble.org/download"
+      )
     }
 
-    # Helper function to run a single chain
-    run_single_chain <- function(
-      chain_id,
-      model_file,
-      data,
-      monitor,
-      n.burnin,
-      n.iter,
-      n.thin,
-      n.adapt,
-      quiet
-    ) {
-      # Load rjags in each worker
-      if (!requireNamespace("rjags", quietly = TRUE)) {
-        stop("Package 'rjags' is required for parallel execution.")
+    # Attach nimble to the search path to avoid 'getNimbleOption' errors during evaluation
+    require(nimble, quietly = TRUE)
+
+    if (!quiet) {
+      message("Compiling model via NIMBLE...")
+    }
+
+    # --- NIMBLE Family Optimizations (S3) ---
+    # Extensions can implement nimble_family_optimization to provide
+    # specialized distributions (e.g. dImperfect) and model transformations.
+    nimble_funcs <- list()
+    nimble_string <- model_string
+
+    # Generic cleanup for NIMBLE: strip JAGS-specific log-density nodes
+    lines <- strsplit(nimble_string, "\n")[[1]]
+    lines <- lines[!grepl("logdensity\\.", lines)]
+    lines <- lines[!grepl("log_lik_", lines)]
+    lines <- lines[!grepl("lik_matrix_", lines)]
+    nimble_string <- paste(lines, collapse = "\n")
+
+    for (v in names(family)) {
+      fam_obj <- structure(
+        list(name = family[[v]]),
+        class = c(paste0("because_family_", family[[v]]), "because_family")
+      )
+      opt_res <- nimble_family_optimization(
+        fam_obj,
+        nimble_string,
+        variable = v
+      )
+      nimble_string <- opt_res$model_string
+      if (length(opt_res$nimble_functions) > 0) {
+        nimble_funcs <- c(nimble_funcs, opt_res$nimble_functions)
       }
-      # Explicitly load rjags to ensure modules are available
-      loadNamespace("rjags")
 
-      # Compile model for this chain
-      # Explicitly set RNG seed to ensure chains are different
-      inits_list <- c(
-        occupancy_inits,
-        list(
-          .RNG.name = "base::Wichmann-Hill",
-          .RNG.seed = 12345 + chain_id
+      # If discretized latent states were marginalized, remove them from monitors
+      if (
+        nimble_string != model_string && any(grepl(paste0("z_", v), monitor))
+      ) {
+        monitor <- setdiff(monitor, paste0("z_", v))
+      }
+    }
+
+    # Register nimble functions to global environment for compiler
+    if (length(nimble_funcs) > 0) {
+      unique_names <- unique(names(nimble_funcs))
+      for (fn_name in unique_names) {
+        assign(fn_name, nimble_funcs[[fn_name]], envir = .GlobalEnv)
+      }
+    }
+
+    # Convert the JAGS model string directly into a NIMBLE model
+    nimble_model <- tryCatch(
+      {
+        # The model string comes wrapped in `model { ... }`.
+        # parse() fails on `model {`, but succeeds if we strip `model` or wrap in `{}`
+        # Let's replace 'model {' with '{'
+        nimble_string <- sub("^\\s*model\\s*\\{", "{", nimble_string)
+        nimble_code <- parse(text = nimble_string)[[1]]
+
+        nimble::nimbleModel(
+          code = nimble_code,
+          constants = data,
+          inits = occupancy_inits
         )
+      },
+      error = function(e) {
+        if (!quiet) {
+          message("\nCRITICAL NIMBLE ERROR during model initialization:")
+          message(e$message)
+        }
+        stop(e)
+      }
+    )
+
+    # Configure MCMC
+    mcmc_conf <- nimble::configureMCMC(
+      nimble_model,
+      monitors = monitor,
+      enableWAIC = WAIC
+    )
+
+    # --- Apply user-specified samplers ---
+    if (!is.null(nimble_samplers)) {
+      for (node in names(nimble_samplers)) {
+        sampler_type <- nimble_samplers[[node]]
+        mcmc_conf$removeSamplers(node)
+        mcmc_conf$addSampler(target = node, type = sampler_type)
+      }
+      if (!quiet) {
+        message(sprintf(
+          "NIMBLE: Applied %d user-specified sampler(s)",
+          length(nimble_samplers)
+        ))
+      }
+    }
+
+    # Find all samplers and check if any target u_std_.* nodes (structured random effects)
+    sampler_targets <- sapply(mcmc_conf$getSamplers(), function(x) x$target)
+    struct_re_vars <- unique(grep(
+      "^u_std_.*",
+      sampler_targets,
+      value = TRUE
+    ))
+
+    if (length(struct_re_vars) > 0) {
+      for (re_var in struct_re_vars) {
+        # removeSamplers can take the target name directly
+        mcmc_conf$removeSamplers(re_var)
+        mcmc_conf$addSampler(target = re_var, type = "AF_slice")
+      }
+
+      if (!quiet) {
+        message(sprintf(
+          "NIMBLE: Replaced default sampler with AF_slice for %d structured random effect vector(s): %s",
+          length(struct_re_vars),
+          paste(struct_re_vars, collapse = ", ")
+        ))
+      }
+    }
+
+    # Also apply scalar 'slice' to precision nodes (tau_u and tau_e) for better mixing
+    # default in NIMBLE is RW which can struggle with small/large variance priors
+    tau_vars <- unique(grep("^tau_[ue]_", sampler_targets, value = TRUE))
+    if (length(tau_vars) > 0) {
+      for (tau_var in tau_vars) {
+        mcmc_conf$removeSamplers(tau_var)
+        mcmc_conf$addSampler(target = tau_var, type = "slice")
+      }
+      if (!quiet) {
+        message(sprintf(
+          "NIMBLE: Replaced default RW sampler with scalar 'slice' for %d precision node(s): %s",
+          length(tau_vars),
+          paste(tau_vars, collapse = ", ")
+        ))
+      }
+    }
+
+    # TODO: Future optimization: Add polyagamma samplers here for occupancy/binomial nodes
+
+    if (!quiet) {
+      message("Building and compiling NIMBLE MCMC (this may take a moment)...")
+    }
+
+    nimble_mcmc <- nimble::buildMCMC(mcmc_conf)
+    compiled_model <- nimble::compileNimble(nimble_model)
+    compiled_mcmc <- nimble::compileNimble(nimble_mcmc, project = nimble_model)
+
+    if (parallel && n.cores > 1 && n.chains > 1) {
+      # Parallel execution for NIMBLE
+      if (!quiet) {
+        message(sprintf(
+          "Running %d NIMBLE chains in %s on %d cores...",
+          n.chains,
+          "parallel",
+          n.cores
+        ))
+      }
+
+      if (is.null(cl)) {
+        cl <- parallel::makeCluster(n.cores)
+        on.exit(parallel::stopCluster(cl), add = TRUE)
+      }
+
+      # Helper for parallel NIMBLE chain
+      run_nimble_chain <- function(
+        chain_id,
+        model_string,
+        data,
+        family,
+        occupancy_inits,
+        monitor,
+        n.iter,
+        n.burnin,
+        n.thin,
+        WAIC,
+        nimble_samplers,
+        quiet
+      ) {
+        if (!requireNamespace("nimble", quietly = TRUE)) {
+          return(NULL)
+        }
+        require(nimble, quietly = TRUE)
+
+        # --- NIMBLE Family Optimizations via S3 (Worker) ---
+        nimble_funcs <- list()
+        nimble_string <- model_string
+
+        # Cleanup JAGS nodes
+        lines <- strsplit(nimble_string, "\n")[[1]]
+        lines <- lines[!grepl("logdensity\\.", lines)]
+        lines <- lines[!grepl("log_lik_", lines)]
+        lines <- lines[!grepl("lik_matrix_", lines)]
+        nimble_string <- paste(lines, collapse = "\n")
+
+        for (v in names(family)) {
+          fam_obj <- structure(
+            list(name = family[[v]]),
+            class = c(paste0("because_family_", family[[v]]), "because_family")
+          )
+          opt_res <- nimble_family_optimization(
+            fam_obj,
+            nimble_string,
+            variable = v
+          )
+          nimble_string <- opt_res$model_string
+          if (length(opt_res$nimble_functions) > 0) {
+            nimble_funcs <- c(nimble_funcs, opt_res$nimble_functions)
+          }
+          if (
+            nimble_string != model_string &&
+              any(grepl(paste0("z_", v), monitor))
+          ) {
+            monitor <- setdiff(monitor, paste0("z_", v))
+          }
+        }
+        if (length(nimble_funcs) > 0) {
+          for (fn_name in unique(names(nimble_funcs))) {
+            assign(fn_name, nimble_funcs[[fn_name]], envir = .GlobalEnv)
+          }
+        }
+
+        # Strip model { ... } wrapping
+        nimble_string <- sub("^\\s*model\\s*\\{", "{", nimble_string)
+        nimble_code <- parse(text = nimble_string)[[1]]
+
+        # Jitter seed for this chain
+        curr_inits <- occupancy_inits
+        # Add RNG seed if possible or just rely on global seed if set
+
+        worker_model <- nimble::nimbleModel(
+          code = nimble_code,
+          constants = data,
+          inits = curr_inits
+        )
+
+        worker_conf <- nimble::configureMCMC(
+          worker_model,
+          monitors = monitor,
+          enableWAIC = WAIC
+        )
+
+        # Apply user-specified samplers on worker
+        if (!is.null(nimble_samplers)) {
+          for (node in names(nimble_samplers)) {
+            sampler_type <- nimble_samplers[[node]]
+            worker_conf$removeSamplers(node)
+            worker_conf$addSampler(target = node, type = sampler_type)
+          }
+        }
+
+        # Apply same sampler overrides as on main thread
+        sampler_targets <- sapply(worker_conf$getSamplers(), function(x) {
+          x$target
+        })
+        struct_re_vars <- unique(grep(
+          "^u_std_.*",
+          sampler_targets,
+          value = TRUE
+        ))
+        if (length(struct_re_vars) > 0) {
+          for (re_var in struct_re_vars) {
+            worker_conf$removeSamplers(re_var)
+            worker_conf$addSampler(target = re_var, type = "AF_slice")
+          }
+        }
+
+        # Also apply scalar 'slice' to precision nodes on worker
+        tau_vars <- unique(grep("^tau_[ue]_", sampler_targets, value = TRUE))
+        if (length(tau_vars) > 0) {
+          for (tau_var in tau_vars) {
+            worker_conf$removeSamplers(tau_var)
+            worker_conf$addSampler(target = tau_var, type = "slice")
+          }
+        }
+
+        worker_mcmc <- nimble::buildMCMC(worker_conf)
+        worker_c_model <- nimble::compileNimble(worker_model)
+        worker_c_mcmc <- nimble::compileNimble(
+          worker_mcmc,
+          project = worker_model
+        )
+
+        samples <- nimble::runMCMC(
+          worker_c_mcmc,
+          niter = n.iter,
+          nburnin = n.burnin,
+          nchains = 1,
+          thin = n.thin,
+          samplesAsCodaMCMC = TRUE
+        )
+        return(samples)
+      }
+
+      # Export all required variables to worker nodes
+      parallel::clusterExport(
+        cl,
+        c(
+          "model_string",
+          "data",
+          "family",
+          "occupancy_inits",
+          "monitor",
+          "n.iter",
+          "n.burnin",
+          "n.thin",
+          "WAIC",
+          "quiet",
+          "run_nimble_chain"
+        ),
+        envir = environment()
       )
 
-      model <- rjags::jags.model(
+      chain_results <- parallel::parLapply(cl, seq_len(n.chains), function(i) {
+        run_nimble_chain(
+          chain_id = i,
+          model_string = model_string,
+          data = data,
+          family = family,
+          occupancy_inits = occupancy_inits,
+          monitor = monitor,
+          n.iter = n.iter,
+          n.burnin = n.burnin,
+          n.thin = n.thin,
+          WAIC = WAIC,
+          nimble_samplers = nimble_samplers,
+          quiet = quiet
+        )
+      })
+
+      # Format into mcmc.list
+      samples <- coda::mcmc.list(lapply(chain_results, function(x) x))
+    } else {
+      # Sequential execution (Existing logic)
+      if (!quiet) {
+        message(sprintf(
+          "Sampling %d chains sequentially via NIMBLE...",
+          n.chains
+        ))
+      }
+
+      nimble_samples <- nimble::runMCMC(
+        compiled_mcmc,
+        niter = n.iter,
+        nburnin = n.burnin,
+        nchains = n.chains,
+        thin = n.thin,
+        samplesAsCodaMCMC = TRUE,
+        summary = FALSE
+      )
+
+      if (n.chains == 1) {
+        samples <- coda::mcmc.list(nimble_samples)
+      } else {
+        samples <- coda::mcmc.list(lapply(nimble_samples, function(x) x))
+      }
+    }
+    model <- nimble_model # Store the Rmodel object
+  } else {
+    # --- JAGS EXECUTION PIPELINE (Default) ---
+    if (parallel && n.cores > 1 && n.chains > 1) {
+      # Parallel execution
+      message(sprintf(
+        "Running %d chains in parallel on %d cores...",
+        n.chains,
+        n.cores
+      ))
+
+      # Setup cluster if not provided
+      if (is.null(cl)) {
+        cl <- parallel::makeCluster(n.cores)
+        on.exit(parallel::stopCluster(cl), add = TRUE)
+      }
+
+      # Helper function to run a single chain
+      run_single_chain <- function(
+        chain_id,
         model_file,
-        data = data,
-        inits = inits_list,
-        n.chains = 1,
-        n.adapt = n.adapt,
-        quiet = quiet
-      )
+        data,
+        monitor,
+        n.burnin,
+        n.iter,
+        n.thin,
+        n.adapt,
+        quiet
+      ) {
+        # Load rjags in each worker
+        if (!requireNamespace("rjags", quietly = TRUE)) {
+          stop("Package 'rjags' is required for parallel execution.")
+        }
+        # Explicitly load rjags to ensure modules are available
+        loadNamespace("rjags")
 
-      # Burn-in
+        # Compile model for this chain
+        # Explicitly set RNG seed to ensure chains are different
+        inits_list <- c(
+          occupancy_inits,
+          list(
+            .RNG.name = "base::Wichmann-Hill",
+            .RNG.seed = 12345 + chain_id
+          )
+        )
+
+        model <- rjags::jags.model(
+          model_file,
+          data = data,
+          inits = inits_list,
+          n.chains = 1,
+          n.adapt = n.adapt,
+          quiet = quiet
+        )
+
+        # Burn-in
+        if (n.burnin > 0) {
+          update(model, n.iter = n.burnin)
+        }
+
+        # Sample
+        if (n.iter > n.burnin) {
+          samples <- rjags::coda.samples(
+            model,
+            variable.names = monitor,
+            n.iter = n.iter - n.burnin,
+            thin = n.thin
+          )
+        } else {
+          samples <- NULL
+        }
+
+        return(list(samples = samples, model = model))
+      }
+
+      # Export necessary objects to cluster
+      parallel::clusterExport(cl, c("run_single_chain"), envir = environment())
+
+      # Run chains in parallel
+      if (!quiet) {
+        message(sprintf("Sampling %d chains in parallel...", n.chains))
+      }
+
+      chain_results <- parallel::parLapply(cl, seq_len(n.chains), function(i) {
+        res <- run_single_chain(
+          i,
+          model_file,
+          data,
+          monitor,
+          n.burnin,
+          n.iter,
+          n.thin,
+          n.adapt,
+          quiet
+        )
+        return(res)
+      })
+
+      if (!quiet) {
+        message("All chains completed.")
+      }
+
+      # Combine samples from all chains
+      if (!is.null(chain_results[[1]]$samples)) {
+        samples <- coda::mcmc.list(lapply(chain_results, function(x) {
+          x$samples[[1]]
+        }))
+      } else {
+        samples <- NULL
+      }
+
+      # Use the first chain's model for DIC/WAIC (they all have the same structure)
+      model <- chain_results[[1]]$model
+    } else {
+      # Sequential execution (default)
+      if (verbose) {
+        message("--- JAGS MODEL STRING ---")
+        message(model_string)
+      }
+      if (verbose) {
+        cat(
+          "\n--- DATA LIST NAMES ---\n",
+          paste(names(data), collapse = ", "),
+          "\n"
+        )
+      }
+
+      # Combine with occupancy inits
+      inits_list <- lapply(1:n.chains, function(i) {
+        c(
+          occupancy_inits,
+          list(
+            .RNG.name = "base::Wichmann-Hill",
+            .RNG.seed = 12345 + i
+          )
+        )
+      })
+
+      model <- tryCatch(
+        {
+          rjags::jags.model(
+            model_file,
+            data = data,
+            inits = inits_list,
+            n.chains = n.chains,
+            n.adapt = n.adapt,
+            quiet = quiet
+          )
+        },
+        error = function(e) {
+          if (!quiet) {
+            message("\nCRITICAL JAGS ERROR during compilation:")
+            message(e$message)
+            message("Check your model code syntax or data dimensions.\n")
+          }
+          stop(e)
+        }
+      )
       if (n.burnin > 0) {
         update(model, n.iter = n.burnin)
       }
 
-      # Sample
+      # Disable DIC/WAIC if only 1 chain (rjags requirement)
+      if (n.chains < 2 && (DIC || WAIC)) {
+        warning(
+          "DIC and WAIC require at least 2 chains. Disabling calculation."
+        )
+        DIC <- FALSE
+        WAIC <- FALSE
+      }
+
+      # Sample posterior
       if (n.iter > n.burnin) {
         samples <- rjags::coda.samples(
           model,
@@ -3087,116 +3580,6 @@ because <- function(
       } else {
         samples <- NULL
       }
-
-      return(list(samples = samples, model = model))
-    }
-
-    # Export necessary objects to cluster
-    parallel::clusterExport(cl, c("run_single_chain"), envir = environment())
-
-    # Run chains in parallel
-    if (!quiet) {
-      message(sprintf("Sampling %d chains in parallel...", n.chains))
-    }
-
-    chain_results <- parallel::parLapply(cl, seq_len(n.chains), function(i) {
-      res <- run_single_chain(
-        i,
-        model_file,
-        data,
-        monitor,
-        n.burnin,
-        n.iter,
-        n.thin,
-        n.adapt,
-        quiet
-      )
-      return(res)
-    })
-
-    if (!quiet) {
-      message("All chains completed.")
-    }
-
-    # Combine samples from all chains
-    if (!is.null(chain_results[[1]]$samples)) {
-      samples <- coda::mcmc.list(lapply(chain_results, function(x) {
-        x$samples[[1]]
-      }))
-    } else {
-      samples <- NULL
-    }
-
-    # Use the first chain's model for DIC/WAIC (they all have the same structure)
-    model <- chain_results[[1]]$model
-  } else {
-    # Sequential execution (default)
-    if (verbose) {
-      message("--- JAGS MODEL STRING ---")
-      message(model_string)
-    }
-    if (verbose) {
-      cat(
-        "\n--- DATA LIST NAMES ---\n",
-        paste(names(data), collapse = ", "),
-        "\n"
-      )
-    }
-
-    # Combine with occupancy inits
-    inits_list <- lapply(1:n.chains, function(i) {
-      c(
-        occupancy_inits,
-        list(
-          .RNG.name = "base::Wichmann-Hill",
-          .RNG.seed = 12345 + i
-        )
-      )
-    })
-
-    model <- tryCatch(
-      {
-        rjags::jags.model(
-          model_file,
-          data = data,
-          inits = inits_list,
-          n.chains = n.chains,
-          n.adapt = n.adapt,
-          quiet = quiet
-        )
-      },
-      error = function(e) {
-        if (!quiet) {
-          message("\nCRITICAL JAGS ERROR during compilation:")
-          message(e$message)
-          message("Check your model code syntax or data dimensions.\n")
-        }
-        stop(e)
-      }
-    )
-    if (n.burnin > 0) {
-      update(model, n.iter = n.burnin)
-    }
-
-    # Disable DIC/WAIC if only 1 chain (rjags requirement)
-    if (n.chains < 2 && (DIC || WAIC)) {
-      warning(
-        "DIC and WAIC require at least 2 chains. Disabling calculation."
-      )
-      DIC <- FALSE
-      WAIC <- FALSE
-    }
-
-    # Sample posterior
-    if (n.iter > n.burnin) {
-      samples <- rjags::coda.samples(
-        model,
-        variable.names = monitor,
-        n.iter = n.iter - n.burnin,
-        thin = n.thin
-      )
-    } else {
-      samples <- NULL
     }
   }
 
@@ -3354,8 +3737,10 @@ because <- function(
     # If tree used, data is sorted by tip labels
     if (inherits(tree, "multiPhylo")) {
       result$species_order <- tree[[1]]$tip.label
-    } else {
+    } else if (inherits(tree, "phylo")) {
       result$species_order <- tree$tip.label
+    } else if (is.matrix(tree)) {
+      result$species_order <- rownames(tree)
     }
   } else if (!is.null(id_col) && is.data.frame(original_data)) {
     # If no tree but ID col provided
@@ -3431,10 +3816,14 @@ because <- function(
   } else {
     # Sequential execution - use standard approach
     if (DIC) {
-      if (n.iter > n.burnin) {
-        result$DIC <- rjags::dic.samples(model, n.iter = n.iter - n.burnin)
+      if (engine == "jags") {
+        if (n.iter > n.burnin) {
+          result$DIC <- rjags::dic.samples(model, n.iter = n.iter - n.burnin)
+        } else {
+          result$DIC <- NULL
+        }
       } else {
-        result$DIC <- NULL
+        result$DIC <- NULL # NIMBLE does not use rjags::dic.samples
       }
     }
     # WAIC will be computed after class assignment

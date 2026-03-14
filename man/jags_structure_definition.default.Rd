@@ -2,10 +2,10 @@
 % Please edit documentation in R/generics.R
 \name{jags_structure_definition.default}
 \alias{jags_structure_definition.default}
-\title{Default Method for Structure Definition (Independent Model)}
+\title{Default Method for D-Sep Transformation}
 \usage{
 \method{jags_structure_definition}{default}(structure, variable_name = "err", ...)
 }
 \description{
-Default Method for Structure Definition (Independent Model)
+Default Method for D-Sep Transformation
 }

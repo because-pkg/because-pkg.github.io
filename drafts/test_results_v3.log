@@ -1,0 +1,209 @@
+ℹ Loading because
+ℹ Loading because.phybase
+Loading required package: coda
+Linked to JAGS 4.3.2
+Loaded modules: basemod,bugs
+Hierarchical data structure detected: site > obs; species > obs
+Prepared hierarchical data for JAGS: N_site=30, N_obs=600, N_species=50
+Standardizing tree (max_bt: 0.05 -> 1.0)
+Calculating phylogenetic precision matrix (optimize=TRUE)...
+Using explicit latent variable modeling
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 1410
+   Unobserved stochastic nodes: 702
+   Total graph size: 16952
+
+Initializing model
+
+NOTE: Stopping adaptation
+
+
+Warning messages:
+1: In rjags::jags.model(model_file, data = data, inits = inits_list,  :
+  Unused variable "zeros" in data
+2: In rjags::jags.model(model_file, data = data, inits = inits_list,  :
+  Adaptation incomplete
+
+Iterations = 710:1200
+Thinning interval = 10 
+Number of chains = 3 
+Sample size per chain = 50 
+
+1. Empirical mean and standard deviation for each variable,
+   plus standard error of the mean:
+
+                                                 Mean      SD Naive SE
+alpha_Abundance                              -0.24725 0.10123 0.008265
+alpha_Body_Mass_s                            -0.31841 0.65341 0.053351
+alpha_Foraging_Intensity                     -0.22208 0.39093 0.031919
+alpha_Metabolic_Rate                          0.30072 0.50937 0.041590
+alpha_NDVI                                   -0.10814 0.34101 0.027843
+alpha_Temperature                            -0.01265 0.33735 0.027545
+alpha_Thermal_Tol                             0.18855 0.43817 0.035776
+beta_Abundance_Foraging_Intensity             0.53539 0.11680 0.009537
+beta_Abundance_Temperature_minus_Thermal_Tol -0.36738 0.13792 0.011261
+beta_Abundance_U_Resource                    -0.04809 0.30969 0.025286
+beta_Foraging_Intensity_Metabolic_Rate       -0.20470 0.23523 0.019207
+beta_Foraging_Intensity_U_Resource           -0.08788 0.28266 0.023079
+beta_Metabolic_Rate_Body_Mass_s               0.49848 0.29841 0.024365
+beta_NDVI_Elevation_s                         0.26233 0.10570 0.008630
+beta_NDVI_U_Resource                         -0.06116 0.23977 0.019577
+beta_Temperature_Elevation_s                 -0.50410 0.10378 0.008474
+beta_Thermal_Tol_Body_Mass_s                  0.43101 0.37112 0.030301
+beta_Thermal_Tol_Metabolic_Rate               0.68263 0.37371 0.030513
+sigma_Abundance_Species                       0.47721 0.12265 0.010015
+sigma_Abundance_phylo                         0.28806 0.04231 0.003455
+sigma_Abundance_res                           0.44153 0.04757 0.003884
+sigma_Abundance_spatial                       0.56013 0.13536 0.011052
+sigma_Body_Mass_s_Species                     0.51242 0.11690 0.009544
+sigma_Body_Mass_s_phylo                       0.25915 0.02952 0.002411
+sigma_Body_Mass_s_res                         0.51538 0.09538 0.007787
+sigma_Foraging_Intensity_Species              1.78895 2.69449 0.220004
+sigma_Foraging_Intensity_phylo                0.20720 0.01833 0.001497
+sigma_Foraging_Intensity_res                  0.39638 0.01235 0.001009
+sigma_Foraging_Intensity_spatial              0.49881 0.09825 0.008022
+sigma_Metabolic_Rate_Species                  1.82738 2.12735 0.173697
+sigma_Metabolic_Rate_phylo                    0.24022 0.02990 0.002441
+sigma_Metabolic_Rate_res                      0.46797 0.08164 0.006666
+sigma_NDVI_Species                            2.05531 2.91028 0.237623
+sigma_NDVI_res                                0.37960 0.07623 0.006224
+sigma_NDVI_spatial                            0.49082 0.09582 0.007824
+sigma_Temperature_Species                     1.60056 1.37648 0.112390
+sigma_Temperature_res                         0.40428 0.06114 0.004992
+sigma_Temperature_spatial                     0.48193 0.09336 0.007623
+sigma_Thermal_Tol_Species                     1.52778 1.16398 0.095039
+sigma_Thermal_Tol_phylo                       0.23937 0.02810 0.002294
+sigma_Thermal_Tol_res                         0.46072 0.08124 0.006633
+                                             Time-series SE   Rhat
+alpha_Abundance                                    0.013803 1.0962
+alpha_Body_Mass_s                                  0.196033 1.0377
+alpha_Foraging_Intensity                           0.078977 2.0762
+alpha_Metabolic_Rate                               0.121989 1.1977
+alpha_NDVI                                         0.058029 1.0077
+alpha_Temperature                                  0.050063 1.0295
+alpha_Thermal_Tol                                  0.108286 1.1262
+beta_Abundance_Foraging_Intensity                  0.011374 1.0848
+beta_Abundance_Temperature_minus_Thermal_Tol       0.036972 1.2052
+beta_Abundance_U_Resource                          0.024114 3.2464
+beta_Foraging_Intensity_Metabolic_Rate             0.053079 1.0696
+beta_Foraging_Intensity_U_Resource                 0.010972 4.4993
+beta_Metabolic_Rate_Body_Mass_s                    0.042010 0.9969
+beta_NDVI_Elevation_s                              0.009736 1.0217
+beta_NDVI_U_Resource                               0.008119 2.4801
+beta_Temperature_Elevation_s                       0.007957 0.9908
+beta_Thermal_Tol_Body_Mass_s                       0.071819 0.9920
+beta_Thermal_Tol_Metabolic_Rate                    0.044881 1.0131
+sigma_Abundance_Species                            0.020256 1.4740
+sigma_Abundance_phylo                              0.010058 1.1214
+sigma_Abundance_res                                0.006404 1.1455
+sigma_Abundance_spatial                            0.031713 1.0088
+sigma_Body_Mass_s_Species                          0.009595 0.9921
+sigma_Body_Mass_s_phylo                            0.002830 0.9906
+sigma_Body_Mass_s_res                              0.006734 0.9929
+sigma_Foraging_Intensity_Species                   0.226468 0.9920
+sigma_Foraging_Intensity_phylo                     0.002549 1.0009
+sigma_Foraging_Intensity_res                       0.001010 0.9977
+sigma_Foraging_Intensity_spatial                   0.021378 1.2355
+sigma_Metabolic_Rate_Species                       0.192020 0.9925
+sigma_Metabolic_Rate_phylo                         0.002225 0.9926
+sigma_Metabolic_Rate_res                           0.007368 0.9965
+sigma_NDVI_Species                                 0.379021 0.9994
+sigma_NDVI_res                                     0.005923 1.0058
+sigma_NDVI_spatial                                 0.007859 0.9933
+sigma_Temperature_Species                          0.168459 0.9974
+sigma_Temperature_res                              0.005025 0.9902
+sigma_Temperature_spatial                          0.008555 1.0269
+sigma_Thermal_Tol_Species                          0.094425 1.0097
+sigma_Thermal_Tol_phylo                            0.002299 0.9971
+sigma_Thermal_Tol_res                              0.005544 0.9923
+
+2. Quantiles for each variable:
+
+                                                 2.5%      25%      50%
+alpha_Abundance                              -0.42274 -0.31034 -0.25336
+alpha_Body_Mass_s                            -1.40249 -0.72685 -0.41707
+alpha_Foraging_Intensity                     -0.79869 -0.59719 -0.25508
+alpha_Metabolic_Rate                         -0.71833 -0.00670  0.26939
+alpha_NDVI                                   -0.72772 -0.34263 -0.13583
+alpha_Temperature                            -0.76265 -0.15752  0.02047
+alpha_Thermal_Tol                            -0.58068 -0.09081  0.15703
+beta_Abundance_Foraging_Intensity             0.30356  0.46047  0.53944
+beta_Abundance_Temperature_minus_Thermal_Tol -0.66224 -0.45789 -0.36774
+beta_Abundance_U_Resource                    -0.47563 -0.29005 -0.15613
+beta_Foraging_Intensity_Metabolic_Rate       -0.59728 -0.38553 -0.23087
+beta_Foraging_Intensity_U_Resource           -0.43664 -0.28734 -0.21668
+beta_Metabolic_Rate_Body_Mass_s              -0.04638  0.30826  0.50398
+beta_NDVI_Elevation_s                         0.06182  0.19115  0.26431
+beta_NDVI_U_Resource                         -0.42525 -0.22967 -0.12930
+beta_Temperature_Elevation_s                 -0.67435 -0.58646 -0.50131
+beta_Thermal_Tol_Body_Mass_s                 -0.21761  0.18148  0.40811
+beta_Thermal_Tol_Metabolic_Rate              -0.09126  0.43656  0.69480
+sigma_Abundance_Species                       0.30852  0.39286  0.45290
+sigma_Abundance_phylo                         0.22273  0.25566  0.28256
+sigma_Abundance_res                           0.33945  0.40921  0.44240
+sigma_Abundance_spatial                       0.36291  0.45725  0.54518
+sigma_Body_Mass_s_Species                     0.34728  0.44395  0.49657
+sigma_Body_Mass_s_phylo                       0.21622  0.23686  0.25501
+sigma_Body_Mass_s_res                         0.35698  0.43380  0.50846
+sigma_Foraging_Intensity_Species              0.54267  0.83237  1.09562
+sigma_Foraging_Intensity_phylo                0.17634  0.19462  0.20517
+sigma_Foraging_Intensity_res                  0.37618  0.38802  0.39517
+sigma_Foraging_Intensity_spatial              0.34711  0.42453  0.47576
+sigma_Metabolic_Rate_Species                  0.55936  0.84732  1.24171
+sigma_Metabolic_Rate_phylo                    0.19465  0.21710  0.23804
+sigma_Metabolic_Rate_res                      0.32536  0.41491  0.45685
+sigma_NDVI_Species                            0.53077  0.88591  1.20494
+sigma_NDVI_res                                0.26946  0.32497  0.37011
+sigma_NDVI_spatial                            0.35105  0.42573  0.47090
+sigma_Temperature_Species                     0.50000  0.83329  1.23363
+sigma_Temperature_res                         0.31368  0.36372  0.39691
+sigma_Temperature_spatial                     0.31172  0.41780  0.46539
+sigma_Thermal_Tol_Species                     0.64122  0.92874  1.15298
+sigma_Thermal_Tol_phylo                       0.19420  0.21958  0.23755
+sigma_Thermal_Tol_res                         0.33641  0.40576  0.44495
+                                                   75%    97.5%
+alpha_Abundance                              -0.186588 -0.05320
+alpha_Body_Mass_s                             0.005258  1.15894
+alpha_Foraging_Intensity                      0.154805  0.37180
+alpha_Metabolic_Rate                          0.645061  1.25759
+alpha_NDVI                                    0.127153  0.54985
+alpha_Temperature                             0.186955  0.53980
+alpha_Thermal_Tol                             0.402988  1.28988
+beta_Abundance_Foraging_Intensity             0.623247  0.74288
+beta_Abundance_Temperature_minus_Thermal_Tol -0.288554 -0.07322
+beta_Abundance_U_Resource                     0.281886  0.52314
+beta_Foraging_Intensity_Metabolic_Rate       -0.024760  0.23086
+beta_Foraging_Intensity_U_Resource            0.236416  0.38602
+beta_Metabolic_Rate_Body_Mass_s               0.654550  1.09940
+beta_NDVI_Elevation_s                         0.331790  0.44900
+beta_NDVI_U_Resource                          0.179214  0.38803
+beta_Temperature_Elevation_s                 -0.432458 -0.31644
+beta_Thermal_Tol_Body_Mass_s                  0.677616  1.14609
+beta_Thermal_Tol_Metabolic_Rate               0.929163  1.41578
+sigma_Abundance_Species                       0.526404  0.77188
+sigma_Abundance_phylo                         0.312328  0.38700
+sigma_Abundance_res                           0.474203  0.53772
+sigma_Abundance_spatial                       0.639159  0.86002
+sigma_Body_Mass_s_Species                     0.570556  0.79094
+sigma_Body_Mass_s_phylo                       0.277600  0.32282
+sigma_Body_Mass_s_res                         0.577906  0.72537
+sigma_Foraging_Intensity_Species              1.809058  6.86433
+sigma_Foraging_Intensity_phylo                0.217775  0.25192
+sigma_Foraging_Intensity_res                  0.404352  0.42713
+sigma_Foraging_Intensity_spatial              0.554981  0.73576
+sigma_Metabolic_Rate_Species                  1.930176  6.75997
+sigma_Metabolic_Rate_phylo                    0.262250  0.29358
+sigma_Metabolic_Rate_res                      0.520498  0.63622
+sigma_NDVI_Species                            1.973594  9.14429
+sigma_NDVI_res                                0.424750  0.52598
+sigma_NDVI_spatial                            0.540295  0.75070
+sigma_Temperature_Species                     1.885827  5.12461
+sigma_Temperature_res                         0.443399  0.53678
+sigma_Temperature_spatial                     0.539481  0.66739
+sigma_Thermal_Tol_Species                     1.699063  4.64942
+sigma_Thermal_Tol_phylo                       0.254916  0.30850
+sigma_Thermal_Tol_res                         0.514322  0.61533
+

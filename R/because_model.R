@@ -77,7 +77,8 @@ because_model <- function(
   categorical_vars = NULL,
   fix_residual_variance = NULL,
   priors = NULL,
-  hierarchical_info = NULL
+  hierarchical_info = NULL,
+  engine = "jags"
 ) {
   # Helper: returns b if a is NULL or if a is a list element that doesn't exist
   `%||%` <- function(a, b) {
@@ -361,8 +362,8 @@ because_model <- function(
   vars_error_terms <- list() # Track variables and their error terms (MAG, etc.)
 
   # --- Setup Common JAGS Structures ---
-  # Check if we need zero_vec (for induced_correlations OR multinomial)
-  need_zero_vec <- !is.null(induced_correlations)
+  # Check if we need zero_vec (for induced_correlations, multinomial, or structures)
+  need_zero_vec <- !is.null(induced_correlations) || !is.null(structures)
   if (!need_zero_vec && !is.null(family)) {
     if (any(family == "multinomial") || any(family == "ordinal")) {
       need_zero_vec <- TRUE
@@ -386,9 +387,8 @@ because_model <- function(
     }
     model_lines <- c(
       model_lines,
-      paste0("  for(k in 1:", zero_vec_N, ") { zero_vec[k] <- 0 }"),
-      "  zero_vec_2[1] <- 0",
-      "  zero_vec_2[2] <- 0"
+      "  zeros_2[1] <- 0",
+      "  zeros_2[2] <- 0"
     )
   }
 
@@ -761,18 +761,23 @@ because_model <- function(
         model_lines,
         paste0("    ", mu_err, "[i] <- 0"),
         paste0("    logit(", p, "[i]) <- ", linpred, " + ", err, "[i]"),
-        paste0("    ", response, "[i] ~ dbern(", p, "[i])"),
-        paste0(
-          "    log_lik_",
-          response,
-          suffix,
-          "[i] <- logdensity.bern(",
-          response,
-          "[i], ",
-          p,
-          "[i])"
-        )
+        paste0("    ", response, "[i] ~ dbern(", p, "[i])")
       )
+      if (engine == "jags") {
+        model_lines <- c(
+          model_lines,
+          paste0(
+            "    log_lik_",
+            response,
+            suffix,
+            "[i] <- logdensity.bern(",
+            response,
+            "[i], ",
+            p,
+            "[i])"
+          )
+        )
+      }
     } else if (dist == "multinomial") {
       # Multinomial: K categories
       # L[i, 1] <- 0
@@ -864,20 +869,25 @@ because_model <- function(
           "[i, 1:",
           K_var,
           "])"
-        ),
-        paste0(
-          "    log_lik_",
-          response,
-          suffix,
-          "[i] <- logdensity.cat(",
-          response,
-          "[i], p_",
-          response,
-          "[i, 1:",
-          K_var,
-          "])"
         )
       )
+      if (engine == "jags") {
+        model_lines <- c(
+          model_lines,
+          paste0(
+            "    log_lik_",
+            response,
+            suffix,
+            "[i] <- logdensity.cat(",
+            response,
+            "[i], p_",
+            response,
+            "[i, 1:",
+            K_var,
+            "])"
+          )
+        )
+      }
     } else if (dist == "ordinal") {
       # Ordinal: Cumulative Logit (Proportional Odds)
       # P(Y <= k) = logit^(-1)(cutpoint[k] - eta)
@@ -970,20 +980,25 @@ because_model <- function(
           "[i, 1:",
           K_var,
           "])"
-        ),
-        paste0(
-          "    log_lik_",
-          response,
-          suffix,
-          "[i] <- logdensity.cat(",
-          response,
-          "[i], p_",
-          response,
-          "[i, 1:",
-          K_var,
-          "])"
         )
       )
+      if (engine == "jags") {
+        model_lines <- c(
+          model_lines,
+          paste0(
+            "    log_lik_",
+            response,
+            suffix,
+            "[i] <- logdensity.cat(",
+            response,
+            "[i], p_",
+            response,
+            "[i, 1:",
+            K_var,
+            "])"
+          )
+        )
+      }
     } else if (dist == "poisson") {
       # Poisson: log(μ) = linpred + error
       # Naturally handles overdispersion via epsilon
@@ -995,18 +1010,23 @@ because_model <- function(
         model_lines,
         paste0("    # Poisson log link for ", response),
         paste0("    log(", mu, "[i]) <- ", linpred, " + ", err, "[i]"),
-        paste0("    ", response, "[i] ~ dpois(", mu, "[i])"),
-        paste0(
-          "    log_lik_",
-          response,
-          suffix,
-          "[i] <- logdensity.pois(",
-          response,
-          "[i], ",
-          mu,
-          "[i])"
-        )
+        paste0("    ", response, "[i] ~ dpois(", mu, "[i])")
       )
+      if (engine == "jags") {
+        model_lines <- c(
+          model_lines,
+          paste0(
+            "    log_lik_",
+            response,
+            suffix,
+            "[i] <- logdensity.pois(",
+            response,
+            "[i], ",
+            mu,
+            "[i])"
+          )
+        )
+      }
     } else if (dist == "negbinomial") {
       # Negative Binomial: log(μ) = linpred + error
       # Y ~ NegBin(p, r) where p = r/(r+μ) and r = size parameter
@@ -1021,20 +1041,25 @@ because_model <- function(
         paste0("    # Negative Binomial log link for ", response),
         paste0("    log(", mu, "[i]) <- ", linpred, " + ", err, "[i]"),
         paste0("    ", p, "[i] <- ", r, " / (", r, " + ", mu, "[i])"),
-        paste0("    ", response, "[i] ~ dnegbin(", p, "[i], ", r, ")"),
-        paste0(
-          "    log_lik_",
-          response,
-          suffix,
-          "[i] <- logdensity.negbin(",
-          response,
-          "[i], ",
-          p,
-          "[i], ",
-          r,
-          ")"
-        )
+        paste0("    ", response, "[i] ~ dnegbin(", p, "[i], ", r, ")")
       )
+      if (engine == "jags") {
+        model_lines <- c(
+          model_lines,
+          paste0(
+            "    log_lik_",
+            response,
+            suffix,
+            "[i] <- logdensity.negbin(",
+            response,
+            "[i], ",
+            p,
+            "[i], ",
+            r,
+            ")"
+          )
+        )
+      }
     } else if (dist == "zip") {
       # Zero-Inflated Poisson:
       # P(Y=0) = psi + (1-psi)*exp(-mu)
@@ -1067,11 +1092,13 @@ because_model <- function(
           response,
           "[i] <- (1-",
           psi,
-          ") * exp(logdensity.pois(",
-          response,
-          "[i], ",
-          mu,
-          "[i]))"
+          ") * exp(",
+          if (engine == "jags") {
+            paste0("logdensity.pois(", response, "[i], ", mu, "[i])")
+          } else {
+            paste0("dpois(", response, "[i], ", mu, "[i], 1)")
+          },
+          ")"
         ),
 
         # Select likelihood based on Y[i]
@@ -1145,13 +1172,13 @@ because_model <- function(
           response,
           "[i] <- (1-",
           psi,
-          ") * exp(logdensity.negbin(",
-          response,
-          "[i], ",
-          p,
-          "[i], ",
-          r,
-          "))"
+          ") * exp(",
+          if (engine == "jags") {
+            paste0("logdensity.negbin(", response, "[i], ", p, "[i], ", r, ")")
+          } else {
+            paste0("dnegbin(", response, "[i], ", p, "[i], ", r, ", 1)")
+          },
+          ")"
         ),
 
         # Select likelihood
@@ -1181,13 +1208,11 @@ because_model <- function(
           "[i] <- log(max(1.0E-30, 1-",
           psi,
           ")) + ",
-          "logdensity.negbin(",
-          response,
-          "[i], ",
-          p,
-          "[i], ",
-          r,
-          ")"
+          if (engine == "jags") {
+            paste0("logdensity.negbin(", response, "[i], ", p, "[i], ", r, ")")
+          } else {
+            paste0("dnegbin(", response, "[i], ", p, "[i], ", r, ", 1)")
+          }
         ),
         paste0(
           "    log_lik_",
@@ -1334,22 +1359,24 @@ because_model <- function(
                 ")"
               )
             )
-            model_lines <- c(
-              model_lines,
-              paste0(
-                "    log_lik_",
-                response,
-                suffix,
-                "[i] <- logdensity.norm(",
-                response_var,
-                "[i], ",
-                mu,
-                "[i], ",
-                tau_e,
-                ")"
-              ),
-              paste0("  }")
-            )
+            if (engine == "jags") {
+              model_lines <- c(
+                model_lines,
+                paste0(
+                  "    log_lik_",
+                  response,
+                  suffix,
+                  "[i] <- logdensity.norm(",
+                  response_var,
+                  "[i], ",
+                  mu,
+                  "[i], ",
+                  tau_e,
+                  ")"
+                )
+              )
+            }
+            model_lines <- c(model_lines, paste0("  }"))
           } else if (optimise) {
             # Optimized Random Effects Formulation (Additive)
             additive_terms <- ""
@@ -1567,24 +1594,26 @@ because_model <- function(
                 ")"
               )
             )
-            model_lines <- c(
-              model_lines,
-              paste0(
-                "    log_lik_",
-                response,
-                suffix,
-                "[i] <- logdensity.norm(",
-                response_var,
-                "[i], ",
-                mu,
-                "[i]",
-                additive_terms,
-                ", ",
-                tau_e,
-                ")"
-              ),
-              paste0("  }")
-            )
+            if (engine == "jags") {
+              model_lines <- c(
+                model_lines,
+                paste0(
+                  "    log_lik_",
+                  response,
+                  suffix,
+                  "[i] <- logdensity.norm(",
+                  response_var,
+                  "[i], ",
+                  mu,
+                  "[i]",
+                  additive_terms,
+                  ", ",
+                  tau_e,
+                  ")"
+                )
+              )
+            }
+            model_lines <- c(model_lines, paste0("  }"))
           } else {
             # Standard MVN for complete data (Marginal)
             # Note: dmnorm is joint, so we compute pointwise log-lik separately
@@ -1615,22 +1644,27 @@ because_model <- function(
                 "[i] <- ",
                 tau,
                 "[i, i]  # Extract diagonal precision (marginal variance)"
-              ),
-              paste0(
-                "    log_lik_",
-                response,
-                suffix,
-                "[i] <- logdensity.norm(",
-                response_var,
-                "[i], ",
-                mu,
-                "[i], tau_marg_",
-                response,
-                suffix,
-                "[i])"
-              ),
-              paste0("  }")
+              )
             )
+            if (engine == "jags") {
+              model_lines <- c(
+                model_lines,
+                paste0(
+                  "    log_lik_",
+                  response,
+                  suffix,
+                  "[i] <- logdensity.norm(",
+                  response_var,
+                  "[i], ",
+                  mu,
+                  "[i], tau_marg_",
+                  response,
+                  suffix,
+                  "[i])"
+                )
+              )
+            }
+            model_lines <- c(model_lines, paste0("  }"))
           }
         }
       } else if (dist == "binomial") {
@@ -2404,7 +2438,23 @@ because_model <- function(
         total_u <- ""
         if (optimise && !is.null(structures)) {
           for (s_name in names(structures)) {
-            s_suffix <- paste0("_", s_name) # Always use structure name suffix
+            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+            s_bound <- if (is.null(s_lvl)) {
+              if (!is.null(hierarchical_info)) {
+                hierarchical_info$counts[[1]]
+              } else {
+                "N"
+              }
+            } else {
+              paste0("N_", s_lvl)
+            }
+            s_zeros <- if (is.null(s_lvl)) {
+              "zeros"
+            } else {
+              paste0("zeros_", s_lvl)
+            }
+
+            s_suffix <- paste0("_", s_name)
             u_var <- paste0("u_", response, suffix, s_suffix)
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
 
@@ -2416,10 +2466,45 @@ because_model <- function(
               precision_parameter = tau_u
             )
 
-            if (!is.null(def$error_prior)) {
-              model_lines <- c(model_lines, def$error_prior)
+            if (!is.null(def$setup_code)) {
+              model_lines <- c(model_lines, def$setup_code)
             }
-            total_u <- paste0(total_u, " + ", u_var, "[i]")
+
+            prec_name <- paste0("Prec_", s_name)
+            prec_index <- if (!is.null(def$prec_index)) {
+              def$prec_index
+            } else if (multi.tree && is_multi_structure) {
+              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
+            } else {
+              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
+            }
+
+            # Add the dmnorm likelihood for the structure
+            model_lines <- c(
+              model_lines,
+              paste0(
+                "  ",
+                u_var,
+                "[1:",
+                s_bound,
+                "] ~ dmnorm(",
+                s_zeros,
+                "[1:",
+                s_bound,
+                "], ",
+                prec_index,
+                ")"
+              )
+            )
+
+            total_u <- paste0(
+              total_u,
+              " + ",
+              u_var,
+              "[",
+              get_struct_index(s_name, response, hierarchical_info),
+              "]"
+            )
           }
         }
 
@@ -2760,26 +2845,28 @@ because_model <- function(
         ")"
       )
     )
-    model_lines <- c(
-      model_lines,
-      paste0(
-        "    log_lik_",
-        var,
-        suffix,
-        "[i] <- logdensity.norm(",
-        var,
-        "[i], mu_",
-        var,
-        suffix,
-        "[i]",
-        phylo_term,
-        " + ",
-        sum_res_errs,
-        ", tau_obs_",
-        var,
-        ")"
+    if (engine == "jags") {
+      model_lines <- c(
+        model_lines,
+        paste0(
+          "    log_lik_",
+          var,
+          suffix,
+          "[i] <- logdensity.norm(",
+          var,
+          "[i], mu_",
+          var,
+          suffix,
+          "[i]",
+          phylo_term,
+          " + ",
+          sum_res_errs,
+          ", tau_obs_",
+          var,
+          ")"
+        )
       )
-    )
+    }
     model_lines <- c(model_lines, paste0("  }"))
   }
 
@@ -2828,20 +2915,22 @@ because_model <- function(
             "_tau_obs[i])"
           )
         )
-        model_lines <- c(
-          model_lines,
-          paste0(
-            "    log_lik_",
-            var,
-            "_mean[i] <- logdensity.norm(",
-            var,
-            "_mean[i], ",
-            var,
-            "[i], ",
-            var,
-            "_tau_obs[i])"
+        if (engine == "jags") {
+          model_lines <- c(
+            model_lines,
+            paste0(
+              "    log_lik_",
+              var,
+              "_mean[i] <- logdensity.norm(",
+              var,
+              "_mean[i], ",
+              var,
+              "[i], ",
+              var,
+              "_tau_obs[i])"
+            )
           )
-        )
+        }
         model_lines <- c(model_lines, paste0("  }"))
       } else if (type == "reps") {
         # For repeated measures, we need log_lik for EACH observation
@@ -2867,30 +2956,43 @@ because_model <- function(
             "[i], ",
             var,
             "_tau)"
-          ),
-          paste0(
-            "      lik_matrix_",
-            var,
-            "[i, j] <- logdensity.norm(",
-            var,
-            "_obs[i, j], ",
-            var,
-            "[i], ",
-            var,
-            "_tau)"
-          ),
-          paste0("    }"),
-          # Sum the log-likelihoods for this individual
-          paste0(
-            "    log_lik_",
-            var,
-            "_reps[i] <- sum(lik_matrix_",
-            var,
-            "[i, 1:N_reps_",
-            var,
-            "[i]])"
           )
         )
+        if (engine == "jags") {
+          model_lines <- c(
+            model_lines,
+            paste0(
+              "      lik_matrix_",
+              var,
+              "[i, j] <- logdensity.norm(",
+              var,
+              "_obs[i, j], ",
+              var,
+              "[i], ",
+              var,
+              "_tau)"
+            )
+          )
+        }
+        model_lines <- c(
+          model_lines,
+          paste0("    }")
+        )
+        if (engine == "jags") {
+          model_lines <- c(
+            model_lines,
+            # Sum the log-likelihoods for this individual
+            paste0(
+              "    log_lik_",
+              var,
+              "_reps[i] <- sum(lik_matrix_",
+              var,
+              "[i, 1:N_reps_",
+              var,
+              "[i]])"
+            )
+          )
+        }
         model_lines <- c(
           model_lines,
           paste0("  }"),

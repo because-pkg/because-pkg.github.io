@@ -1,0 +1,34 @@
+ℹ Loading because
+ℹ Loading because.phybase
+Loading required package: coda
+Linked to JAGS 4.3.2
+Loaded modules: basemod,bugs
+Hierarchical data structure detected: site > obs; species > obs
+Prepared hierarchical data for JAGS: N_site=30, N_obs=600, N_species=50
+Standardizing tree (max_bt: 0.05 -> 1.0)
+Calculating phylogenetic precision matrix (optimize=TRUE)...
+Using explicit latent variable modeling
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Deleting model
+
+
+CRITICAL JAGS ERROR during compilation:
+RUNTIME ERROR:
+Compilation error on line 30.
+Index out of range taking subset of  Temperature_minus_Thermal_Tol
+
+
+Check your model code syntax or data dimensions.
+
+Error in rjags::jags.model(model_file, data = data, inits = inits_list,  : 
+  RUNTIME ERROR:
+Compilation error on line 30.
+Index out of range taking subset of  Temperature_minus_Thermal_Tol
+
+Calls: because ... tryCatch -> tryCatchList -> tryCatchOne -> <Anonymous>
+In addition: Warning message:
+In rjags::jags.model(model_file, data = data, inits = inits_list,  :
+  Unused variable "zeros" in data
+Execution halted

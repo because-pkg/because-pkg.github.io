@@ -47,6 +47,18 @@ transform_graph_for_dsep <- function(family, equations, ...) {
     UseMethod("transform_graph_for_dsep")
 }
 
+#' NIMBLE Family Optimization
+#'
+#' Modules implement this to provide specialized NIMBLE optimizations (e.g. marginalization).
+#' @param family The S3 family object.
+#' @param model_string The current model code string.
+#' @param ... Additional arguments.
+#' @return A list with \code{model_string} and \code{nimble_functions} (list of nimbleFunction).
+#' @export
+nimble_family_optimization <- function(family, model_string, ...) {
+    UseMethod("nimble_family_optimization")
+}
+
 #' Default Method for Structure Definition (Independent Model)
 #' @export
 #' Method for Structure Data Preparation (Matrix)
@@ -105,4 +117,10 @@ jags_family_definition.default <- function(family, response, predictors, ...) {
 #' @export
 transform_graph_for_dsep.default <- function(family, equations, ...) {
     return(equations) # No transformation
+}
+
+#' Default Method for NIMBLE Optimization
+#' @export
+nimble_family_optimization.default <- function(family, model_string, ...) {
+    return(list(model_string = model_string, nimble_functions = list()))
 }
