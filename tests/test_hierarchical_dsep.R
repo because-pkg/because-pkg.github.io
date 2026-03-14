@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 # Test hierarchical data with d-separation
 # This should show different sample sizes for different tests

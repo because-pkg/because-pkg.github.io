@@ -2,7 +2,7 @@
 % Please edit documentation in R/mag_helpers.R
 \name{mag_basis_to_formulas}
 \alias{mag_basis_to_formulas}
-\title{Convert MAG basis set to becauseR formula format}
+\title{Convert MAG basis set to because formula format}
 \usage{
 mag_basis_to_formulas(
   basis_set,
@@ -38,6 +38,6 @@ always be predictors rather than responses in independence tests.}
 List of formulas with test_var attribute
 }
 \description{
-Convert MAG basis set to becauseR formula format
+Convert MAG basis set to because formula format
 }
 \keyword{internal}

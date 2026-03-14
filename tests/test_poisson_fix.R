@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 # Quick Poisson test
 set.seed(123)

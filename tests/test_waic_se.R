@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 library(ape)
 
 # Test WAIC with standard errors

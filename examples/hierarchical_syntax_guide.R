@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 cat("=======================================================\n")
 cat("   HIERARCHICAL DATA - LME4 STYLE SYNTAX\n")
@@ -58,11 +58,11 @@ cat("Two different concepts:\n\n")
 
 cat("1. HIERARCHICAL DATA LEVELS (dataset names):\n")
 cat("   hierarchy = \"site_year > individual\"\n")
-cat("   Tells becauseR which DATASET to use for each d-sep test\n\n")
+cat("   Tells because which DATASET to use for each d-sep test\n\n")
 
 cat("2. RANDOM EFFECTS (grouping variables / columns):\n")
 cat("   random = ~(1|site) + (1|year)\n")
-cat("   Tells becauseR which COLUMNS define random grouping\n\n")
+cat("   Tells because which COLUMNS define random grouping\n\n")
 
 cat("These are separate specifications!\n\n")
 

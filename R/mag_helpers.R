@@ -1,4 +1,4 @@
-#' Convert becauseR equations to ggm DAG adjacency matrix
+#' Convert because equations to ggm DAG adjacency matrix
 #'
 #' When \code{deterministic_terms} is supplied (a list returned by
 #' \code{extract_deterministic_terms}), interaction and \code{I()} terms are
@@ -183,7 +183,7 @@ extract_bidirected_edges <- function(mag) {
     return(correlations)
 }
 
-#' Convert MAG basis set to becauseR formula format
+#' Convert MAG basis set to because formula format
 #'
 #' @param basis_set Basis set from basiSet.mag() or ggm::basiSet()
 #' @param latent_children Optional character vector of variables that are direct children of latents

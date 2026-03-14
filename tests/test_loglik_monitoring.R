@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 # Test log_lik monitoring with WAIC=TRUE
 set.seed(123)

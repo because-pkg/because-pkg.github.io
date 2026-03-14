@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 cat("===================================================\n")
 cat("   POLYNOMIAL TRANSFORMATIONS - FULL TEST\n")

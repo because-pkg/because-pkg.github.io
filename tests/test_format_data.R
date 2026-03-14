@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 # Create example data matching user's format with different numbers of replicates
 set.seed(123)

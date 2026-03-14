@@ -1,8 +1,8 @@
-# becauseR Random Effects Demonstration
+# because Random Effects Demonstration
 # This script demonstrates how to use the new lmer-style random effects syntax
-# (e.g., (1|Group)) in becauseR models.
+# (e.g., (1|Group)) in because models.
 
-library(becauseR)
+library(because)
 
 set.seed(42)
 
@@ -20,7 +20,7 @@ x <- rnorm(N)
 y <- 1 + 0.5 * x + group_eff[groups] + rnorm(N, 0, 1)
 df <- data.frame(Y = y, X = x, Group = as.factor(groups))
 
-# Run becauseR with random effects syntax
+# Run because with random effects syntax
 # Note: optimise=TRUE is automatic when random effects are detected without tree
 fit_gaussian <- because(
     equations = list(Y ~ X + (1 | Group)),

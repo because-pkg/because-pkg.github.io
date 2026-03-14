@@ -8,8 +8,8 @@ if (requireNamespace("devtools", quietly = TRUE)) {
 }
 
 # Access internal functions (now exported to namespace by load_all)
-extract_random_effects <- becauseR:::extract_random_effects
-create_group_structures <- becauseR:::create_group_structures
+extract_random_effects <- because:::extract_random_effects
+create_group_structures <- because:::create_group_structures
 
 test_that("extract_random_effects parses correctly", {
     eqs <- list(
@@ -146,13 +146,13 @@ test_that("Random Slopes Warn and Default to Intercept", {
 
     # Check that it throws warning
     expect_warning(
-        becauseR:::extract_random_effects(eq),
+        because:::extract_random_effects(eq),
         "Random slopes .* are not yet implemented"
     )
 
     # Check that it still returns valid random structure
     suppressWarnings({
-        res <- becauseR:::extract_random_effects(eq)
+        res <- because:::extract_random_effects(eq)
     })
 
     expect_equal(length(res$random_terms), 1)

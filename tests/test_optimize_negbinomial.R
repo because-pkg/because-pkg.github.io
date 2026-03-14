@@ -1,4 +1,4 @@
-# Test script for Negative Binomial Optimization in becauseR
+# Test script for Negative Binomial Optimization in because
 # Verifies correctness of the random effects formulation for NB models
 
 # Source local files

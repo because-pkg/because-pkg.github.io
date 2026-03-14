@@ -1,4 +1,4 @@
-# Test script for Ordinal Optimization in becauseR
+# Test script for Ordinal Optimization in because
 # Verifies correctness of the random effects formulation for ordinal models (Cumulative Logit)
 
 # Source local files

@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 library(coda)
 
 # Simulate data similar to rhino structure

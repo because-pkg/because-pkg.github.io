@@ -3,7 +3,7 @@
 # Tests WAIC with standard errors across various model types
 ##############################################################################
 
-library(becauseR)
+library(because)
 library(ape)
 
 set.seed(12345)

@@ -1,7 +1,7 @@
 # Hierarchical Data Example - Current Functionality
 # This demonstrates the hierarchical data structure feature (in progress)
 
-library(becauseR)
+library(because)
 
 # ============================================================================
 # CREATE EXAMPLE DATA
@@ -51,7 +51,7 @@ equations <- list(
 # RUN MODEL WITH HIERARCHICAL DATA
 # ============================================================================
 
-cat("\n=== Running becauseR with Hierarchical Data ===\n\n")
+cat("\n=== Running because with Hierarchical Data ===\n\n")
 
 result <- because(
     data = list(

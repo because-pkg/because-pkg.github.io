@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 # Simulate data instead of loading rhino.dat
 set.seed(123)

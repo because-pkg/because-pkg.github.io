@@ -5,7 +5,7 @@
 # for a simple regression model.
 # ==============================================================================
 
-# library(becauseR)
+# library(because)
 library(ape)
 library(coda)
 library(rjags)

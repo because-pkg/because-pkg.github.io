@@ -5,7 +5,7 @@
 # both Gaussian and binomial response variables.
 # ==============================================================================
 
-# library(becauseR)
+# library(because)
 library(ape)
 library(coda)
 library(rjags)

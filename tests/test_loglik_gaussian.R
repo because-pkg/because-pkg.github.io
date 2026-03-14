@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 # Create simple test data
 set.seed(123)

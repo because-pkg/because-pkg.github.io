@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 # Create hierarchical test data
 # Individual level

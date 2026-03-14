@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 cat("=======================================================\n")
 cat("   HIERARCHICAL DATA D-SEPARATION VALIDATION TEST\n")

@@ -1,7 +1,7 @@
 # Test for Multiple Covariance Support (Phylo + Spatial)
 # Checks if parameters are recovered correctly from a model with two additive random effects.
 
-library(becauseR)
+library(because)
 library(ape)
 library(MASS) # For mvrnorm
 library(coda) # For summary.mcmc.list
@@ -43,7 +43,7 @@ equations <- list(Y ~ X)
 
 # 2. Fit Model
 # Pass list of structures
-# Note: becauseR expects Covariance-like objects (Tree or Matrix) and inverts them.
+# Note: because expects Covariance-like objects (Tree or Matrix) and inverts them.
 structure_list <- list(
     phylo = tree,
     spatial = V_spatial

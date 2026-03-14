@@ -2,7 +2,7 @@
 % Please edit documentation in R/mag_helpers.R
 \name{equations_to_dag}
 \alias{equations_to_dag}
-\title{Convert becauseR equations to ggm DAG adjacency matrix}
+\title{Convert because equations to ggm DAG adjacency matrix}
 \usage{
 equations_to_dag(equations, exclude_vars = NULL, deterministic_terms = NULL)
 }

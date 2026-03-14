@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 # Reproduce mixed distribution bug
 set.seed(123)

@@ -1,4 +1,4 @@
-# Test script for Poisson Optimization in becauseR
+# Test script for Poisson Optimization in because
 # Verifies correctness of the random effects formulation for Poisson models (log link)
 
 # Source local files

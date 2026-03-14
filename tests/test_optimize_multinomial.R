@@ -1,4 +1,4 @@
-# Test script for Multinomial Optimization in becauseR
+# Test script for Multinomial Optimization in because
 # Verifies correctness and speedup of the random effects formulation for multinomial models
 
 # Source local files

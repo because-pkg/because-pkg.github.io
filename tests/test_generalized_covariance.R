@@ -1,6 +1,6 @@
 # Test script for Generalized Covariance Support (Non-Phylogenetic & Custom Matrix)
 
-# library(becauseR)
+# library(because)
 devtools::load_all(".")
 library(ape)
 library(testthat)
@@ -19,7 +19,7 @@ eq <- list(y ~ x1)
 
 cat("--- Test 1: Independent Model (tree = NULL) ---\n")
 
-# Run becauseR with tree = NULL
+# Run because with tree = NULL
 fit_null <- because(
     data = data_df,
     tree = NULL,
@@ -40,7 +40,7 @@ summ_lm <- summary(fit_lm)
 beta_because <- mean(fit_null$samples[[1]][, "beta_y_x1"])
 beta_lm <- coef(fit_lm)["x1"]
 
-cat(sprintf("Beta (becauseR): %.3f\n", beta_because))
+cat(sprintf("Beta (because): %.3f\n", beta_because))
 cat(sprintf("Beta (lm):       %.3f\n", beta_lm))
 
 diff <- abs(beta_because - beta_lm)

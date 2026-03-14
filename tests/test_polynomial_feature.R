@@ -1,4 +1,4 @@
-library(becauseR)
+library(because)
 
 cat("=== Testing Polynomial Transformation Feature ===\n\n")
 

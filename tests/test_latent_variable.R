@@ -1,6 +1,6 @@
-# Test script for Latent Variable implementation in becauseR
+# Test script for Latent Variable implementation in because
 
-library(becauseR)
+library(because)
 library(ape)
 
 # 1. Simulate data with a latent common cause
