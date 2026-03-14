@@ -13,3 +13,10 @@ playground/
 docs
 file_storade_wd
 demo_stuff/
+*.log
+*.csv
+out.txt
+test_out.txt
+benchmark_*.txt
+*.rds
+tests/reproductions/
