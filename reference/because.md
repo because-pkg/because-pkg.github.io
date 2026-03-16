@@ -33,8 +33,7 @@ because(
   parallel = FALSE,
   n.cores = parallel::detectCores() - 1,
   cl = NULL,
-  ic_recompile = TRUE,
-  optimise = TRUE,
+  ic_recompile = FALSE,
   random = NULL,
   levels = NULL,
   hierarchy = NULL,
@@ -288,14 +287,6 @@ because(
   parallel chains to compute DIC/WAIC (default = TRUE). This adds a
   small sequential overhead but enables information criteria
   calculation.
-
-- optimise:
-
-  Logical; if `TRUE` (default), use the optimized random effects
-  formulation (e.g., for phylogenetic or spatial models). This is
-  significantly faster (5-10x) and more numerically stable. If `FALSE`,
-  use the traditional marginal formulation (slower, but provided for
-  comparison).
 
 - random:
 

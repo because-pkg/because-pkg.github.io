@@ -76,8 +76,7 @@
 <span>  parallel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  n.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span>,</span>
 <span>  cl <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ic_recompile <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  optimise <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  ic_recompile <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  random <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  levels <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  hierarchy <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -257,12 +256,6 @@ Only used when <code>parallel = TRUE</code>.</p></dd>
 <dd><p>Logical; if <code>TRUE</code> and <code>parallel = TRUE</code>, recompile the model
 after parallel chains to compute DIC/WAIC (default = TRUE).
 This adds a small sequential overhead but enables information criteria calculation.</p></dd>
-
-
-<dt id="arg-optimise">optimise<a class="anchor" aria-label="anchor" href="#arg-optimise"></a></dt>
-<dd><p>Logical; if <code>TRUE</code> (default), use the optimized random effects formulation
-(e.g., for phylogenetic or spatial models). This is significantly faster (5-10x) and more numerically stable.
-If <code>FALSE</code>, use the traditional marginal formulation (slower, but provided for comparison).</p></dd>
 
 
 <dt id="arg-random">random<a class="anchor" aria-label="anchor" href="#arg-random"></a></dt>

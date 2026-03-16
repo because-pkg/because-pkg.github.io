@@ -6,5 +6,5 @@ Method for Structure Data Preparation (Matrix)
 
 ``` r
 # S3 method for class 'matrix'
-prepare_structure_data(structure, data, optimize = TRUE, ...)
+prepare_structure_data(structure, data, ...)
 ```

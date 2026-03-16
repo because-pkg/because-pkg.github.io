@@ -21,7 +21,6 @@ because_model(
   induced_correlations = NULL,
   variability = NULL,
   family = NULL,
-  optimise = TRUE,
   standardize_latent = TRUE,
   poly_terms = NULL,
   latent = NULL,
@@ -83,11 +82,6 @@ because_model(
   values: "gaussian", "binomial", "multinomial". For "binomial"
   variables, the model uses a logit link and a Bernoulli likelihood,
   with phylogenetic correlation modeled on the latent scale.
-
-- optimise:
-
-  Logical. If TRUE (default), use random effects formulation for 4.6×
-  speedup. If FALSE, use original marginal covariance formulation.
 
 - standardize_latent:
 
@@ -164,25 +158,25 @@ cat(because_model(eqs, multi.tree = TRUE)$model)
 #>   }
 #>   # Multivariate normal likelihoods
 #>   u_std_BR_phylo[1:N] ~ dmnorm(zeros[1:N], Prec_phylo[1:N, 1:N, K])
-#>   for (i in 1:N) { u_BR_phylo[i] <- u_std_BR_phylo[i] / sqrt(tau_u_BR_phylo) }
+#>   u_BR_phylo[i] <- u_std_BR_phylo[i] / sqrt(tau_u_BR_phylo)
 #>   for (i in 1:N) {
 #>     BR[i] ~ dnorm(mu_BR[i] + u_BR_phylo[i], tau_e_BR)
 #>     log_lik_BR[i] <- logdensity.norm(BR[i], mu_BR[i] + u_BR_phylo[i], tau_e_BR)
 #>   }
 #>   u_std_S_phylo[1:N] ~ dmnorm(zeros[1:N], Prec_phylo[1:N, 1:N, K])
-#>   for (i in 1:N) { u_S_phylo[i] <- u_std_S_phylo[i] / sqrt(tau_u_S_phylo) }
+#>   u_S_phylo[i] <- u_std_S_phylo[i] / sqrt(tau_u_S_phylo)
 #>   for (i in 1:N) {
 #>     S[i] ~ dnorm(mu_S[i] + u_S_phylo[i], tau_e_S)
 #>     log_lik_S[i] <- logdensity.norm(S[i], mu_S[i] + u_S_phylo[i], tau_e_S)
 #>   }
 #>   u_std_G_phylo[1:N] ~ dmnorm(zeros[1:N], Prec_phylo[1:N, 1:N, K])
-#>   for (i in 1:N) { u_G_phylo[i] <- u_std_G_phylo[i] / sqrt(tau_u_G_phylo) }
+#>   u_G_phylo[i] <- u_std_G_phylo[i] / sqrt(tau_u_G_phylo)
 #>   for (i in 1:N) {
 #>     G[i] ~ dnorm(mu_G[i] + u_G_phylo[i], tau_e_G)
 #>     log_lik_G[i] <- logdensity.norm(G[i], mu_G[i] + u_G_phylo[i], tau_e_G)
 #>   }
 #>   u_std_L_phylo[1:N] ~ dmnorm(zeros[1:N], Prec_phylo[1:N, 1:N, K])
-#>   for (i in 1:N) { u_L_phylo[i] <- u_std_L_phylo[i] / sqrt(tau_u_L_phylo) }
+#>   u_L_phylo[i] <- u_std_L_phylo[i] / sqrt(tau_u_L_phylo)
 #>   for (i in 1:N) {
 #>     L[i] ~ dnorm(mu_L[i] + u_L_phylo[i], tau_e_L)
 #>     log_lik_L[i] <- logdensity.norm(L[i], mu_L[i] + u_L_phylo[i], tau_e_L)
