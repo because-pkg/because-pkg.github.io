@@ -19,3 +19,4 @@ A named list of data to be passed to JAGS (e.g., list(VCV = ...)).
 \description{
 Modules implement this to process the structure object into data for JAGS.
 }
+\keyword{internal}

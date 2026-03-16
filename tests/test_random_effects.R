@@ -89,7 +89,6 @@ test_that("Simulated Gaussian Random Effect Model runs and recovers parameters",
         n.iter = 2000,
         n.burnin = 500,
         n.thin = 2,
-        optimise = TRUE, # Should be default anyway
         quiet = TRUE
     )
 

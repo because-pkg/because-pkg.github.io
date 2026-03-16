@@ -16,7 +16,6 @@ because_model(
   induced_correlations = NULL,
   variability = NULL,
   family = NULL,
-  optimise = TRUE,
   standardize_latent = TRUE,
   poly_terms = NULL,
   latent = NULL,
@@ -52,9 +51,6 @@ If unnamed, it defaults to "se" for all specified variables.
 \item{family}{Optional named character vector specifying the family/distribution for response variables.
 Default is "gaussian" for all variables. Supported values: "gaussian", "binomial", "multinomial".
 For "binomial" variables, the model uses a logit link and a Bernoulli likelihood, with phylogenetic correlation modeled on the latent scale.}
-
-\item{optimise}{Logical. If TRUE (default), use random effects formulation for 4.6× speedup.
-If FALSE, use original marginal covariance formulation.}
 
 \item{standardize_latent}{Logical (default TRUE). If TRUE, standardizes latent variables to unit variance.}
 

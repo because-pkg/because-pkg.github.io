@@ -1291,7 +1291,7 @@ because_model <- function(
 
         # Check if this variable has missing data
         if (FALSE) {
-          # Dead code path for !optimise
+          # Legacy handling for Gaussian missing data
         } else {
           if (independent) {
             # Independent Model (No random effects)
@@ -2604,7 +2604,7 @@ because_model <- function(
           )
         )
       } else {
-        # Non-optimised: use Prec_<structure> directly
+        # Use Precision matrix directly
         prec_index <- if (is_multi_structure) {
           paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, ", K]")
         } else {
@@ -3615,7 +3615,7 @@ because_model <- function(
       dist <- dist_list[[response]] %||% "gaussian"
 
       # Skip TAU matrix for variables with missing data (using element-wise) or binomial error terms
-      # Only use legacy GLMM blocking if optimisation implies marginal approach (i.e. optimise=FALSE)
+      # Handle legacy GLMM blocking
       use_glmm <- (!is.null(vars_with_na) &&
         response %in% vars_with_na &&
         FALSE)
@@ -3907,7 +3907,7 @@ because_model <- function(
   }
 
   # Covariance for correlated vars (phylogenetic part)
-  # Only use VCV approach when optimise=FALSE; optimised models use eigendecomposition
+  # Optimised models use eigendecomposition
   if (!is.null(induced_correlations) && FALSE) {
     s_name <- if (length(structure_names) > 0) structure_names[1] else "struct"
     for (var in correlated_vars) {

@@ -19,3 +19,4 @@ A list with \code{model_string} and \code{nimble_functions} (list of nimbleFunct
 \description{
 Modules implement this to provide specialized NIMBLE optimizations (e.g. marginalization).
 }
+\keyword{internal}

@@ -4,12 +4,7 @@
 \alias{jags_structure_definition.matrix}
 \title{Method for JAGS Structure Definition (Matrix)}
 \usage{
-\method{jags_structure_definition}{matrix}(
-  structure,
-  variable_name = "err",
-  optimize = TRUE,
-  ...
-)
+\method{jags_structure_definition}{matrix}(structure, variable_name = "err", ...)
 }
 \description{
 Method for JAGS Structure Definition (Matrix)

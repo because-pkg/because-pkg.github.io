@@ -100,7 +100,6 @@ print("Testing model string generation...")
 model_output <- because_model(
     equations = list(Y ~ Trait),
     family = NULL,
-    optimise = TRUE,
     hierarchical_info = list(
         data = hierarchical_data,
         levels = auto_result$levels,

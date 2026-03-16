@@ -49,7 +49,6 @@ tryCatch(
         res <- because(
             equations = list(Y ~ Trait + I(Age^2)),
             data = list(Traits = Traits_df, Obs = Y_df),
-            optimise = TRUE,
             quiet = FALSE
         )
         print("SUCCESS: Model compiled!")

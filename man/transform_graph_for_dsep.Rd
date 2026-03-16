@@ -19,3 +19,4 @@ The transformed list of formulas.
 \description{
 Modules implement this to rename variables in the causal graph to match their latent structure.
 }
+\keyword{internal}

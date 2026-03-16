@@ -21,3 +21,4 @@ A list containing \code{model_code} (the likelihood block) and \code{monitor_par
 \description{
 Modules implement this method to inject specific JAGS model code for response families.
 }
+\keyword{internal}

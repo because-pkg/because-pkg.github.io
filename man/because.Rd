@@ -32,8 +32,7 @@ because(
   parallel = FALSE,
   n.cores = parallel::detectCores() - 1,
   cl = NULL,
-  ic_recompile = TRUE,
-  optimise = TRUE,
+  ic_recompile = FALSE,
   random = NULL,
   levels = NULL,
   hierarchy = NULL,
@@ -185,10 +184,6 @@ Only used when \code{parallel = TRUE}.}
 \item{ic_recompile}{Logical; if \code{TRUE} and \code{parallel = TRUE}, recompile the model
 after parallel chains to compute DIC/WAIC (default = TRUE).
 This adds a small sequential overhead but enables information criteria calculation.}
-
-\item{optimise}{Logical; if \code{TRUE} (default), use the optimized random effects formulation
-(e.g., for phylogenetic or spatial models). This is significantly faster (5-10x) and more numerically stable.
-If \code{FALSE}, use the traditional marginal formulation (slower, but provided for comparison).}
 
 \item{random}{Optional formula or list of formulas specifying global random effects
 applied to all equations (e.g. \code{~(1|species)}).}

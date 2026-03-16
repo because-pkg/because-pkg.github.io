@@ -2714,7 +2714,6 @@ because <- function(
     induced_correlations = induced_cors,
     latent = latent,
     standardize_latent = standardize_latent,
-    optimise = TRUE,
     structure_names = structure_names,
     structures = structures,
     random_structure_names = names(random_structures),

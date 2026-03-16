@@ -19,3 +19,4 @@ A list containing \code{setup_code} (e.g. priors, matrix inversion) and \code{er
 \description{
 Modules implement this method to inject their specific JAGS code for covariance structures.
 }
+\keyword{internal}

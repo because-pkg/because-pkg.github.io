@@ -4,7 +4,7 @@
 \alias{prepare_structure_data.matrix}
 \title{Method for Structure Data Preparation (Matrix)}
 \usage{
-\method{prepare_structure_data}{matrix}(structure, data, optimize = TRUE, ...)
+\method{prepare_structure_data}{matrix}(structure, data, ...)
 }
 \description{
 Method for Structure Data Preparation (Matrix)

@@ -110,7 +110,6 @@ run_test("Phylogenetic SEM with tree structure", {
         id_col = "SP",
         equations = list(Y ~ X),
         WAIC = TRUE,
-        optimise = TRUE,
         n.chains = 2,
         n.iter = 1000,
         quiet = TRUE
