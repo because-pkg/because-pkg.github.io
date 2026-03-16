@@ -35,8 +35,6 @@ summary.because <- function(
             Estimate = numeric(),
             LowerCI = numeric(),
             UpperCI = numeric(),
-            Indep = character(),
-            P = numeric(),
             Rhat = numeric(),
             n.eff = numeric(),
             stringsAsFactors = FALSE
@@ -215,25 +213,12 @@ summary.because <- function(
                         p_neff <- eff_size_i[param_name]
                     }
 
-                    # Independence check
-                    indep <- if (lower > 0 || upper < 0) "No" else "Yes"
-
-                    # P(~0)
-                    samples_matrix <- as.matrix(sub_samples)
-                    n_samples <- nrow(samples_matrix)
-                    param_samples <- samples_matrix[, param_name]
-                    n_above <- sum(param_samples > 0)
-                    n_below <- sum(param_samples < 0)
-                    p_approx_0 <- 2 * min(n_above, n_below) / n_samples
-
                     return(data.frame(
                         Test = test_str_base,
                         Parameter = param_name,
                         Estimate = round(est, 3),
                         LowerCI = round(lower, 3),
                         UpperCI = round(upper, 3),
-                        Indep = indep,
-                        P = round(p_approx_0, 3), # Renamed from P_approx_0
                         Rhat = round(p_rhat, 3),
                         n.eff = round(p_neff, 0),
                         stringsAsFactors = FALSE
@@ -409,15 +394,8 @@ print.summary.because <- function(x, ...) {
             # Print stats row without the Test column
             print(results[i, -1], row.names = FALSE)
             cat("\n")
+            cat("\n")
         }
-
-        cat("\nLegend:\n")
-        cat(
-            "  Indep: 'Yes' = Conditionally Independent, 'No' = Dependent (based on 95% CI)\n"
-        )
-        cat(
-            "  P: Bayesian probability that the posterior distribution overlaps with zero\n"
-        )
     } else {
         # Standard summary
         print(x$results)
