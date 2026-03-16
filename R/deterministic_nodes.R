@@ -129,7 +129,7 @@ sanitize_term_name <- function(term) {
 #' Transforms R syntax into JAGS-compatible deterministic code
 #'
 #' @param term Original R term (e.g., "A:B")
-#' @return JAGS expression (e.g., "A[i] * B[i]")
+#' @return JAGS expression (e.g., "A\\[i] * B\\[i]")
 #' @keywords internal
 term_to_jags_expression <- function(term) {
     # 1. Handle Interaction A:B -> A[i] * B[i]
@@ -193,7 +193,7 @@ term_to_jags_expression <- function(term) {
 
 #' Generate JAGS Code for Deterministic Nodes
 #'
-#' writers the 'Internal_Var[i] <- ...' lines
+#' writers the "Internal_Var\\[i] <- ..." lines
 #'
 #' @param deterministic_terms List from extract_deterministic_terms
 #' @return Vector of JAGS code strings

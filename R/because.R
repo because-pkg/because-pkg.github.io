@@ -247,6 +247,11 @@ because <- function(
     stop("Argument 'equations' must be provided.")
   }
 
+  # --- Clean Data: Ensure matrix (e.g. from scale()) is a data.frame ---
+  if (is.matrix(data)) {
+    data <- as.data.frame(data)
+  }
+
   # --- Clean Data: Coerce 1D matrices (e.g., from scale()) to vectors ---
   if (is.data.frame(data)) {
     for (nm in names(data)) {
