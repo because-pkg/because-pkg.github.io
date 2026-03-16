@@ -626,3 +626,71 @@ format_dsep_test <- function(test) {
     return(paste0("I( ", response, " , ", test_var, " | ", cond_set, " )"))
   }
 }
+
+#' Plot D-Separation Results
+#'
+#' Creates a caterpillar plot (point and whisker) of the regression coefficients
+#' from all d-separation tests. A horizontal red line at zero helps visually
+#' assess which independence claims are fulfilled (95% CI includes zero) or
+#' violated (95% CI excludes zero).
+#'
+#' @param object A `because` object fitted with \code{dsep = TRUE}.
+#' @param ... Additional arguments.
+#'
+#' @return A `ggplot` object.
+#' @export
+#' @importFrom ggplot2 ggplot aes geom_pointrange geom_hline coord_flip labs theme_minimal theme
+plot_dsep.because <- function(object, ...) {
+  if (is.null(object$dsep) || !object$dsep) {
+    stop("plot_dsep requires a 'because' object fitted with dsep = TRUE.")
+  }
+
+  # Use the summary function to extract results cleanly
+  # summary.because handles the complex renaming and dummy variable matching
+  s <- summary(object)
+
+  if (is.null(s$results) || nrow(s$results) == 0) {
+    stop("No d-separation test results found in model object.")
+  }
+
+  res <- s$results
+
+  # Ensure ggplot2 is available
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for plot_dsep. Please install it.")
+  }
+
+  # Create Plot
+  # We use the 'Test' string as Y axis, but we might want to clean it up or wrap it
+  # We use coord_flip to make it a horizontal caterpillar plot
+  p <- ggplot2::ggplot(
+    res,
+    ggplot2::aes(
+      x = stats::reorder(Test, seq_len(nrow(res))),
+      y = Estimate,
+      ymin = LowerCI,
+      ymax = UpperCI
+    )
+  ) +
+    ggplot2::geom_hline(
+      yintercept = 0,
+      color = "firebrick",
+      linetype = "dashed",
+      linewidth = 0.8
+    ) +
+    ggplot2::geom_pointrange(size = 0.6, fatten = 2) +
+    ggplot2::coord_flip() +
+    ggplot2::labs(
+      title = "d-separation Independence Tests",
+      subtitle = "Caterpillar plot of path coefficients with 95% Bayesian Credibility Intervals",
+      x = "Conditional Independence Claim",
+      y = "Estimated Beta (Effect Size)"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      axis.text.y = ggplot2::element_text(family = "mono", size = 9),
+      panel.grid.minor = ggplot2::element_blank()
+    )
+
+  return(p)
+}

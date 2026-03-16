@@ -5,6 +5,7 @@
 #' @param variable_name Name of the error variable (default "err").
 #' @param ... Additional arguments.
 #' @return A list containing `setup_code` (e.g. priors, matrix inversion) and `error_prior` (the likelihood/prior definition for residuals).
+#' @keywords internal
 #' @export
 jags_structure_definition <- function(structure, variable_name = "err", ...) {
     UseMethod("jags_structure_definition")
@@ -17,6 +18,7 @@ jags_structure_definition <- function(structure, variable_name = "err", ...) {
 #' @param data The model data.
 #' @param ... Additional arguments.
 #' @return A named list of data to be passed to JAGS (e.g., list(VCV = ...)).
+#' @keywords internal
 #' @export
 prepare_structure_data <- function(structure, data, ...) {
     UseMethod("prepare_structure_data")
@@ -30,6 +32,7 @@ prepare_structure_data <- function(structure, data, ...) {
 #' @param predictors Character vector of predictor names.
 #' @param ... Additional arguments.
 #' @return A list containing `model_code` (the likelihood block) and `monitor_params`.
+#' @keywords internal
 #' @export
 jags_family_definition <- function(family, response, predictors, ...) {
     UseMethod("jags_family_definition")
@@ -42,6 +45,7 @@ jags_family_definition <- function(family, response, predictors, ...) {
 #' @param equations The list of structural formulas.
 #' @param ... Additional arguments.
 #' @return The transformed list of formulas.
+#' @keywords internal
 #' @export
 transform_graph_for_dsep <- function(family, equations, ...) {
     UseMethod("transform_graph_for_dsep")
@@ -54,9 +58,20 @@ transform_graph_for_dsep <- function(family, equations, ...) {
 #' @param model_string The current model code string.
 #' @param ... Additional arguments.
 #' @return A list with \code{model_string} and \code{nimble_functions} (list of nimbleFunction).
+#' @keywords internal
 #' @export
 nimble_family_optimization <- function(family, model_string, ...) {
     UseMethod("nimble_family_optimization")
+}
+
+#' Plot D-Separation Tests
+#'
+#' Visualizes the results of d-separation tests as a caterpillar plot.
+#' @param object A `because` object fitted with `dsep = TRUE`.
+#' @param ... Additional arguments.
+#' @export
+plot_dsep <- function(object, ...) {
+    UseMethod("plot_dsep")
 }
 
 #' Method for Structure Data Preparation (Matrix)
@@ -64,7 +79,6 @@ nimble_family_optimization <- function(family, model_string, ...) {
 prepare_structure_data.matrix <- function(
     structure,
     data,
-    optimize = TRUE,
     ...
 ) {
     # Treat matrix as covariance, invert to get Precision
@@ -77,7 +91,6 @@ prepare_structure_data.matrix <- function(
 jags_structure_definition.matrix <- function(
     structure,
     variable_name = "err",
-    optimize = TRUE,
     ...
 ) {
     # Matrix structures use dmnorm with the provided Precision matrix

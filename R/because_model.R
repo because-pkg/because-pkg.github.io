@@ -47,8 +47,6 @@
 #' eqs <- list(BR ~ BM, S ~ BR, G ~ BR, L ~ BR)
 #' cat(because_model(eqs, multi.tree = TRUE)$model)
 #'
-#' @param optimise Logical. If TRUE (default), use random effects formulation for 4.6× speedup.
-#'   If FALSE, use original marginal covariance formulation.
 #' @param standardize_latent Logical (default TRUE). If TRUE, standardizes latent variables to unit variance.
 #' @param structure_names (Internal) Character vector of names for multiple trees/structures.
 #' @param latent Optional character vector of latent variable names.
@@ -70,7 +68,6 @@ because_model <- function(
   induced_correlations = NULL,
   variability = NULL,
   family = NULL,
-  optimise = TRUE,
   standardize_latent = TRUE,
   poly_terms = NULL,
   latent = NULL,
@@ -506,7 +503,7 @@ because_model <- function(
       # Dispatch to S3 generic
       def <- jags_structure_definition(
         structures[[s_name]],
-        optimize = optimise
+        optimize = TRUE
       )
       if (!is.null(def$setup_code)) {
         model_lines <- c(model_lines, def$setup_code)
@@ -1293,51 +1290,8 @@ because_model <- function(
         tau_scalar <- paste0("tau", response, suffix)
 
         # Check if this variable has missing data
-        if (!is.null(vars_with_na) && response %in% vars_with_na && !optimise) {
-          # Use Latent Variable (GLMM) approach for missing data (Only if optimisation disabled)
-          # Y[i] ~ dnorm(mu[i] + err[i], tau_res)
-          # err[1:N] ~ dmnorm(0, tau_phylo * inv(VCV))
-
-          err <- paste0("err_", response, suffix)
-          mu_err <- paste0("mu_err_", response, suffix)
-          tau_res <- paste0("tau_res_", response, suffix)
-
-          model_lines <- c(
-            model_lines,
-            paste0(
-              "  # GLMM likelihood for missing data (preserves phylo signal)"
-            ),
-            paste0("  for (i in 1:", loop_bound, ") {"),
-            paste0(
-              "    ",
-              response_var,
-              "[i] ~ dnorm(",
-              mu,
-              "[i] + ",
-              err,
-              "[i], ",
-              tau_res,
-              ")"
-            )
-          )
-          model_lines <- c(
-            model_lines,
-            paste0(
-              "    log_lik_",
-              response,
-              suffix,
-              "[i] <- logdensity.norm(",
-              response_var,
-              "[i], ",
-              mu,
-              "[i] + ",
-              err,
-              "[i], ",
-              tau_res,
-              ")"
-            ),
-            paste0("  }")
-          )
+        if (FALSE) {
+          # Dead code path for !optimise
         } else {
           if (independent) {
             # Independent Model (No random effects)
@@ -1377,7 +1331,7 @@ because_model <- function(
               )
             }
             model_lines <- c(model_lines, paste0("  }"))
-          } else if (optimise) {
+          } else {
             # Optimized Random Effects Formulation (Additive)
             additive_terms <- ""
 
@@ -1416,7 +1370,7 @@ because_model <- function(
               def <- jags_structure_definition(
                 structures[[s_name]],
                 variable_name = u_std,
-                optimize = optimise,
+                optimize = TRUE,
                 precision_parameter = tau_u
               )
 
@@ -1449,9 +1403,7 @@ because_model <- function(
                   ")"
                 ),
                 paste0(
-                  "  for (i in 1:",
-                  loop_bound,
-                  ") { ",
+                  "  ",
                   u,
                   "[i] <- ",
                   u_std,
@@ -1459,7 +1411,7 @@ because_model <- function(
                   get_struct_index(s_name, response, hierarchical_info),
                   "] / sqrt(",
                   tau_u,
-                  ") }"
+                  ")"
                 )
               )
               additive_terms <- paste0(additive_terms, " + ", u, "[i]")
@@ -1614,57 +1566,6 @@ because_model <- function(
               )
             }
             model_lines <- c(model_lines, paste0("  }"))
-          } else {
-            # Standard MVN for complete data (Marginal)
-            # Note: dmnorm is joint, so we compute pointwise log-lik separately
-            model_lines <- c(
-              model_lines,
-              paste0(
-                "  ",
-                response_var,
-                "[1:",
-                loop_bound,
-                "] ~ dmnorm(",
-                mu,
-                "[1:",
-                loop_bound,
-                "], ",
-                tau,
-                ")"
-              )
-            )
-            model_lines <- c(
-              model_lines,
-              "  # Pointwise log-likelihood for MVN",
-              paste0("  for (i in 1:", loop_bound, ") {"),
-              paste0(
-                "    tau_marg_",
-                response,
-                suffix,
-                "[i] <- ",
-                tau,
-                "[i, i]  # Extract diagonal precision (marginal variance)"
-              )
-            )
-            if (engine == "jags") {
-              model_lines <- c(
-                model_lines,
-                paste0(
-                  "    log_lik_",
-                  response,
-                  suffix,
-                  "[i] <- logdensity.norm(",
-                  response_var,
-                  "[i], ",
-                  mu,
-                  "[i], tau_marg_",
-                  response,
-                  suffix,
-                  "[i])"
-                )
-              )
-            }
-            model_lines <- c(model_lines, paste0("  }"))
           }
         }
       } else if (dist == "binomial") {
@@ -1681,7 +1582,7 @@ because_model <- function(
             paste0("    ", err, "[i] <- 0"),
             paste0("  }")
           )
-        } else if (optimise) {
+        } else {
           # Optimized Random Effects Formulation
           epsilon <- paste0("epsilon_", response, suffix)
           tau_e <- paste0("tau_e_", response, suffix)
@@ -1713,7 +1614,7 @@ because_model <- function(
             def <- jags_structure_definition(
               structures[[s_name]],
               variable_name = u_std,
-              optimize = optimise,
+              optimize = TRUE,
               precision_parameter = tau_u
             )
 
@@ -1864,23 +1765,6 @@ because_model <- function(
             paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
             paste0("  }")
           )
-        } else {
-          # Marginal Formulation (original)
-          mu_err <- paste0("mu_err_", response, suffix)
-          model_lines <- c(
-            model_lines,
-            paste0(
-              "  ",
-              err,
-              "[1:",
-              eq_loop_N,
-              "] ~ dmnorm(",
-              mu_err,
-              "[], ",
-              tau,
-              ")"
-            )
-          )
         }
       } else if (dist == "multinomial") {
         # Multinomial error terms: err[1:N, k]
@@ -1902,7 +1786,7 @@ because_model <- function(
             paste0("    }"),
             paste0("  }")
           )
-        } else if (optimise) {
+        } else {
           # Optimised Random Effects Formulation for Multinomial
           epsilon <- paste0("epsilon_", response, suffix)
           tau_e <- paste0("tau_e_", response, suffix)
@@ -2067,24 +1951,6 @@ because_model <- function(
             paste0("    }"),
             paste0("  }")
           )
-        } else {
-          model_lines <- c(
-            model_lines,
-            paste0("  # Multinomial phylogenetic errors for ", response),
-            paste0("  for (k in 2:", K_var, ") {"),
-            paste0(
-              "    ",
-              err,
-              "[1:",
-              eq_loop_N,
-              ", k] ~ dmnorm(zero_vec[], TAU_",
-              tolower(response),
-              "_",
-              suffix,
-              "[,,k])"
-            ),
-            "  }"
-          )
         }
       } else if (dist == "ordinal") {
         # Ordinal error term: err[1:N]
@@ -2201,7 +2067,7 @@ because_model <- function(
             paste0("    ", err, "[i] <- 0", total_mag),
             paste0("  }")
           )
-        } else if (optimise) {
+        } else {
           # Optimized Random Effects
           epsilon <- paste0("epsilon_", response, suffix)
           tau_e <- paste0("tau_e_", response, suffix)
@@ -2379,47 +2245,6 @@ because_model <- function(
             paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
             paste0("  }")
           )
-        } else {
-          # Non-optimised Poisson (Marginal or Latent)
-          mag_terms <- vars_error_terms[[response]]
-          total_mag <- if (length(mag_terms) > 0) {
-            paste0(" + ", paste(mag_terms, collapse = " + "))
-          } else {
-            ""
-          }
-
-          if (independent) {
-            # handled above, but just in case
-          } else {
-            # Standard GLMM definition of err
-            model_lines <- c(
-              model_lines,
-              paste0("  # Non-optimised error for Poisson: ", response),
-              paste0(
-                "  ",
-                err,
-                "[1:",
-                eq_loop_N,
-                "] ~ dmnorm(zero_vec[], ",
-                tau,
-                ")"
-              ),
-              paste0("  for (i in 1:", eq_loop_N, ") {"),
-              paste0(
-                "    err_combined_",
-                response,
-                suffix,
-                "[i] <- ",
-                err,
-                "[i]",
-                total_mag
-              ),
-              paste0("  }")
-            )
-            # Need to update the likelihood logic to use err_combined if needed,
-            # but for now let's just definition err[i] directly if possible.
-            # Actually, err[i] ~ dmnorm is a vector.
-          }
         }
       } else if (dist == "occupancy") {
         # Occupancy Model (Single-Season)
@@ -2436,7 +2261,7 @@ because_model <- function(
         total_u <- ""
         # Initialize structure effect accumulator
         total_u <- ""
-        if (optimise && !is.null(structures)) {
+        if (!is.null(structures)) {
           for (s_name in names(structures)) {
             s_lvl <- get_struct_lvl(s_name, hierarchical_info)
             s_bound <- if (is.null(s_lvl)) {
@@ -2462,7 +2287,7 @@ because_model <- function(
             def <- jags_structure_definition(
               structures[[s_name]],
               variable_name = u_var,
-              optimize = optimise,
+              optimize = TRUE,
               precision_parameter = tau_u
             )
 
@@ -2550,7 +2375,7 @@ because_model <- function(
         # Single phylogenetic effect (like Poisson/ordinal)
         err <- paste0("err_", response, suffix)
 
-        if (optimise) {
+        if (TRUE) {
           # Optimized Random Effects
           epsilon <- paste0("epsilon_", response, suffix)
           tau_e <- paste0("tau_e_", response, suffix)
@@ -2745,7 +2570,7 @@ because_model <- function(
       prec_name <- paste0("Prec_", s_name)
       err_phylo <- paste0("err_", s_name, "_", var)
 
-      if (optimise) {
+      if (TRUE) {
         # Optimised: use Prec_<structure> (for MAG/induced correlations)
         prec_index <- if (is_multi_structure) {
           paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, ", K]")
@@ -3074,12 +2899,12 @@ because_model <- function(
           "ordinal"
         )
       needs_random_variance <- !independent &&
-        optimise &&
+        TRUE &&
         (length(structure_names) > 0 || length(random_structure_names) > 0) &&
         dist != "occupancy"
 
       if (
-        (is.null(vars_with_na) || !response %in% vars_with_na || optimise) &&
+        (is.null(vars_with_na) || !response %in% vars_with_na || TRUE) &&
           (needs_residual_variance || needs_random_variance) &&
           !is_occupancy_aux
       ) {
@@ -3133,7 +2958,7 @@ because_model <- function(
               ")"
             )
           )
-        } else if (optimise) {
+        } else {
           # Component-wise: Estimate independent variance components
           # Note: We now use this even for single structure to match the restored model logic
           if (
@@ -3274,28 +3099,6 @@ because_model <- function(
               )
             )
           }
-        } else {
-          # Marginal Priors (lambda, tau)
-          model_lines <- c(
-            model_lines,
-            paste0(
-              "  ",
-              get_prior(paste0("lambda", response, suffix), "dunif(0, 1)")
-            ),
-            paste0(
-              "  ",
-              get_precision_prior(paste0("tau", response, suffix), response)
-            ),
-            paste0(
-              "  sigma",
-              response,
-              suffix,
-              " <- 1/sqrt(tau",
-              response,
-              suffix,
-              ")"
-            )
-          )
         }
       }
     }
@@ -3344,7 +3147,7 @@ because_model <- function(
           tau_line,
           "  }"
         )
-      } else if (optimise) {
+      } else {
         if (
           !is.null(fix_residual_variance) &&
             (response %in%
@@ -3469,12 +3272,8 @@ because_model <- function(
               response,
               "[k]))"
             )
-          } else {
-            NULL
-          },
-          "  }"
+          }
         )
-      } else {
         model_lines <- c(
           model_lines,
           paste0("  # Priors for ", response, " (Multinomial)"),
@@ -3819,10 +3618,10 @@ because_model <- function(
       # Only use legacy GLMM blocking if optimisation implies marginal approach (i.e. optimise=FALSE)
       use_glmm <- (!is.null(vars_with_na) &&
         response %in% vars_with_na &&
-        !optimise)
+        FALSE)
 
       if (dist == "gaussian" && !use_glmm) {
-        if (!optimise) {
+        if (FALSE) {
           if (multi.tree) {
             model_lines <- c(
               model_lines,
@@ -3971,7 +3770,7 @@ because_model <- function(
         }
       } else if (dist == "binomial") {
         # GLMM covariance for binomial error term
-        if (!optimise) {
+        if (FALSE) {
           # Marginal Formulation
           if (multi.tree) {
             model_lines <- c(
@@ -4031,7 +3830,7 @@ because_model <- function(
             )
           }
         }
-        # tau_u priors for optimise=TRUE are already generated in the main priors block (lines ~2293-2311)
+        # tau_u priors for optimized model are already generated in the main priors block
         # No need to duplicate here.
       } else if (dist == "occupancy") {
         # Occupancy priors are handled by the generic loop above (lines 2243+ for structures)
@@ -4041,7 +3840,7 @@ because_model <- function(
         # We need TAU[,,k] for each k
         K_var <- paste0("K_", response)
 
-        if (!optimise) {
+        if (FALSE) {
           # k=1 is reference category (fixed to identity)
           # k>=2 have estimated phylogenetic signal
           if (multi.tree) {
@@ -4109,7 +3908,7 @@ because_model <- function(
 
   # Covariance for correlated vars (phylogenetic part)
   # Only use VCV approach when optimise=FALSE; optimised models use eigendecomposition
-  if (!is.null(induced_correlations) && !optimise) {
+  if (!is.null(induced_correlations) && FALSE) {
     s_name <- if (length(structure_names) > 0) structure_names[1] else "struct"
     for (var in correlated_vars) {
       if (is_multi_structure) {
@@ -4202,7 +4001,7 @@ because_model <- function(
           paste0("  }")
         )
       }
-    } else if (optimise) {
+    } else {
       # Optimized Random Effects Formulation for Predictors (Additive)
 
       # If latent variable with standardize_latent = TRUE, use simple N(0,1) prior
@@ -4236,7 +4035,7 @@ because_model <- function(
             def <- jags_structure_definition(
               structures[[s_name]],
               variable_name = u_var,
-              optimize = optimise,
+              optimize = TRUE,
               precision_parameter = tau_u
             )
 
@@ -4271,62 +4070,20 @@ because_model <- function(
           paste0("  }")
         )
       }
-    } else {
-      # Standard MVN (Marginal)
-      # If latent variable with standardize_latent = TRUE, use simple N(0,1) prior
-      if (is_latent && standardize_latent) {
-        model_lines <- c(
-          model_lines,
-          paste0("  for (i in 1:N) {"),
-          paste0(
-            "    ",
-            var,
-            "[i] ~ dnorm(0, 1)  # Standardized latent variable"
-          ),
-          paste0("  }")
-        )
-      } else {
-        model_lines <- c(
-          model_lines,
-          paste0(
-            "  ",
-            var,
-            "[1:N] ~ dmnorm(mu",
-            var,
-            "[1:N], TAU",
-            tolower(var),
-            ")"
-          )
-        )
-      }
     }
 
     # For latent variables, fix tau = 1 (standardize)
     # For observed predictors, estimate tau
     # Skip if standardize_latent = TRUE (variance already set in N(0,1) prior)
     if (is_latent && !standardize_latent) {
-      if (optimise) {
-        model_lines <- c(
-          model_lines,
-          paste0("  # Latent variable: standardized (var = 1)"),
-          paste0("  lambda", var, " ~ dunif(0, 1)"),
-          # In random effects: Var = (1/tau_u)*V + (1/tau_e)*I
-          # We want Var = lambda*V + (1-lambda)*I
-          # So 1/tau_u = lambda => tau_u = 1/lambda
-          # And 1/tau_e = 1-lambda => tau_e = 1/(1-lambda)
-          paste0("  tau_u_", var, " <- 1/lambda", var),
-          paste0("  tau_e_", var, " <- 1/(1-lambda", var, ")"),
-          paste0("  sigma", var, " <- 1") # Fixed to 1
-        )
-      } else {
-        model_lines <- c(
-          model_lines,
-          paste0("  # Latent variable: standardized (var = 1)"),
-          paste0("  lambda", var, " ~ dunif(0, 1)"),
-          paste0("  tau", var, " <- 1  # Fixed for identification"),
-          paste0("  sigma", var, " <- 1/sqrt(tau", var, ")")
-        )
-      }
+      model_lines <- c(
+        model_lines,
+        paste0("  # Latent variable: standardized (var = 1)"),
+        paste0("  lambda", var, " ~ dunif(0, 1)"),
+        paste0("  tau_u_", var, " <- 1/lambda", var),
+        paste0("  tau_e_", var, " <- 1/(1-lambda", var, ")"),
+        paste0("  sigma", var, " <- 1") # Fixed to 1
+      )
     } else if (is_latent && standardize_latent) {
       # No variance parameters needed - already specified in N(0,1) prior
       model_lines <- c(
@@ -4369,7 +4126,7 @@ because_model <- function(
           tau_line,
           paste0("  sigma", var, " <- 1/sqrt(tau_e_", var, ")")
         )
-      } else if (optimise) {
+      } else {
         if (TRUE) {
           if (
             !is.null(fix_residual_variance) &&
@@ -4451,68 +4208,14 @@ because_model <- function(
               paste0("  ", get_precision_prior(paste0("tau", var), var)),
               paste0("  tau_u_", var, " <- tau", var, "/lambda", var),
               paste0("  tau_e_", var, " <- tau", var, "/(1-lambda", var, ")"),
-              paste0("  sigma", var, " <- 1/sqrt(tau", var, ")")
             )
           }
         }
-      } else {
-        # Single Structure Case for Imputed Variable
-        s_name <- structure_names[1]
-        s_suffix <- paste0("_", s_name)
-        tau_u <- paste0("tau_u_", var, s_suffix)
-
-        # Need to define tau_u for this variable
-        model_lines <- c(
-          model_lines,
-          paste0("  ", get_precision_prior(tau_u, var)),
-          paste0("  sigma_", var, s_suffix, " <- 1/sqrt(", tau_u, ")")
-        )
-
-        # Also generate tau_e if needed (same logic as above)
-        if (
-          !is.null(fix_residual_variance) &&
-            (var %in%
-              names(fix_residual_variance) ||
-              length(fix_residual_variance) == 1)
-        ) {
-          val <- if (var %in% names(fix_residual_variance)) {
-            fix_residual_variance[[var]]
-          } else {
-            fix_residual_variance[[1]]
-          }
-          prec <- 1 / val
-          model_lines <- c(
-            model_lines,
-            paste0("  tau_e_", var, " <- ", prec, " # Fixed")
-          )
-        } else {
-          model_lines <- c(
-            model_lines,
-            paste0("  ", get_precision_prior(paste0("tau_e_", var), var))
-          )
-        }
-
-        # Calculate lambda for compatibility
-        model_lines <- c(
-          model_lines,
-          paste0(
-            "  lambda",
-            var,
-            s_suffix,
-            " <- (1/",
-            tau_u,
-            ") / ((1/",
-            tau_u,
-            ") + (1/tau_e_",
-            var,
-            "))"
-          )
-        )
       }
     }
 
     # Only generate TAU matrix with VCV when there is a structure defined
-    if (!optimise && length(structure_names) > 0) {
+    if (FALSE && length(structure_names) > 0) {
       if (multi.tree) {
         model_lines <- c(
           model_lines,

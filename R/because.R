@@ -124,9 +124,6 @@
 #' @param ic_recompile Logical; if \code{TRUE} and \code{parallel = TRUE}, recompile the model
 #'   after parallel chains to compute DIC/WAIC (default = TRUE).
 #'   This adds a small sequential overhead but enables information criteria calculation.
-#' @param optimise Logical; if \code{TRUE} (default), use the optimized random effects formulation
-#'   (e.g., for phylogenetic or spatial models). This is significantly faster (5-10x) and more numerically stable.
-#'   If \code{FALSE}, use the traditional marginal formulation (slower, but provided for comparison).
 #' @param random Optional formula or list of formulas specifying global random effects
 #'   applied to all equations (e.g. \code{~(1|species)}).
 #' @param levels (Hierarchical Data) A named list mapping variables to their hierarchy levels.
@@ -197,8 +194,7 @@ because <- function(
   parallel = FALSE,
   n.cores = parallel::detectCores() - 1,
   cl = NULL,
-  ic_recompile = TRUE,
-  optimise = TRUE,
+  ic_recompile = FALSE,
   random = NULL, # Global random effects applied to all equations
   levels = NULL, # Hierarchical data: variable-to-level mapping
   hierarchy = NULL, # Hierarchical data: level ordering (e.g., "site > individual")
@@ -659,80 +655,55 @@ because <- function(
       }
     }
 
-    if (optimise && is_hierarchical) {
-      # Include dummy variables in eq_vars so they are extracted by prepare_hierarchical_jags_data
-      if (!is.null(attr(data, "categorical_vars"))) {
-        cat_vars <- attr(data, "categorical_vars")
-        # Extract RHS variables to identify which categorical vars are used as predictors
-        rhs_vars <- unique(unlist(lapply(equations, function(eq) {
-          if (length(eq) == 3) {
-            all.vars(eq[[3]])
-          } else {
-            character(0)
-          }
-        })))
-
-        for (cv_name in names(cat_vars)) {
-          if (cv_name %in% rhs_vars) {
-            # Add dummies to eq_vars
-            eq_vars <- c(eq_vars, cat_vars[[cv_name]]$dummies)
-          }
+    # Include dummy variables in eq_vars so they are extracted by prepare_hierarchical_jags_data
+    if (!is.null(attr(data, "categorical_vars"))) {
+      cat_vars <- attr(data, "categorical_vars")
+      # Extract RHS variables to identify which categorical vars are used as predictors
+      rhs_vars <- unique(unlist(lapply(equations, function(eq) {
+        if (length(eq) == 3) {
+          all.vars(eq[[3]])
+        } else {
+          character(0)
         }
-        eq_vars <- unique(eq_vars)
+      })))
+
+      for (cv_name in names(cat_vars)) {
+        if (cv_name %in% rhs_vars) {
+          # Add dummies to eq_vars
+          eq_vars <- c(eq_vars, cat_vars[[cv_name]]$dummies)
+        }
       }
-
-      # NEW PATH: Fully Hierarchical (Separate Loops)
-      # Do NOT flatten. Prepare separate vectors and indices.
-
-      prep_res <- prepare_hierarchical_jags_data(hierarchical_info, eq_vars)
-      data <- prep_res$data_list
-
-      # Restore categorical_vars attribute lost during list conversion
-      if (exists("cat_vars") && !is.null(cat_vars)) {
-        attr(data, "categorical_vars") <- cat_vars
-      }
-
-      # Add sample sizes to data list
-      data <- c(data, prep_res$n_vec)
-
-      if (!quiet) {
-        message(
-          "Prepared hierarchical data for JAGS: ",
-          paste(
-            names(prep_res$n_vec),
-            unlist(prep_res$n_vec),
-            sep = "=",
-            collapse = ", "
-          )
-        )
-      }
-
-      # original_data remains the list of dataframes for safety
-      original_data <- hierarchical_info$data
-    } else {
-      # OLD PATH: Flatten everything (or if not optimised?)
-      # Get assembled dataset with all needed variables
-      data <- get_data_for_variables(
-        eq_vars,
-        hierarchical_info$data,
-        hierarchical_info$levels,
-        hierarchical_info$hierarchy,
-        hierarchical_info$link_vars
-      )
-
-      # Update original_data for later use
-      original_data <- data
-
-      if (!quiet) {
-        message(
-          "Assembled hierarchical data (flattened): ",
-          nrow(data),
-          " observations, ",
-          ncol(data),
-          " variables"
-        )
-      }
+      eq_vars <- unique(eq_vars)
     }
+
+    # NEW PATH: Fully Hierarchical (Separate Loops)
+    # Do NOT flatten. Prepare separate vectors and indices.
+
+    prep_res <- prepare_hierarchical_jags_data(hierarchical_info, eq_vars)
+    data <- prep_res$data_list
+
+    # Restore categorical_vars attribute lost during list conversion
+    if (exists("cat_vars") && !is.null(cat_vars)) {
+      attr(data, "categorical_vars") <- cat_vars
+    }
+
+    # Add sample sizes to data list
+    data <- c(data, prep_res$n_vec)
+
+    if (!quiet) {
+      message(
+        "Prepared hierarchical data for JAGS: ",
+        paste(
+          names(prep_res$n_vec),
+          unlist(prep_res$n_vec),
+          sep = "=",
+          collapse = ", "
+        )
+      )
+    }
+
+    # original_data remains the list of dataframes for safety
+    original_data <- hierarchical_info$data
   }
 
   # --- Data Validation ---
@@ -782,14 +753,7 @@ because <- function(
   # --- Random Effects Data Prep (Post-Assembly) ---
   # Create structures for JAGS using the assembled data
   if (length(random_terms) > 0) {
-    if (is.null(optimise) & is.null(tree)) {
-      optimise <- TRUE
-    }
-
-    if (is_hierarchical && !is.data.frame(data) && !optimise) {
-      # Should not happen if assembly worked, but safety check for flattened path
-      stop("Failed to assemble hierarchical data frame for random effects.")
-    }
+    rand_structs <- create_group_structures(data, random_terms)
 
     if (!quiet) {}
     rand_structs <- create_group_structures(data, random_terms)
@@ -889,7 +853,7 @@ because <- function(
 
   if (
     (is.data.frame(data) || (is.list(data) && !is.data.frame(data))) &&
-      !(is_hierarchical && optimise)
+      !is_hierarchical
   ) {
     # Extract all variable names from fixed equations
     eq_vars <- unique(unlist(lapply(equations, all.vars)))
@@ -1035,7 +999,7 @@ because <- function(
   } else {
     # If optimized hierarchical path was taken, we skipped the big block above.
     # We MUST merge random data updates (Prec matrices) now.
-    if (optimise && is_hierarchical) {
+    if (is_hierarchical) {
       if (length(random_data_updates) > 0) {
         for (nm in names(random_data_updates)) {
           if (!is.null(nm) && nm != "") {
@@ -1184,7 +1148,7 @@ because <- function(
       prep_res <- prepare_structure_data(
         structure_obj,
         data = data,
-        optimize = optimise,
+        optimize = TRUE,
         quiet = quiet
       )
 
@@ -1268,7 +1232,8 @@ because <- function(
       hierarchical_info$structure_levels <- structure_levels
     }
 
-    if (optimise) {
+    # Optimized formulation is always used
+    if (TRUE) {
       if (is.null(N) && "N" %in% names(data)) {
         N <- if (is.list(data)) data$N[1] else data[["N"]][1]
       } # Last resort
@@ -2749,7 +2714,7 @@ because <- function(
     induced_correlations = induced_cors,
     latent = latent,
     standardize_latent = standardize_latent,
-    optimise = optimise,
+    optimise = TRUE,
     structure_names = structure_names,
     structures = structures,
     random_structure_names = names(random_structures),
@@ -2761,7 +2726,7 @@ because <- function(
       NULL
     },
     priors = priors,
-    hierarchical_info = if (is_hierarchical && optimise) {
+    hierarchical_info = if (is_hierarchical) {
       hierarchical_info
     } else {
       NULL
