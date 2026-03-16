@@ -16,8 +16,8 @@
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Bayesian Estimation of Causal Effects">
-<meta name="description" content="Provides tools for specifying and fitting Bayesian Structural Equation Models using JAGS. The because package allows causal inference in complex ecological and evolutionary analyses, accounting for phylogenetic uncertainty (through the because.phybase extension), spatial autocorrelation, and other covariance structures.">
-<meta property="og:description" content="Provides tools for specifying and fitting Bayesian Structural Equation Models using JAGS. The because package allows causal inference in complex ecological and evolutionary analyses, accounting for phylogenetic uncertainty (through the because.phybase extension), spatial autocorrelation, and other covariance structures.">
+<meta name="description" content="Provides tools for specifying and fitting Bayesian Structural Equation Models using JAGS or NIMBLE. The because package allows causal inference in complex ecological and evolutionary analyses, accounting for phylogenetic uncertainty (through the because.phybase extension), spatial autocorrelation, and other covariance structures.">
+<meta property="og:description" content="Provides tools for specifying and fitting Bayesian Structural Equation Models using JAGS or NIMBLE. The because package allows causal inference in complex ecological and evolutionary analyses, accounting for phylogenetic uncertainty (through the because.phybase extension), spatial autocorrelation, and other covariance structures.">
 <meta property="og:image" content="https://because-pkg.github.io/because/logo.png">
 </head>
 <body>
@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -46,6 +46,7 @@
     <li><a class="dropdown-item" href="articles/03_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
     <li><a class="dropdown-item" href="articles/04_mediation.html">Mediation Analysis</a></li>
     <li><a class="dropdown-item" href="articles/05_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
+    <li><a class="dropdown-item" href="articles/06_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
     <li><a class="dropdown-item" href="articles/extensions.html">Extensions</a></li>
   </ul>
 </li>
@@ -71,7 +72,7 @@
 <div class="section level3">
 <h3 id="bayesian-estimation-of-causal-effects">Bayesian Estimation of Causal Effects<a class="anchor" aria-label="anchor" href="#bayesian-estimation-of-causal-effects"></a>
 </h3>
-<p><code>because</code> provides a unified framework for specifying and fitting Bayesian structural equation models in <code>R</code> using <a href="http://mcmc-jags.sourceforge.net" class="external-link">JAGS</a>. The focus of <code>because</code> is on causal inference, providing tools to facilitate the correct estimation and testng of direct and indirect causal effects in complex systems and quantify uncertainty in the estimates.</p>
+<p><code>because</code> provides a unified framework for specifying and fitting Bayesian structural equation models in <code>R</code> using <a href="http://mcmc-jags.sourceforge.net" class="external-link">JAGS</a> or <a href="https://r-nimble.org" class="external-link">NIMBLE</a>. The focus of <code>because</code> is on causal inference, providing tools to facilitate the correct estimation and testing of direct and indirect causal effects in complex systems and quantify uncertainty in the estimates.</p>
 <blockquote>
 <p><strong>Note on the logo</strong>: The package hexagon sticker features the mathematical symbol for “because”, represented as three dots in an inverted triangle (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>∵</mi><annotation encoding="application/x-tex">\because</annotation></semantics></math>).</p>
 </blockquote>
@@ -79,10 +80,12 @@
 <div class="section level2">
 <h2 id="features">Features<a class="anchor" aria-label="anchor" href="#features"></a>
 </h2>
-<p><strong>because</strong> simplifies the process of running complex Bayesian Structural Equation Models by automatically generating JAGS code from standard R formulas. Key features include:</p>
+<p><strong>because</strong> simplifies the process of running complex Bayesian Structural Equation Models by automatically generating JAGS or NIMBLE code from standard R formulas. Key features include:</p>
 <ul>
 <li>
-<strong>Automatic JAGS Code Generation</strong>: Builds models directly from a list of structural equations.</li>
+<strong>Dual-Engine Support</strong>: Choose between the simplicity of <strong>JAGS</strong> or the high-performance C++ backend of <strong>NIMBLE</strong>.</li>
+<li>
+<strong>Automatic Model Generation</strong>: Builds complex BUGS/NIMBLE models directly from a list of structural equations.</li>
 <li>
 <strong>Generalized Covariance Structures</strong>: Supports the specification of custom covariance structures in the data.</li>
 <li>
@@ -112,17 +115,20 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>To install the <strong>stable release</strong> (<code>v1.0.2</code>), run:</p>
+<p>To install the <strong>stable release</strong> (<code>v1.1.0</code>), run:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"because-pkg/because@v1.0.2"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because@v1.1.0"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>To install the <strong>latest development version</strong> (unstable), run:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"because-pkg/because"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="prerequisites">Prerequisites<a class="anchor" aria-label="anchor" href="#prerequisites"></a>
 </h2>
-<p>Before using <code>because</code>, you need to have <strong>JAGS</strong> (Just Another Gibbs Sampler) installed on your machine.</p>
+<p>Before using <code>because</code>, you need to have an inference engine installed.</p>
+<div class="section level3">
+<h3 id="jags-primary-engine">JAGS (Primary Engine)<a class="anchor" aria-label="anchor" href="#jags-primary-engine"></a>
+</h3>
 <ul>
 <li>
 <strong>macOS</strong>: <code>brew install jags</code> or download from <a href="http://mcmc-jags.sourceforge.net" class="external-link">SourceForge</a>.</li>
@@ -131,6 +137,12 @@
 <li>
 <strong>Linux</strong>: <code>sudo apt-get install jags</code>.</li>
 </ul>
+</div>
+<div class="section level3">
+<h3 id="nimble-high-performance-engine">NIMBLE (High-Performance Engine)<a class="anchor" aria-label="anchor" href="#nimble-high-performance-engine"></a>
+</h3>
+<p>NIMBLE is an optional backend that requires a C++ compiler to be installed on your system: - <strong>Windows</strong>: Install <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a>. - <strong>macOS</strong>: Install <strong>Xcode Command Line Tools</strong> via terminal: <code>xcode-select --install</code>. - <strong>Linux</strong>: Install <code>build-essential</code> (on Ubuntu/Debian) or equivalent development tools for your distribution. - <strong>R Package</strong>: <code>install.packages("nimble")</code>.</p>
+</div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

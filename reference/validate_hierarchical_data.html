@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,6 +23,7 @@
     <li><a class="dropdown-item" href="../articles/03_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
     <li><a class="dropdown-item" href="../articles/04_mediation.html">Mediation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/05_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
+    <li><a class="dropdown-item" href="../articles/06_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
     <li><a class="dropdown-item" href="../articles/extensions.html">Extensions</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
@@ -47,7 +48,13 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">validate_hierarchical_data</span><span class="op">(</span><span class="va">data</span>, <span class="va">levels</span>, <span class="va">hierarchy</span>, <span class="va">link_vars</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">validate_hierarchical_data</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  <span class="va">levels</span>,</span>
+<span>  <span class="va">hierarchy</span>,</span>
+<span>  <span class="va">link_vars</span>,</span>
+<span>  latent_vars <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">

@@ -5,7 +5,13 @@ Validate Hierarchical Data Structure
 ## Usage
 
 ``` r
-validate_hierarchical_data(data, levels, hierarchy, link_vars)
+validate_hierarchical_data(
+  data,
+  levels,
+  hierarchy,
+  link_vars,
+  latent_vars = NULL
+)
 ```
 
 ## Arguments

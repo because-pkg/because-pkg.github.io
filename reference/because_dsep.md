@@ -72,7 +72,18 @@ conversion (Shipley & Douma 2021) to identify m-separation statements
 and induced correlations among observed variables that arise from shared
 latent common causes.
 
+Deterministic nodes (interaction terms such as `A:B`, and arithmetic
+transformations such as `I(A^2)`) are kept as **explicit intermediate
+nodes** in the DAG, following the D-separation extension of Geiger,
+Verma & Pearl (1990). This ensures that the basis set includes
+independence tests that condition on the deterministic term itself (e.g.
+\\TL \perp BM \mid \\BM{:}M\\\\), which would be silently dropped if the
+interaction were collapsed to its component variables.
+
 ## References
+
+Geiger, D., Verma, T., & Pearl, J. (1990). Identifying independence in
+Bayesian Networks. *Networks*, 20(5), 507–534.
 
 Shipley, B. (2000). A new inferential test for path models based on
 directed acyclic graphs. Structural Equation Modeling, 7(2), 206-218.
@@ -86,7 +97,7 @@ Cambridge University Press.
 Shipley, B., & Douma, J. C. (2021). Testing Piecewise Structural
 Equations Models in the Presence of Latent Variables and Including
 Correlated Errors. Structural Equation Modeling: A Multidisciplinary
-Journal, 28(4), 582–589. https://doi.org/10.1080/10705511.2020.1871355
+Journal, 28(4), 582-589. https://doi.org/10.1080/10705511.2020.1871355
 
 ## Examples
 

@@ -17,7 +17,7 @@ equations or a fitted `because` model. If a fitted model is provided:
 ``` r
 plot_dag(
   x,
-  layout = "sugiyama",
+  layout = "kk",
   latent = NULL,
   node_size = 14,
   node_color = "black",
@@ -41,8 +41,24 @@ plot_dag(
 
 - layout:
 
-  The layout algorithm to use (default "sugiyama"). See
-  [`ggdag`](https://r-causal.github.io/ggdag/reference/ggdag.html).
+  The layout algorithm to use for positioning nodes (default `"kk"`,
+  Kamada-Kawai). Any layout name accepted by
+  [`create_layout`](https://ggraph.data-imaginist.com/reference/ggraph.html)
+  can be used, including:
+
+  - `"kk"` — Kamada-Kawai spring layout (default; good general-purpose
+    layout).
+
+  - `"sugiyama"` — hierarchical/layered layout; useful for simple
+    chains.
+
+  - `"fr"` — Fruchterman-Reingold spring layout.
+
+  - `"nicely"` — automatic choice based on graph properties.
+
+  - `"circle"` — nodes arranged in a circle.
+
+  Override node positions entirely with the `coords` argument.
 
 - latent:
 
@@ -96,6 +112,22 @@ plot_dag(
 
 A `ggplot` object that can be further customized with standard ggplot2
 functions (e.g., `+ theme_...()`, `+ ggtitle(...)`).
+
+## Details
+
+Interaction terms (e.g. `BM:M`) and
+[`I()`](https://rdrr.io/r/base/AsIs.html) transformations are rendered
+as **explicit intermediate nodes** (grey diamonds), following the
+Interaction DAG (IDAG) convention of Attia, Holliday & Oldmeadow (2022).
+This makes the deterministic nature of these terms visually clear and is
+consistent with how `because_dsep` treats them for d-separation.
+
+## References
+
+Attia, J., Holliday, E., & Oldmeadow, C. (2022). A proposal for
+capturing interaction and effect modification using DAGs. *International
+Journal of Epidemiology*, 51(4), 1047–1053.
+[doi:10.1093/ije/dyac105](https://doi.org/10.1093/ije/dyac105)
 
 ## Examples
 

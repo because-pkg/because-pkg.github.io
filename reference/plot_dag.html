@@ -21,7 +21,7 @@ Edge thickness scales with the absolute effect size.
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,7 @@ Edge thickness scales with the absolute effect size.
     <li><a class="dropdown-item" href="../articles/03_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
     <li><a class="dropdown-item" href="../articles/04_mediation.html">Mediation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/05_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
+    <li><a class="dropdown-item" href="../articles/06_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
     <li><a class="dropdown-item" href="../articles/extensions.html">Extensions</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
@@ -67,7 +68,7 @@ or a fitted <code>because</code> model. If a fitted model is provided:</p><ul><l
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_dag</span><span class="op">(</span></span>
 <span>  <span class="va">x</span>,</span>
-<span>  layout <span class="op">=</span> <span class="st">"sugiyama"</span>,</span>
+<span>  layout <span class="op">=</span> <span class="st">"kk"</span>,</span>
 <span>  latent <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  node_size <span class="op">=</span> <span class="fl">14</span>,</span>
 <span>  node_color <span class="op">=</span> <span class="st">"black"</span>,</span>
@@ -91,7 +92,13 @@ or a fitted <code>because</code> model. If a fitted model is provided:</p><ul><l
 
 
 <dt id="arg-layout">layout<a class="anchor" aria-label="anchor" href="#arg-layout"></a></dt>
-<dd><p>The layout algorithm to use (default "sugiyama"). See <code><a href="https://r-causal.github.io/ggdag/reference/ggdag.html" class="external-link">ggdag</a></code>.</p></dd>
+<dd><p>The layout algorithm to use for positioning nodes (default <code>"kk"</code>, Kamada-Kawai).
+Any layout name accepted by <code><a href="https://ggraph.data-imaginist.com/reference/ggraph.html" class="external-link">create_layout</a></code> can be used, including:</p><ul><li><p><code>"kk"</code> — Kamada-Kawai spring layout (default; good general-purpose layout).</p></li>
+<li><p><code>"sugiyama"</code> — hierarchical/layered layout; useful for simple chains.</p></li>
+<li><p><code>"fr"</code> — Fruchterman-Reingold spring layout.</p></li>
+<li><p><code>"nicely"</code> — automatic choice based on graph properties.</p></li>
+<li><p><code>"circle"</code> — nodes arranged in a circle.</p></li>
+</ul><p>Override node positions entirely with the <code>coords</code> argument.</p></dd>
 
 
 <dt id="arg-latent">latent<a class="anchor" aria-label="anchor" href="#arg-latent"></a></dt>
@@ -141,6 +148,21 @@ If provided, these will override the <code>layout</code> algorithm.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>ggplot</code> object that can be further customized with standard ggplot2 functions (e.g., <code>+ theme_...()</code>, <code>+ ggtitle(...)</code>).</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Interaction terms (e.g. <code>BM:M</code>) and <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code> transformations are
+rendered as <strong>explicit intermediate nodes</strong> (grey diamonds), following the
+Interaction DAG (IDAG) convention of Attia, Holliday &amp; Oldmeadow (2022).
+This makes the deterministic nature of these terms visually clear and is
+consistent with how <code>because_dsep</code> treats them for d-separation.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Attia, J., Holliday, E., &amp; Oldmeadow, C. (2022). A proposal for capturing
+interaction and effect modification using DAGs.
+<em>International Journal of Epidemiology</em>, 51(4), 1047–1053.
+<a href="https://doi.org/10.1093/ije/dyac105" class="external-link">doi:10.1093/ije/dyac105</a></p>
     </div>
 
     <div class="section level2">

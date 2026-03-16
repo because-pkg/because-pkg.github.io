@@ -12,4 +12,6 @@
   Analysis](https://because-pkg.github.io/because/articles/04_mediation.md):
 - [Deterministic Nodes: Interactions, tresholds and mathematical
   transformations](https://because-pkg.github.io/because/articles/05_deterministic_nodes.md):
+- [High-Performance SEM with the NIMBLE
+  Engine](https://because-pkg.github.io/because/articles/06_nimble_engine.md):
 - [Extensions](https://because-pkg.github.io/because/articles/extensions.md):

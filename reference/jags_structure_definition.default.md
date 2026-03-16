@@ -1,6 +1,6 @@
-# Default Method for Structure Definition (Independent Model)
+# Default Method for D-Sep Transformation
 
-Default Method for Structure Definition (Independent Model)
+Default Method for D-Sep Transformation
 
 ## Usage
 

@@ -386,6 +386,8 @@ fit_check$model
 #> 
 #> model {
 #>   # Common structures and priors
+#>   zeros_2[1] <- 0
+#>   zeros_2[2] <- 0
 #>   # Structural equations
 #> 
 #>   for (i in 1:N) {

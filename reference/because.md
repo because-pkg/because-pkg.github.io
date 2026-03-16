@@ -11,7 +11,9 @@ because(
   id_col = NULL,
   structure = NULL,
   tree = NULL,
+  engine = "jags",
   monitor = "interpretable",
+  nimble_samplers = NULL,
   n.chains = 3,
   n.iter = 12500,
   n.burnin = floor(n.iter/5),
@@ -48,6 +50,12 @@ because(
 - equations:
 
   A list of model formulas describing the structural equation model.
+
+- data:
+
+  A data.frame containining the variables in the model. If using
+  hierarchical models (see hierarchical section below), this can also be
+  a list of data frames.
 
 - id_col:
 
@@ -86,6 +94,17 @@ because(
   class `"phylo"` or a list of trees. Use `structure` instead for new
   code.
 
+- engine:
+
+  Character string specifying the inference engine to use. Supported
+  values:
+
+  - `"jags"` (default): Use Just Another Gibbs Sampler (via rjags).
+
+  - `"nimble"`: Use the compiled C++ backend (via NIMBLE). Offers
+    significant speedups for complex models, parallel execution, and
+    marginalized likelihoods.
+
 - monitor:
 
   Parameter monitoring mode. Options:
@@ -104,6 +123,23 @@ because(
 
   - `NULL`: Auto-detect based on model structure (equivalent to
     "interpretable").
+
+- nimble_samplers:
+
+  (NIMBLE-only) A named list specifying custom samplers for specific
+  model nodes. Example: `nimble_samplers = list(beta_X_Y = "slice")`.
+  Common sampler types include:
+
+  - `"RW"`: Scalar Random-Walk Metropolis-Hastings.
+
+  - `"RW_block"`: Multivariate Random-Walk Metropolis-Hastings.
+
+  - `"slice"`: Scalar slice sampler.
+
+  - `"AF_slice"`: Automated Factor Slice Sampler (multivariate slice).
+
+  - `"categorical"`: Specialized discrete sampler for
+    Multinomial/Ordinal choices.
 
 - n.chains:
 
@@ -302,9 +338,20 @@ because(
 - priors:
 
   Optional named list of character strings specifying custom priors for
-  specific parameters. Enables overriding default uninformative priors.
+  specific parameters. By default, `because` uses "boundary-avoiding"
+  regularizing priors for hierarchical variance components:
+
+  - **Gaussian**: `dgamma(1, 1)` (vague) for residual and random effect
+    precisions.
+
+  - **Non-Gaussian**: `dgamma(10, 10)` for overdispersion and
+    hierarchical random effects (\\\tau\\). This regularizing prior
+    (Gelman 2006, McElreath 2020) prevents numerical overflow in models
+    with exponential or logit link functions by constraining the sampler
+    away from astronomically large variances during adaptation.
+
   Example:
-  `list(alpha_Response = "dnorm(0, 0.001)", beta_Response_Predictor = "dnorm(1, 10)")`.
+  `list(alpha_Response = "dnorm(0, 0.001)", tau_e_Response = "dgamma(1, 1)")`.
 
 - reuse_models:
 

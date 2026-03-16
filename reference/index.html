@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,6 +23,7 @@
     <li><a class="dropdown-item" href="../articles/03_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
     <li><a class="dropdown-item" href="../articles/04_mediation.html">Mediation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/05_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
+    <li><a class="dropdown-item" href="../articles/06_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
     <li><a class="dropdown-item" href="../articles/extensions.html">Extensions</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
@@ -184,6 +185,13 @@
 
         <dt>
 
+          <code><a href="jags_family_precision_prior.html">jags_family_precision_prior()</a></code>
+
+        </dt>
+        <dd>Get default precision prior for a distribution family</dd>
+
+        <dt>
+
           <code><a href="jags_structure_definition.html">jags_structure_definition()</a></code>
 
         </dt>
@@ -194,7 +202,28 @@
           <code><a href="jags_structure_definition.default.html">jags_structure_definition(<i>&lt;default&gt;</i>)</a></code>
 
         </dt>
-        <dd>Default Method for Structure Definition (Independent Model)</dd>
+        <dd>Default Method for D-Sep Transformation</dd>
+
+        <dt>
+
+          <code><a href="jags_structure_definition.matrix.html">jags_structure_definition(<i>&lt;matrix&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Method for JAGS Structure Definition (Matrix)</dd>
+
+        <dt>
+
+          <code><a href="nimble_family_optimization.html">nimble_family_optimization()</a></code>
+
+        </dt>
+        <dd>NIMBLE Family Optimization</dd>
+
+        <dt>
+
+          <code><a href="nimble_family_optimization.default.html">nimble_family_optimization(<i>&lt;default&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Default Method for NIMBLE Optimization</dd>
 
         <dt>
 
@@ -223,6 +252,13 @@
 
         </dt>
         <dd>Default Method for Structure Data Preparation</dd>
+
+        <dt>
+
+          <code><a href="prepare_structure_data.matrix.html">prepare_structure_data(<i>&lt;matrix&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Method for Structure Data Preparation (Matrix)</dd>
 
         <dt>
 

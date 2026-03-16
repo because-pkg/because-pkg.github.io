@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,6 +23,7 @@
     <li><a class="dropdown-item" href="../articles/03_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
     <li><a class="dropdown-item" href="../articles/04_mediation.html">Mediation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/05_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
+    <li><a class="dropdown-item" href="../articles/06_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
     <li><a class="dropdown-item" href="../articles/extensions.html">Extensions</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
@@ -53,7 +54,9 @@
 <span>  id_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  structure <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tree <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  engine <span class="op">=</span> <span class="st">"jags"</span>,</span>
 <span>  monitor <span class="op">=</span> <span class="st">"interpretable"</span>,</span>
+<span>  nimble_samplers <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  n.chains <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  n.iter <span class="op">=</span> <span class="fl">12500</span>,</span>
 <span>  n.burnin <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="va">n.iter</span><span class="op">/</span><span class="fl">5</span><span class="op">)</span>,</span>
@@ -93,6 +96,11 @@
 <dd><p>A list of model formulas describing the structural equation model.</p></dd>
 
 
+<dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
+<dd><p>A data.frame containining the variables in the model. If using hierarchical
+models (see hierarchical section below), this can also be a list of data frames.</p></dd>
+
+
 <dt id="arg-id-col">id_col<a class="anchor" aria-label="anchor" href="#arg-id-col"></a></dt>
 <dd><p>Character string specifying the column name in a data.frame containing
 unit identifiers (species, individuals, sites, etc.). This is used to:</p><ul><li><p>Match data rows to tree tip labels (for phylogenetic models)</p></li>
@@ -116,6 +124,13 @@ Ignored when <code>data</code> is already a list.</p></dd>
 <code>"phylo"</code> or a list of trees. Use <code>structure</code> instead for new code.</p></dd>
 
 
+<dt id="arg-engine">engine<a class="anchor" aria-label="anchor" href="#arg-engine"></a></dt>
+<dd><p>Character string specifying the inference engine to use. Supported values:</p><ul><li><p><code>"jags"</code> (default): Use Just Another Gibbs Sampler (via rjags).</p></li>
+<li><p><code>"nimble"</code>: Use the compiled C++ backend (via NIMBLE). Offers significant
+speedups for complex models, parallel execution, and marginalized likelihoods.</p></li>
+</ul></dd>
+
+
 <dt id="arg-monitor">monitor<a class="anchor" aria-label="anchor" href="#arg-monitor"></a></dt>
 <dd><p>Parameter monitoring mode. Options:</p><ul><li><p><code>"interpretable"</code> (default): Monitor only scientifically meaningful parameters:
 intercepts (alpha), regression coefficients (beta), phylogenetic signals (lambda) for
@@ -123,6 +138,17 @@ responses, and WAIC terms. Excludes variance components (tau) and auxiliary pred
 <li><p><code>"all"</code>: Monitor all model parameters including variance components and implicit equation parameters.</p></li>
 <li><p>Custom vector: Provide a character vector of specific parameter names to monitor.</p></li>
 <li><p><code>NULL</code>: Auto-detect based on model structure (equivalent to "interpretable").</p></li>
+</ul></dd>
+
+
+<dt id="arg-nimble-samplers">nimble_samplers<a class="anchor" aria-label="anchor" href="#arg-nimble-samplers"></a></dt>
+<dd><p>(NIMBLE-only) A named list specifying custom samplers for specific
+model nodes. Example: <code>nimble_samplers = list(beta_X_Y = "slice")</code>.
+Common sampler types include:</p><ul><li><p><code>"RW"</code>: Scalar Random-Walk Metropolis-Hastings.</p></li>
+<li><p><code>"RW_block"</code>: Multivariate Random-Walk Metropolis-Hastings.</p></li>
+<li><p><code>"slice"</code>: Scalar slice sampler.</p></li>
+<li><p><code>"AF_slice"</code>: Automated Factor Slice Sampler (multivariate slice).</p></li>
+<li><p><code>"categorical"</code>: Specialized discrete sampler for Multinomial/Ordinal choices.</p></li>
 </ul></dd>
 
 
@@ -279,8 +305,12 @@ Example: <code>c(response_var = 1)</code>.</p></dd>
 
 <dt id="arg-priors">priors<a class="anchor" aria-label="anchor" href="#arg-priors"></a></dt>
 <dd><p>Optional named list of character strings specifying custom priors for specific parameters.
-Enables overriding default uninformative priors.
-Example: <code>list(alpha_Response = "dnorm(0, 0.001)", beta_Response_Predictor = "dnorm(1, 10)")</code>.</p></dd>
+By default, <code>because</code> uses "boundary-avoiding" regularizing priors for hierarchical variance components:</p><ul><li><p><strong>Gaussian</strong>: <code>dgamma(1, 1)</code> (vague) for residual and random effect precisions.</p></li>
+<li><p><strong>Non-Gaussian</strong>: <code>dgamma(10, 10)</code> for overdispersion and hierarchical random effects (\(\tau\)).
+This regularizing prior (Gelman 2006, McElreath 2020) prevents numerical overflow in models
+with exponential or logit link functions by constraining the sampler away from astronomically
+large variances during adaptation.</p></li>
+</ul><p>Example: <code>list(alpha_Response = "dnorm(0, 0.001)", tau_e_Response = "dgamma(1, 1)")</code>.</p></dd>
 
 
 <dt id="arg-reuse-models">reuse_models<a class="anchor" aria-label="anchor" href="#arg-reuse-models"></a></dt>

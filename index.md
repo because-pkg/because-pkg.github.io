@@ -4,9 +4,10 @@
 
 `because` provides a unified framework for specifying and fitting
 Bayesian structural equation models in `R` using
-[JAGS](http://mcmc-jags.sourceforge.net). The focus of `because` is on
-causal inference, providing tools to facilitate the correct estimation
-and testng of direct and indirect causal effects in complex systems and
+[JAGS](http://mcmc-jags.sourceforge.net) or
+[NIMBLE](https://r-nimble.org). The focus of `because` is on causal
+inference, providing tools to facilitate the correct estimation and
+testing of direct and indirect causal effects in complex systems and
 quantify uncertainty in the estimates.
 
 > **Note on the logo**: The package hexagon sticker features the
@@ -16,11 +17,13 @@ quantify uncertainty in the estimates.
 ## Features
 
 **because** simplifies the process of running complex Bayesian
-Structural Equation Models by automatically generating JAGS code from
-standard R formulas. Key features include:
+Structural Equation Models by automatically generating JAGS or NIMBLE
+code from standard R formulas. Key features include:
 
-- **Automatic JAGS Code Generation**: Builds models directly from a list
-  of structural equations.
+- **Dual-Engine Support**: Choose between the simplicity of **JAGS** or
+  the high-performance C++ backend of **NIMBLE**.
+- **Automatic Model Generation**: Builds complex BUGS/NIMBLE models
+  directly from a list of structural equations.
 - **Generalized Covariance Structures**: Supports the specification of
   custom covariance structures in the data.
 - **Missing Data Support**: Imputes missing values in both response and
@@ -51,10 +54,10 @@ standard R formulas. Key features include:
 
 ## Installation
 
-To install the **stable release** (`v1.0.2`), run:
+To install the **stable release** (`v1.1.0`), run:
 
 ``` r
-remotes::install_github("because-pkg/because@v1.0.2", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.1.0", build_vignettes = TRUE)
 ```
 
 To install the **latest development version** (unstable), run:
@@ -65,11 +68,22 @@ remotes::install_github("because-pkg/because", build_vignettes = TRUE)
 
 ## Prerequisites
 
-Before using `because`, you need to have **JAGS** (Just Another Gibbs
-Sampler) installed on your machine.
+Before using `because`, you need to have an inference engine installed.
+
+### JAGS (Primary Engine)
 
 - **macOS**: `brew install jags` or download from
   [SourceForge](http://mcmc-jags.sourceforge.net).
 - **Windows**: Download installer from
   [SourceForge](http://mcmc-jags.sourceforge.net).
 - **Linux**: `sudo apt-get install jags`.
+
+### NIMBLE (High-Performance Engine)
+
+NIMBLE is an optional backend that requires a C++ compiler to be
+installed on your system: - **Windows**: Install
+[Rtools](https://cran.r-project.org/bin/windows/Rtools/). - **macOS**:
+Install **Xcode Command Line Tools** via terminal:
+`xcode-select --install`. - **Linux**: Install `build-essential` (on
+Ubuntu/Debian) or equivalent development tools for your distribution. -
+**R Package**: `install.packages("nimble")`.
