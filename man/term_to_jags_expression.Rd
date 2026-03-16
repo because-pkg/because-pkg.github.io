@@ -10,7 +10,7 @@ term_to_jags_expression(term)
 \item{term}{Original R term (e.g., "A:B")}
 }
 \value{
-JAGS expression (e.g., "A\link{i} * B\link{i}")
+JAGS expression (e.g., "A\[i] * B\[i]")
 }
 \description{
 Transforms R syntax into JAGS-compatible deterministic code

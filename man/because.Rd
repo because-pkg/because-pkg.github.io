@@ -50,27 +50,25 @@ because(
 models (see hierarchical section below), this can also be a list of data frames.}
 
 \item{id_col}{Character string specifying the column name in a data.frame containing
-unit identifiers (species, individuals, sites, etc.). This is used to:
+unit identifiers (e.g., individuals, sites, or species names). This is used to:
 \itemize{
-\item Match data rows to tree tip labels (for phylogenetic models)
+\item Match data rows to external structure labels (e.g., tip labels in phylogenetic trees).
 \item Link data to external spatial or custom covariance matrices.
 }
-\strong{Note}: For standard random effects models (e.g. \code{random = ~(1|species)}) where no external structure
-(like a tree) is provided, this argument is \strong{not required}. The grouping column is read directly from the data.
+\strong{Note}: For standard random effects models (e.g., \code{random = ~(1|group)}) where no external structure
+is provided, this argument is \strong{not required}. The grouping column is read directly from the data.
 
 If \code{NULL} (default): uses meaningful row names if available.
 Ignored when \code{data} is already a list.}
 
 \item{structure}{The covariance structure for the model. Accepts:
 \itemize{
-\item \code{"phylo"} object: Phylogenetic tree (Standard PGLS/PhyloSEM).
-\item \code{"multiPhylo"} object: List of trees (incorporates phylogenetic uncertainty).
 \item \code{NULL}: Independent model (Standard SEM, no covariance structure).
 \item \code{matrix}: Custom covariance or precision matrix (e.g., spatial connectivity, kinship).
+\item Custom objects: Supported via extension packages (e.g., phylogenetic trees from \pkg{because.phybase} or spatial structures).
 }}
 
-\item{tree}{(Deprecated alias for \code{structure}). A single phylogenetic tree of class
-\code{"phylo"} or a list of trees. Use \code{structure} instead for new code.}
+\item{tree}{(Deprecated alias for \code{structure}). Use \code{structure} instead for new code.}
 
 \item{engine}{Character string specifying the inference engine to use. Supported values:
 \itemize{
@@ -157,12 +155,8 @@ Default is "gaussian" for all variables. Supported values:
 \item "negbinomial" (overdispersed count data)
 \item "zip" (zero-inflated poisson): Models excess zeros with probability \code{psi} and counts with mean \code{lambda}.
 \item "zinb" (zero-inflated negative binomial): Models excess zeros with probability \code{psi} and overdispersed counts with mean \code{mu} and size \code{r}.
-\item "occupancy": Single-season site-occupancy model.
-State process: \code{z ~ Bernoulli(psi)}.
-Observation process: \code{y ~ Bernoulli(z * p)}.
-Requires data to be a detection history matrix (sites x visits).
 }
-The model will estimate a zero-inflation probability parameter \code{psi_Response} for these distributions.
+Additional families (e.g., \code{"occupancy"}) are provided by the \pkg{because.detection} extension package.
 Example: \code{family = c(Gregarious = "binomial")}.}
 
 \item{latent}{Optional character vector of latent (unmeasured) variable names.
@@ -188,15 +182,12 @@ Note: Requires \code{n.cores > 1} to take effect.}
 \item{n.cores}{Integer; number of CPU cores to use for parallel chains (default = 1).
 Only used when \code{parallel = TRUE}.}
 
-\item{cl}{Optional; a cluster object created by \code{parallel::makeCluster()}.
-If \code{NULL}, a cluster will be created and destroyed automatically.}
-
 \item{ic_recompile}{Logical; if \code{TRUE} and \code{parallel = TRUE}, recompile the model
 after parallel chains to compute DIC/WAIC (default = TRUE).
 This adds a small sequential overhead but enables information criteria calculation.}
 
 \item{optimise}{Logical; if \code{TRUE} (default), use the optimized random effects formulation
-for phylogenetic models. This is significantly faster (5-10x) and more numerically stable.
+(e.g., for phylogenetic or spatial models). This is significantly faster (5-10x) and more numerically stable.
 If \code{FALSE}, use the traditional marginal formulation (slower, but provided for comparison).}
 
 \item{random}{Optional formula or list of formulas specifying global random effects

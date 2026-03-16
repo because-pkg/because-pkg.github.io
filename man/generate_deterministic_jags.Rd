@@ -13,6 +13,6 @@ generate_deterministic_jags(deterministic_terms)
 Vector of JAGS code strings
 }
 \description{
-writers the 'Internal_Var\link{i} <- ...' lines
+writers the "Internal_Var\[i] <- ..." lines
 }
 \keyword{internal}
