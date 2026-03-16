@@ -1,6 +1,6 @@
 # Generate JAGS Code for Deterministic Nodes
 
-writers the 'Internal_Vari \<- ...' lines
+writers the "Internal_Var\\i\] \<- ..." lines
 
 ## Usage
 

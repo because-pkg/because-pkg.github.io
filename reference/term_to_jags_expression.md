@@ -16,4 +16,4 @@ term_to_jags_expression(term)
 
 ## Value
 
-JAGS expression (e.g., "Ai \* Bi")
+JAGS expression (e.g., "A\\i\] \* B\\i\]")

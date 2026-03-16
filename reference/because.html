@@ -103,25 +103,23 @@ models (see hierarchical section below), this can also be a list of data frames.
 
 <dt id="arg-id-col">id_col<a class="anchor" aria-label="anchor" href="#arg-id-col"></a></dt>
 <dd><p>Character string specifying the column name in a data.frame containing
-unit identifiers (species, individuals, sites, etc.). This is used to:</p><ul><li><p>Match data rows to tree tip labels (for phylogenetic models)</p></li>
+unit identifiers (e.g., individuals, sites, or species names). This is used to:</p><ul><li><p>Match data rows to external structure labels (e.g., tip labels in phylogenetic trees).</p></li>
 <li><p>Link data to external spatial or custom covariance matrices.</p></li>
-</ul><p><strong>Note</strong>: For standard random effects models (e.g. <code>random = ~(1|species)</code>) where no external structure
-(like a tree) is provided, this argument is <strong>not required</strong>. The grouping column is read directly from the data.</p>
+</ul><p><strong>Note</strong>: For standard random effects models (e.g., <code>random = ~(1|group)</code>) where no external structure
+is provided, this argument is <strong>not required</strong>. The grouping column is read directly from the data.</p>
 <p>If <code>NULL</code> (default): uses meaningful row names if available.
 Ignored when <code>data</code> is already a list.</p></dd>
 
 
 <dt id="arg-structure">structure<a class="anchor" aria-label="anchor" href="#arg-structure"></a></dt>
-<dd><p>The covariance structure for the model. Accepts:</p><ul><li><p><code>"phylo"</code> object: Phylogenetic tree (Standard PGLS/PhyloSEM).</p></li>
-<li><p><code>"multiPhylo"</code> object: List of trees (incorporates phylogenetic uncertainty).</p></li>
-<li><p><code>NULL</code>: Independent model (Standard SEM, no covariance structure).</p></li>
+<dd><p>The covariance structure for the model. Accepts:</p><ul><li><p><code>NULL</code>: Independent model (Standard SEM, no covariance structure).</p></li>
 <li><p><code>matrix</code>: Custom covariance or precision matrix (e.g., spatial connectivity, kinship).</p></li>
+<li><p>Custom objects: Supported via extension packages (e.g., phylogenetic trees from <span class="pkg">because.phybase</span> or spatial structures).</p></li>
 </ul></dd>
 
 
 <dt id="arg-tree">tree<a class="anchor" aria-label="anchor" href="#arg-tree"></a></dt>
-<dd><p>(Deprecated alias for <code>structure</code>). A single phylogenetic tree of class
-<code>"phylo"</code> or a list of trees. Use <code>structure</code> instead for new code.</p></dd>
+<dd><p>(Deprecated alias for <code>structure</code>). Use <code>structure</code> instead for new code.</p></dd>
 
 
 <dt id="arg-engine">engine<a class="anchor" aria-label="anchor" href="#arg-engine"></a></dt>
@@ -220,11 +218,7 @@ Default is "gaussian" for all variables. Supported values:</p><ul><li><p>"gaussi
 <li><p>"negbinomial" (overdispersed count data)</p></li>
 <li><p>"zip" (zero-inflated poisson): Models excess zeros with probability <code>psi</code> and counts with mean <code>lambda</code>.</p></li>
 <li><p>"zinb" (zero-inflated negative binomial): Models excess zeros with probability <code>psi</code> and overdispersed counts with mean <code>mu</code> and size <code>r</code>.</p></li>
-<li><p>"occupancy": Single-season site-occupancy model.
-State process: <code>z ~ Bernoulli(psi)</code>.
-Observation process: <code>y ~ Bernoulli(z * p)</code>.
-Requires data to be a detection history matrix (sites x visits).</p></li>
-</ul><p>The model will estimate a zero-inflation probability parameter <code>psi_Response</code> for these distributions.
+</ul><p>Additional families (e.g., <code>"occupancy"</code>) are provided by the <span class="pkg">because.detection</span> extension package.
 Example: <code>family = c(Gregarious = "binomial")</code>.</p></dd>
 
 
@@ -259,11 +253,6 @@ Note: Requires <code>n.cores &gt; 1</code> to take effect.</p></dd>
 Only used when <code>parallel = TRUE</code>.</p></dd>
 
 
-<dt id="arg-cl">cl<a class="anchor" aria-label="anchor" href="#arg-cl"></a></dt>
-<dd><p>Optional; a cluster object created by <code><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">parallel::makeCluster()</a></code>.
-If <code>NULL</code>, a cluster will be created and destroyed automatically.</p></dd>
-
-
 <dt id="arg-ic-recompile">ic_recompile<a class="anchor" aria-label="anchor" href="#arg-ic-recompile"></a></dt>
 <dd><p>Logical; if <code>TRUE</code> and <code>parallel = TRUE</code>, recompile the model
 after parallel chains to compute DIC/WAIC (default = TRUE).
@@ -272,7 +261,7 @@ This adds a small sequential overhead but enables information criteria calculati
 
 <dt id="arg-optimise">optimise<a class="anchor" aria-label="anchor" href="#arg-optimise"></a></dt>
 <dd><p>Logical; if <code>TRUE</code> (default), use the optimized random effects formulation
-for phylogenetic models. This is significantly faster (5-10x) and more numerically stable.
+(e.g., for phylogenetic or spatial models). This is significantly faster (5-10x) and more numerically stable.
 If <code>FALSE</code>, use the traditional marginal formulation (slower, but provided for comparison).</p></dd>
 
 
