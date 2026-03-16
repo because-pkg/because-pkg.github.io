@@ -428,11 +428,6 @@ summary(fit_multi_dsep)
 #> ==================
 #> 
 #> Test: Rank _||_ Age | {AgeClass} 
-#>      Parameter Estimate LowerCI UpperCI Indep    P  Rhat n.eff
-#>  beta_Rank_Age   -0.026  -0.084   0.027   Yes 0.35 1.059   120
-#> 
-#> 
-#> Legend:
-#>   Indep: 'Yes' = Conditionally Independent, 'No' = Dependent (based on 95% CI)
-#>   P: Bayesian probability that the posterior distribution overlaps with zero
+#>      Parameter Estimate LowerCI UpperCI  Rhat n.eff
+#>  beta_Rank_Age   -0.026  -0.084   0.027 1.059   120
 ```
