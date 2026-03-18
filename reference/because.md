@@ -373,3 +373,20 @@ An object of class `"because"` containing:
 - WAIC:
 
   Watanabe-Akaike Information Criterion (if WAIC=TRUE).
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# A simple linear regression
+df <- data.frame(Y = rnorm(100), X = rnorm(100))
+fit <- because(list(Y ~ X), data = df)
+
+# A mediation model
+equations <- list(
+  M ~ X,
+  Y ~ M + X
+)
+fit_med <- because(equations, data = match_df)
+} # }
+```

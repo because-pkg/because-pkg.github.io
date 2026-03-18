@@ -60,3 +60,12 @@ plot_posterior(
 ## Value
 
 Invisible NULL. Produces a plot.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+fit <- because(list(Y ~ X), data = my_data)
+plot_posterior(fit, parameter = "beta_Y_X")
+} # }
+```

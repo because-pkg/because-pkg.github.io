@@ -47,3 +47,14 @@ A tidy data frame (tibble) containing:
 For occupancy models, the function looks for parameters starting with
 `psi_`, `p_`, and `z_`. It uses the internal `results$data` or
 `results$species_order` to map indices back to meaningful identifiers.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Assuming a multispecies occupancy model was fit:
+fit <- because(list(Y ~ 1), data = data, family = list(Y = "occupancy"))
+latents <- extract_latent(fit, type = "occupancy", variables = c("psi", "p"))
+head(latents)
+} # }
+```

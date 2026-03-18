@@ -34,18 +34,12 @@
   : Family Definition Generics and Default Methods
 - [`get_family()`](https://because-pkg.github.io/because/reference/get_family.md)
   : Create a family object for a given distribution
-- [`jags_family_likelihood()`](https://because-pkg.github.io/because/reference/jags_family_likelihood.md)
-  : Generate JAGS likelihood code for a distribution family
-- [`jags_family_precision_prior()`](https://because-pkg.github.io/because/reference/jags_family_precision_prior.md)
-  : Get default precision prior for a distribution family
 - [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
   : Plot DAG from Equations or Fitted Model
 - [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md)
   : plot_dsep
 - [`plot_posterior()`](https://because-pkg.github.io/because/reference/plot_posterior.md)
   : Plot Posterior Distributions for Model Comparison
-- [`print(`*`<summary.because>`*`)`](https://because-pkg.github.io/because/reference/print.summary.because.md)
-  : Print Summary for Because Model
 - [`storks`](https://because-pkg.github.io/because/reference/storks.md)
   : Data on Stork Populations and Human Birth Rates
 - [`summary(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/summary.because.md)

@@ -43,3 +43,17 @@ summary(
 A summary object containing statistics for the monitored parameters. If
 `dsep = TRUE` was used in `because`, the summary focuses on the
 conditional independence tests.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+fit <- because(list(Y ~ X), data = my_data)
+
+# Standard summary
+summary(fit)
+
+# Show latent states and random effects
+summary(fit, show_nodes = TRUE, show_random = TRUE)
+} # }
+```
