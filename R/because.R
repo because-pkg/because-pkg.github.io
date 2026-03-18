@@ -1,6 +1,5 @@
 #' @importFrom stats dist
 #' @importFrom utils read.csv
-#' @importFrom ape vcv
 #' @importFrom methods is
 #' @importFrom rjags jags.model
 #'
@@ -67,7 +66,9 @@
 #' @param n.adapt Number of adaptation iterations (default = n.iter / 5).
 #' @param quiet Logical; suppress JAGS output (default = FALSE).
 #' @param verbose Logical; if \code{TRUE}, print generated JAGS model code and data names (default = FALSE).
-#' @param dsep Logical; if \code{TRUE}, monitor only the first beta in each structural equation (used for d-separation testing).
+#' @param dsep Logical; if \code{TRUE}, evaluate the model's global fit using d-separation (basis set) path analysis.
+#'   This identifies the complete set of independence claims implied by the DAG and tests each one via Bayesian inference.
+#'   Results can be explored via \code{summary()} or visualized using \code{plot_dsep()}.
 #' @param variability Optional specification for variables with measurement error or within-species variability.
 #'   \strong{Global Setting}:
 #'   \itemize{
@@ -177,7 +178,6 @@
 #' }
 #'
 #' @export
-#' @importFrom ape vcv.phylo branching.times
 #' @importFrom rjags jags.model coda.samples dic.samples jags.samples
 #' @importFrom stats formula terms setNames start var
 #' @importFrom utils capture.output
@@ -326,92 +326,13 @@ run_single_dsep_test_v2 <- function(
   # (detection models and models for latent predictors)
   dsep_equations <- list(test_eq)
 
-  if (!is.null(family) && any(family == "occupancy")) {
-    # Check if this test involves occupancy variables
-    # We use a loop to ensure we catch supporting equations for newly added variables (recursion)
-    added <- TRUE
-    while (added) {
-      added <- FALSE
-      current_vars <- unique(unlist(lapply(dsep_equations, all.vars)))
-
-      for (v in current_vars) {
-        # Identify variable type
-        # Is v an occupancy variable? (z_X or X)
-        is_occ <- !is.na(family[v]) && family[v] == "occupancy"
-
-        # Is v a detection probability p_X?
-        is_det <- grepl("^p_", v) &&
-          !is.na(family[sub("^p_", "", v)]) &&
-          family[sub("^p_", "", v)] == "occupancy"
-
-        # Is v a psi probability psi_X?
-        is_psi <- grepl("^psi_", v) &&
-          !is.na(family[sub("^psi_", "", v)]) &&
-          family[sub("^psi_", "", v)] == "occupancy"
-
-        base_occ <- if (is_det) {
-          sub("^p_", "", v)
-        } else if (is_psi) {
-          sub("^psi_", "", v)
-        } else {
-          v
-        }
-
-        if (is_occ || is_det || is_psi) {
-          test_eq_resp <- as.character(test_eq)[2]
-
-          # 1. Include detection equation (p_X ~ ...) IF it is NOT the response
-          p_name <- paste0("p_", base_occ)
-          if (p_name != test_eq_resp) {
-            for (eq in equations) {
-              if (as.character(eq)[2] == p_name) {
-                # Check if already in dsep_equations (compare as strings)
-                eq_str <- paste(deparse(eq), collapse = " ")
-                exists <- any(sapply(dsep_equations, function(e) {
-                  paste(deparse(e), collapse = " ") == eq_str
-                }))
-                if (!exists) {
-                  dsep_equations <- c(dsep_equations, list(eq))
-                  added <- TRUE
-                }
-              }
-            }
-          }
-
-          # 2. Include base occupancy equation (X ~ ...)
-          should_include_occ <- FALSE
-          if (is_occ && v != test_eq_resp) {
-            should_include_occ <- TRUE
-          }
-          if (is_det && base_occ != test_eq_resp) {
-            should_include_occ <- TRUE
-          }
-          if (
-            is_psi &&
-              base_occ != test_eq_resp &&
-              paste0("psi_", base_occ) != test_eq_resp
-          ) {
-            should_include_occ <- TRUE
-          }
-
-          if (should_include_occ) {
-            for (eq in equations) {
-              if (as.character(eq)[2] == base_occ) {
-                eq_str <- paste(deparse(eq), collapse = " ")
-                exists <- any(sapply(dsep_equations, function(e) {
-                  paste(deparse(e), collapse = " ") == eq_str
-                }))
-                if (!exists) {
-                  dsep_equations <- c(dsep_equations, list(eq))
-                  added <- TRUE
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+  # Extension Hook: Expand d-separation equations (e.g. detection models)
+  dsep_equations <- dsep_equations_hook(
+    family,
+    equations,
+    dsep_equations,
+    test_eq = test_eq
+  )
 
   # Now filter variability/family based on ALL variables in dsep_equations
   # [Manual Fix: variability needs to be handled if it's there, but here we only have family]
@@ -473,32 +394,8 @@ run_single_dsep_test_v2 <- function(
     test_data
   }
 
-  # Only pass tree/phylo structure if test involves species-level variables.
-  sub_tree <- tree
-  if (!is.null(tree) && !is.null(hierarchical_info) && !is.null(levels)) {
-    test_resp_var <- as.character(test_eq)[2]
-    test_resp_level <- tryCatch(
-      {
-        for (lvl_name in names(levels)) {
-          if (test_resp_var %in% levels[[lvl_name]]) {
-            return(lvl_name)
-          }
-        }
-        NULL
-      },
-      error = function(e) NULL
-    )
-
-    if (!is.null(test_resp_level)) {
-      species_level <- names(which.min(sapply(
-        hierarchical_info$data,
-        nrow
-      )))
-      if (!is.null(species_level) && test_resp_level != species_level) {
-        sub_tree <- NULL
-      }
-    }
-  }
+  # Extension Hook: Filter tree structure
+  sub_tree <- dsep_tree_hook(tree, test_eq, hierarchical_info, levels)
 
   # Call because recursively
   # Use do.call and filtering to handle potential version conflicts on worker nodes
@@ -670,31 +567,20 @@ because <- function(
     # Now family is a named character vector, family_objects stores originals
   }
 
-  # --- Equation Normalization (User Request) ---
-  # Support psi_Species and z_Species as aliases for Species in occupancy models.
-  # This ensures the linear predictor (mu_Species) is correctly linked.
-  equations <- lapply(equations, function(eq) {
-    resp <- as.character(eq)[2]
-    if (grepl("^(psi_|z_)", resp)) {
-      base_name <- sub("^(psi_|z_)", "", resp)
-      # check if base name is occupancy (explicitly or via data presence)
-      is_occ <- FALSE
-      if (
-        !is.null(family) &&
-          !is.na(family[base_name]) &&
-          family[base_name] == "occupancy"
-      ) {
-        is_occ <- TRUE
-      }
-      if (base_name %in% names(data)) {
-        is_occ <- TRUE
-      } # Potential occupancy if matrix or vector
+  # S3 Class assignment for dispatch on extensions
+  family_obj <- family
+  if (!is.null(family) && ("occupancy" %in% family || "cmr" %in% family)) {
+    class(family_obj) <- c("because_family_occupancy", class(family_obj))
+  }
+  tree_obj <- tree
+  if (!is.null(tree)) {
+    class(tree_obj) <- c("because_structure", class(tree_obj))
+  }
 
-      if (is_occ) {
-        f_str <- paste(deparse(eq), collapse = " ")
-        f_str <- sub(paste0("^", resp), base_name, f_str)
-        return(as.formula(f_str))
-      }
+  # Extension Hook: Normalize specialized aliases (e.g. psi_Species -> Species)
+  equations <- normalize_equations_hook(family_obj, equations, data = data)
+
+  # (Original normalization block removed)
     }
     return(eq)
   })
@@ -1170,14 +1056,8 @@ because <- function(
           )
         }
 
-        # Determine the tree to use (only if it is a phylo object)
-        use_tree <- if (inherits(tree, "multiPhylo")) {
-          tree[[1]]
-        } else if (inherits(tree, "phylo")) {
-          tree
-        } else {
-          NULL # It's a matrix or other structure, don't use as a tree
-        }
+        # Extension Hook: Extract appropriate tree from structure object
+        use_tree <- get_tree_hook(tree)
 
         formatted_list <- because_format_data(
           data,
@@ -1494,10 +1374,8 @@ because <- function(
     structures <- tree
     # Check for multi-objects in the list
     for (s in structures) {
-      if (is.list(tree) && inherits(tree[[1]], "phylo")) {
-        is_multiple <- TRUE
-      } else if (is.list(s) && length(s) > 1 && !inherits(s, "phylo")) {
-        # Generic list with multiple items (likely replicates)
+      if (is.list(s) && length(s) > 1 && !is.matrix(s)) {
+        # Generic list with multiple items (likely replicates or multiPhylo)
         is_multiple <- TRUE
       }
     }
@@ -1546,8 +1424,9 @@ because <- function(
       if (!is.null(prep_res$data_list)) {
         for (d_name in names(prep_res$data_list)) {
           # Only add prefix if it's a generic structural name
-          # (to avoid Prec_phylo -> Prec_phylo_phylo)
-          if (d_name %in% c("Prec", "VCV", "multiVCV", "Prec_multiPhylo")) {
+          # Extension Hook: Specialized structure names (e.g. Prec_multiPhylo)
+          custom_s_name <- get_structure_name_hook(s)
+          if (d_name %in% c("Prec", "VCV", "multiVCV", custom_s_name)) {
             prefixed_name <- paste0(d_name, "_", s_name)
           } else {
             prefixed_name <- d_name
@@ -1669,8 +1548,9 @@ because <- function(
     # Check if 'zeros' already exists (use exact name match)
     has_zeros <- "zeros" %in% names(data)
     if (!has_zeros) {
-      needs_zeros <- any(family %in% c("zip", "zinb", "occupancy")) ||
-        length(structures) > 0
+      needs_zeros <- length(structures) > 0 || any(sapply(names(family), function(v) {
+        needs_zero_inflation_hook(family_obj, v)
+      }))
 
       if (needs_zeros) {
         data[["zeros"]] <- rep(0, N)
@@ -1871,20 +1751,16 @@ because <- function(
       next
     }
 
-    # Priority 0: Occupancy Model -> Force "reps" (matrix/long format required)
-    if (
-      !is.null(family) &&
-        var %in% names(family) &&
-        family[[var]] == "occupancy"
-    ) {
-      auto_variability[[var]] <- "reps"
-      if (!quiet) {
-        message(sprintf(
-          "Auto-detected: '%s' is an occupancy variable -> using 'reps' mode for detection history",
-          var
-        ))
+    # Extension Hook: Variability priority handling
+    if (!is.null(family_obj)) {
+      v_type <- get_variability_type_hook(family_obj, var)
+      if (!is.null(v_type)) {
+        auto_variability[[var]] <- v_type
+        if (!quiet) {
+          message(sprintf("Extension-detected: '%s' is a specialized family -> using '%s' mode.", var, v_type))
+        }
+        next
       }
-      next # Skip further checks
     }
 
     # Check for SE pattern (X_se)
@@ -2138,6 +2014,8 @@ because <- function(
   induced_cors <- NULL
 
   if (dsep) {
+    # Extension Hook: Remove specialized variables from potential latents
+
     # Force WAIC and DIC off for d-separation testing (not needed for conditional independence tests)
     if (WAIC || DIC) {
       if (!quiet) {
@@ -2157,22 +2035,11 @@ because <- function(
       # Find variables that appear in equations but not in data
       potential_latents <- setdiff(vars_in_equations, vars_in_data)
 
-      # [NEW 2025-12-21] Remove occupancy variables from potential_latents for d-sep tests
-      # Generic logic above adds vars not in data to 'potential_latents'.
-      # Since 'SpeciesA' is renamed to 'SpeciesA_obs' in data (for occupancy models),
-      # it gets added to potential_latents. We must remove it so d-sep treats it as observed.
-      if (!is.null(family)) {
-        occ_vars <- names(family)[family == "occupancy"]
-        if (length(occ_vars) > 0) {
-          potential_latents <- setdiff(potential_latents, occ_vars)
-          # Also remove p_ variables if present
-          p_vars <- paste0("p_", occ_vars)
-          potential_latents <- setdiff(potential_latents, p_vars)
-          # Also remove psi_ variables
-          psi_vars <- paste0("psi_", occ_vars)
-          potential_latents <- setdiff(potential_latents, psi_vars)
-        }
-      }
+      # Extension Hook: Remove specialized variables from potential latents
+      potential_latents <- dsep_potential_latent_hook(
+        family_obj,
+        potential_latents
+      )
 
       # Exclude polynomial internal variables (they're deterministic, not latent)
       if (!is.null(all_poly_terms)) {
@@ -2257,31 +2124,12 @@ because <- function(
       dsep_tests <- dsep_result
     }
 
-    # [User Request] Translate tests where response is a psi_ variable
-    # "when psi_Species is a dependent variable, it should be tested (probably as Species ~)"
+    # Extension Hook: Translate tests where response is specialized (e.g. psi_)
     dsep_tests <- lapply(dsep_tests, function(eq) {
-      resp <- as.character(eq)[2]
-      if (grepl("^psi_", resp)) {
-        base_resp <- sub("^psi_", "", resp)
-        # Ensure base_resp exists and is an occupancy variable
-        if (
-          !is.null(family) &&
-            !is.na(family[base_resp]) &&
-            family[base_resp] == "occupancy"
-        ) {
-          # Translate response to base name
-          f_str <- paste(deparse(eq), collapse = " ")
-          # Use regex to replace only the response at the start
-          f_str <- sub(paste0("^", resp), base_resp, f_str)
-
-          # Re-attach test_var from original
-          new_eq <- as.formula(f_str)
-          attr(new_eq, "test_var") <- attr(eq, "test_var")
-          return(new_eq)
-        }
-      }
-      return(eq)
+      dsep_test_translation_hook(family_obj, eq)
     })
+
+    # (Original translation block removed)
 
     # Deduplicate tests in case translation created duplicates
     dsep_test_strs <- sapply(dsep_tests, function(eq) {
@@ -2982,18 +2830,10 @@ because <- function(
 
       # Only add them if they are in the model (obviously)
       if (length(response_vars_all) > 0) {
-        # For occupancy models, the response itself (Y) is NOT a node,
-        # but z_Y is. Map accordingly.
-        adj_response_vars <- sapply(response_vars_all, function(v) {
-          if (
-            !is.null(family) &&
-              !is.null(family[[v]]) &&
-              family[[v]] == "occupancy"
-          ) {
-            return(paste0("z_", v))
-          }
-          return(v)
-        })
+        # Extension Hook: Map response variables to parameters (e.g. z_Y for occupancy)
+        adj_response_vars <- unlist(lapply(response_vars_all, function(v) {
+          get_monitor_vars_hook(family_obj, v)
+        }))
         monitor <- unique(c(monitor, adj_response_vars))
       }
     }
@@ -3052,20 +2892,8 @@ because <- function(
     }
   }
 
-  # Automatic inits for occupancy models (z must be 1 where observations are 1)
-  occupancy_inits <- list()
-  if (!is.null(family)) {
-    for (var_name in names(family)) {
-      if (family[[var_name]] == "occupancy") {
-        # Robust initialization: z=1 everywhere
-        # This is compatible with all data (y=0 or y=1) and ensures correct length
-        if ("N" %in% names(data)) {
-          z_init <- rep(1, data$N)
-          occupancy_inits[[paste0("z_", var_name)]] <- z_init
-        }
-      }
-    }
-  }
+  # Extension Hook: Custom inits (e.g. occupancy latent states)
+  extension_inits <- get_inits_hook(family_obj, data)
 
   # Clean up data list: Remove variables not present in the model code to avoid warnings
   model_code_str <- model_output$model
@@ -3170,7 +2998,7 @@ because <- function(
         nimble::nimbleModel(
           code = nimble_code,
           constants = data,
-          inits = occupancy_inits
+          inits = extension_inits
         )
       },
       error = function(e) {
@@ -3277,7 +3105,7 @@ because <- function(
         model_string,
         data,
         family,
-        occupancy_inits,
+        extension_inits,
         monitor,
         n.iter,
         n.burnin,
@@ -3334,7 +3162,7 @@ because <- function(
         nimble_code <- parse(text = nimble_string)[[1]]
 
         # Jitter seed for this chain
-        curr_inits <- occupancy_inits
+        curr_inits <- extension_inits
         # Add RNG seed if possible or just rely on global seed if set
 
         worker_model <- nimble::nimbleModel(
@@ -3408,7 +3236,7 @@ because <- function(
           "model_string",
           "data",
           "family",
-          "occupancy_inits",
+          "extension_inits",
           "monitor",
           "n.iter",
           "n.burnin",
@@ -3426,7 +3254,7 @@ because <- function(
           model_string = model_string,
           data = data,
           family = family,
-          occupancy_inits = occupancy_inits,
+          extension_inits = extension_inits,
           monitor = monitor,
           n.iter = n.iter,
           n.burnin = n.burnin,
@@ -3503,7 +3331,7 @@ because <- function(
         # Compile model for this chain
         # Explicitly set RNG seed to ensure chains are different
         inits_list <- c(
-          occupancy_inits,
+          extension_inits,
           list(
             .RNG.name = "base::Wichmann-Hill",
             .RNG.seed = 12345 + chain_id
@@ -3594,7 +3422,7 @@ because <- function(
       # Combine with occupancy inits
       inits_list <- lapply(1:n.chains, function(i) {
         c(
-          occupancy_inits,
+          extension_inits,
           list(
             .RNG.name = "base::Wichmann-Hill",
             .RNG.seed = 12345 + i
@@ -3798,17 +3626,11 @@ because <- function(
     }
   )
 
-  # Check if we can store species/unit identifiers for easy reference
+  # Extension Hook: Extract order labels (e.g. tip labels in phylogeny)
   if (!is.null(tree)) {
-    # If tree used, data is sorted by tip labels
-    if (inherits(tree, "multiPhylo")) {
-      result$species_order <- tree[[1]]$tip.label
-    } else if (inherits(tree, "phylo")) {
-      result$species_order <- tree$tip.label
-    } else if (is.matrix(tree)) {
-      result$species_order <- rownames(tree)
-    }
+    result$species_order <- get_order_labels_hook(tree)
   } else if (!is.null(id_col) && is.data.frame(original_data)) {
+
     # If no tree but ID col provided
     result$species_order <- as.character(original_data[[id_col]])
   }
@@ -3826,7 +3648,7 @@ because <- function(
     # Recompile model with 2 chains for IC calculation (DIC requires >=2)
     ic_inits <- lapply(1:2, function(i) {
       c(
-        occupancy_inits,
+        extension_inits,
         list(
           .RNG.name = "base::Wichmann-Hill",
           .RNG.seed = 12345 + i
