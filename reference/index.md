@@ -28,8 +28,6 @@
   : Calculate WAIC with Standard Errors for a Because Model
 - [`extract_imputed()`](https://because-pkg.github.io/because/reference/extract_imputed.md)
   : Extract Imputed Values for Missing Data
-- [`extract_latent()`](https://because-pkg.github.io/because/reference/extract_latent.md)
-  : Extract Latent Parameters from a because Model
 - [`family_definitions`](https://because-pkg.github.io/because/reference/family_definitions.md)
   : Family Definition Generics and Default Methods
 - [`get_family()`](https://because-pkg.github.io/because/reference/get_family.md)
