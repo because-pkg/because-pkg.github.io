@@ -1,6 +1,6 @@
-# Default Method for D-Sep Transformation
+# Default Method for JAGS Structure Definition
 
-Default Method for D-Sep Transformation
+Default Method for JAGS Structure Definition
 
 ## Usage
 

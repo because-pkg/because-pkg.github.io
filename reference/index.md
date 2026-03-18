@@ -34,35 +34,19 @@
   : Family Definition Generics and Default Methods
 - [`get_family()`](https://because-pkg.github.io/because/reference/get_family.md)
   : Create a family object for a given distribution
-- [`jags_family_definition(`*`<default>`*`)`](https://because-pkg.github.io/because/reference/jags_family_definition.default.md)
-  : Default Method for Family Definition
 - [`jags_family_likelihood()`](https://because-pkg.github.io/because/reference/jags_family_likelihood.md)
   : Generate JAGS likelihood code for a distribution family
 - [`jags_family_precision_prior()`](https://because-pkg.github.io/because/reference/jags_family_precision_prior.md)
   : Get default precision prior for a distribution family
-- [`jags_structure_definition(`*`<default>`*`)`](https://because-pkg.github.io/because/reference/jags_structure_definition.default.md)
-  : Default Method for D-Sep Transformation
-- [`jags_structure_definition(`*`<matrix>`*`)`](https://because-pkg.github.io/because/reference/jags_structure_definition.matrix.md)
-  : Method for JAGS Structure Definition (Matrix)
-- [`nimble_family_optimization(`*`<default>`*`)`](https://because-pkg.github.io/because/reference/nimble_family_optimization.default.md)
-  : Default Method for NIMBLE Optimization
 - [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
   : Plot DAG from Equations or Fitted Model
 - [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md)
-  : Plot D-Separation Tests
-- [`plot_dsep(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/plot_dsep.because.md)
-  : Plot D-Separation Results
+  : plot_dsep
 - [`plot_posterior()`](https://because-pkg.github.io/because/reference/plot_posterior.md)
   : Plot Posterior Distributions for Model Comparison
-- [`prepare_structure_data(`*`<default>`*`)`](https://because-pkg.github.io/because/reference/prepare_structure_data.default.md)
-  : Default Method for Structure Data Preparation
-- [`prepare_structure_data(`*`<matrix>`*`)`](https://because-pkg.github.io/because/reference/prepare_structure_data.matrix.md)
-  : Method for Structure Data Preparation (Matrix)
 - [`print(`*`<summary.because>`*`)`](https://because-pkg.github.io/because/reference/print.summary.because.md)
   : Print Summary for Because Model
 - [`storks`](https://because-pkg.github.io/because/reference/storks.md)
   : Data on Stork Populations and Human Birth Rates
 - [`summary(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/summary.because.md)
   : Summary for Because Model
-- [`transform_graph_for_dsep(`*`<default>`*`)`](https://because-pkg.github.io/because/reference/transform_graph_for_dsep.default.md)
-  : Default Method for D-Sep Transformation
