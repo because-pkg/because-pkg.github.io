@@ -23,7 +23,14 @@
 #' It uses the internal \code{results$data} or \code{results$species_order} to map indices back to
 #' meaningful identifiers.
 #'
-#' @export
+#' @examples
+#' \dontrun{
+#' # Assuming a multispecies occupancy model was fit:
+#' fit <- because(list(Y ~ 1), data = data, family = list(Y = "occupancy"))
+#' latents <- extract_latent(fit, type = "occupancy", variables = c("psi", "p"))
+#' head(latents)
+#' }
+#'
 #' @export
 extract_latent <- function(object, type = "occupancy", variables = NULL) {
     if (!inherits(object, "because")) {

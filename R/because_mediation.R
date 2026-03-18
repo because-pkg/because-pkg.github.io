@@ -26,6 +26,15 @@
 #'
 #' @importFrom igraph graph_from_data_frame all_simple_paths as_ids
 #' @importFrom stats sd quantile
+#' @examples
+#' \dontrun{
+#' # Assuming a dataset 'df' exists with variables X, M, and Y
+#' equations <- list(M ~ X, Y ~ M + X)
+#' fit <- because(equations, data = df)
+#' med_results <- because_mediation(fit, exposure = "X", outcome = "Y")
+#' print(med_results$summary)
+#' }
+#'
 #' @export
 because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
     if (is.null(fit$parameter_map)) {

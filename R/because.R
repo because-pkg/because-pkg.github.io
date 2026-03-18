@@ -159,6 +159,20 @@
 #'   \item{DIC}{Deviance Information Criterion (if DIC=TRUE).}
 #'   \item{WAIC}{Watanabe-Akaike Information Criterion (if WAIC=TRUE).}
 #'
+#' @examples
+#' \dontrun{
+#' # A simple linear regression
+#' df <- data.frame(Y = rnorm(100), X = rnorm(100))
+#' fit <- because(list(Y ~ X), data = df)
+#'
+#' # A mediation model
+#' equations <- list(
+#'   M ~ X,
+#'   Y ~ M + X
+#' )
+#' fit_med <- because(equations, data = match_df)
+#' }
+#'
 #' @export
 #' @importFrom ape vcv.phylo branching.times
 #' @importFrom rjags jags.model coda.samples dic.samples jags.samples

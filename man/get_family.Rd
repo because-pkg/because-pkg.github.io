@@ -15,3 +15,7 @@ A family object with appropriate S3 class
 \description{
 Returns a family object that can be dispatched on via S3.
 }
+\examples{
+get_family("gaussian")
+get_family("binomial")
+}

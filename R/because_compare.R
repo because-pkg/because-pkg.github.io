@@ -298,6 +298,7 @@ calc_waic_table <- function(models, sort = TRUE) {
     return(df)
 }
 
+#' @keywords internal
 #' @export
 print.because_comparison <- function(x, digits = 2, ...) {
     cat("Model Comparison (ordered by WAIC):\n")

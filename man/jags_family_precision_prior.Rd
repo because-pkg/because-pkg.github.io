@@ -19,3 +19,4 @@ Character string; JAGS prior statement (e.g. "tau_e_Abundance ~ dgamma(1, 1)")
 \description{
 Get default precision prior for a distribution family
 }
+\keyword{internal}

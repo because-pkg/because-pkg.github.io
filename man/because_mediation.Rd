@@ -36,3 +36,13 @@ and computes their product across all MCMC samples.
 \strong{Note:} This assumes linear relationships for indirect effects (\eqn{\beta_1 \times \beta_2}).
 For non-linear models, this is an approximation of the average causal effect.
 }
+\examples{
+\dontrun{
+# Assuming a dataset 'df' exists with variables X, M, and Y
+equations <- list(M ~ X, Y ~ M + X)
+fit <- because(equations, data = df)
+med_results <- because_mediation(fit, exposure = "X", outcome = "Y")
+print(med_results$summary)
+}
+
+}

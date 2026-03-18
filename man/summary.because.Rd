@@ -32,3 +32,15 @@ the conditional independence tests.
 \description{
 Summarizes the output of a Because model run.
 }
+\examples{
+\dontrun{
+fit <- because(list(Y ~ X), data = my_data)
+
+# Standard summary
+summary(fit)
+
+# Show latent states and random effects
+summary(fit, show_nodes = TRUE, show_random = TRUE)
+}
+
+}

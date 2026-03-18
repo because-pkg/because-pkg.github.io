@@ -34,3 +34,12 @@ For occupancy models, the function looks for parameters starting with \code{psi_
 It uses the internal \code{results$data} or \code{results$species_order} to map indices back to
 meaningful identifiers.
 }
+\examples{
+\dontrun{
+# Assuming a multispecies occupancy model was fit:
+fit <- because(list(Y ~ 1), data = data, family = list(Y = "occupancy"))
+latents <- extract_latent(fit, type = "occupancy", variables = c("psi", "p"))
+head(latents)
+}
+
+}

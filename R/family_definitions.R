@@ -10,17 +10,20 @@ NULL
 #' @param param_name Name of the parameter (e.g. "tau_e_Abundance")
 #' @param ... Additional arguments
 #' @return Character string; JAGS prior statement (e.g. "tau_e_Abundance ~ dgamma(1, 1)")
+#' @keywords internal
 #' @export
 jags_family_precision_prior <- function(family, param_name, ...) {
     UseMethod("jags_family_precision_prior")
 }
 
+#' @keywords internal
 #' @export
 jags_family_precision_prior.default <- function(family, param_name, ...) {
     # Default to weakly informative but regularizing prior for non-Gaussian/unknown
     return(paste0(param_name, " ~ dgamma(10, 10)"))
 }
 
+#' @keywords internal
 #' @export
 jags_family_precision_prior.because_family_gaussian <- function(
     family,
@@ -31,6 +34,7 @@ jags_family_precision_prior.because_family_gaussian <- function(
     return(paste0(param_name, " ~ dgamma(1, 1)"))
 }
 
+#' @keywords internal
 #' @export
 jags_family_precision_prior.because_family_poisson <- function(
     family,
@@ -41,6 +45,7 @@ jags_family_precision_prior.because_family_poisson <- function(
     return(paste0(param_name, " ~ dgamma(10, 10)"))
 }
 
+#' @keywords internal
 #' @export
 jags_family_precision_prior.because_family_binomial <- function(
     family,
@@ -71,6 +76,7 @@ jags_family_precision_prior.because_family_binomial <- function(
 #'   \item{data_requirements}{Character vector of required data elements (or NULL)}
 #' }
 #'
+#' @keywords internal
 #' @export
 jags_family_likelihood <- function(
     family,
@@ -84,6 +90,7 @@ jags_family_likelihood <- function(
     UseMethod("jags_family_likelihood")
 }
 
+#' @keywords internal
 #' @export
 jags_family_likelihood.default <- function(
     family,
@@ -105,6 +112,7 @@ jags_family_likelihood.default <- function(
     ))
 }
 
+#' @keywords internal
 #' @export
 jags_family_likelihood.because_family_gaussian <- function(
     family,
@@ -138,6 +146,7 @@ jags_family_likelihood.because_family_gaussian <- function(
     )
 }
 
+#' @keywords internal
 #' @export
 jags_family_likelihood.because_family_binomial <- function(
     family,
@@ -164,6 +173,7 @@ jags_family_likelihood.because_family_binomial <- function(
     )
 }
 
+#' @keywords internal
 #' @export
 jags_family_likelihood.because_family_poisson <- function(
     family,
@@ -196,6 +206,9 @@ jags_family_likelihood.because_family_poisson <- function(
 #'
 #' @param name Character string; family name (e.g., "gaussian", "binomial")
 #' @return A family object with appropriate S3 class
+#' @examples
+#' get_family("gaussian")
+#' get_family("binomial")
 #' @export
 get_family <- function(name) {
     # Normalize name

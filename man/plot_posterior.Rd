@@ -40,3 +40,10 @@ Invisible NULL. Produces a plot.
 Visualizes posterior density distributions for selected parameters, allowing easy comparison
 between multiple models (e.g., Default vs. Custom priors) or inspection of a single model.
 }
+\examples{
+\dontrun{
+fit <- because(list(Y ~ X), data = my_data)
+plot_posterior(fit, parameter = "beta_Y_X")
+}
+
+}

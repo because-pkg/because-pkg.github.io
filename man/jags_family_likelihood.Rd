@@ -41,3 +41,4 @@ A list with:
 This generic allows S3 dispatch to generate the appropriate JAGS
 likelihood code for any distribution family.
 }
+\keyword{internal}

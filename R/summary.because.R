@@ -14,6 +14,17 @@
 #'   If \code{dsep = TRUE} was used in \code{because}, the summary focuses on
 #'   the conditional independence tests.
 #'
+#' @examples
+#' \dontrun{
+#' fit <- because(list(Y ~ X), data = my_data)
+#'
+#' # Standard summary
+#' summary(fit)
+#'
+#' # Show latent states and random effects
+#' summary(fit, show_nodes = TRUE, show_random = TRUE)
+#' }
+#'
 #' @export
 summary.because <- function(
     object,
@@ -382,6 +393,7 @@ summary.because <- function(
 #' @param x A summary object of class \code{"summary.because"}.
 #' @param ... Additional arguments.
 #'
+#' @keywords internal
 #' @export
 print.summary.because <- function(x, ...) {
     if (x$type == "dsep") {

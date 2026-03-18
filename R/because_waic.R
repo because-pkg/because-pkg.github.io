@@ -143,6 +143,7 @@ because_waic <- function(model) {
     return(result)
 }
 
+#' @keywords internal
 #' @export
 print.because_waic <- function(x, digits = 1, ...) {
     cat("WAIC with Standard Errors\n")

@@ -16,6 +16,12 @@
 #' @param ... Additional arguments passed to `plot()`.
 #'
 #' @return Invisible NULL. Produces a plot.
+#' @examples
+#' \dontrun{
+#' fit <- because(list(Y ~ X), data = my_data)
+#' plot_posterior(fit, parameter = "beta_Y_X")
+#' }
+#'
 #' @export
 #' @importFrom graphics plot lines legend par grid axis layout
 #' @importFrom stats density
