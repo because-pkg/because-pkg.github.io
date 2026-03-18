@@ -627,6 +627,7 @@ format_dsep_test <- function(test) {
   }
 }
 
+
 #' plot_dsep
 #'
 #' Creates a caterpillar plot (point and whisker) of the regression coefficients
@@ -638,6 +639,11 @@ format_dsep_test <- function(test) {
 #' @param ... Additional arguments.
 #'
 #' @return A `ggplot` object.
+#' @examples
+#' \dontrun{
+#' # Plot results for a fitted model
+#' plot_dsep(fit)
+#' }
 #' @rdname plot_dsep
 #' @export
 #' @importFrom ggplot2 ggplot aes geom_pointrange geom_hline coord_flip labs theme_minimal theme
@@ -646,7 +652,7 @@ plot_dsep.because <- function(object, ...) {
     stop("plot_dsep requires a 'because' object fitted with dsep = TRUE.")
   }
 
-  # Use the summary function to extract results cleanly
+
   # summary.because handles the complex renaming and dummy variable matching
   s <- summary(object)
 
