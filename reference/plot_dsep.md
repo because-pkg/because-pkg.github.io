@@ -27,3 +27,12 @@ plot_dsep(object, ...)
 ## Value
 
 A `ggplot` object.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Plot results for a fitted model
+plot_dsep(fit)
+} # }
+```
