@@ -31,8 +31,7 @@ Imports:
     stats,
     graphics,
     utils,
-    Matrix,
-    ape
+    Matrix
 Depends: 
     R (>= 3.5)
 RoxygenNote: 7.3.3
@@ -48,7 +47,8 @@ Suggests:
     ggraph,
     dplyr,
     ggm,
-    nimble
+    nimble,
+    ape
 VignetteBuilder: knitr, rmarkdown
 URL: https://because-pkg.github.io/because/, https://github.com/because-pkg/because
 BugReports: https://github.com/because-pkg/because/issues

@@ -4,8 +4,8 @@
 #' required by \code{\link{because}}.
 #'
 #' @param data A data.frame in long format with one row per observation.
-#' @param species_col Name of the column containing species identifiers (default: "SP").
-#' @param tree A phylogenetic tree (class \code{phylo}). Optional. If provided, determines species order.
+#' @param species_col Name of the column containing species or unit identifiers (default: "SP").
+#' @param tree A phylogenetic tree or other structural object. Optional. If provided, determines the order of units.
 #'
 #' @return A named list where each element is either:
 #'   \itemize{
@@ -43,8 +43,10 @@
 #' )
 #'
 #' # With tree
-#' tree <- ape::read.tree(text = "(sp1:1,sp2:1,sp3:1);")
-#' data_list <- because_format_data(data_long, species_col = "SP", tree = tree)
+#' if (requireNamespace("ape", quietly = TRUE)) {
+#'   tree <- ape::read.tree(text = "(sp1:1,sp2:1,sp3:1);")
+#'   data_list <- because_format_data(data_long, species_col = "SP", tree = tree)
+#' }
 #'
 #' # Without tree (general repeated measures)
 #' data_list_no_tree <- because_format_data(data_long, species_col = "SP")
@@ -61,9 +63,7 @@ because_format_data <- function(data, species_col = "SP", tree = NULL) {
         stop(sprintf("Species column '%s' not found in data", species_col))
     }
 
-    if (!is.null(tree) && !inherits(tree, "phylo")) {
-        stop("'tree' must be a phylo object")
-    }
+    # No hard class check (allowed by get_order_labels_hook)
 
     # Get trait columns (everything except species column)
     trait_cols <- setdiff(names(data), species_col)
@@ -120,7 +120,12 @@ because_format_data <- function(data, species_col = "SP", tree = NULL) {
     data_species <- unique(data[[species_col]])
 
     if (!is.null(tree)) {
-        reference_labels <- tree$tip.label
+        reference_labels <- get_order_labels_hook(tree)
+        if (is.null(reference_labels)) {
+            stop(
+                "Could not extract labels from structure. Ensure it has tip labels or rownames."
+            )
+        }
         n_species <- length(reference_labels)
 
         missing_in_tree <- setdiff(data_species, reference_labels)

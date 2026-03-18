@@ -1,7 +1,7 @@
-#' Generate a JAGS model string for Phylogenetic Bayesian SEM (Because)
+#' Generate a JAGS model string for Bayesian SEM (Because)
 #'
 #' This function builds the model code to be passed to JAGS based on a set of structural equations.
-#' It supports both single and multiple phylogenetic trees (to account for phylogenetic uncertainty).
+#' It supports custom covariance structures (spatial, phylogenetic, etc.).
 #' Missing values are handled both in the response and predictor variables treating all of them as stochastic nodes.
 #'
 #' @param equations A list of model formulas.
@@ -32,8 +32,8 @@
 #' The generated model includes:
 #' \itemize{
 #'   \item Linear predictors and multivariate normal likelihoods for each response variable.
-#'   \item Priors for intercepts (\code{alpha}), slopes (\code{beta}), lambda parameters (\code{lambda}), and residual precisions (\code{tau}).
-#'   \item Phylogenetic covariance modeled via a single \code{VCV} matrix (when \code{multi.tree = FALSE}) or a 3D array \code{multiVCV[,,K]} with categorical sampling across trees (when \code{multi.tree = TRUE}).
+#'   \item Priors for intercepts (\code{alpha}), slopes (\code{beta}), and residual precisions (\code{tau}).
+#'   \item Custom covariance modeled via provided structural objects (e.g. VCV matrices).
 #'   \item (Optional) Observation models for variables with measurement error:
 #'     \itemize{
 #'       \item Type "se": \code{Var_mean ~ dnorm(Var, 1/Var_se^2)}
@@ -48,7 +48,8 @@
 #' cat(because_model(eqs, multi.tree = TRUE)$model)
 #'
 #' @param standardize_latent Logical (default TRUE). If TRUE, standardizes latent variables to unit variance.
-#' @param structure_names (Internal) Character vector of names for multiple trees/structures.
+#' @param structures A named list of structural objects (e.g. matrices, trees) to include as correlations.
+#' @param is_multi_structure Logical (Internal). If TRUE, handles 3D Precision arrays.
 #' @param latent Optional character vector of latent variable names.
 #' @param poly_terms (Internal) List of polynomial terms for model generation.
 #' @param fix_residual_variance Optional numeric value or named vector to fix residual variance.
@@ -60,8 +61,8 @@ because_model <- function(
   equations,
   multi.tree = FALSE,
   latent_method = "correlations",
-  structure_names = "phylo",
-  structures = NULL,
+  structures = list(),
+  is_multi_structure = FALSE,
   random_structure_names = NULL,
   random_terms = list(),
   vars_with_na = NULL,

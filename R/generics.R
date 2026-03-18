@@ -11,6 +11,82 @@ jags_structure_definition <- function(structure, variable_name = "err", ...) {
     UseMethod("jags_structure_definition")
 }
 
+#' Default Method for JAGS Structure Definition
+#'
+#' Implements a standard precision-matrix-based correlation (dmnorm).
+#' @keywords internal
+#' @export
+jags_structure_definition.default <- function(
+    structure,
+    variable_name = "err",
+    ...
+) {
+    args <- list(...)
+    s_name <- args$s_name %||% "Struct"
+    loop_bound <- args$loop_bound %||% "N"
+    k_idx <- args$category_index # e.g. "k" or "2"
+    is_multi <- args$is_multi %||% FALSE
+
+    prec_name <- paste0("Prec_", s_name)
+    err_var <- paste0("err_", s_name, "_", variable_name)
+    tau_var <- paste0("tau_", s_name, "_", variable_name)
+
+    # Category suffix for parameter names if needed
+    k_suffix <- if (!is.null(k_idx)) paste0("_", k_idx) else ""
+
+    # Indexing for the error variable definition
+    err_index <- if (!is.null(k_idx)) {
+        paste0(err_var, "[1:", loop_bound, ", ", k_idx, "]")
+    } else {
+        paste0(err_var, "[1:", loop_bound, "]")
+    }
+
+    # Precision matrix indexing (multi-structure)
+    prec_index <- if (is_multi) {
+        paste0(
+            prec_name,
+            "[1:",
+            loop_bound,
+            ", 1:",
+            loop_bound,
+            ", ",
+            (k_idx %||% "1"),
+            "]"
+        )
+    } else {
+        paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, "]")
+    }
+
+    # Standard priors & dmnorm definition
+    model_lines <- c(
+        paste0("  ", tau_var, k_suffix, " ~ dgamma(0.01, 0.01)"),
+        paste0(
+            "  ",
+            err_index,
+            " ~ dmnorm(zero_vec[1:",
+            loop_bound,
+            "], ",
+            tau_var,
+            k_suffix,
+            " * ",
+            prec_index,
+            ")"
+        )
+    )
+
+    # Term to add to linear predictor
+    term_str <- if (!is.null(k_idx)) {
+        paste0(err_var, "[i, ", k_idx, "]")
+    } else {
+        paste0(err_var, "[i]")
+    }
+
+    return(list(
+        model_lines = model_lines,
+        term = term_str
+    ))
+}
+
 #' Prepare Structure Data
 #'
 #' Modules implement this to process the structure object into data for JAGS.
@@ -22,6 +98,13 @@ jags_structure_definition <- function(structure, variable_name = "err", ...) {
 #' @export
 prepare_structure_data <- function(structure, data, ...) {
     UseMethod("prepare_structure_data")
+}
+
+#' Default Method for Prepare Structure Data
+#' @keywords internal
+#' @export
+prepare_structure_data.default <- function(structure, data, ...) {
+    return(list())
 }
 
 #' Define JAGS Family Implementation
@@ -38,6 +121,13 @@ jags_family_definition <- function(family, response, predictors, ...) {
     UseMethod("jags_family_definition")
 }
 
+#' Default Method for JAGS Family Definition
+#' @keywords internal
+#' @export
+jags_family_definition.default <- function(family, response, predictors, ...) {
+    return(NULL)
+}
+
 #' Transform Graph for D-Separation
 #'
 #' Modules implement this to rename variables in the causal graph to match their latent structure.
@@ -51,6 +141,13 @@ transform_graph_for_dsep <- function(family, equations, ...) {
     UseMethod("transform_graph_for_dsep")
 }
 
+#' Default Method for Transform Graph
+#' @keywords internal
+#' @export
+transform_graph_for_dsep.default <- function(family, equations, ...) {
+    return(equations)
+}
+
 #' NIMBLE Family Optimization
 #'
 #' Modules implement this to provide specialized NIMBLE optimizations (e.g. marginalization).
@@ -62,6 +159,13 @@ transform_graph_for_dsep <- function(family, equations, ...) {
 #' @export
 nimble_family_optimization <- function(family, model_string, ...) {
     UseMethod("nimble_family_optimization")
+}
+
+#' Default Method for NIMBLE Optimization
+#' @keywords internal
+#' @export
+nimble_family_optimization.default <- function(family, model_string, ...) {
+    return(list(model_string = model_string, nimble_functions = list()))
 }
 
 #' Expanded D-Sep Equation Hook
@@ -79,6 +183,18 @@ dsep_equations_hook <- function(family, equations, dsep_equations, ...) {
     UseMethod("dsep_equations_hook")
 }
 
+#' Default Method for D-Sep Equations Hook
+#' @keywords internal
+#' @export
+dsep_equations_hook.default <- function(
+    family,
+    equations,
+    dsep_equations,
+    ...
+) {
+    return(dsep_equations)
+}
+
 #' D-Sep Tree Hook
 #'
 #' Modules implement this to decide if a tree should be passed to a specific d-separation test.
@@ -94,44 +210,6 @@ dsep_tree_hook <- function(tree, test_eq, hierarchical_info, levels, ...) {
     UseMethod("dsep_tree_hook")
 }
 
-#' D-Sep Potential Latent Hook
-#'
-#' Modules implement this to remove variables from the 'potential latents' list (e.g. occupancy states).
-#' @param family The S3 family list.
-#' @param potential_latents Character vector of variables suspected to be latent.
-#' @param ... Additional arguments.
-#' @return A modified character vector of potential latents.
-#' @keywords internal
-#' @export
-dsep_potential_latent_hook <- function(family, potential_latents, ...) {
-    UseMethod("dsep_potential_latent_hook")
-}
-
-#' D-Sep Test Translation Hook
-#'
-#' Modules implement this to translate test equations (e.g. psi_Species ~ X to Species ~ X).
-#' @param family The S3 family list.
-#' @param test_eq The d-separation test equation.
-#' @param ... Additional arguments.
-#' @return A modified test equation.
-#' @keywords internal
-#' @export
-dsep_test_translation_hook <- function(family, test_eq, ...) {
-    UseMethod("dsep_test_translation_hook")
-}
-
-#' Default Method for D-Sep Equations Hook
-#' @keywords internal
-#' @export
-dsep_equations_hook.default <- function(
-    family,
-    equations,
-    dsep_equations,
-    ...
-) {
-    return(dsep_equations)
-}
-
 #' Default Method for D-Sep Tree Hook
 #' @keywords internal
 #' @export
@@ -145,11 +223,37 @@ dsep_tree_hook.default <- function(
     return(tree)
 }
 
+#' D-Sep Potential Latent Hook
+#'
+#' Modules implement this to remove variables from the 'potential latents' list (e.g. occupancy states).
+#' @param family The S3 family list.
+#' @param potential_latents Character vector of variables suspected to be latent.
+#' @param ... Additional arguments.
+#' @return A modified character vector of potential latents.
+#' @keywords internal
+#' @export
+dsep_potential_latent_hook <- function(family, potential_latents, ...) {
+    UseMethod("dsep_potential_latent_hook")
+}
+
 #' Default Method for D-Sep Potential Latents
 #' @keywords internal
 #' @export
 dsep_potential_latent_hook.default <- function(family, potential_latents, ...) {
     return(potential_latents)
+}
+
+#' D-Sep Test Translation Hook
+#'
+#' Modules implement this to translate test equations (e.g. psi_Species ~ X to Species ~ X).
+#' @param family The S3 family list.
+#' @param test_eq The d-separation test equation.
+#' @param ... Additional arguments.
+#' @return A modified test equation.
+#' @keywords internal
+#' @export
+dsep_test_translation_hook <- function(family, test_eq, ...) {
+    UseMethod("dsep_test_translation_hook")
 }
 
 #' Default Method for D-Sep Translation
@@ -192,6 +296,13 @@ get_inits_hook <- function(family, data, ...) {
     UseMethod("get_inits_hook")
 }
 
+#' Default Method for Initialization Hook
+#' @keywords internal
+#' @export
+get_inits_hook.default <- function(family, data, ...) {
+    return(list())
+}
+
 #' Needs Zero Inflation Hook
 #'
 #' Modules implement this to signal if a variable needs a zero-inflated likelihood.
@@ -205,6 +316,13 @@ needs_zero_inflation_hook <- function(family, variable_name, ...) {
     UseMethod("needs_zero_inflation_hook")
 }
 
+#' Default Method for Zero Inflation Hook
+#' @keywords internal
+#' @export
+needs_zero_inflation_hook.default <- function(family, variable_name, ...) {
+    return(FALSE)
+}
+
 #' Variability Type Hook
 #'
 #' Modules implement this to provide default variability metadata (e.g. 'reps' for occupancy).
@@ -216,20 +334,6 @@ needs_zero_inflation_hook <- function(family, variable_name, ...) {
 #' @export
 get_variability_type_hook <- function(family, variable_name, ...) {
     UseMethod("get_variability_type_hook")
-}
-
-#' Default Method for Initialization Hook
-#' @keywords internal
-#' @export
-get_inits_hook.default <- function(family, data, ...) {
-    return(list())
-}
-
-#' Default Method for Zero Inflation Hook
-#' @keywords internal
-#' @export
-needs_zero_inflation_hook.default <- function(family, variable_name, ...) {
-    return(FALSE)
 }
 
 #' Default Method for Variability Type Hook
@@ -280,7 +384,6 @@ get_monitor_vars_hook.default <- function(family, variable_name, ...) {
 
 #' Order Labels Hook
 #'
-#'
 #' Modules implement this to extract labels (e.g. tip labels from phylo or rownames from matrix).
 #' @param structure The structural object.
 #' @param ... Additional arguments.
@@ -303,7 +406,6 @@ get_order_labels_hook.default <- function(structure, ...) {
 
 #' Latent Child Hook
 #'
-#'
 #' Modules implement this if a variable is modeled via a latent state (e.g. occupancy Y -> z_Y).
 #' @param family The S3 family list.
 #' @param variable_name Name of the variable.
@@ -313,6 +415,13 @@ get_order_labels_hook.default <- function(structure, ...) {
 #' @export
 is_latent_child_hook <- function(family, variable_name, ...) {
     UseMethod("is_latent_child_hook")
+}
+
+#' Default Method for Latent Child Hook
+#' @keywords internal
+#' @export
+is_latent_child_hook.default <- function(family, variable_name, ...) {
+    return(FALSE)
 }
 
 #' Structure Name Hook
@@ -325,13 +434,6 @@ is_latent_child_hook <- function(family, variable_name, ...) {
 #' @export
 get_structure_name_hook <- function(structure, ...) {
     UseMethod("get_structure_name_hook")
-}
-
-#' Default Method for Latent Child Hook
-#' @keywords internal
-#' @export
-is_latent_child_hook.default <- function(family, variable_name, ...) {
-    return(FALSE)
 }
 
 #' Default Method for Structure Name
@@ -347,71 +449,9 @@ plot_dsep <- function(object, ...) {
     UseMethod("plot_dsep")
 }
 
-#' Method for Structure Data Preparation (Matrix)
 #' @keywords internal
 #' @export
-prepare_structure_data.matrix <- function(
-    structure,
-    data,
-    ...
-) {
+prepare_structure_data.matrix <- function(structure, data, ...) {
     # Treat matrix as covariance, invert to get Precision
-    # Precision matrix is expected by dmnorm
     return(list(data_list = list(Prec = solve(structure))))
-}
-
-#' Method for JAGS Structure Definition (Matrix)
-#' @keywords internal
-#' @export
-jags_structure_definition.matrix <- function(
-    structure,
-    variable_name = "err",
-    ...
-) {
-    # Matrix structures use dmnorm with the provided Precision matrix
-    return(list(
-        setup_code = NULL,
-        error_prior = "dmnorm"
-    ))
-}
-
-#' Default Method for JAGS Structure Definition
-#' @keywords internal
-#' @export
-jags_structure_definition.default <- function(
-    structure,
-    variable_name = "err",
-    ...
-) {
-    # If structure is NULL or unrecognizable, return NULL
-    # This triggers the default independent error model in because_model.R
-    return(NULL)
-}
-
-#' Default Method for Structure Data Preparation
-#' @keywords internal
-#' @export
-prepare_structure_data.default <- function(structure, data, ...) {
-    return(list())
-}
-
-#' Default Method for Family Definition
-#' @keywords internal
-#' @export
-jags_family_definition.default <- function(family, response, predictors, ...) {
-    return(NULL) # Triggers default Gaussian handling
-}
-
-#' Default Method for D-Sep Transformation
-#' @keywords internal
-#' @export
-transform_graph_for_dsep.default <- function(family, equations, ...) {
-    return(equations) # No transformation
-}
-
-#' Default Method for NIMBLE Optimization
-#' @keywords internal
-#' @export
-nimble_family_optimization.default <- function(family, model_string, ...) {
-    return(list(model_string = model_string, nimble_functions = list()))
 }

@@ -580,10 +580,6 @@ because <- function(
   # Extension Hook: Normalize specialized aliases (e.g. psi_Species -> Species)
   equations <- normalize_equations_hook(family_obj, equations, data = data)
 
-  # (Original normalization block removed)
-    }
-    return(eq)
-  })
 
   # --- Auto-Stacking (Multispecies Input) ---
   # If data is a list containing species-specific matrices (and equation is generic Y ~ ...),
