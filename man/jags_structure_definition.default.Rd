@@ -2,10 +2,11 @@
 % Please edit documentation in R/generics.R
 \name{jags_structure_definition.default}
 \alias{jags_structure_definition.default}
-\title{Default Method for D-Sep Transformation}
+\title{Default Method for JAGS Structure Definition}
 \usage{
 \method{jags_structure_definition}{default}(structure, variable_name = "err", ...)
 }
 \description{
-Default Method for D-Sep Transformation
+Default Method for JAGS Structure Definition
 }
+\keyword{internal}

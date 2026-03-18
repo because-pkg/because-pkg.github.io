@@ -627,7 +627,7 @@ format_dsep_test <- function(test) {
   }
 }
 
-#' Plot D-Separation Results
+#' plot_dsep
 #'
 #' Creates a caterpillar plot (point and whisker) of the regression coefficients
 #' from all d-separation tests. A horizontal red line at zero helps visually
@@ -638,6 +638,7 @@ format_dsep_test <- function(test) {
 #' @param ... Additional arguments.
 #'
 #' @return A `ggplot` object.
+#' @rdname plot_dsep
 #' @export
 #' @importFrom ggplot2 ggplot aes geom_pointrange geom_hline coord_flip labs theme_minimal theme
 plot_dsep.because <- function(object, ...) {

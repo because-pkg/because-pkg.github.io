@@ -9,3 +9,4 @@
 \description{
 Default Method for NIMBLE Optimization
 }
+\keyword{internal}

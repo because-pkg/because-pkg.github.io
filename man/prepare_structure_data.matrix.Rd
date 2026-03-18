@@ -9,3 +9,4 @@
 \description{
 Method for Structure Data Preparation (Matrix)
 }
+\keyword{internal}

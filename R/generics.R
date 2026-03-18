@@ -64,17 +64,14 @@ nimble_family_optimization <- function(family, model_string, ...) {
     UseMethod("nimble_family_optimization")
 }
 
-#' Plot D-Separation Tests
-#'
-#' Visualizes the results of d-separation tests as a caterpillar plot.
-#' @param object A `because` object fitted with `dsep = TRUE`.
-#' @param ... Additional arguments.
+#' @rdname plot_dsep
 #' @export
 plot_dsep <- function(object, ...) {
     UseMethod("plot_dsep")
 }
 
 #' Method for Structure Data Preparation (Matrix)
+#' @keywords internal
 #' @export
 prepare_structure_data.matrix <- function(
     structure,
@@ -87,6 +84,7 @@ prepare_structure_data.matrix <- function(
 }
 
 #' Method for JAGS Structure Definition (Matrix)
+#' @keywords internal
 #' @export
 jags_structure_definition.matrix <- function(
     structure,
@@ -100,7 +98,8 @@ jags_structure_definition.matrix <- function(
     ))
 }
 
-#' Default Method for D-Sep Transformation
+#' Default Method for JAGS Structure Definition
+#' @keywords internal
 #' @export
 jags_structure_definition.default <- function(
     structure,
@@ -113,24 +112,28 @@ jags_structure_definition.default <- function(
 }
 
 #' Default Method for Structure Data Preparation
+#' @keywords internal
 #' @export
 prepare_structure_data.default <- function(structure, data, ...) {
     return(list())
 }
 
 #' Default Method for Family Definition
+#' @keywords internal
 #' @export
 jags_family_definition.default <- function(family, response, predictors, ...) {
     return(NULL) # Triggers default Gaussian handling
 }
 
 #' Default Method for D-Sep Transformation
+#' @keywords internal
 #' @export
 transform_graph_for_dsep.default <- function(family, equations, ...) {
     return(equations) # No transformation
 }
 
 #' Default Method for NIMBLE Optimization
+#' @keywords internal
 #' @export
 nimble_family_optimization.default <- function(family, model_string, ...) {
     return(list(model_string = model_string, nimble_functions = list()))

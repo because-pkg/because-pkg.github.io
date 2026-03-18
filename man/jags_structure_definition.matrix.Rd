@@ -9,3 +9,4 @@
 \description{
 Method for JAGS Structure Definition (Matrix)
 }
+\keyword{internal}

@@ -9,3 +9,4 @@
 \description{
 Default Method for Structure Data Preparation
 }
+\keyword{internal}
