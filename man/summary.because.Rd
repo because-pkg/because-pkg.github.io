@@ -13,6 +13,8 @@
 )
 }
 \arguments{
+\item{object}{A \code{because} object.}
+
 \item{show_internal}{Logical. If \code{TRUE}, shows internal parameters created for
 deterministically defined nodes (e.g., \code{beta_..._det_...}). Defaults to \code{FALSE}.}
 

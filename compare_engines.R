@@ -1,87 +1,137 @@
-library(because)
-library(ape)
-devtools::load_all()
+# Comprehensive Engine Parity Test: JAGS vs NIMBLE
+# Verifies all supported families: Gaussian, Binomial, Poisson, Multinomial, Ordinal, ZIP, NB
 
-set.seed(123)
-n_species <- 50
-tree <- rtree(n_species)
-tree$tip.label <- paste0("sp", 1:n_species)
+library(pkgload)
+load_all()
+library(nimble)
 
-# Simulate phylogenetic signal
-vcv_mat <- vcv(tree)
-vcv_mat <- vcv_mat / max(vcv_mat) # standardize
+# Helper for string concatenation
+`%+%` <- function(a, b) paste0(a, b)
 
-# Cholesky decomposition for simulation
-L <- t(chol(vcv_mat))
-u <- L %*% rnorm(n_species)
+set.seed(42)
+n <- 250
+x <- rnorm(n)
 
-# Predictor
-X <- rnorm(n_species)
-# Response with phylogenetic signal + predictor effect + noise
-Y <- 2 + 1.5 * X + as.numeric(u) * 2 + rnorm(n_species, 0, 0.5)
+# 1. Simulate Data for all families
+# ---------------------------------
+data <- data.frame(x = x)
 
-dat <- data.frame(
-    species = tree$tip.label,
-    Y = Y,
-    X = X
+# Gaussian
+data$y_gauss <- 2 + 1.2 * x + rnorm(n, 0, 1)
+
+# Binomial
+data$y_bin <- rbinom(n, 1, plogis(-0.5 + 0.8 * x))
+
+# Poisson
+data$y_pois <- rpois(n, exp(0.5 + 0.5 * x))
+
+# Negative Binomial (NB)
+# mu = exp(0.5 + 0.5*x), size = 2
+data$y_nb <- rnbinom(n, size = 2, mu = exp(0.5 + 0.5 * x))
+
+# Zero-Inflated Poisson (ZIP)
+# psi = 0.3 (prob of zero), mu = exp(1 + 0.5*x)
+is_zero <- rbinom(n, 1, 0.3)
+data$y_zip <- ifelse(is_zero == 1, 0, rpois(n, exp(1 + 0.5 * x)))
+
+# Multinomial (3 categories)
+# eta2 = -0.5 + 1*x, eta3 = 0.5 - 0.5*x, eta1 = 0
+eta2 <- -0.5 + 1 * x
+eta3 <- 0.5 - 0.5 * x
+probs <- t(apply(cbind(0, eta2, eta3), 1, function(e) exp(e) / sum(exp(e))))
+data$y_multinom <- apply(probs, 1, function(p) sample(1:3, 1, prob = p))
+
+# Ordinal (3 categories)
+# eta = 0.8 * x, cutpoints = -1, 1
+eta_ord <- 0.8 * x
+p1 <- plogis(-1 - eta_ord)
+p2 <- plogis(1 - eta_ord) - p1
+p3 <- 1 - plogis(1 - eta_ord)
+probs_ord <- cbind(p1, p2, p3)
+data$y_ordinal <- apply(probs_ord, 1, function(p) sample(1:3, 1, prob = p))
+
+# 2. Define Test Scenarios
+# ------------------------
+models <- list(
+    gaussian = list(eqs = list(y_gauss ~ x), family = c(y_gauss = "gaussian")),
+    binomial = list(eqs = list(y_bin ~ x), family = c(y_bin = "binomial")),
+    poisson = list(eqs = list(y_pois ~ x), family = c(y_pois = "poisson")),
+    negbin = list(eqs = list(y_nb ~ x), family = c(y_nb = "negbinomial")),
+    zip = list(eqs = list(y_zip ~ x), family = c(y_zip = "zip")),
+    multinom = list(
+        eqs = list(y_multinom ~ x),
+        family = c(y_multinom = "multinomial")
+    ),
+    ordinal = list(eqs = list(y_ordinal ~ x), family = c(y_ordinal = "ordinal"))
 )
 
-eqs <- list(Y ~ X)
+results <- list()
 
-message("\n======================================")
-message("Fitting model with JAGS (Default)...")
-message("======================================")
-time_jags <- system.time({
+# 3. Fit and Compare
+# ------------------
+for (name in names(models)) {
+    cat("\n" %+% paste(rep("=", 60), collapse = "") %+% "\n")
+    cat(sprintf("Testing Family: %s\n", toupper(name)))
+    cat(paste(rep("=", 60), collapse = "") %+% "\n")
+
+    mod <- models[[name]]
+
+    cat("Fitting JAGS...\n")
     fit_jags <- because(
-        equations = eqs,
-        data = dat,
-        tree = tree,
-        engine = 'jags',
-        n.iter = 500,
-        n.burnin = 100,
-        n.chains = 2,
+        mod$eqs,
+        data = data,
+        family = mod$family,
+        engine = "jags",
+        n.iter = 5000,
+        n.burnin = 1000,
         quiet = TRUE
     )
-})
 
-message("\n======================================")
-message("Fitting model with NIMBLE...")
-message("======================================")
-time_nimble <- system.time({
+    cat("Fitting NIMBLE...\n")
     fit_nimble <- because(
-        equations = eqs,
-        data = dat,
-        tree = tree,
-        engine = 'nimble',
-        n.iter = 500,
-        n.burnin = 100,
-        n.chains = 2,
+        mod$eqs,
+        data = data,
+        family = mod$family,
+        engine = "nimble",
+        n.iter = 5000,
+        n.burnin = 1000,
         quiet = TRUE
     )
-})
 
-message("\n======================================")
-message("RESULTS COMPARISON")
-message("======================================")
+    jags_sum <- as.data.frame(fit_jags$summary$statistics)
+    nimble_sum <- as.data.frame(fit_nimble$summary$statistics)
 
-cat("\n--- PARAMETER ESTIMATES (Mean) ---\n")
-means_df <- data.frame(
-    JAGS = fit_jags$summary$statistics[, "Mean"],
-    NIMBLE = fit_nimble$summary$statistics[, "Mean"]
-)
-print(means_df)
+    params <- intersect(rownames(jags_sum), rownames(nimble_sum))
+    # Standardize parameter selection
+    params <- params[grepl("beta_|alpha_|cutpoint_|rho_", params)]
 
-cat("\n--- PARAMETER ESTIMATES (SD) ---\n")
-sd_df <- data.frame(
-    JAGS = fit_jags$summary$statistics[, "SD"],
-    NIMBLE = fit_nimble$summary$statistics[, "SD"]
-)
-print(sd_df)
+    comp <- data.frame(
+        Param = params,
+        JAGS_Mean = round(jags_sum[params, "Mean"], 3),
+        NIMBLE_Mean = round(nimble_sum[params, "Mean"], 3),
+        JAGS_SD = round(jags_sum[params, "SD"], 3),
+        NIMBLE_SD = round(nimble_sum[params, "SD"], 3)
+    )
 
-cat("\n--- EXECUTION TIME ---\n")
-time_df <- data.frame(
-    JAGS_seconds = time_jags["elapsed"],
-    NIMBLE_seconds = time_nimble["elapsed"]
-)
-rownames(time_df) <- "Total Elapsed"
-print(time_df)
+    # Parity Metric: Difference in units of Posterior SD
+    comp$Diff_SD <- round(
+        abs(comp$JAGS_Mean - comp$NIMBLE_Mean) / comp$JAGS_SD,
+        3
+    )
+    comp$Status <- ifelse(comp$Diff_SD < 0.6, "PASS", "CHECK")
+
+    print(comp[, c("Param", "JAGS_Mean", "NIMBLE_Mean", "Diff_SD", "Status")])
+    results[[name]] <- comp
+}
+
+cat("\n" %+% paste(rep("-", 40), collapse = "") %+% "\n")
+cat("SUMMARY OF PARITY CHECKS\n")
+cat(paste(rep("-", 40), collapse = "") %+% "\n")
+for (name in names(results)) {
+    status <- if (all(results[[name]]$Status == "PASS")) {
+        "PASSED"
+    } else {
+        "NEEDS REVIEW"
+    }
+    cat(sprintf(" - %-10s: %s\n", name, status))
+}

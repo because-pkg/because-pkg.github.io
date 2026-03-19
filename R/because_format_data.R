@@ -95,7 +95,7 @@ because_format_data <- function(data, species_col = "SP", tree = NULL) {
             )
 
             # Create dummy variables (K-1 for K levels)
-            for (i in 2:length(levels)) {
+            for (i in seq_along(levels)[-1]) {
                 dummy_name <- paste0(col, "_", levels[i])
                 data[[dummy_name]] <- as.numeric(data[[col]] == levels[i])
             }

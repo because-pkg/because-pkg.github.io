@@ -34,8 +34,16 @@ equations_to_dag <- function(
     # e.g. "BM:M" -> "BM_x_M"
     det_lookup <- NULL
     if (!is.null(deterministic_terms) && length(deterministic_terms) > 0) {
-        det_orig <- sapply(deterministic_terms, function(x) x$original)
-        det_iname <- sapply(deterministic_terms, function(x) x$internal_name)
+        det_orig <- vapply(
+            deterministic_terms,
+            function(x) x$original,
+            character(1)
+        )
+        det_iname <- vapply(
+            deterministic_terms,
+            function(x) x$internal_name,
+            character(1)
+        )
         det_lookup <- setNames(det_iname, det_orig)
     }
 
@@ -44,7 +52,7 @@ equations_to_dag <- function(
     # -----------------------------------------------------------------------
     all_vars <- unique(c(
         # Response-side variables
-        sapply(equations, function(eq) as.character(eq[[2]])),
+        vapply(equations, function(eq) as.character(eq[[2]]), character(1)),
         # Predictor-side variables
         unlist(lapply(equations, function(eq) {
             term_labels <- attr(stats::terms(eq), "term.labels")
@@ -168,7 +176,7 @@ extract_bidirected_edges <- function(mag) {
 
     correlations <- list()
 
-    for (i in 1:(n - 1)) {
+    for (i in seq_len(n - 1)) {
         for (j in (i + 1):n) {
             if (mag[i, j] == 100 && mag[j, i] == 100) {
                 # Bidirected edge found
@@ -213,8 +221,16 @@ mag_basis_to_formulas <- function(
     # e.g. "BM_x_M" -> "BM:M"
     det_rev_lookup <- NULL
     if (!is.null(deterministic_terms) && length(deterministic_terms) > 0) {
-        det_iname <- sapply(deterministic_terms, function(x) x$internal_name)
-        det_orig <- sapply(deterministic_terms, function(x) x$original)
+        det_iname <- vapply(
+            deterministic_terms,
+            function(x) x$internal_name,
+            character(1)
+        )
+        det_orig <- vapply(
+            deterministic_terms,
+            function(x) x$original,
+            character(1)
+        )
         det_rev_lookup <- setNames(det_orig, det_iname)
     }
 
@@ -380,7 +396,7 @@ mag_basis_to_formulas <- function(
 
             var2 <- rename_if_occ(var2)
             if (!is.null(cond_vars) && length(cond_vars) > 0) {
-                cond_vars <- sapply(cond_vars, rename_if_occ)
+                cond_vars <- vapply(cond_vars, rename_if_occ, character(1))
             }
         }
 
@@ -392,7 +408,7 @@ mag_basis_to_formulas <- function(
             # Sort conditioning variables for a canonical representation and stable deduplication
             sorted_cond <- sort(cond_vars)
             # Resolve internal node names to original R syntax (e.g. BM_x_M -> BM:M)
-            sorted_cond_r <- sapply(sorted_cond, resolve_var)
+            sorted_cond_r <- vapply(sorted_cond, resolve_var, character(1))
             var2_r <- resolve_var(var2)
             formula_str <- paste(
                 var1,

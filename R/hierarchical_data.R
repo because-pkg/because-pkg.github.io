@@ -469,7 +469,7 @@ auto_stack_multispecies_data <- function(data, equations, quiet = FALSE) {
 
     species_names <- names(pivot_list)
     if (is.null(species_names)) {
-        species_names <- paste0("Sp", 1:length(pivot_list))
+        species_names <- paste0("Sp", seq_along(pivot_list))
     }
     N_species <- length(species_names)
 

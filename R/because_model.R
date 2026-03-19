@@ -53,6 +53,13 @@
 #' @param latent Optional character vector of latent variable names.
 #' @param poly_terms (Internal) List of polynomial terms for model generation.
 #' @param fix_residual_variance Optional numeric value or named vector to fix residual variance.
+#' @param latent_method Method for handling latent variables ("correlations" or "explicit").
+#' @param random_structure_names Optional character vector of structural names applied to all variables.
+#' @param random_terms Optional list of random effects (response, group).
+#' @param categorical_vars Optional character vector of categorical variable names.
+#' @param priors Optional named list of custom priors.
+#' @param hierarchical_info Optional list containing data hierarchy (levels, link_vars).
+#' @param engine Bayesian engine to use ("jags" or "nimble").
 #' @export
 #' @importFrom stats formula terms setNames sd
 #' @importFrom utils combn
@@ -78,6 +85,12 @@ because_model <- function(
   hierarchical_info = NULL,
   engine = "jags"
 ) {
+  # Standardize structures
+  if (is.null(structures)) {
+    structures <- list()
+  }
+  structure_names <- names(structures)
+
   # Helper: returns b if a is NULL or if a is a list element that doesn't exist
   `%||%` <- function(a, b) {
     tryCatch(if (!is.null(a)) a else b, error = function(e) b)
@@ -1007,7 +1020,15 @@ because_model <- function(
       model_lines <- c(
         model_lines,
         paste0("    # Poisson log link for ", response),
-        paste0("    log(", mu, "[i]) <- ", linpred, " + ", err, "[i]"),
+        paste0(
+          "    ",
+          mu,
+          "[i] <- exp(max(-20, min(10, ",
+          linpred,
+          " + ",
+          err,
+          "[i])))"
+        ),
         paste0("    ", response, "[i] ~ dpois(", mu, "[i])")
       )
       if (engine == "jags") {
@@ -1037,10 +1058,38 @@ because_model <- function(
       model_lines <- c(
         model_lines,
         paste0("    # Negative Binomial log link for ", response),
-        paste0("    log(", mu, "[i]) <- ", linpred, " + ", err, "[i]"),
-        paste0("    ", p, "[i] <- ", r, " / (", r, " + ", mu, "[i])"),
-        paste0("    ", response, "[i] ~ dnegbin(", p, "[i], ", r, ")")
+        paste0(
+          "    ",
+          mu,
+          "[i] <- exp(max(-20, min(10, ",
+          linpred,
+          " + ",
+          err,
+          "[i])))"
+        )
       )
+      if (engine == "jags") {
+        model_lines <- c(
+          model_lines,
+          paste0("    ", p, "[i] <- ", r, " / (", r, " + ", mu, "[i])"),
+          paste0("    ", response, "[i] ~ dnegbin(", p, "[i], ", r, ")")
+        )
+      } else {
+        # NIMBLE optimization: use custom dnb for stability
+        # Positional arguments: mu, r
+        model_lines <- c(
+          model_lines,
+          paste0(
+            "    ",
+            response,
+            "[i] ~ dnb_because(",
+            mu,
+            "[i], ",
+            r,
+            ")"
+          )
+        )
+      }
       if (engine == "jags") {
         model_lines <- c(
           model_lines,
@@ -1070,7 +1119,15 @@ because_model <- function(
       model_lines <- c(
         model_lines,
         paste0("    # ZIP log link for ", response),
-        paste0("    log(", mu, "[i]) <- ", linpred, " + ", err, "[i]"),
+        paste0(
+          "    ",
+          mu,
+          "[i] <- exp(max(-20, min(10, ",
+          linpred,
+          " + ",
+          err,
+          "[i])))"
+        ),
 
         # Zeros trick for custom likelihood
         # log_lik terms
@@ -1097,40 +1154,77 @@ because_model <- function(
             paste0("dpois(", response, "[i], ", mu, "[i], 1)")
           },
           ")"
-        ),
-
-        # Select likelihood based on Y[i]
-        # Use a small epsilon to avoid log(0)
-        paste0(
-          "    lik_",
-          response,
-          "[i] <- ifelse(",
-          response,
-          "[i] == 0, lik_zero_",
-          response,
-          "[i], lik_pos_",
-          response,
-          "[i])"
-        ),
-
-        paste0(
-          "    log_lik_",
-          response,
-          suffix,
-          "[i] <- log(lik_",
-          response,
-          "[i])"
-        ),
-        paste0(
-          "    phi_",
-          response,
-          "[i] <- -log_lik_",
-          response,
-          suffix,
-          "[i] + 10000"
-        ),
-        paste0("    zeros[i] ~ dpois(phi_", response, "[i])")
+        )
       )
+
+      # Select likelihood based on Y[i]
+      if (engine == "jags") {
+        # Zeros trick for custom likelihood
+        model_lines <- c(
+          model_lines,
+          paste0(
+            "    is_zero_",
+            response,
+            suffix,
+            "[i] <- step(0.5 - ",
+            response,
+            "[i])"
+          ),
+          paste0(
+            "    lik_",
+            response,
+            suffix,
+            "[i] <- is_zero_",
+            response,
+            suffix,
+            "[i] * lik_zero_",
+            response,
+            suffix,
+            "[i] + (1 - is_zero_",
+            response,
+            suffix,
+            "[i]) * lik_pos_",
+            response,
+            suffix,
+            "[i]"
+          ),
+          paste0(
+            "    log_lik_",
+            response,
+            suffix,
+            "[i] <- log(max(1.0E-30, lik_",
+            response,
+            suffix,
+            "[i]))"
+          ),
+          paste0(
+            "    phi_",
+            response,
+            suffix,
+            "[i] <- -log_lik_",
+            response,
+            suffix,
+            "[i] + 10000"
+          ),
+          paste0("    zeros[i] ~ dpois(phi_", response, suffix, "[i])")
+        )
+      } else {
+        # NIMBLE optimization: use direct dzip
+        # Positional arguments: mu, psi
+        model_lines <- c(
+          model_lines,
+          paste0(
+            "    ",
+            response,
+            "[i] ~ dzip_because(",
+            mu,
+            "[i], psi_",
+            response,
+            suffix,
+            ")"
+          )
+        )
+      }
     } else if (dist == "zinb") {
       # Zero-Inflated Negative Binomial:
       # P(Y=0) = psi + (1-psi)*(r/(r+mu))^r
@@ -1145,101 +1239,175 @@ because_model <- function(
       model_lines <- c(
         model_lines,
         paste0("    # ZINB log link for ", response),
-        paste0("    log(", mu, "[i]) <- ", linpred, " + ", err, "[i]"),
-        paste0("    ", p, "[i] <- ", r, " / (", r, " + ", mu, "[i])"),
+        paste0(
+          "    ",
+          mu,
+          "[i] <- exp(max(-20, min(10, ",
+          linpred,
+          " + ",
+          err,
+          "[i])))"
+        ),
+        paste0("    ", p, "[i] <- ", r, " / (", r, " + ", mu, "[i])")
+      )
 
+      if (engine == "jags") {
         # Zeros trick
         # Zero case: psi + (1-psi) * p^r
-        paste0(
-          "    lik_zero_",
-          response,
-          "[i] <- ",
-          psi,
-          " + (1-",
-          psi,
-          ") * pow(",
-          p,
-          "[i], ",
-          r,
-          ")"
-        ),
+        model_lines <- c(
+          model_lines,
+          paste0(
+            "    lik_zero_",
+            response,
+            suffix,
+            "[i] <- ",
+            psi,
+            " + (1-",
+            psi,
+            ") * pow(",
+            p,
+            "[i], ",
+            r,
+            ")"
+          ),
 
-        # Positive case: (1-psi) * dnegbin(...)
-        paste0(
-          "    lik_pos_",
-          response,
-          "[i] <- (1-",
-          psi,
-          ") * exp(",
-          if (engine == "jags") {
-            paste0("logdensity.negbin(", response, "[i], ", p, "[i], ", r, ")")
-          } else {
-            paste0("dnegbin(", response, "[i], ", p, "[i], ", r, ", 1)")
-          },
-          ")"
-        ),
+          # Positive case: (1-psi) * dnegbin(...)
+          paste0(
+            "    lik_pos_",
+            response,
+            suffix,
+            "[i] <- (1-",
+            psi,
+            ") * exp(",
+            if (engine == "jags") {
+              paste0(
+                "logdensity.negbin(",
+                response,
+                "[i], ",
+                p,
+                "[i], ",
+                r,
+                ")"
+              )
+            } else {
+              paste0("dnegbin(", response, "[i], ", p, "[i], ", r, ", 1)")
+            },
+            ")"
+          ),
 
-        # Select likelihood
-        paste0(
-          "    lik_",
-          response,
-          "[i] <- ifelse(",
-          response,
-          "[i] == 0, lik_zero_",
-          response,
-          "[i], lik_pos_",
-          response,
-          "[i])"
-        ),
+          # Select likelihood
+          paste0(
+            "    is_zero_",
+            response,
+            suffix,
+            "[i] <- step(0.5 - ",
+            response,
+            "[i])"
+          ),
+          paste0(
+            "    lik_",
+            response,
+            suffix,
+            "[i] <- is_zero_",
+            response,
+            suffix,
+            "[i] * lik_zero_",
+            response,
+            suffix,
+            "[i] + (1 - is_zero_",
+            response,
+            suffix,
+            "[i]) * lik_pos_",
+            response,
+            suffix,
+            "[i]"
+          ),
 
-        paste0(
-          "    log_lik_zero_",
-          response,
-          "[i] <- log(max(1.0E-30, ",
-          "lik_zero_",
-          response,
-          "[i]))"
-        ),
-        paste0(
-          "    log_lik_pos_",
-          response,
-          "[i] <- log(max(1.0E-30, 1-",
-          psi,
-          ")) + ",
-          if (engine == "jags") {
-            paste0("logdensity.negbin(", response, "[i], ", p, "[i], ", r, ")")
-          } else {
-            paste0("dnegbin(", response, "[i], ", p, "[i], ", r, ", 1)")
-          }
-        ),
-        paste0(
-          "    log_lik_",
-          response,
-          suffix,
-          "[i] <- ifelse(",
-          response,
-          "[i] == 0, log_lik_zero_",
-          response,
-          "[i], log_lik_pos_",
-          response,
-          "[i])"
-        ),
-        paste0(
-          "    phi_",
-          response,
-          "[i] <- -log_lik_",
-          response,
-          suffix,
-          "[i] + 10000"
-        ),
-        paste0(
-          "    zeros_",
-          response,
-          "[i] ~ dpois(phi_",
-          response,
-          "[i])"
+          paste0(
+            "    log_lik_zero_",
+            response,
+            suffix,
+            "[i] <- log(max(1.0E-30, ",
+            "lik_zero_",
+            response,
+            suffix,
+            "[i]))"
+          ),
+          paste0(
+            "    log_lik_pos_",
+            response,
+            suffix,
+            "[i] <- log(max(1.0E-30, 1-",
+            psi,
+            ")) + ",
+            if (engine == "jags") {
+              paste0(
+                "logdensity.negbin(",
+                response,
+                "[i], ",
+                p,
+                "[i], ",
+                r,
+                ")"
+              )
+            } else {
+              paste0("dnegbin(", response, "[i], ", p, "[i], ", r, ", 1)")
+            }
+          ),
+          paste0(
+            "    log_lik_",
+            response,
+            suffix,
+            "[i] <- is_zero_",
+            response,
+            suffix,
+            "[i] * log_lik_zero_",
+            response,
+            suffix,
+            "[i] + (1 - is_zero_",
+            response,
+            suffix,
+            "[i]) * log_lik_pos_",
+            response,
+            suffix,
+            "[i]"
+          ),
+          paste0(
+            "    phi_",
+            response,
+            suffix,
+            "[i] <- -log_lik_",
+            response,
+            suffix,
+            "[i] + 10000"
+          ),
+          paste0(
+            "    zeros_",
+            response,
+            "[i] ~ dpois(phi_",
+            response,
+            "[i])"
+          )
         )
-      )
+      } else {
+        # NIMBLE optimization: use direct dzinb
+        # Positional arguments: mu, r, psi
+        model_lines <- c(
+          model_lines,
+          paste0(
+            "    ",
+            response,
+            "[i] ~ dzinb_because(",
+            mu,
+            "[i], ",
+            r,
+            ", psi_",
+            response,
+            suffix,
+            ")"
+          )
+        )
+      }
     } else if (dist == "occupancy") {
       # No Zeros-trick or custom likelihood loop needed here
       # The occupancy likelihood is handled in the Likelihoods section.
@@ -1612,56 +1780,32 @@ because_model <- function(
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
 
             # Call Generic
-            def <- jags_structure_definition(
+            s_def <- jags_structure_definition(
               structures[[s_name]],
-              variable_name = u_std,
-              optimize = TRUE,
-              precision_parameter = tau_u
+              variable_name = response,
+              s_name = s_name,
+              loop_bound = s_bound,
+              category_index = NULL # Binomial is univariate per response
             )
 
-            if (!is.null(def$setup_code)) {
-              model_lines <- c(model_lines, def$setup_code)
-            }
+            if (!is.null(s_def)) {
+              model_lines <- c(model_lines, s_def$model_lines)
+              total_u <- paste0(total_u, " + ", s_def$term)
 
-            prec_name <- paste0("Prec_", s_name)
-            prec_index <- if (!is.null(def$prec_index)) {
-              def$prec_index
-            } else if (multi.tree && is_multi_structure) {
-              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
-            } else {
-              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
-            }
-
-            model_lines <- c(
-              model_lines,
-              paste0(
-                "  ",
-                u_std,
-                "[1:",
-                s_bound,
-                "] ~ dmnorm(",
-                s_zeros,
-                "[1:",
-                s_bound,
-                "], ",
-                prec_index,
-                ")"
-              ),
-              paste0(
-                "  for (i in 1:",
-                eq_loop_N,
-                ") { ",
-                u,
-                "[i] <- ",
-                u_std,
-                "[",
-                get_struct_index(s_name, response, hierarchical_info),
-                "] / sqrt(",
-                tau_u,
-                ") }"
+              # Map structural parameters for post-processing/lambda
+              param_map[[length(param_map) + 1]] <- list(
+                response = response,
+                predictor = s_name,
+                parameter = paste0("tau_", s_name, "_", response),
+                type = "structure"
               )
-            )
-            total_u <- paste0(total_u, " + ", u, "[i]")
+              param_map[[length(param_map) + 1]] <- list(
+                response = response,
+                predictor = s_name,
+                parameter = paste0("sigma_", s_name, "_", response),
+                type = "structure"
+              )
+            }
           }
 
           # Random Group Structures
@@ -1801,63 +1945,54 @@ because_model <- function(
           # Initialize accumulator for this category k
           total_u <- ""
 
-          # Phylogenetic / N-dim Structures
-          for (s_name in structure_names) {
-            if (
-              !is_valid_structure_mapping(
-                get_struct_lvl(s_name, hierarchical_info),
-                get_var_level(response, hierarchical_info),
-                hierarchical_info
-              )
-            ) {
-              next
-            }
-            # Structure properties
-            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
-            s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
-            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
-            s_suffix <- paste0("_", s_name)
-            u_std <- paste0("u_std_", response, suffix, s_suffix)
-            u <- paste0("u_", response, suffix, s_suffix)
-            tau_u <- paste0("tau_u_", response, suffix, s_suffix)
+          # Custom Structures (Hooks)
+          if (length(structures) > 0) {
+            for (s_idx in seq_along(structures)) {
+              s_name <- names(structures)[s_idx]
+              if (is.null(s_name) || s_name == "") {
+                s_name <- paste0("Struct", s_idx)
+              }
+              s_obj <- structures[[s_idx]]
 
-            prec_name <- paste0("Prec_", s_name)
-            prec_index <- if (multi.tree && is_multi_structure) {
-              paste0(prec_name, "[1:", eq_loop_N, ", 1:", eq_loop_N, ", k]")
-            } else {
-              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
-            }
+              if (
+                !is_valid_structure_mapping(
+                  get_struct_lvl(s_name, hierarchical_info),
+                  get_var_level(response, hierarchical_info),
+                  hierarchical_info
+                )
+              ) {
+                next
+              }
 
-            model_lines <- c(
-              model_lines,
-              paste0(
-                "    ",
-                u_std,
-                "[1:",
-                s_bound,
-                ", k] ~ dmnorm(",
-                s_zeros,
-                "[1:",
-                s_bound,
-                "], ",
-                prec_index,
-                ")"
-              ),
-              paste0(
-                "    for (i in 1:",
-                get_loop_bound(response, hierarchical_info),
-                ") { ",
-                u,
-                "[i, k] <- ",
-                u_std,
-                "[",
-                get_struct_index(s_name, response, hierarchical_info),
-                ", k] / sqrt(",
-                tau_u,
-                "[k]) }"
+              # Use Hook to get JAGS code bits for this category 'k'
+              s_def <- jags_structure_definition(
+                s_obj,
+                variable_name = response,
+                s_name = s_name,
+                loop_bound = get_loop_bound(response, hierarchical_info),
+                category_index = "k",
+                is_multi = (multi.tree && is_multi_structure)
               )
-            )
-            total_u <- paste0(total_u, " + ", u, "[i, k]")
+
+              if (!is.null(s_def)) {
+                model_lines <- c(model_lines, s_def$model_lines)
+                total_u <- paste0(total_u, " + ", s_def$term)
+
+                # Map structural parameters (indexed by k)
+                param_map[[length(param_map) + 1]] <- list(
+                  response = response,
+                  predictor = s_name,
+                  parameter = paste0("tau_", s_name, "_", response, "[k]"),
+                  type = "structure"
+                )
+                param_map[[length(param_map) + 1]] <- list(
+                  response = response,
+                  predictor = s_name,
+                  parameter = paste0("sigma_", s_name, "_", response, "[k]"),
+                  type = "structure"
+                )
+              }
+            }
           }
 
           # Random Group Structures
@@ -1969,48 +2104,62 @@ because_model <- function(
           )
         } else {
           # Random Effects Formulation (Default/Optimised)
-          # Note: Ordinal currently only supports optimized formulation in this codebase structure
-          u_std <- paste0("u_std_", response, suffix)
-          u <- paste0("u_", response, suffix)
           epsilon <- paste0("epsilon_", response, suffix)
           tau_u <- paste0("tau_u_", response, suffix)
           tau_e <- paste0("tau_e_", response, suffix)
 
-          # Handle multi-tree with generic structure naming
-          s_name <- if (length(structure_names) > 0) {
-            structure_names[1]
-          } else {
-            "struct"
+          # Initialize accumulator
+          total_u <- ""
+
+          # Custom Structures (Hooks)
+          if (length(structures) > 0) {
+            for (s_idx in seq_along(structures)) {
+              s_name <- names(structures)[s_idx]
+              if (is.null(s_name) || s_name == "") {
+                s_name <- paste0("Struct", s_idx)
+              }
+              s_obj <- structures[[s_idx]]
+
+              if (
+                !is_valid_structure_mapping(
+                  get_struct_lvl(s_name, hierarchical_info),
+                  get_var_level(response, hierarchical_info),
+                  hierarchical_info
+                )
+              ) {
+                next
+              }
+
+              # Use Hook to get JAGS code bits
+              s_def <- jags_structure_definition(
+                s_obj,
+                variable_name = response,
+                s_name = s_name,
+                loop_bound = get_loop_bound(response, hierarchical_info),
+                is_multi = (multi.tree && is_multi_structure)
+              )
+
+              if (!is.null(s_def)) {
+                model_lines <- c(model_lines, s_def$model_lines)
+                total_u <- paste0(total_u, " + ", s_def$term)
+
+                # Map structural parameters
+                param_map[[length(param_map) + 1]] <- list(
+                  response = response,
+                  predictor = s_name,
+                  parameter = paste0("tau_", s_name, "_", response),
+                  type = "structure"
+                )
+                param_map[[length(param_map) + 1]] <- list(
+                  response = response,
+                  predictor = s_name,
+                  parameter = paste0("sigma_", s_name, "_", response),
+                  type = "structure"
+                )
+              }
+            }
           }
 
-          s_lvl <- get_struct_lvl(s_name, hierarchical_info)
-          s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
-          s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
-
-          prec_name <- paste0("Prec_", s_name)
-          prec_index <- if (is_multi_structure) {
-            paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
-          } else {
-            paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
-          }
-
-          model_lines <- c(
-            model_lines,
-            paste0("  # Random effects for ordinal: ", response),
-            paste0(
-              "  ",
-              u_std,
-              "[1:",
-              s_bound,
-              "] ~ dmnorm(",
-              s_zeros,
-              "[1:",
-              s_bound,
-              "], ",
-              prec_index,
-              ")"
-            )
-          )
           # Sum MAG terms
           mag_terms <- vars_error_terms[[response]]
           total_mag <- if (length(mag_terms) > 0) {
@@ -2022,26 +2171,14 @@ because_model <- function(
           model_lines <- c(
             model_lines,
             paste0("  for (i in 1:", eq_loop_N, ") {"),
-            paste0(
-              "    ",
-              u,
-              "[i] <- ",
-              u_std,
-              "[",
-              get_struct_index(s_name, response, hierarchical_info),
-              "] / sqrt(",
-              tau_u,
-              ")"
-            ),
             paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_e, ")"),
             paste0(
               "    ",
               err,
               "[i] <- ",
-              u,
-              "[i] + ",
               epsilon,
               "[i]",
+              total_u,
               total_mag
             ),
             paste0("  }")
@@ -2076,63 +2213,53 @@ because_model <- function(
           # Initialize accumulator
           total_u <- ""
 
-          # Phylogenetic / N-dim Structures
-          for (s_name in structure_names) {
-            if (
-              !is_valid_structure_mapping(
-                get_struct_lvl(s_name, hierarchical_info),
-                get_var_level(response, hierarchical_info),
-                hierarchical_info
-              )
-            ) {
-              next
-            }
-            # Structure properties
-            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
-            s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
-            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
-            s_suffix <- paste0("_", s_name)
-            u_std <- paste0("u_std_", response, suffix, s_suffix)
-            u <- paste0("u_", response, suffix, s_suffix)
-            tau_u <- paste0("tau_u_", response, suffix, s_suffix)
+          # Custom Structures (Hooks)
+          if (length(structures) > 0) {
+            for (s_idx in seq_along(structures)) {
+              s_name <- names(structures)[s_idx]
+              if (is.null(s_name) || s_name == "") {
+                s_name <- paste0("Struct", s_idx)
+              }
+              s_obj <- structures[[s_idx]]
 
-            prec_name <- paste0("Prec_", s_name)
-            prec_index <- if (multi.tree && is_multi_structure) {
-              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
-            } else {
-              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
-            }
+              if (
+                !is_valid_structure_mapping(
+                  get_struct_lvl(s_name, hierarchical_info),
+                  get_var_level(response, hierarchical_info),
+                  hierarchical_info
+                )
+              ) {
+                next
+              }
 
-            model_lines <- c(
-              model_lines,
-              paste0(
-                "  ",
-                u_std,
-                "[1:",
-                s_bound,
-                "] ~ dmnorm(",
-                s_zeros,
-                "[1:",
-                s_bound,
-                "], ",
-                prec_index,
-                ")"
-              ),
-              paste0(
-                "  for (i in 1:",
-                get_loop_bound(response, hierarchical_info),
-                ") { ",
-                u,
-                "[i] <- ",
-                u_std,
-                "[",
-                get_struct_index(s_name, response, hierarchical_info),
-                "] / sqrt(",
-                tau_u,
-                ") }"
+              # Use Hook to get JAGS code bits
+              s_def <- jags_structure_definition(
+                s_obj,
+                variable_name = response,
+                s_name = s_name,
+                loop_bound = get_loop_bound(response, hierarchical_info),
+                is_multi = (multi.tree && is_multi_structure)
               )
-            )
-            total_u <- paste0(total_u, " + ", u, "[i]")
+
+              if (!is.null(s_def)) {
+                model_lines <- c(model_lines, s_def$model_lines)
+                total_u <- paste0(total_u, " + ", s_def$term)
+
+                # Map structural parameters for post-processing/lambda
+                param_map[[length(param_map) + 1]] <- list(
+                  response = response,
+                  predictor = s_name,
+                  parameter = paste0("tau_", s_name, "_", response),
+                  type = "structure"
+                )
+                param_map[[length(param_map) + 1]] <- list(
+                  response = response,
+                  predictor = s_name,
+                  parameter = paste0("sigma_", s_name, "_", response),
+                  type = "structure"
+                )
+              }
+            }
           }
 
           # Random Group Structures
@@ -2258,9 +2385,7 @@ because_model <- function(
         # Note: We assume mu_p_name is generated elsewhere if p_Response is in equations
         # JAGS is declarative, so order doesn't matter.
 
-        # Initialize random effects accumulator for psi
-        total_u <- ""
-        # Initialize structure effect accumulator
+        # Initialize structure effect accumulator for psi
         total_u <- ""
         if (!is.null(structures)) {
           for (s_name in names(structures)) {
@@ -2274,63 +2399,34 @@ because_model <- function(
             } else {
               paste0("N_", s_lvl)
             }
-            s_zeros <- if (is.null(s_lvl)) {
-              "zeros"
-            } else {
-              paste0("zeros_", s_lvl)
-            }
 
-            s_suffix <- paste0("_", s_name)
-            u_var <- paste0("u_", response, suffix, s_suffix)
-            tau_u <- paste0("tau_u_", response, suffix, s_suffix)
-
-            # Structure Generic
-            def <- jags_structure_definition(
+            # Call Generic
+            s_def <- jags_structure_definition(
               structures[[s_name]],
-              variable_name = u_var,
-              optimize = TRUE,
-              precision_parameter = tau_u
+              variable_name = response,
+              s_name = s_name,
+              loop_bound = s_bound,
+              category_index = NULL
             )
 
-            if (!is.null(def$setup_code)) {
-              model_lines <- c(model_lines, def$setup_code)
-            }
+            if (!is.null(s_def)) {
+              model_lines <- c(model_lines, s_def$model_lines)
+              total_u <- paste0(total_u, " + ", s_def$term)
 
-            prec_name <- paste0("Prec_", s_name)
-            prec_index <- if (!is.null(def$prec_index)) {
-              def$prec_index
-            } else if (multi.tree && is_multi_structure) {
-              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
-            } else {
-              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
-            }
-
-            # Add the dmnorm likelihood for the structure
-            model_lines <- c(
-              model_lines,
-              paste0(
-                "  ",
-                u_var,
-                "[1:",
-                s_bound,
-                "] ~ dmnorm(",
-                s_zeros,
-                "[1:",
-                s_bound,
-                "], ",
-                prec_index,
-                ")"
+              # Map structural parameters for post-processing/lambda
+              param_map[[length(param_map) + 1]] <- list(
+                response = response,
+                predictor = s_name,
+                parameter = paste0("tau_", s_name, "_", response),
+                type = "structure"
               )
-            )
-
-            total_u <- paste0(
-              total_u,
-              " + ",
-              u_var,
-              "[",
-              get_struct_index(s_name, response, hierarchical_info),
-              "]"
-            )
+              param_map[[length(param_map) + 1]] <- list(
+                response = response,
+                predictor = s_name,
+                parameter = paste0("sigma_", s_name, "_", response),
+                type = "structure"
+              )
+            }
           }
         }
 
@@ -2383,63 +2479,53 @@ because_model <- function(
 
           total_u <- ""
 
-          # Phylogenetic / N-dim Structures
-          for (s_name in structure_names) {
-            if (
-              !is_valid_structure_mapping(
-                get_struct_lvl(s_name, hierarchical_info),
-                get_var_level(response, hierarchical_info),
-                hierarchical_info
-              )
-            ) {
-              next
-            }
-            # Structure properties
-            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
-            s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
-            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
-            s_suffix <- paste0("_", s_name)
-            u_std <- paste0("u_std_", response, suffix, s_suffix)
-            u <- paste0("u_", response, suffix, s_suffix)
-            tau_u <- paste0("tau_u_", response, suffix, s_suffix)
+          # Custom Structures (Hooks)
+          if (length(structures) > 0) {
+            for (s_idx in seq_along(structures)) {
+              s_name <- names(structures)[s_idx]
+              if (is.null(s_name) || s_name == "") {
+                s_name <- paste0("Struct", s_idx)
+              }
+              s_obj <- structures[[s_idx]]
 
-            prec_name <- paste0("Prec_", s_name)
-            prec_index <- if (multi.tree && is_multi_structure) {
-              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
-            } else {
-              paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
-            }
+              if (
+                !is_valid_structure_mapping(
+                  get_struct_lvl(s_name, hierarchical_info),
+                  get_var_level(response, hierarchical_info),
+                  hierarchical_info
+                )
+              ) {
+                next
+              }
 
-            model_lines <- c(
-              model_lines,
-              paste0(
-                "  ",
-                u_std,
-                "[1:",
-                s_bound,
-                "] ~ dmnorm(",
-                s_zeros,
-                "[1:",
-                s_bound,
-                "], ",
-                prec_index,
-                ")"
-              ),
-              paste0(
-                "  for (i in 1:",
-                eq_loop_N,
-                ") { ",
-                u,
-                "[i] <- ",
-                u_std,
-                "[",
-                get_struct_index(s_name, response, hierarchical_info),
-                "] / sqrt(",
-                tau_u,
-                ") }"
+              # Use Hook to get JAGS code bits
+              s_def <- jags_structure_definition(
+                s_obj,
+                variable_name = response,
+                s_name = s_name,
+                loop_bound = get_loop_bound(response, hierarchical_info),
+                is_multi = (multi.tree && is_multi_structure)
               )
-            )
-            total_u <- paste0(total_u, " + ", u, "[i]")
+
+              if (!is.null(s_def)) {
+                model_lines <- c(model_lines, s_def$model_lines)
+                total_u <- paste0(total_u, " + ", s_def$term)
+
+                # Map structural parameters for post-processing/lambda
+                param_map[[length(param_map) + 1]] <- list(
+                  response = response,
+                  predictor = s_name,
+                  parameter = paste0("tau_", s_name, "_", response),
+                  type = "structure"
+                )
+                param_map[[length(param_map) + 1]] <- list(
+                  response = response,
+                  predictor = s_name,
+                  parameter = paste0("sigma_", s_name, "_", response),
+                  type = "structure"
+                )
+              }
+            }
           }
 
           # Random Group Structures
@@ -2563,80 +2649,61 @@ because_model <- function(
     suffix <- if ((response_counter[[var]] %||% 0) > 1) "1" else ""
     loop_bound <- get_loop_bound(var, hierarchical_info)
 
-    # Define Structure Error (if structure exists)
-    phylo_term <- ""
-    if (length(structure_names) > 0) {
-      # Use first structure for induced correlations
-      s_name <- structure_names[1]
-      prec_name <- paste0("Prec_", s_name)
-      err_phylo <- paste0("err_", s_name, "_", var)
+    # Define Structure Error (Hooks)
+    structure_term_str <- ""
+    if (length(structures) > 0) {
+      structure_terms <- character()
+      for (s_idx in seq_along(structures)) {
+        s_name <- names(structures)[s_idx]
+        if (is.null(s_name) || s_name == "") {
+          s_name <- paste0("Struct", s_idx)
+        }
+        s_obj <- structures[[s_idx]]
 
-      if (TRUE) {
-        # Optimised: use Prec_<structure> (for MAG/induced correlations)
-        prec_index <- if (is_multi_structure) {
-          paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, ", K]")
-        } else {
-          paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, "]")
+        if (
+          !is_valid_structure_mapping(
+            get_struct_lvl(s_name, hierarchical_info),
+            get_var_level(var, hierarchical_info),
+            hierarchical_info
+          )
+        ) {
+          next
         }
 
-        model_lines <- c(
-          model_lines,
-          paste0(
-            "  ",
-            get_precision_prior(paste0("tau_", s_name, "_", var), var)
-          ),
-          paste0(
-            "  ",
-            err_phylo,
-            "[1:",
-            loop_bound,
-            "] ~ dmnorm(zero_vec[1:", # Assume zero_vec is large enough or make new one?
-            # Actually zero_vec is created as 1:N.
-            # If loop_bound < N, zero_vec[1:loop_bound] is valid.
-            loop_bound,
-            "], ",
-            "tau_",
-            s_name,
-            "_",
-            var,
-            " * ",
-            prec_index,
-            ")"
-          )
+        # Use Hook to get JAGS code bits
+        s_def <- jags_structure_definition(
+          s_obj,
+          variable_name = var,
+          s_name = s_name,
+          loop_bound = loop_bound,
+          is_multi = is_multi_structure
         )
-      } else {
-        # Use Precision matrix directly
-        prec_index <- if (is_multi_structure) {
-          paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, ", K]")
-        } else {
-          paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, "]")
-        }
 
-        model_lines <- c(
-          model_lines,
-          paste0(
-            "  ",
-            get_precision_prior(paste0("tau_", s_name, "_", var), var)
-          ),
-          paste0(
-            "  ",
-            err_phylo,
-            "[1:",
-            loop_bound,
-            "] ~ dmnorm(zero_vec[1:",
-            loop_bound,
-            "], ",
-            "tau_",
-            s_name,
-            "_",
-            var,
-            " * ",
-            prec_index,
-            ")"
+        if (!is.null(s_def)) {
+          model_lines <- c(model_lines, s_def$model_lines)
+          structure_terms <- c(structure_terms, s_def$term)
+
+          # Map structural parameters
+          param_map[[length(param_map) + 1]] <- list(
+            response = var,
+            predictor = s_name,
+            parameter = paste0("tau_", s_name, "_", var),
+            type = "structure"
           )
+          param_map[[length(param_map) + 1]] <- list(
+            response = var,
+            predictor = s_name,
+            parameter = paste0("sigma_", s_name, "_", var),
+            type = "structure"
+          )
+        }
+      }
+      if (length(structure_terms) > 0) {
+        structure_term_str <- paste0(
+          " + ",
+          paste(structure_terms, collapse = " + ")
         )
       }
-      phylo_term <- paste0(" + ", err_phylo, "[i]")
     }
 
     # Define Observation Precision (Estimated)
@@ -2663,7 +2730,7 @@ because_model <- function(
         var,
         suffix,
         "[i]",
-        phylo_term,
+        structure_term_str,
         " + ",
         sum_res_errs,
         ", tau_obs_",
@@ -2684,7 +2751,7 @@ because_model <- function(
           var,
           suffix,
           "[i]",
-          phylo_term,
+          structure_term_str,
           " + ",
           sum_res_errs,
           ", tau_obs_",

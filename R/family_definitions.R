@@ -1,7 +1,106 @@
 #' @title Family Definition Generics and Default Methods
 #' @description S3 generics and methods for distribution families in because.
 #' This enables custom distributions to be added by defining S3 methods.
-#' @name family_definitions
+#' @importFrom stats rpois rbinom runif
+#' @importFrom nimble nimbleFunction returnType
+NULL
+
+# --- Global NIMBLE Distributions for because package ---
+
+#' @export
+dnb_because <- nimble::nimbleFunction(
+    run = function(
+        x = double(0),
+        mu = double(0),
+        r = double(0),
+        log = integer(0, default = 0)
+    ) {
+        returnType(double(0))
+        # Use R-style dnbinom which is known to the NIMBLE compiler
+        prob <- dnbinom(x, size = r, mu = mu, log = 0)
+        if (log) return(log(max(1.0e-30, prob))) else return(prob)
+    }
+)
+
+#' @export
+rnb_because <- nimble::nimbleFunction(
+    run = function(n = integer(0), mu = double(0), r = double(0)) {
+        returnType(double(0))
+        # Use R-style rnbinom which is known to the NIMBLE compiler
+        return(rnbinom(1, size = r, mu = mu))
+    }
+)
+
+#' @export
+dzip_because <- nimble::nimbleFunction(
+    run = function(
+        x = double(0),
+        mu = double(0),
+        psi = double(0),
+        log = integer(0, default = 0)
+    ) {
+        returnType(double(0))
+        if (x == 0) {
+            prob <- psi + (1 - psi) * exp(-mu)
+        } else {
+            prob <- (1 - psi) * dpois(x, mu, 0)
+        }
+        if (log) return(log(max(1.0e-30, prob))) else return(prob)
+    }
+)
+
+#' @export
+rzip_because <- nimble::nimbleFunction(
+    run = function(n = integer(0), mu = double(0), psi = double(0)) {
+        returnType(double(0))
+        if (runif(1) < psi) {
+            return(0)
+        } else {
+            return(rpois(1, mu))
+        }
+    }
+)
+
+#' @export
+dzinb_because <- nimble::nimbleFunction(
+    run = function(
+        x = double(0),
+        mu = double(0),
+        r = double(0),
+        psi = double(0),
+        log = integer(0, default = 0)
+    ) {
+        returnType(double(0))
+        if (x == 0) {
+            # Probability of zero from both components
+            # p_nb(0) = (r / (r + mu))^r
+            p_nb_zero <- pow(r / (r + mu), r)
+            prob <- psi + (1 - psi) * p_nb_zero
+        } else {
+            prob <- (1 - psi) * dnbinom(x, size = r, mu = mu, log = 0)
+        }
+        if (log) return(log(max(1.0e-30, prob))) else return(prob)
+    }
+)
+
+#' @export
+rzinb_because <- nimble::nimbleFunction(
+    run = function(
+        n = integer(0),
+        mu = double(0),
+        r = double(0),
+        psi = double(0)
+    ) {
+        returnType(double(0))
+        if (runif(1) < psi) {
+            return(0)
+        } else {
+            return(rnbinom(1, size = r, mu = mu))
+        }
+    }
+)
+
+# --- Standard family definitions ---
 NULL
 
 #' Get default precision prior for a distribution family
@@ -197,6 +296,77 @@ jags_family_likelihood.because_family_poisson <- function(
         likelihood_code = likelihood_code,
         prior_code = NULL,
         data_requirements = NULL
+    )
+}
+
+#' @keywords internal
+#' @export
+needs_zero_inflation_hook.because_family_zip <- function(
+    family,
+    variable_name,
+    ...
+) {
+    return(TRUE)
+}
+
+#' @keywords internal
+#' @export
+needs_zero_inflation_hook.because_family_zinb <- function(
+    family,
+    variable_name,
+    ...
+) {
+    return(TRUE)
+}
+
+#' @keywords internal
+#' @export
+nimble_family_optimization.because_family_zip <- function(
+    family,
+    model_string,
+    variable,
+    ...
+) {
+    list(
+        model_string = model_string,
+        nimble_functions = list(
+            dzip_because = dzip_because,
+            rzip_because = rzip_because
+        )
+    )
+}
+
+#' @keywords internal
+#' @export
+nimble_family_optimization.because_family_zinb <- function(
+    family,
+    model_string,
+    variable,
+    ...
+) {
+    list(
+        model_string = model_string,
+        nimble_functions = list(
+            dzinb_because = dzinb_because,
+            rzinb_because = rzinb_because
+        )
+    )
+}
+
+#' @keywords internal
+#' @export
+nimble_family_optimization.because_family_negbinomial <- function(
+    family,
+    model_string,
+    variable,
+    ...
+) {
+    list(
+        model_string = model_string,
+        nimble_functions = list(
+            dnb_because = dnb_because,
+            rnb_because = rnb_because
+        )
     )
 }
 

@@ -64,10 +64,14 @@ because_compare <- function(
     is_spec_list <- function(x) {
         is.list(x) &&
             !is.null(names(x)) &&
-            all(sapply(x, function(s) {
-                is.list(s) &&
-                    ("equations" %in% names(s) || "formula" %in% names(s))
-            }))
+            all(vapply(
+                x,
+                function(s) {
+                    is.list(s) &&
+                        ("equations" %in% names(s) || "formula" %in% names(s))
+                },
+                logical(1)
+            ))
     }
 
     # Check explicit argument
@@ -178,7 +182,7 @@ because_compare <- function(
         }
 
         # Filter failed
-        failed <- sapply(fit_results, is.null)
+        failed <- vapply(fit_results, is.null, logical(1))
         if (any(failed)) {
             message("Some models failed.")
         }

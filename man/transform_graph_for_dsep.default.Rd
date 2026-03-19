@@ -2,11 +2,11 @@
 % Please edit documentation in R/generics.R
 \name{transform_graph_for_dsep.default}
 \alias{transform_graph_for_dsep.default}
-\title{Default Method for D-Sep Transformation}
+\title{Default Method for Transform Graph}
 \usage{
 \method{transform_graph_for_dsep}{default}(family, equations, ...)
 }
 \description{
-Default Method for D-Sep Transformation
+Default Method for Transform Graph
 }
 \keyword{internal}

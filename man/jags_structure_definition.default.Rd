@@ -7,6 +7,6 @@
 \method{jags_structure_definition}{default}(structure, variable_name = "err", ...)
 }
 \description{
-Default Method for JAGS Structure Definition
+Implements a standard precision-matrix-based correlation (dmnorm).
 }
 \keyword{internal}

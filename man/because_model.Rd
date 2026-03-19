@@ -2,14 +2,14 @@
 % Please edit documentation in R/because_model.R
 \name{because_model}
 \alias{because_model}
-\title{Generate a JAGS model string for Phylogenetic Bayesian SEM (Because)}
+\title{Generate a JAGS model string for Bayesian SEM (Because)}
 \usage{
 because_model(
   equations,
   multi.tree = FALSE,
   latent_method = "correlations",
-  structure_names = "phylo",
-  structures = NULL,
+  structures = list(),
+  is_multi_structure = FALSE,
   random_structure_names = NULL,
   random_terms = list(),
   vars_with_na = NULL,
@@ -31,7 +31,15 @@ because_model(
 
 \item{multi.tree}{Logical; if \code{TRUE}, incorporates phylogenetic uncertainty by sampling across a set of trees.}
 
-\item{structure_names}{(Internal) Character vector of names for multiple trees/structures.}
+\item{latent_method}{Method for handling latent variables ("correlations" or "explicit").}
+
+\item{structures}{A named list of structural objects (e.g. matrices, trees) to include as correlations.}
+
+\item{is_multi_structure}{Logical (Internal). If TRUE, handles 3D Precision arrays.}
+
+\item{random_structure_names}{Optional character vector of structural names applied to all variables.}
+
+\item{random_terms}{Optional list of random effects (response, group).}
 
 \item{vars_with_na}{Optional character vector of response variable names that have missing data.
 These variables will use element-wise likelihoods instead of multivariate normal.}
@@ -58,7 +66,15 @@ For "binomial" variables, the model uses a logit link and a Bernoulli likelihood
 
 \item{latent}{Optional character vector of latent variable names.}
 
+\item{categorical_vars}{Optional character vector of categorical variable names.}
+
 \item{fix_residual_variance}{Optional numeric value or named vector to fix residual variance.}
+
+\item{priors}{Optional named list of custom priors.}
+
+\item{hierarchical_info}{Optional list containing data hierarchy (levels, link_vars).}
+
+\item{engine}{Bayesian engine to use ("jags" or "nimble").}
 }
 \value{
 A list with two elements:
@@ -69,15 +85,15 @@ A list with two elements:
 }
 \description{
 This function builds the model code to be passed to JAGS based on a set of structural equations.
-It supports both single and multiple phylogenetic trees (to account for phylogenetic uncertainty).
+It supports custom covariance structures (spatial, phylogenetic, etc.).
 Missing values are handled both in the response and predictor variables treating all of them as stochastic nodes.
 }
 \details{
 The generated model includes:
 \itemize{
 \item Linear predictors and multivariate normal likelihoods for each response variable.
-\item Priors for intercepts (\code{alpha}), slopes (\code{beta}), lambda parameters (\code{lambda}), and residual precisions (\code{tau}).
-\item Phylogenetic covariance modeled via a single \code{VCV} matrix (when \code{multi.tree = FALSE}) or a 3D array \code{multiVCV[,,K]} with categorical sampling across trees (when \code{multi.tree = TRUE}).
+\item Priors for intercepts (\code{alpha}), slopes (\code{beta}), and residual precisions (\code{tau}).
+\item Custom covariance modeled via provided structural objects (e.g. VCV matrices).
 \item (Optional) Observation models for variables with measurement error:
 \itemize{
 \item Type "se": \code{Var_mean ~ dnorm(Var, 1/Var_se^2)}

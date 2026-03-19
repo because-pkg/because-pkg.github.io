@@ -2,11 +2,11 @@
 % Please edit documentation in R/generics.R
 \name{jags_family_definition.default}
 \alias{jags_family_definition.default}
-\title{Default Method for Family Definition}
+\title{Default Method for JAGS Family Definition}
 \usage{
 \method{jags_family_definition}{default}(family, response, predictors, ...)
 }
 \description{
-Default Method for Family Definition
+Default Method for JAGS Family Definition
 }
 \keyword{internal}

@@ -57,6 +57,8 @@ Override node positions entirely with the \code{coords} argument.}
 
 \item{coords}{Optional named list of coordinates for the nodes, e.g. \code{list(A = c(1, 1), B = c(2, 2))}.
 If provided, these will override the \code{layout} algorithm.}
+
+\item{family}{Optional named character vector of families for response variables.}
 }
 \value{
 A \code{ggplot} object that can be further customized with standard ggplot2 functions (e.g., \code{+ theme_...()}, \code{+ ggtitle(...)}).

@@ -47,9 +47,9 @@ is.directed.path <- function(use.dag, start.var, end.var) {
   # returns as TRUE or FALSE
   var.names <- colnames(use.dag)
   #start.node is a single number giving the column of use.dag containing start.var
-  start.node <- (1:length(var.names))[colnames(use.dag) == start.var]
+  start.node <- seq_along(var.names)[colnames(use.dag) == start.var]
   #end.node is a single number giving the column of use.dag containing end.var
-  end.node <- (1:length(var.names))[colnames(use.dag) == end.var]
+  end.node <- seq_along(var.names)[colnames(use.dag) == end.var]
   #findPath is a function in ggm that finds one path between two nodes of a graph
   #it returns a vector of numbers giving the sequence of nodes of this path
   #starting at st and going to en
@@ -80,7 +80,7 @@ pairs_without_edge <- function(my.graph) {
   com <- combn(1:nvars, 2)
   ncombs <- dim(com)[2]
   keep <- rep(T, ncombs)
-  for (i in 1:ncombs) {
+  for (i in seq_len(ncombs)) {
     # if(there is an edge between this pair) then remove from com
     if (
       my.graph[com[1, i], com[2, i]] != 0 |
@@ -144,8 +144,8 @@ basiSet.mag <- function(cgraph) {
   dv <- length(nod)
   ind <- NULL
   test <- NULL
-  for (r in 1:dv) {
-    for (s in r:dv) {
+  for (r in seq_len(dv)) {
+    for (s in seq_len(dv)[r:dv]) {
       #if there is an element>0 in column s then r & s are adjacent
       #in mag
       if ((mag[r, s] != 0) | (mag[s, r] != 0) | r == s) {
@@ -182,8 +182,8 @@ orient.MAG <- function(full.DAG, latent.conditioners, cgraph, observed.vars) {
   #undirected edges are oriented
   #observed.vars is the names of the observed variables in the DAG
   n.observed <- length(observed.vars)
-  for (i in 1:n.observed) {
-    for (j in 1:n.observed) {
+  for (i in seq_len(n.observed)) {
+    for (j in seq_len(n.observed)) {
       # test if there is an undirected edge between variables
       if (cgraph[i, j] == 1 & cgraph[j, i] == 1) {
         test <- 0
@@ -279,7 +279,7 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
   # main function
   #
   full.vars <- row.names(full.DAG)
-  full.vars.index <- 1:length(full.vars)
+  full.vars.index <- seq_along(full.vars)
   n.observed <- length(full.vars) - length(latents)
   observed.DAG <- full.DAG
   observed.vars <- full.vars
@@ -292,41 +292,41 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
   }
   latent.vars.index <- match(latents, full.vars)
 
-  cat("the original DAG is:", "\n")
+  # cat("the original DAG is:", "\n")
   total.n.vars <- dim(full.DAG)[2]
-  for (i in 1:(total.n.vars - 1)) {
+  for (i in seq_len(total.n.vars - 1)) {
     for (j in (i + 1):total.n.vars) {
       if (full.DAG[i, j] == 1 & full.DAG[j, i] == 0) {
-        cat(full.vars[i], "->", full.vars[j], "\n")
+        # cat(full.vars[i], "->", full.vars[j], "\n")
       }
       if (full.DAG[i, j] == 0 & full.DAG[j, i] == 1) {
-        cat(full.vars[j], "->", full.vars[i], "\n")
+        # cat(full.vars[j], "->", full.vars[i], "\n")
       }
     }
   }
   if (sum(is.na(latents)) > 0) {
-    return(cat("There are no latents; the DAG doesn't change ", "\n"))
+    return(invisible(cgraph)) # Silent return
   }
 
   if (sum(is.na(latents)) == 0) {
-    cat("latent variable(s): ", latents, "\n")
+    # cat("latent variable(s): ", latents, "\n")
     n.latents <- length(latents)
-    for (i in 1:n.latents) {
+    for (i in seq_len(n.latents)) {
       ok <- F
-      for (j in 1:length(full.vars)) {
+      for (j in seq_along(full.vars)) {
         if (latents[i] == full.vars[j]) ok <- T
       }
       if (!ok) return("ERROR: latent variable name not in the DAG")
     }
   }
   if (!is.null(conditioning.latents)) {
-    cat(
-      "latents defining implicit conditioning (sampling bias): ",
-      conditioning.latents,
-      "\n"
-    )
+    # cat(
+    #   "latents defining implicit conditioning (sampling bias): ",
+    #   conditioning.latents,
+    #   "\n"
+    # )
   }
-  cat("_____________________", "\n")
+  # cat("_____________________", "\n")
   observed.vars <- observed.vars[!is.na(observed.vars)]
   observed.vars.index <- observed.vars.index[!is.na(observed.vars.index)]
   #
@@ -335,10 +335,10 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
   # edges between pairs of observed variables
   #
   if (n.observed <= 0) {
-    return(cat("No observed variables", "\n"))
+    return(invisible(cgraph))
   }
   if (n.observed == 1) {
-    return(cat("Only one observed variable", "\n"))
+    return(invisible(cgraph))
   }
   # if(n.observed==2)return(cat("Only two observed variables","\n"))
 
@@ -368,7 +368,7 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
 
   kount <- 0
   # i cycles over each pair that are not adjacent...
-  for (i in 1:n.pairs.to.test) {
+  for (i in seq_len(n.pairs.to.test)) {
     is.pair.dsep <- F
     # get those other observed variables in graph except this pair...
     possible.Q <- find.possible.Q(
@@ -400,7 +400,7 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
       #now, determine, using observed.vars.index[possible.Q], if the pair are dsep
       # in the full graph
       # j gives the conditional order for a given pair
-      for (j in 1:n.possible.Q) {
+      for (j in seq_len(n.possible.Q)) {
         # Q has column = different combinations and rows=elements in each combination
         dQ <- combn(possible.Q, j)
 
@@ -455,7 +455,7 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
     n.observed,
     dimnames = list(observed.vars, observed.vars)
   )
-  for (i in 1:(n.observed - 1)) {
+  for (i in seq_len(n.observed - 1)) {
     for (j in (i + 1):n.observed) {
       if (observed.DAG[i, j] == 1 & observed.DAG[j, i] == 0) {
         cgraph[i, j] <- 1
@@ -485,22 +485,22 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
     observed.vars = observed.vars
   )
   #
-  #The next section simply prints the results to the screen
-  cat("Mixed Acyclic Graph involving only the observed variables:", "\n")
+  # The next section simply prints the results to the screen
+  # cat("Mixed Acyclic Graph involving only the observed variables:", "\n")
   ind.vars <- rep(T, n.observed)
-  for (i in 1:(n.observed - 1)) {
+  for (i in seq_len(n.observed - 1)) {
     for (j in (i + 1):n.observed) {
       if (cgraph[i, j] == 1 & cgraph[j, i] == 0) {
-        cat(observed.vars[i], "->", observed.vars[j], "\n")
+        # cat(observed.vars[i], "->", observed.vars[j], "\n")
       }
       if (cgraph[i, j] == 0 & cgraph[j, i] == 1) {
-        cat(observed.vars[j], "->", observed.vars[i], "\n")
+        # cat(observed.vars[j], "->", observed.vars[i], "\n")
       }
       if (cgraph[i, j] == 10 & cgraph[j, i] == 10) {
-        cat(observed.vars[i], "--", observed.vars[j], "\n")
+        # cat(observed.vars[i], "--", observed.vars[j], "\n")
       }
       if (cgraph[i, j] == 100 & cgraph[j, i] == 100) {
-        cat(observed.vars[i], "<->", observed.vars[j], "\n")
+        # cat(observed.vars[i], "<->", observed.vars[j], "\n")
       }
       if (cgraph[i, j] > 0 || cgraph[j, i] > 0) {
         ind.vars[i] <- ind.vars[j] <- FALSE
@@ -508,27 +508,27 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
     }
   }
   if (sum(ind.vars) > 0) {
-    cat("Completely isolated variables", observed.vars[ind.vars], "\n")
+    # cat("Completely isolated variables", observed.vars[ind.vars], "\n")
   }
-  cat("___________________________", "\n")
-  cat("X->Y means X that is a cause of Y given these observed variables", "\n")
-  cat(
-    "although there could also be latent common causes between them as well.",
-    "\n",
-    "\n"
-  )
-  cat(
-    "X<->Y means that X and Y are not causes of each other but are correlated",
-    "\n"
-  )
-  cat("via one or more marginal common latent causes.", "\n", "\n")
-  cat("X--Y means that X and Y are not causes of each other but are ", "\n")
-  cat(
-    "correlated via one or more common latent effects that have been conditioned",
-    "\n"
-  )
-  cat("due to biased sampling.", "\n", "\n")
-  cat("___________________________", "\n")
-  cat("___________________________", "\n")
+  # cat("___________________________", "\n")
+  # cat("X->Y means X that is a cause of Y given these observed variables", "\n")
+  # cat(
+  #   "although there could also be latent common causes between them as well.",
+  #   "\n",
+  #   "\n"
+  # )
+  # cat(
+  #   "X<->Y means that X and Y are not causes of each other but are correlated",
+  #   "\n"
+  # )
+  # cat("via one or more marginal common latent causes.", "\n", "\n")
+  # cat("X--Y means that X and Y are not causes of each other but are ", "\n")
+  # cat(
+  #   "correlated via one or more common latent effects that have been conditioned",
+  #   "\n"
+  # )
+  # cat("due to biased sampling.", "\n", "\n")
+  # cat("___________________________", "\n")
+  # cat("___________________________", "\n")
   return(cgraph)
 }

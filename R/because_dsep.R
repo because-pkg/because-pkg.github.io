@@ -65,6 +65,9 @@
 #' result <- because_dsep(equations_latent, latent = "Quality")
 #' # result$tests: m-separation tests
 #' # result$correlations: induced correlation between X and Y
+#' @param poly_terms Internal list of polynomial terms.
+#' @param categorical_vars Character vector of categorical variable names.
+#' @param family Named character vector of family/distribution for response variables.
 #' @param quiet Logical; if FALSE (default), print the basis set and MAG structure.
 #'   If TRUE, suppress informational output.
 #' @param random_terms Optional list of random effects (group, type) parsed from equations.
@@ -651,7 +654,6 @@ plot_dsep.because <- function(object, ...) {
   if (is.null(object$dsep) || !object$dsep) {
     stop("plot_dsep requires a 'because' object fitted with dsep = TRUE.")
   }
-
 
   # summary.because handles the complex renaming and dummy variable matching
   s <- summary(object)

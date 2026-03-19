@@ -161,21 +161,21 @@ because_structure <- function(name, precision_fn, description = NULL) {
     method_name_jags <- paste0("jags_structure_definition.", class_name)
     method_name_prep <- paste0("prepare_structure_data.", class_name)
 
-    assign(method_name_jags, jags_method, envir = globalenv())
-    assign(method_name_prep, prepare_method, envir = globalenv())
+    assign(method_name_jags, jags_method, envir = .because_env)
+    assign(method_name_prep, prepare_method, envir = .because_env)
 
     # Register as S3 methods
     registerS3method(
         "jags_structure_definition",
         class_name,
         jags_method,
-        envir = globalenv()
+        envir = .because_env
     )
     registerS3method(
         "prepare_structure_data",
         class_name,
         prepare_method,
-        envir = globalenv()
+        envir = .because_env
     )
 
     message(
@@ -294,12 +294,12 @@ because_family <- function(
 
     # Register the S3 method
     method_name <- paste0("jags_family_likelihood.", class_name)
-    assign(method_name, likelihood_method, envir = globalenv())
+    assign(method_name, likelihood_method, envir = .because_env)
     registerS3method(
         "jags_family_likelihood",
         class_name,
         likelihood_method,
-        envir = globalenv()
+        envir = .because_env
     )
 
     # Create a constructor function that returns a family object

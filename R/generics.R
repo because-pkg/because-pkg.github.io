@@ -62,6 +62,15 @@ jags_structure_definition.default <- function(
         paste0("  ", tau_var, k_suffix, " ~ dgamma(0.01, 0.01)"),
         paste0(
             "  ",
+            sub("tau_", "sigma_", tau_var),
+            k_suffix,
+            " <- 1/sqrt(",
+            tau_var,
+            k_suffix,
+            ")"
+        ),
+        paste0(
+            "  ",
             err_index,
             " ~ dmnorm(zero_vec[1:",
             loop_bound,
@@ -300,7 +309,30 @@ get_inits_hook <- function(family, data, ...) {
 #' @keywords internal
 #' @export
 get_inits_hook.default <- function(family, data, ...) {
-    return(list())
+    inits <- list()
+    # If family is a named vector, iterate and provide defaults for count families
+    if (is.character(family) && !is.null(names(family))) {
+        for (v in names(family)) {
+            fam_type <- family[[v]]
+            if (fam_type %in% c("poisson", "negbinomial", "zip", "zinb")) {
+                if (v %in% names(data)) {
+                    y_vals <- as.numeric(data[[v]])
+                    # Intercept (alpha) initialization
+                    m_y <- mean(y_vals, na.rm = TRUE)
+                    inits[[paste0("alpha_", v)]] <- log(max(0.1, m_y))
+                }
+
+                # Distribution specific parameters
+                if (fam_type %in% c("negbinomial", "zinb")) {
+                    inits[[paste0("r_", v)]] <- 1
+                }
+                if (fam_type %in% c("zip", "zinb")) {
+                    inits[[paste0("psi_", v)]] <- 0.5
+                }
+            }
+        }
+    }
+    return(inits)
 }
 
 #' Needs Zero Inflation Hook
@@ -454,4 +486,19 @@ plot_dsep <- function(object, ...) {
 prepare_structure_data.matrix <- function(structure, data, ...) {
     # Treat matrix as covariance, invert to get Precision
     return(list(data_list = list(Prec = solve(structure))))
+}
+
+#' @keywords internal
+#' @export
+jags_structure_definition.matrix <- function(
+    structure,
+    variable_name = "err",
+    ...
+) {
+    # Matrix uses default precision-matrix logic
+    jags_structure_definition.default(
+        structure,
+        variable_name = variable_name,
+        ...
+    )
 }

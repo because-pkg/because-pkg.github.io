@@ -24,7 +24,7 @@ test_that("because_model handles missing data", {
     model_output <- because_model(
         equations,
         vars_with_na = vars_with_na,
-        structure_names = "tree"
+        structures = list(tree = matrix(0, 1, 1))
     )
 
     # Should use GLMM formulation

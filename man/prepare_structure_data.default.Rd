@@ -2,11 +2,11 @@
 % Please edit documentation in R/generics.R
 \name{prepare_structure_data.default}
 \alias{prepare_structure_data.default}
-\title{Default Method for Structure Data Preparation}
+\title{Default Method for Prepare Structure Data}
 \usage{
 \method{prepare_structure_data}{default}(structure, data, ...)
 }
 \description{
-Default Method for Structure Data Preparation
+Default Method for Prepare Structure Data
 }
 \keyword{internal}

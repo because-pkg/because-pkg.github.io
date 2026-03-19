@@ -9,9 +9,9 @@ because_format_data(data, species_col = "SP", tree = NULL)
 \arguments{
 \item{data}{A data.frame in long format with one row per observation.}
 
-\item{species_col}{Name of the column containing species identifiers (default: "SP").}
+\item{species_col}{Name of the column containing species or unit identifiers (default: "SP").}
 
-\item{tree}{A phylogenetic tree (class \code{phylo}). Optional. If provided, determines species order.}
+\item{tree}{A phylogenetic tree or other structural object. Optional. If provided, determines the order of units.}
 }
 \value{
 A named list where each element is either:
@@ -54,8 +54,10 @@ data_long <- data.frame(
 )
 
 # With tree
-tree <- ape::read.tree(text = "(sp1:1,sp2:1,sp3:1);")
-data_list <- because_format_data(data_long, species_col = "SP", tree = tree)
+if (requireNamespace("ape", quietly = TRUE)) {
+  tree <- ape::read.tree(text = "(sp1:1,sp2:1,sp3:1);")
+  data_list <- because_format_data(data_long, species_col = "SP", tree = tree)
+}
 
 # Without tree (general repeated measures)
 data_list_no_tree <- because_format_data(data_long, species_col = "SP")

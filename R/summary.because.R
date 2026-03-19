@@ -8,6 +8,7 @@
 #'   Defaults to \code{FALSE} to prevent clutter when \code{monitor="all"}.
 #' @param show_random Logical. If \code{TRUE}, shows random effect estimates (e.g., \code{u_...}).
 #'   Defaults to \code{FALSE}.
+#' @param object A \code{because} object.
 #' @param ... Additional arguments passed to \code{\link[coda]{summary.mcmc}}.
 #'
 #' @return A summary object containing statistics for the monitored parameters.
@@ -114,7 +115,7 @@ summary.because <- function(
             all_sample_names <- coda::varnames(res_i$samples)
             matched_params <- c()
 
-            for (p_idx in 1:nrow(param_rows)) {
+            for (p_idx in seq_len(nrow(param_rows))) {
                 p_base <- param_rows$parameter[p_idx]
                 pm_base <- gsub("\\[\\]$", "", p_base)
 
@@ -401,7 +402,7 @@ print.summary.because <- function(x, ...) {
         cat("d-separation Tests\n")
         cat("==================\n\n")
         # Print each test on a separate block
-        for (i in 1:nrow(results)) {
+        for (i in seq_len(nrow(results))) {
             cat(paste0("Test: ", results$Test[i]), "\n")
             # Print stats row without the Test column
             print(results[i, -1], row.names = FALSE)

@@ -91,19 +91,9 @@
 #'     \item \code{X_obs} or matrix column -> type="reps"
 #'   }
 #' @param family Optional named character vector specifying the family/distribution for response variables.
-#'   Default is "gaussian" for all variables. Supported values:
-#'   \itemize{
-#'     \item "gaussian" (default)
-#'     \item "binomial" (binary data)
-#'     \item "multinomial" (unordered categorical > 2 levels)
-#'     \item "ordinal" (ordered categorical > 2 levels)
-#'     \item "poisson" (count data)
-#'     \item "negbinomial" (overdispersed count data)
-#'     \item "zip" (zero-inflated poisson): Models excess zeros with probability \code{psi} and counts with mean \code{lambda}.
-#'     \item "zinb" (zero-inflated negative binomial): Models excess zeros with probability \code{psi} and overdispersed counts with mean \code{mu} and size \code{r}.
-#'   }
 #'   Additional families (e.g., \code{"occupancy"}) are provided by the \pkg{because.detection} extension package.
 #'   Example: \code{family = c(Gregarious = "binomial")}.
+#' @param distribution Deprecated alias for \code{family}.
 #' @param latent Optional character vector of latent (unmeasured) variable names.
 #'   If specified, the model will account for induced correlations among observed
 #'   variables that share these latent common causes.
@@ -125,6 +115,7 @@
 #'   Note: Requires \code{n.cores > 1} to take effect.
 #' @param n.cores Integer; number of CPU cores to use for parallel chains (default = 1).
 #'   Only used when \code{parallel = TRUE}.
+#' @param cl Optional cluster object for parallel execution.
 #' @param ic_recompile Logical; if \code{TRUE} and \code{parallel = TRUE}, recompile the model
 #'   after parallel chains to compute DIC/WAIC (default = TRUE).
 #'   This adds a small sequential overhead but enables information criteria calculation.
@@ -179,278 +170,10 @@
 #'
 #' @export
 #' @importFrom rjags jags.model coda.samples dic.samples jags.samples
-#' @importFrom stats formula terms setNames start var
-#' @importFrom utils capture.output
+#' @importFrom stats formula terms setNames start var na.omit update
+#' @importFrom utils capture.output head
 #' @importFrom coda gelman.diag effectiveSize
 # @keywords internal
-run_single_dsep_test_v2 <- function(
-  i,
-  test_eq,
-  monitor_params,
-  engine = "jags",
-  nimble_samplers = NULL,
-  quiet = FALSE,
-  original_data = NULL,
-  hierarchical_info = NULL,
-  random_terms = list(),
-  equations = list(),
-  family = NULL,
-  tree = NULL,
-  levels = NULL,
-  hierarchy = NULL,
-  link_vars = NULL,
-  fix_residual_variance = NULL,
-  latent_method = "correlations",
-  n.chains = 3,
-  n.iter = 12500,
-  n.burnin = 2500,
-  n.thin = 10,
-  n.adapt = 2500,
-  ic_recompile = FALSE,
-  random = NULL
-) {
-  if (!quiet) {
-    message(paste("D-sep test eq:", deparse(test_eq)))
-  }
-
-  # Select appropriate dataset for this test
-  test_data <- original_data
-
-  if (!is.null(hierarchical_info)) {
-    # Extract variables from this test equation
-    test_vars <- all.vars(test_eq)
-
-    # [FIX] Add random effect grouping variables to test_vars
-    # Otherwise get_data_for_variables removes them, causing "Unknown variable N_SiteID"
-    if (!is.null(random_terms) && length(random_terms) > 0) {
-      random_groups <- unique(sapply(random_terms, function(x) x$group))
-      test_vars <- unique(c(test_vars, random_groups))
-    }
-
-    # [FIX] Handle categorical dummy variables
-    # We need their PARENT variables to fetch the data, then recreate dummies manually.
-    dummies_to_create <- list()
-
-    if (
-      is.data.frame(original_data) &&
-        !is.null(attr(original_data, "categorical_vars"))
-    ) {
-      cat_vars <- attr(original_data, "categorical_vars")
-
-      # Check all cat vars to see if their dummies are needed (or if parent is needed)
-      current_vars <- test_vars
-
-      for (parent_var in names(cat_vars)) {
-        dummies <- cat_vars[[parent_var]]$dummies
-
-        # If parent variable is in the test variables, we need to ensure we can recreate expected dummies
-        if (parent_var %in% current_vars) {
-          dummies_to_create[[parent_var]] <- dummies
-        }
-      }
-    }
-
-    # Get appropriate dataset for these variables (dummies NOT included in request)
-    test_data <- get_data_for_variables(
-      test_vars,
-      hierarchical_info$data,
-      hierarchical_info$levels,
-      hierarchical_info$hierarchy,
-      hierarchical_info$link_vars
-    )
-
-    # [FIX] Recreate dummy variables in test_data
-    for (parent_var in names(dummies_to_create)) {
-      if (parent_var %in% names(test_data)) {
-        dummies <- dummies_to_create[[parent_var]]
-        vals <- test_data[[parent_var]]
-
-        # Recreate dummies: sex_m = as.integer(sex == 2) etc.
-        cat_vars_attr <- if (is.data.frame(original_data)) {
-          attr(original_data, "categorical_vars")
-        } else {
-          NULL
-        }
-        levels_map <- if (
-          !is.null(cat_vars_attr) && parent_var %in% names(cat_vars_attr)
-        ) {
-          cat_vars_attr[[parent_var]]$levels
-        } else {
-          NULL
-        }
-        if (is.null(levels_map)) {
-          next
-        }
-
-        for (k in 2:length(levels_map)) {
-          # The dummies list generally corresponds to k=2..N
-          expected_dummy <- dummies[k - 1]
-
-          # Robust check matching preprocess_categorical_vars logic
-          is_match <- if (is.numeric(vals)) {
-            vals == k
-          } else {
-            vals == levels_map[k]
-          }
-
-          test_data[[expected_dummy]] <- as.integer(is_match)
-        }
-      }
-    }
-
-    # [FIX] Restore categorical_vars attribute dropped by merge/get_data
-    if (
-      is.data.frame(original_data) &&
-        !is.null(attr(original_data, "categorical_vars"))
-    ) {
-      attr(test_data, "categorical_vars") <- attr(
-        original_data,
-        "categorical_vars"
-      )
-    }
-
-    if (!quiet) {
-      message(
-        "  Hierarchical data: using ",
-        nrow(test_data),
-        " observations for this test"
-      )
-    }
-  }
-
-  # [REVISED] Populate dsep_equations FIRST, then filter sub_family/sub_variability
-  dsep_equations <- list(test_eq)
-
-  test_eq_vars <- all.vars(test_eq)
-  # [NEW 2025-12-21] For occupancy models, we must include supporting equations
-  # (detection models and models for latent predictors)
-  dsep_equations <- list(test_eq)
-
-  # Extension Hook: Expand d-separation equations (e.g. detection models)
-  dsep_equations <- dsep_equations_hook(
-    family,
-    equations,
-    dsep_equations,
-    test_eq = test_eq
-  )
-
-  # Now filter variability/family based on ALL variables in dsep_equations
-  # [Manual Fix: variability needs to be handled if it's there, but here we only have family]
-  all_dsep_vars <- unique(unlist(lapply(dsep_equations, all.vars)))
-  all_dsep_vars_clean <- unique(c(
-    all_dsep_vars,
-    sub("^p_", "", all_dsep_vars),
-    sub("^psi_", "", all_dsep_vars),
-    sub("^z_", "", all_dsep_vars)
-  ))
-
-  # Note: sub_variability logic removed for brevity if not strictly needed in this context
-  # but we'll try to extract what we can from arguments
-  sub_family <- if (!is.null(family)) {
-    family[names(family) %in% all_dsep_vars_clean]
-  } else {
-    NULL
-  }
-
-  # [User Request] Auto-detect binomial for binary response
-  test_resp <- as.character(test_eq)[2]
-  if (!is.null(test_data[[test_resp]])) {
-    # Try to find target column in test_data (which might be a list or df)
-    vals <- if (is.list(test_data) && !is.data.frame(test_data)) {
-      # find which element contains it
-      found_vals <- NULL
-      for (lvl in names(test_data)) {
-        if (test_resp %in% names(test_data[[lvl]])) {
-          found_vals <- test_data[[lvl]][[test_resp]]
-          break
-        }
-      }
-      found_vals
-    } else {
-      test_data[[test_resp]]
-    }
-
-    if (!is.null(vals)) {
-      u_vals <- unique(na.omit(vals))
-      if (length(u_vals) <= 2 && all(u_vals %in% c(0, 1))) {
-        if (is.null(sub_family)) {
-          sub_family <- list()
-        }
-        if (is.na(sub_family[test_resp])) {
-          sub_family[[test_resp]] <- "binomial"
-        }
-      }
-    }
-  }
-
-  if (length(sub_family) == 0) {
-    sub_family <- NULL
-  }
-
-  # Choose what data to pass to the dsep sub-fit:
-  dsep_data_to_pass <- if (!is.null(hierarchical_info)) {
-    hierarchical_info$data
-  } else {
-    test_data
-  }
-
-  # Extension Hook: Filter tree structure
-  sub_tree <- dsep_tree_hook(tree, test_eq, hierarchical_info, levels)
-
-  # Call because recursively
-  # Use do.call and filtering to handle potential version conflicts on worker nodes
-  bec_args <- names(formals(because))
-  call_args <- list(
-    data = dsep_data_to_pass,
-    tree = sub_tree,
-    equations = dsep_equations,
-    monitor = monitor_params,
-    n.chains = n.chains,
-    n.iter = n.iter,
-    n.burnin = n.burnin,
-    n.thin = n.thin,
-    DIC = FALSE,
-    WAIC = FALSE,
-    n.adapt = n.adapt,
-    quiet = quiet,
-    dsep = FALSE,
-    family = sub_family,
-    fix_residual_variance = fix_residual_variance,
-    latent = NULL,
-    latent_method = latent_method,
-    parallel = FALSE,
-    n.cores = 1,
-    cl = NULL,
-    ic_recompile = ic_recompile,
-    random = random,
-    levels = levels,
-    hierarchy = hierarchy,
-    link_vars = link_vars
-  )
-
-  # Only add NIMBLE arguments if the version of because() on this node supports them
-  if ("engine" %in% bec_args) {
-    call_args$engine <- engine
-    call_args$nimble_samplers <- nimble_samplers
-  }
-
-  fit <- do.call(because, call_args)
-
-  # Extract samples, map, and model
-  samples <- fit$samples
-  model_string <- fit$model
-  param_map <- fit$parameter_map
-
-  # Update equation index in parameter map to match the d-sep test index
-  param_map$equation_index <- i
-
-  list(
-    samples = samples,
-    param_map = param_map,
-    model = model_string,
-    test_index = i
-  )
-}
 
 #' @import coda
 because <- function(
@@ -579,7 +302,6 @@ because <- function(
 
   # Extension Hook: Normalize specialized aliases (e.g. psi_Species -> Species)
   equations <- normalize_equations_hook(family_obj, equations, data = data)
-
 
   # --- Auto-Stacking (Multispecies Input) ---
   # If data is a list containing species-specific matrices (and equation is generic Y ~ ...),
@@ -760,15 +482,23 @@ because <- function(
     # Deduplicate terms (avoid adding same (1|Group) twice for same response)
     # Create unique keys
     if (length(random_terms) > 0) {
-      keys <- sapply(random_terms, function(x) {
-        paste(x$response, x$group, sep = "|")
-      })
+      keys <- vapply(
+        random_terms,
+        function(x) {
+          paste(x$response, x$group, sep = "|")
+        },
+        character(1)
+      )
 
       if (!quiet) {
         if (length(random_terms) > 0) {
-          msg <- sapply(random_terms, function(x) {
-            paste(x$response, x$group, sep = "|")
-          })
+          msg <- vapply(
+            random_terms,
+            function(x) {
+              paste(x$response, x$group, sep = "|")
+            },
+            character(1)
+          )
         } else {}
       }
       random_terms <- random_terms[!duplicated(keys)]
@@ -791,7 +521,10 @@ because <- function(
         "Detected ",
         length(all_poly_terms),
         " polynomial term(s): ",
-        paste(sapply(all_poly_terms, function(x) x$original), collapse = ", ")
+        paste(
+          vapply(all_poly_terms, function(x) x$original, character(1)),
+          collapse = ", "
+        )
       )
     }
 
@@ -885,7 +618,11 @@ because <- function(
 
     # Add random effect grouping variables
     if (length(random_terms) > 0) {
-      random_vars <- unique(sapply(random_terms, function(x) x$group))
+      random_vars <- unique(vapply(
+        random_terms,
+        function(x) x$group,
+        character(1)
+      ))
       eq_vars <- unique(c(eq_vars, random_vars))
     }
 
@@ -897,8 +634,16 @@ because <- function(
     # Ensure base variables for polynomials are included (JAGS computes Age^2 from Age)
     # AND derived variables are excluded (so they aren't passed as data)
     if (!is.null(all_poly_terms)) {
-      base_poly_vars <- sapply(all_poly_terms, function(x) x$base_var)
-      derived_poly_vars <- sapply(all_poly_terms, function(x) x$internal_name)
+      base_poly_vars <- vapply(
+        all_poly_terms,
+        function(x) x$base_var,
+        character(1)
+      )
+      derived_poly_vars <- vapply(
+        all_poly_terms,
+        function(x) x$internal_name,
+        character(1)
+      )
 
       eq_vars <- unique(c(eq_vars, base_poly_vars))
       eq_vars <- setdiff(eq_vars, derived_poly_vars)
@@ -989,7 +734,11 @@ because <- function(
     # Note: 'family' argument handling in 'because' can be complex (vector vs single).
     # We'll use a simplified check using the names if possible, or position.
 
-    responses <- sapply(equations, function(eq) as.character(formula(eq)[2]))
+    responses <- vapply(
+      equations,
+      function(eq) as.character(formula(eq)[2]),
+      character(1)
+    )
 
     for (i in seq_along(responses)) {
       resp <- responses[i]
@@ -1126,7 +875,11 @@ because <- function(
 
     # Add variables from random terms (grouping factors)
     if (length(random_terms) > 0) {
-      random_vars <- unique(sapply(random_terms, function(x) x$group))
+      random_vars <- unique(vapply(
+        random_terms,
+        function(x) x$group,
+        character(1)
+      ))
       eq_vars <- unique(c(eq_vars, random_vars))
     }
 
@@ -1544,9 +1297,17 @@ because <- function(
     # Check if 'zeros' already exists (use exact name match)
     has_zeros <- "zeros" %in% names(data)
     if (!has_zeros) {
-      needs_zeros <- length(structures) > 0 || any(sapply(names(family), function(v) {
-        needs_zero_inflation_hook(family_obj, v)
-      }))
+      needs_zeros <- length(structures) > 0 ||
+        any(vapply(
+          names(family),
+          function(v) {
+            # Dispatch on the specific family object for this variable
+            fam_name <- family[[v]]
+            fam_obj_v <- get_family(fam_name)
+            needs_zero_inflation_hook(fam_obj_v, v)
+          },
+          logical(1)
+        ))
 
       if (needs_zeros) {
         data[["zeros"]] <- rep(0, N)
@@ -1562,7 +1323,11 @@ because <- function(
   if (!is.null(family)) {
     # If family is provided but unnamed, try to auto-assign if there is only one response
     if (is.null(names(family))) {
-      response_vars <- unique(sapply(equations, function(eq) all.vars(eq[[2]])))
+      response_vars <- unique(vapply(
+        equations,
+        function(eq) as.character(all.vars(eq[[2]])[1]),
+        character(1)
+      ))
       if (length(family) == 1 && length(response_vars) == 1) {
         names(family) <- response_vars
         message(sprintf(
@@ -1691,7 +1456,11 @@ because <- function(
     c(all.vars(eq[[3]]), all.vars(eq[[2]]))
   })))
 
-  response_vars <- unique(sapply(equations, function(eq) all.vars(eq[[2]])))
+  response_vars <- unique(vapply(
+    equations,
+    function(eq) as.character(all.vars(eq[[2]])[1]),
+    character(1)
+  ))
   predictor_only_vars <- setdiff(all_vars, response_vars)
 
   # Detect variables with missing data
@@ -1753,7 +1522,11 @@ because <- function(
       if (!is.null(v_type)) {
         auto_variability[[var]] <- v_type
         if (!quiet) {
-          message(sprintf("Extension-detected: '%s' is a specialized family -> using '%s' mode.", var, v_type))
+          message(sprintf(
+            "Extension-detected: '%s' is a specialized family -> using '%s' mode.",
+            var,
+            v_type
+          ))
         }
         next
       }
@@ -2663,7 +2436,6 @@ because <- function(
     induced_correlations = induced_cors,
     latent = latent,
     standardize_latent = standardize_latent,
-    structure_names = structure_names,
     structures = structures,
     random_structure_names = names(random_structures),
     random_terms = random_terms,
@@ -2932,7 +2704,9 @@ because <- function(
     }
 
     # Attach nimble to the search path to avoid 'getNimbleOption' errors during evaluation
-    require(nimble, quietly = TRUE)
+    if (!requireNamespace("nimble", quietly = TRUE)) {
+      stop("The 'nimble' package is required for this model but not installed.")
+    }
 
     if (!quiet) {
       message("Compiling model via NIMBLE...")
@@ -2974,20 +2748,26 @@ because <- function(
       }
     }
 
-    # Register nimble functions to global environment for compiler
+    # Register nimble functions to local environment for compiler
     if (length(nimble_funcs) > 0) {
       unique_names <- unique(names(nimble_funcs))
       for (fn_name in unique_names) {
-        assign(fn_name, nimble_funcs[[fn_name]], envir = .GlobalEnv)
+        # Assign to local environment so nimbleModel can find them
+        assign(fn_name, nimble_funcs[[fn_name]], envir = environment())
+
+        # Explicitly register with NIMBLE if it looks like a distribution
+        if (startsWith(fn_name, "d")) {
+          try(
+            nimble::registerDistributions(nimble_funcs[fn_name]),
+            silent = TRUE
+          )
+        }
       }
     }
 
     # Convert the JAGS model string directly into a NIMBLE model
     nimble_model <- tryCatch(
       {
-        # The model string comes wrapped in `model { ... }`.
-        # parse() fails on `model {`, but succeeds if we strip `model` or wrap in `{}`
-        # Let's replace 'model {' with '{'
         nimble_string <- sub("^\\s*model\\s*\\{", "{", nimble_string)
         nimble_code <- parse(text = nimble_string)[[1]]
 
@@ -3113,7 +2893,11 @@ because <- function(
         if (!requireNamespace("nimble", quietly = TRUE)) {
           return(NULL)
         }
-        require(nimble, quietly = TRUE)
+        if (!requireNamespace("nimble", quietly = TRUE)) {
+          stop(
+            "The 'nimble' package is required for this model but not installed."
+          )
+        }
 
         # --- NIMBLE Family Optimizations via S3 (Worker) ---
         nimble_funcs <- list()
@@ -3149,7 +2933,7 @@ because <- function(
         }
         if (length(nimble_funcs) > 0) {
           for (fn_name in unique(names(nimble_funcs))) {
-            assign(fn_name, nimble_funcs[[fn_name]], envir = .GlobalEnv)
+            assign(fn_name, nimble_funcs[[fn_name]], envir = .because_env)
           }
         }
 
@@ -3626,7 +3410,6 @@ because <- function(
   if (!is.null(tree)) {
     result$species_order <- get_order_labels_hook(tree)
   } else if (!is.null(id_col) && is.data.frame(original_data)) {
-
     # If no tree but ID col provided
     result$species_order <- as.character(original_data[[id_col]])
   }
@@ -3723,6 +3506,280 @@ because <- function(
   }
 
   return(result)
+}
+
+#' @noRd
+run_single_dsep_test_v2 <- function(
+  i,
+  test_eq,
+  monitor_params,
+  engine = "jags",
+  nimble_samplers = NULL,
+  quiet = FALSE,
+  original_data = NULL,
+  hierarchical_info = NULL,
+  random_terms = list(),
+  equations = list(),
+  family = NULL,
+  tree = NULL,
+  levels = NULL,
+  hierarchy = NULL,
+  link_vars = NULL,
+  fix_residual_variance = NULL,
+  latent_method = "correlations",
+  n.chains = 3,
+  n.iter = 12500,
+  n.burnin = 2500,
+  n.thin = 10,
+  n.adapt = 2500,
+  ic_recompile = FALSE,
+  random = NULL
+) {
+  if (!quiet) {
+    message(paste("D-sep test eq:", deparse(test_eq)))
+  }
+
+  # Select appropriate dataset for this test
+  test_data <- original_data
+
+  if (!is.null(hierarchical_info)) {
+    # Extract variables from this test equation
+    test_vars <- all.vars(test_eq)
+
+    # [FIX] Add random effect grouping variables to test_vars
+    # Otherwise get_data_for_variables removes them, causing "Unknown variable N_SiteID"
+    if (!is.null(random_terms) && length(random_terms) > 0) {
+      random_groups <- unique(vapply(
+        random_terms,
+        function(x) x$group,
+        character(1)
+      ))
+      test_vars <- unique(c(test_vars, random_groups))
+    }
+
+    # [FIX] Handle categorical dummy variables
+    # We need their PARENT variables to fetch the data, then recreate dummies manually.
+    dummies_to_create <- list()
+
+    if (
+      is.data.frame(original_data) &&
+        !is.null(attr(original_data, "categorical_vars"))
+    ) {
+      cat_vars <- attr(original_data, "categorical_vars")
+
+      # Check all cat vars to see if their dummies are needed (or if parent is needed)
+      current_vars <- test_vars
+
+      for (parent_var in names(cat_vars)) {
+        dummies <- cat_vars[[parent_var]]$dummies
+
+        # If parent variable is in the test variables, we need to ensure we can recreate expected dummies
+        if (parent_var %in% current_vars) {
+          dummies_to_create[[parent_var]] <- dummies
+        }
+      }
+    }
+
+    # Get appropriate dataset for these variables (dummies NOT included in request)
+    test_data <- get_data_for_variables(
+      test_vars,
+      hierarchical_info$data,
+      hierarchical_info$levels,
+      hierarchical_info$hierarchy,
+      hierarchical_info$link_vars
+    )
+
+    # [FIX] Recreate dummy variables in test_data
+    for (parent_var in names(dummies_to_create)) {
+      if (parent_var %in% names(test_data)) {
+        dummies <- dummies_to_create[[parent_var]]
+        vals <- test_data[[parent_var]]
+
+        # Recreate dummies: sex_m = as.integer(sex == 2) etc.
+        cat_vars_attr <- if (is.data.frame(original_data)) {
+          attr(original_data, "categorical_vars")
+        } else {
+          NULL
+        }
+        levels_map <- if (
+          !is.null(cat_vars_attr) && parent_var %in% names(cat_vars_attr)
+        ) {
+          cat_vars_attr[[parent_var]]$levels
+        } else {
+          NULL
+        }
+        if (is.null(levels_map)) {
+          next
+        }
+
+        for (k in seq_along(levels_map)[-1]) {
+          # The dummies list generally corresponds to k=2..N
+          expected_dummy <- dummies[k - 1]
+
+          # Robust check matching preprocess_categorical_vars logic
+          is_match <- if (is.numeric(vals)) {
+            vals == k
+          } else {
+            vals == levels_map[k]
+          }
+
+          test_data[[expected_dummy]] <- as.integer(is_match)
+        }
+      }
+    }
+
+    # [FIX] Restore categorical_vars attribute dropped by merge/get_data
+    if (
+      is.data.frame(original_data) &&
+        !is.null(attr(original_data, "categorical_vars"))
+    ) {
+      attr(test_data, "categorical_vars") <- attr(
+        original_data,
+        "categorical_vars"
+      )
+    }
+
+    if (!quiet) {
+      message(
+        "  Hierarchical data: using ",
+        nrow(test_data),
+        " observations for this test"
+      )
+    }
+  }
+
+  # [REVISED] Populate dsep_equations FIRST, then filter sub_family/sub_variability
+  dsep_equations <- list(test_eq)
+
+  test_eq_vars <- all.vars(test_eq)
+  # [NEW 2025-12-21] For occupancy models, we must include supporting equations
+  # (detection models and models for latent predictors)
+  # [Fixed duplicate line]
+
+  # Extension Hook: Expand d-separation equations (e.g. detection models)
+  dsep_equations <- dsep_equations_hook(
+    family,
+    equations,
+    dsep_equations,
+    test_eq = test_eq
+  )
+
+  # Now filter variability/family based on ALL variables in dsep_equations
+  # [Manual Fix: variability needs to be handled if it's there, but here we only have family]
+  all_dsep_vars <- unique(unlist(lapply(dsep_equations, all.vars)))
+  all_dsep_vars_clean <- unique(c(
+    all_dsep_vars,
+    sub("^p_", "", all_dsep_vars),
+    sub("^psi_", "", all_dsep_vars),
+    sub("^z_", "", all_dsep_vars)
+  ))
+
+  # Note: sub_variability logic removed for brevity if not strictly needed in this context
+  # but we'll try to extract what we can from arguments
+  sub_family <- if (!is.null(family)) {
+    family[names(family) %in% all_dsep_vars_clean]
+  } else {
+    NULL
+  }
+
+  # [User Request] Auto-detect binomial for binary response
+  test_resp <- as.character(test_eq)[2]
+  if (!is.null(test_data[[test_resp]])) {
+    # Try to find target column in test_data (which might be a list or df)
+    vals <- if (is.list(test_data) && !is.data.frame(test_data)) {
+      # find which element contains it
+      found_vals <- NULL
+      for (lvl in names(test_data)) {
+        if (test_resp %in% names(test_data[[lvl]])) {
+          found_vals <- test_data[[lvl]][[test_resp]]
+          break
+        }
+      }
+      found_vals
+    } else {
+      test_data[[test_resp]]
+    }
+
+    if (!is.null(vals)) {
+      u_vals <- unique(na.omit(vals))
+      if (length(u_vals) <= 2 && all(u_vals %in% c(0, 1))) {
+        if (is.null(sub_family)) {
+          sub_family <- list()
+        }
+        if (is.na(sub_family[test_resp])) {
+          sub_family[[test_resp]] <- "binomial"
+        }
+      }
+    }
+  }
+
+  if (length(sub_family) == 0) {
+    sub_family <- NULL
+  }
+
+  # Choose what data to pass to the dsep sub-fit:
+  dsep_data_to_pass <- if (!is.null(hierarchical_info)) {
+    hierarchical_info$data
+  } else {
+    test_data
+  }
+
+  # Extension Hook: Filter tree structure
+  sub_tree <- dsep_tree_hook(tree, test_eq, hierarchical_info, levels)
+
+  # Call because recursively
+  # Use do.call and filtering to handle potential version conflicts on worker nodes
+  bec_args <- names(formals(because))
+  call_args <- list(
+    data = dsep_data_to_pass,
+    tree = sub_tree,
+    equations = dsep_equations,
+    monitor = monitor_params,
+    n.chains = n.chains,
+    n.iter = n.iter,
+    n.burnin = n.burnin,
+    n.thin = n.thin,
+    DIC = FALSE,
+    WAIC = FALSE,
+    n.adapt = n.adapt,
+    quiet = quiet,
+    dsep = FALSE,
+    family = sub_family,
+    fix_residual_variance = fix_residual_variance,
+    latent = NULL,
+    latent_method = latent_method,
+    parallel = FALSE,
+    n.cores = 1,
+    cl = NULL,
+    ic_recompile = ic_recompile,
+    random = random,
+    levels = levels,
+    hierarchy = hierarchy,
+    link_vars = link_vars
+  )
+
+  # Only add NIMBLE arguments if the version of because() on this node supports them
+  if ("engine" %in% bec_args) {
+    call_args$engine <- engine
+    call_args$nimble_samplers <- nimble_samplers
+  }
+
+  fit <- do.call(because, call_args)
+
+  # Extract samples, map, and model
+  samples <- fit$samples
+  model_string <- fit$model
+  param_map <- fit$parameter_map
+
+  # Update equation index in parameter map to match the d-sep test index
+  param_map$equation_index <- i
+
+  list(
+    samples = samples,
+    param_map = param_map,
+    model = model_string,
+    test_index = i
+  )
 }
 
 #' Preprocess categorical variables (character/factor) to integer codes and dummies

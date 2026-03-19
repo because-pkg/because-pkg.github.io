@@ -28,6 +28,12 @@ If provided, the function converts the DAG to a MAG and returns m-separation tes
 (levels, grouping variables) for future implementation of multilevel d-separation
 tests (following Shipley 2009). Currently unused by the d-separation logic.}
 
+\item{poly_terms}{Internal list of polynomial terms.}
+
+\item{categorical_vars}{Character vector of categorical variable names.}
+
+\item{family}{Named character vector of family/distribution for response variables.}
+
 \item{quiet}{Logical; if FALSE (default), print the basis set and MAG structure.
 If TRUE, suppress informational output.}
 }
