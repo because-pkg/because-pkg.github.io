@@ -9,93 +9,90 @@ NULL
 
 #' @export
 dnb_because <- nimble::nimbleFunction(
-    run = function(
-        x = double(0),
-        mu = double(0),
-        r = double(0),
-        log = integer(0, default = 0)
-    ) {
+    run = function(x = double(0), v_mu = double(0), v_r = double(0), log = integer(0, default = 0)) {
         returnType(double(0))
-        # Use R-style dnbinom which is known to the NIMBLE compiler
-        prob <- dnbinom(x, size = r, mu = mu, log = 0)
-        if (log) return(log(max(1.0e-30, prob))) else return(prob)
+        # Numerical stability: ensure v_mu and v_r are in safe range
+        s_mu <- max(1e-10, min(1000000, v_mu))
+        s_r <- max(1e-10, min(1000000, v_r))
+        
+        # Robust log-space likelihood:
+        # log(P) = lgamma(x+r) - lgamma(x+1) - lgamma(r) + r*log(r) + x*log(mu) - (r+x)*log(r+mu)
+        log_r_plus_mu <- log(s_r + s_mu)
+        log_prob <- lgamma(x + s_r) - lgamma(x + 1) - lgamma(s_r) + 
+                    s_r * log(s_r) + x * log(s_mu) - (x + s_r) * log_r_plus_mu
+        
+        if (log) return(log_prob) else return(exp(log_prob))
     }
 )
 
 #' @export
 rnb_because <- nimble::nimbleFunction(
-    run = function(n = integer(0), mu = double(0), r = double(0)) {
+    run = function(n = integer(0), v_mu = double(0), v_r = double(0)) {
         returnType(double(0))
-        # Use R-style rnbinom which is known to the NIMBLE compiler
-        return(rnbinom(1, size = r, mu = mu))
+        prob <- v_r / (v_r + v_mu)
+        return(rnbinom(1, size = v_r, prob = prob))
     }
 )
 
 #' @export
 dzip_because <- nimble::nimbleFunction(
-    run = function(
-        x = double(0),
-        mu = double(0),
-        psi = double(0),
-        log = integer(0, default = 0)
-    ) {
+    run = function(x = double(0), v_mu = double(0), v_psi = double(0), log = integer(0, default = 0)) {
         returnType(double(0))
         if (x == 0) {
-            prob <- psi + (1 - psi) * exp(-mu)
+            val <- v_psi + (1 - v_psi) * exp(-v_mu)
         } else {
-            prob <- (1 - psi) * dpois(x, mu, 0)
+            val <- (1 - v_psi) * dpois(x, v_mu, 0)
         }
-        if (log) return(log(max(1.0e-30, prob))) else return(prob)
+        if (log) return(log(max(1.0e-30, val))) else return(val)
     }
 )
 
 #' @export
 rzip_because <- nimble::nimbleFunction(
-    run = function(n = integer(0), mu = double(0), psi = double(0)) {
+    run = function(n = integer(0), v_mu = double(0), v_psi = double(0)) {
         returnType(double(0))
-        if (runif(1) < psi) {
+        if (runif(1) < v_psi) {
             return(0)
         } else {
-            return(rpois(1, mu))
+            return(rpois(1, v_mu))
         }
     }
 )
 
 #' @export
 dzinb_because <- nimble::nimbleFunction(
-    run = function(
-        x = double(0),
-        mu = double(0),
-        r = double(0),
-        psi = double(0),
-        log = integer(0, default = 0)
-    ) {
+    run = function(x = double(0), v_mu = double(0), v_r = double(0), v_psi = double(0), log = integer(0, default = 0)) {
         returnType(double(0))
+        s_mu <- max(1e-10, min(1000000, v_mu))
+        s_r <- max(1e-10, min(1000000, v_r))
+        
         if (x == 0) {
-            # Probability of zero from both components
-            # p_nb(0) = (r / (r + mu))^r
-            p_nb_zero <- pow(r / (r + mu), r)
-            prob <- psi + (1 - psi) * p_nb_zero
+            # Zero case: psi + (1-psi) * r / (r+mu) ^ r
+            # Use log-r-minus-log-r-plus-mu
+            log_p_nb_zero <- s_r * (log(s_r) - log(s_r + s_mu))
+            val <- v_psi + (1 - v_psi) * exp(log_p_nb_zero)
+            log_prob <- log(max(1e-30, val))
         } else {
-            prob <- (1 - psi) * dnbinom(x, size = r, mu = mu, log = 0)
+            # Positive case: (1-psi) * dnegbin(x, mu, r)
+            log_r_plus_mu <- log(s_r + s_mu)
+            log_nb <- lgamma(x + s_r) - lgamma(x + 1) - lgamma(s_r) + 
+                        s_r * log(s_r) + x * log(s_mu) - (x + s_r) * log_r_plus_mu
+            log_prob <- log(max(1e-30, 1 - v_psi)) + log_nb
         }
-        if (log) return(log(max(1.0e-30, prob))) else return(prob)
+        
+        if (log) return(log_prob) else return(exp(log_prob))
     }
 )
 
 #' @export
 rzinb_because <- nimble::nimbleFunction(
-    run = function(
-        n = integer(0),
-        mu = double(0),
-        r = double(0),
-        psi = double(0)
-    ) {
+    run = function(n = integer(0), v_mu = double(0), v_r = double(0), v_psi = double(0)) {
         returnType(double(0))
-        if (runif(1) < psi) {
+        if (runif(1) < v_psi) {
             return(0)
         } else {
-            return(rnbinom(1, size = r, mu = mu))
+            prob <- v_r / (v_r + v_mu)
+            return(rnbinom(1, size = v_r, prob = prob))
         }
     }
 )

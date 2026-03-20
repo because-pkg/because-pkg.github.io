@@ -2765,17 +2765,60 @@ because <- function(
       }
     }
 
+    # Ensure all monitored parameters have initial values for NIMBLE stability
+    # JAGS auto-initializes many nodes, but NIMBLE is more rigorous.
+    # Latent random effects and categorical intercepts must be initialized.
+    nimble_inits <- extension_inits
+    if (is.null(nimble_inits)) nimble_inits <- list()
+    for (p in monitor) {
+      if (!p %in% names(nimble_inits)) {
+        if (grepl("^(tau_|sigmay_|sigmap_|sigmar_)", p)) {
+          nimble_inits[[p]] <- 1
+        } else if (grepl("^(alpha_|beta_|err_|rho_|cutpoint_|lambda_)", p)) {
+          nimble_inits[[p]] <- 0
+        } else if (grepl("^psi_", p)) {
+          nimble_inits[[p]] <- 0.5
+        } else if (grepl("^r_", p)) {
+          nimble_inits[[p]] <- 1
+        }
+      }
+    }
+
     # Convert the JAGS model string directly into a NIMBLE model
     nimble_model <- tryCatch(
       {
         nimble_string <- sub("^\\s*model\\s*\\{", "{", nimble_string)
         nimble_code <- parse(text = nimble_string)[[1]]
 
-        nimble::nimbleModel(
+        m_obj <- nimble::nimbleModel(
           code = nimble_code,
           constants = data,
-          inits = extension_inits
+          inits = nimble_inits
         )
+        
+        # [NEW] Ensure all parameters are initialized properly for NIMBLE
+        # This handles vector/matrix nodes like alpha_y and err_y
+        model_nodes <- m_obj$getNodeNames(stochOnly = TRUE, includeData = FALSE)
+        for (node in model_nodes) {
+          # Only initialize if NOT already set in nimble_inits
+          # (getNodeNames returns specific indices, so we strip them)
+          base_node <- sub("\\[.*\\]", "", node)
+          if (!any(grepl(paste0("^", base_node, "$"), names(nimble_inits)))) {
+            # Check if this is a variance/precision node
+            is_prec <- grepl("^(tau_|sigmay_|sigmap_|sigmar_)", node)
+            val <- if (is_prec) 1 else 0
+            if (grepl("^psi_", node)) val <- 0.5
+            if (grepl("^r_", node)) val <- 1
+            
+            try({
+              curr_val <- m_obj[[node]]
+              if (any(is.na(curr_val)) || any(is.nan(curr_val))) {
+                m_obj[[node]] <- val
+              }
+            }, silent = TRUE)
+          }
+        }
+        m_obj
       },
       error = function(e) {
         if (!quiet) {
@@ -2849,7 +2892,23 @@ because <- function(
       }
     }
 
-    # TODO: Future optimization: Add polyagamma samplers here for occupancy/binomial nodes
+    # Also apply 'slice' to dispersion (r_), inflation (psi_), 
+    # and all parameters for complex families (NegBin, ZIP, ZINB, Multinom, Ordinal)
+    # These often benefit from slice sampling over Random Walk
+    special_vars <- unique(grep("^(r_|psi_|_nb|_zip|_zinb|_multinom|_ordinal)", sampler_targets, value = TRUE))
+    if (length(special_vars) > 0) {
+      for (spec_var in special_vars) {
+        mcmc_conf$removeSamplers(spec_var)
+        mcmc_conf$addSampler(target = spec_var, type = "slice")
+      }
+      if (!quiet) {
+        message(sprintf(
+          "NIMBLE: Replaced default RW sampler with scalar 'slice' for %d complex family node(s): %s",
+          length(special_vars),
+          paste(special_vars, collapse = ", ")
+        ))
+      }
+    }
 
     if (!quiet) {
       message("Building and compiling NIMBLE MCMC (this may take a moment)...")

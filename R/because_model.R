@@ -835,23 +835,50 @@ because_model <- function(
 
       model_lines <- c(
         model_lines,
-        paste0("      L_", response, "[i, k] <- ", linpred_k),
+        paste0("      L_", response, "[i, k] <- max(-20, min(20, ", linpred_k, "))"),
         "    }"
       )
 
-      # Softmax
       model_lines <- c(
         model_lines,
-        paste0("    # Softmax for ", response),
-        paste0("    for (k in 1:", K_var, ") {"),
-        paste0(
-          "      exp_L_",
-          response,
-          "[i, k] <- exp(L_",
-          response,
-          "[i, k])"
-        ),
-        "    }",
+        paste0("    # Softmax for ", response)
+      )
+
+      if (engine == "nimble") {
+        # Numerically stable softmax for NIMBLE
+        model_lines <- c(
+          model_lines,
+          paste0("    max_L_", response, "[i] <- max(L_", response, "[i, 1:", K_var, "])"),
+          paste0("    for (k in 1:", K_var, ") {"),
+          paste0(
+            "      exp_L_",
+            response,
+            "[i, k] <- exp(L_",
+            response,
+            "[i, k] - max_L_",
+            response,
+            "[i])"
+          ),
+          "    }"
+        )
+      } else {
+        # Standard JAGS softmax
+        model_lines <- c(
+          model_lines,
+          paste0("    for (k in 1:", K_var, ") {"),
+          paste0(
+            "      exp_L_",
+            response,
+            "[i, k] <- exp(L_",
+            response,
+            "[i, k])"
+          ),
+          "    }"
+        )
+      }
+
+      model_lines <- c(
+        model_lines,
         paste0(
           "    sum_exp_L_",
           response,
@@ -865,11 +892,11 @@ because_model <- function(
         paste0(
           "      p_",
           response,
-          "[i, k] <- exp_L_",
+          "[i, k] <- (exp_L_",
           response,
           "[i, k] / sum_exp_L_",
           response,
-          "[i]"
+          "[i]) * 0.9999999 + 1.0e-10"
         ),
         "    }",
         paste0(
@@ -3210,6 +3237,7 @@ because_model <- function(
         model_lines <- c(
           model_lines,
           paste0("  # Independent Priors for ", response, " (Multinomial)"),
+          paste0("  alpha_", response, "[1] <- 0"),
           paste0("  for (k in 2:", K_var, ") {"),
           paste0("    alpha_", response, "[k] ~ dnorm(0, 1.0E-6)"),
           tau_line,
@@ -3345,6 +3373,7 @@ because_model <- function(
         model_lines <- c(
           model_lines,
           paste0("  # Priors for ", response, " (Multinomial)"),
+          paste0("  alpha_", response, "[1] <- 0"),
           paste0("  for (k in 2:", K_var, ") {"),
           paste0("    alpha_", response, "[k] ~ dnorm(0, 1.0E-6)"),
           paste0("    lambda_", response, "[k] ~ dunif(0, 1)"),
@@ -3366,6 +3395,7 @@ because_model <- function(
             beta_name <- paste0("beta_", response, "_", pred)
             model_lines <- c(
               model_lines,
+              paste0("  ", beta_name, "[1] <- 0"),
               paste0("  for (k in 2:", K_var, ") {"),
               paste0(
                 "    ",

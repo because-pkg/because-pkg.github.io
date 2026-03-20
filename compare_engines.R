@@ -102,8 +102,9 @@ for (name in names(models)) {
     nimble_sum <- as.data.frame(fit_nimble$summary$statistics)
 
     params <- intersect(rownames(jags_sum), rownames(nimble_sum))
-    # Standardize parameter selection
-    params <- params[grepl("beta_|alpha_|cutpoint_|rho_", params)]
+    # Standardize parameter selection: include intercepts, coefficients, cutpoints, 
+    # correlation terms, and dispersion/inflation parameters
+    params <- params[grepl("beta_|alpha_|cutpoint_|rho_|r_|psi_", params)]
 
     comp <- data.frame(
         Param = params,
