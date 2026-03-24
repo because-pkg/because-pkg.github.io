@@ -3,100 +3,112 @@
 #' This enables custom distributions to be added by defining S3 methods.
 #' @name family_definitions
 #' @importFrom stats rpois rbinom runif
-#' @importFrom nimble nimbleFunction
-NULL
-
 # --- Global NIMBLE Distributions for because package ---
 
-#' @export
-dnb_because <- nimble::nimbleFunction(
-    run = function(x = double(0), v_mu = double(0), v_r = double(0), log = integer(0, default = 0)) {
-        returnType(double(0))
-        # Numerical stability: ensure v_mu and v_r are in safe range
-        s_mu <- max(1e-10, min(1000000, v_mu))
-        s_r <- max(1e-10, min(1000000, v_r))
-        
-        # Robust log-space likelihood:
-        # log(P) = lgamma(x+r) - lgamma(x+1) - lgamma(r) + r*log(r) + x*log(mu) - (r+x)*log(r+mu)
-        log_r_plus_mu <- log(s_r + s_mu)
-        log_prob <- lgamma(x + s_r) - lgamma(x + 1) - lgamma(s_r) + 
-                    s_r * log(s_r) + x * log(s_mu) - (x + s_r) * log_r_plus_mu
-        
-        if (log) return(log_prob) else return(exp(log_prob))
+# These are defined lazily to avoid a hard dependency on nimble during package installation.
+.nimble_fn_cache <- new.env(parent = emptyenv())
+
+#' @keywords internal
+get_nimble_fn <- function(name) {
+    if (!requireNamespace("nimble", quietly = TRUE)) {
+        stop("Package 'nimble' is required for this operation. Please install it with install.packages('nimble').")
     }
-)
+    
+    if (exists(name, envir = .nimble_fn_cache)) {
+        return(get(name, envir = .nimble_fn_cache))
+    }
+    
+    fn <- switch(name,
+        "dnb_because" = nimble::nimbleFunction(
+            run = function(x = double(0), v_mu = double(0), v_r = double(0), log = integer(0, default = 0)) {
+                returnType(double(0))
+                s_mu <- max(1e-10, min(1000000, v_mu))
+                s_r <- max(1e-10, min(1000000, v_r))
+                log_r_plus_mu <- log(s_r + s_mu)
+                log_prob <- lgamma(x + s_r) - lgamma(x + 1) - lgamma(s_r) + 
+                            s_r * log(s_r) + x * log(s_mu) - (x + s_r) * log_r_plus_mu
+                if (log) return(log_prob) else return(exp(log_prob))
+            }
+        ),
+        "rnb_because" = nimble::nimbleFunction(
+            run = function(n = integer(0), v_mu = double(0), v_r = double(0)) {
+                returnType(double(0))
+                prob <- v_r / (v_r + v_mu)
+                return(rnbinom(1, size = v_r, prob = prob))
+            }
+        ),
+        "dzip_because" = nimble::nimbleFunction(
+            run = function(x = double(0), v_mu = double(0), v_psi = double(0), log = integer(0, default = 0)) {
+                returnType(double(0))
+                if (x == 0) {
+                    val <- v_psi + (1 - v_psi) * exp(-v_mu)
+                } else {
+                    val <- (1 - v_psi) * dpois(x, v_mu, 0)
+                }
+                if (log) return(log(max(1.0e-30, val))) else return(val)
+            }
+        ),
+        "rzip_because" = nimble::nimbleFunction(
+            run = function(n = integer(0), v_mu = double(0), v_psi = double(0)) {
+                returnType(double(0))
+                if (runif(1) < v_psi) {
+                    return(0)
+                } else {
+                    return(rpois(1, v_mu))
+                }
+            }
+        ),
+        "dzinb_because" = nimble::nimbleFunction(
+            run = function(x = double(0), v_mu = double(0), v_r = double(0), v_psi = double(0), log = integer(0, default = 0)) {
+                returnType(double(0))
+                s_mu <- max(1e-10, min(1000000, v_mu))
+                s_r <- max(1e-10, min(1000000, v_r))
+                if (x == 0) {
+                    log_p_nb_zero <- s_r * (log(s_r) - log(s_r + s_mu))
+                    val <- v_psi + (1 - v_psi) * exp(log_p_nb_zero)
+                    log_prob <- log(max(1e-30, val))
+                } else {
+                    log_r_plus_mu <- log(s_r + s_mu)
+                    log_nb <- lgamma(x + s_r) - lgamma(x + 1) - lgamma(s_r) + 
+                                s_r * log(s_r) + x * log(s_mu) - (x + s_r) * log_r_plus_mu
+                    log_prob <- log(max(1e-30, 1 - v_psi)) + log_nb
+                }
+                if (log) return(log_prob) else return(exp(log_prob))
+            }
+        ),
+        "rzinb_because" = nimble::nimbleFunction(
+            run = function(n = integer(0), v_mu = double(0), v_r = double(0), v_psi = double(0)) {
+                returnType(double(0))
+                if (runif(1) < v_psi) {
+                    return(0)
+                } else {
+                    prob <- v_r / (v_r + v_mu)
+                    return(rnbinom(1, size = v_r, prob = prob))
+                }
+            }
+        )
+    )
+    
+    assign(name, fn, envir = .nimble_fn_cache)
+    return(fn)
+}
+
+# Dummy exports to satisfy NAMESPACE during installation/documentation
+# In practice these should not be used directly by users without nimble.
 
 #' @export
-rnb_because <- nimble::nimbleFunction(
-    run = function(n = integer(0), v_mu = double(0), v_r = double(0)) {
-        returnType(double(0))
-        prob <- v_r / (v_r + v_mu)
-        return(rnbinom(1, size = v_r, prob = prob))
-    }
-)
-
+dnb_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
 #' @export
-dzip_because <- nimble::nimbleFunction(
-    run = function(x = double(0), v_mu = double(0), v_psi = double(0), log = integer(0, default = 0)) {
-        returnType(double(0))
-        if (x == 0) {
-            val <- v_psi + (1 - v_psi) * exp(-v_mu)
-        } else {
-            val <- (1 - v_psi) * dpois(x, v_mu, 0)
-        }
-        if (log) return(log(max(1.0e-30, val))) else return(val)
-    }
-)
-
+rnb_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
 #' @export
-rzip_because <- nimble::nimbleFunction(
-    run = function(n = integer(0), v_mu = double(0), v_psi = double(0)) {
-        returnType(double(0))
-        if (runif(1) < v_psi) {
-            return(0)
-        } else {
-            return(rpois(1, v_mu))
-        }
-    }
-)
-
+dzip_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
 #' @export
-dzinb_because <- nimble::nimbleFunction(
-    run = function(x = double(0), v_mu = double(0), v_r = double(0), v_psi = double(0), log = integer(0, default = 0)) {
-        returnType(double(0))
-        s_mu <- max(1e-10, min(1000000, v_mu))
-        s_r <- max(1e-10, min(1000000, v_r))
-        
-        if (x == 0) {
-            # Zero case: psi + (1-psi) * r / (r+mu) ^ r
-            # Use log-r-minus-log-r-plus-mu
-            log_p_nb_zero <- s_r * (log(s_r) - log(s_r + s_mu))
-            val <- v_psi + (1 - v_psi) * exp(log_p_nb_zero)
-            log_prob <- log(max(1e-30, val))
-        } else {
-            # Positive case: (1-psi) * dnegbin(x, mu, r)
-            log_r_plus_mu <- log(s_r + s_mu)
-            log_nb <- lgamma(x + s_r) - lgamma(x + 1) - lgamma(s_r) + 
-                        s_r * log(s_r) + x * log(s_mu) - (x + s_r) * log_r_plus_mu
-            log_prob <- log(max(1e-30, 1 - v_psi)) + log_nb
-        }
-        
-        if (log) return(log_prob) else return(exp(log_prob))
-    }
-)
-
+rzip_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
 #' @export
-rzinb_because <- nimble::nimbleFunction(
-    run = function(n = integer(0), v_mu = double(0), v_r = double(0), v_psi = double(0)) {
-        returnType(double(0))
-        if (runif(1) < v_psi) {
-            return(0)
-        } else {
-            prob <- v_r / (v_r + v_mu)
-            return(rnbinom(1, size = v_r, prob = prob))
-        }
-    }
-)
+dzinb_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
+#' @export
+rzinb_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
+
 
 # --- Standard family definitions ---
 NULL
@@ -328,8 +340,8 @@ nimble_family_optimization.because_family_zip <- function(
     list(
         model_string = model_string,
         nimble_functions = list(
-            dzip_because = dzip_because,
-            rzip_because = rzip_because
+            dzip_because = get_nimble_fn("dzip_because"),
+            rzip_because = get_nimble_fn("rzip_because")
         )
     )
 }
@@ -345,8 +357,8 @@ nimble_family_optimization.because_family_zinb <- function(
     list(
         model_string = model_string,
         nimble_functions = list(
-            dzinb_because = dzinb_because,
-            rzinb_because = rzinb_because
+            dzinb_because = get_nimble_fn("dzinb_because"),
+            rzinb_because = get_nimble_fn("rzinb_because")
         )
     )
 }
@@ -362,8 +374,8 @@ nimble_family_optimization.because_family_negbinomial <- function(
     list(
         model_string = model_string,
         nimble_functions = list(
-            dnb_because = dnb_because,
-            rnb_because = rnb_because
+            dnb_because = get_nimble_fn("dnb_because"),
+            rnb_because = get_nimble_fn("rnb_because")
         )
     )
 }
