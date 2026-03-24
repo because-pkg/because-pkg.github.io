@@ -670,19 +670,11 @@ plot_dsep.because <- function(object, ...) {
   }
 
   # For multinomial responses, multiple parameters share the same Test string
-  # (one per category, e.g. beta_X[2], beta_X[3]).  Disambiguate by appending
-  # the bracketed category index extracted from the Parameter column so that
-  # each category gets its own row in the caterpillar plot.
+  # (one per category). Disambiguate by appending the specific Parameter name
+  # so that each category gets its own row in the caterpillar plot.
   dup_tests <- duplicated(res$Test) | duplicated(res$Test, fromLast = TRUE)
   if (any(dup_tests)) {
-    cat_tag <- ifelse(
-      dup_tests,
-      sub(".*?(\\[\\d+\\])$", "\\1", res$Parameter),
-      ""
-    )
-    # Only append when a category tag was actually found
-    has_tag <- nzchar(cat_tag) & grepl("^\\[\\d+\\]$", cat_tag)
-    res$Test[has_tag] <- paste0(res$Test[has_tag], " ", cat_tag[has_tag])
+    res$Test[dup_tests] <- paste0(res$Test[dup_tests], " (", res$Parameter[dup_tests], ")")
   }
 
   # Create Plot
