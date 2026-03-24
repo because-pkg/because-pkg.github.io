@@ -18,12 +18,13 @@ because_format_data(data, species_col = "SP", tree = NULL)
 
 - species_col:
 
-  Name of the column containing species identifiers (default: "SP").
+  Name of the column containing species or unit identifiers (default:
+  "SP").
 
 - tree:
 
-  A phylogenetic tree (class `phylo`). Optional. If provided, determines
-  species order.
+  A phylogenetic tree or other structural object. Optional. If provided,
+  determines the order of units.
 
 ## Value
 
@@ -70,8 +71,10 @@ data_long <- data.frame(
 )
 
 # With tree
-tree <- ape::read.tree(text = "(sp1:1,sp2:1,sp3:1);")
-data_list <- because_format_data(data_long, species_col = "SP", tree = tree)
+if (requireNamespace("ape", quietly = TRUE)) {
+  tree <- ape::read.tree(text = "(sp1:1,sp2:1,sp3:1);")
+  data_list <- because_format_data(data_long, species_col = "SP", tree = tree)
+}
 
 # Without tree (general repeated measures)
 data_list_no_tree <- because_format_data(data_long, species_col = "SP")

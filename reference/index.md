@@ -12,8 +12,6 @@
   : Create a Custom Family (Distribution) for use with because
 - [`because_format_data()`](https://because-pkg.github.io/because/reference/because_format_data.md)
   : Format Data for Because Analysis
-- [`because_lambda()`](https://because-pkg.github.io/because/reference/because_lambda.md)
-  : Calculate Pagel's Lambda from Variance Components
 - [`because_loo()`](https://because-pkg.github.io/because/reference/because_loo.md)
   : Calculate LOO-CV for a Because Model
 - [`because_loo_compare()`](https://because-pkg.github.io/because/reference/because_loo_compare.md)
@@ -21,7 +19,7 @@
 - [`because_mediation()`](https://because-pkg.github.io/because/reference/because_mediation.md)
   : Automated Mediation Analysis
 - [`because_model()`](https://because-pkg.github.io/because/reference/because_model.md)
-  : Generate a JAGS model string for Phylogenetic Bayesian SEM (Because)
+  : Generate a JAGS model string for Bayesian SEM (Because)
 - [`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md)
   : Create a Custom Covariance Structure for use with because
 - [`because_waic()`](https://because-pkg.github.io/because/reference/because_waic.md)

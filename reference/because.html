@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -190,7 +190,9 @@ WAIC is generally more appropriate than DIC for hierarchical models with latent 
 
 
 <dt id="arg-dsep">dsep<a class="anchor" aria-label="anchor" href="#arg-dsep"></a></dt>
-<dd><p>Logical; if <code>TRUE</code>, monitor only the first beta in each structural equation (used for d-separation testing).</p></dd>
+<dd><p>Logical; if <code>TRUE</code>, evaluate the model's global fit using d-separation (basis set) path analysis.
+This identifies the complete set of independence claims implied by the DAG and tests each one via Bayesian inference.
+Results can be explored via <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> or visualized using <code><a href="plot_dsep.html">plot_dsep()</a></code>.</p></dd>
 
 
 <dt id="arg-variability">variability<a class="anchor" aria-label="anchor" href="#arg-variability"></a></dt>
@@ -209,16 +211,12 @@ If not specified, the package attempts to detect variability based on column nam
 
 <dt id="arg-family">family<a class="anchor" aria-label="anchor" href="#arg-family"></a></dt>
 <dd><p>Optional named character vector specifying the family/distribution for response variables.
-Default is "gaussian" for all variables. Supported values:</p><ul><li><p>"gaussian" (default)</p></li>
-<li><p>"binomial" (binary data)</p></li>
-<li><p>"multinomial" (unordered categorical &gt; 2 levels)</p></li>
-<li><p>"ordinal" (ordered categorical &gt; 2 levels)</p></li>
-<li><p>"poisson" (count data)</p></li>
-<li><p>"negbinomial" (overdispersed count data)</p></li>
-<li><p>"zip" (zero-inflated poisson): Models excess zeros with probability <code>psi</code> and counts with mean <code>lambda</code>.</p></li>
-<li><p>"zinb" (zero-inflated negative binomial): Models excess zeros with probability <code>psi</code> and overdispersed counts with mean <code>mu</code> and size <code>r</code>.</p></li>
-</ul><p>Additional families (e.g., <code>"occupancy"</code>) are provided by the <span class="pkg">because.detection</span> extension package.
+Additional families (e.g., <code>"occupancy"</code>) are provided by the <span class="pkg">because.detection</span> extension package.
 Example: <code>family = c(Gregarious = "binomial")</code>.</p></dd>
+
+
+<dt id="arg-distribution">distribution<a class="anchor" aria-label="anchor" href="#arg-distribution"></a></dt>
+<dd><p>Deprecated alias for <code>family</code>.</p></dd>
 
 
 <dt id="arg-latent">latent<a class="anchor" aria-label="anchor" href="#arg-latent"></a></dt>
@@ -244,12 +242,19 @@ Only applicable when using explicit latent variable modeling (default = TRUE).</
 
 <dt id="arg-parallel">parallel<a class="anchor" aria-label="anchor" href="#arg-parallel"></a></dt>
 <dd><p>Logical; if <code>TRUE</code>, run MCMC chains in parallel (default = FALSE).
+For standard SEM (<code>dsep = FALSE</code>), this runs the chains on different cores.
+For d-separation testing (<code>dsep = TRUE</code>), this instead runs individual independence tests
+on different cores to maximize throughput. Each sub-test runs its chains sequentially.
 Note: Requires <code>n.cores &gt; 1</code> to take effect.</p></dd>
 
 
 <dt id="arg-n-cores">n.cores<a class="anchor" aria-label="anchor" href="#arg-n-cores"></a></dt>
 <dd><p>Integer; number of CPU cores to use for parallel chains (default = 1).
 Only used when <code>parallel = TRUE</code>.</p></dd>
+
+
+<dt id="arg-cl">cl<a class="anchor" aria-label="anchor" href="#arg-cl"></a></dt>
+<dd><p>Optional cluster object for parallel execution.</p></dd>
 
 
 <dt id="arg-ic-recompile">ic_recompile<a class="anchor" aria-label="anchor" href="#arg-ic-recompile"></a></dt>

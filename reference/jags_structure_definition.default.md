@@ -1,6 +1,6 @@
 # Default Method for JAGS Structure Definition
 
-Default Method for JAGS Structure Definition
+Implements a standard precision-matrix-based correlation (dmnorm).
 
 ## Usage
 

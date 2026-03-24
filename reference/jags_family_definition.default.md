@@ -1,6 +1,6 @@
-# Default Method for Family Definition
+# Default Method for JAGS Family Definition
 
-Default Method for Family Definition
+Default Method for JAGS Family Definition
 
 ## Usage
 

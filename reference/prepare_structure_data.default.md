@@ -1,6 +1,6 @@
-# Default Method for Structure Data Preparation
+# Default Method for Prepare Structure Data
 
-Default Method for Structure Data Preparation
+Default Method for Prepare Structure Data
 
 ## Usage
 

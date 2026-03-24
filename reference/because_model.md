@@ -1,10 +1,10 @@
-# Generate a JAGS model string for Phylogenetic Bayesian SEM (Because)
+# Generate a JAGS model string for Bayesian SEM (Because)
 
 This function builds the model code to be passed to JAGS based on a set
-of structural equations. It supports both single and multiple
-phylogenetic trees (to account for phylogenetic uncertainty). Missing
-values are handled both in the response and predictor variables treating
-all of them as stochastic nodes.
+of structural equations. It supports custom covariance structures
+(spatial, phylogenetic, etc.). Missing values are handled both in the
+response and predictor variables treating all of them as stochastic
+nodes.
 
 ## Usage
 
@@ -13,8 +13,8 @@ because_model(
   equations,
   multi.tree = FALSE,
   latent_method = "correlations",
-  structure_names = "phylo",
-  structures = NULL,
+  structures = list(),
+  is_multi_structure = FALSE,
   random_structure_names = NULL,
   random_terms = list(),
   vars_with_na = NULL,
@@ -43,9 +43,27 @@ because_model(
   Logical; if `TRUE`, incorporates phylogenetic uncertainty by sampling
   across a set of trees.
 
-- structure_names:
+- latent_method:
 
-  (Internal) Character vector of names for multiple trees/structures.
+  Method for handling latent variables ("correlations" or "explicit").
+
+- structures:
+
+  A named list of structural objects (e.g. matrices, trees) to include
+  as correlations.
+
+- is_multi_structure:
+
+  Logical (Internal). If TRUE, handles 3D Precision arrays.
+
+- random_structure_names:
+
+  Optional character vector of structural names applied to all
+  variables.
+
+- random_terms:
+
+  Optional list of random effects (response, group).
 
 - vars_with_na:
 
@@ -96,9 +114,25 @@ because_model(
 
   Optional character vector of latent variable names.
 
+- categorical_vars:
+
+  Optional character vector of categorical variable names.
+
 - fix_residual_variance:
 
   Optional numeric value or named vector to fix residual variance.
+
+- priors:
+
+  Optional named list of custom priors.
+
+- hierarchical_info:
+
+  Optional list containing data hierarchy (levels, link_vars).
+
+- engine:
+
+  Bayesian engine to use ("jags" or "nimble").
 
 ## Value
 
@@ -116,12 +150,11 @@ The generated model includes:
 - Linear predictors and multivariate normal likelihoods for each
   response variable.
 
-- Priors for intercepts (`alpha`), slopes (`beta`), lambda parameters
-  (`lambda`), and residual precisions (`tau`).
+- Priors for intercepts (`alpha`), slopes (`beta`), and residual
+  precisions (`tau`).
 
-- Phylogenetic covariance modeled via a single `VCV` matrix (when
-  `multi.tree = FALSE`) or a 3D array `multiVCV[,,K]` with categorical
-  sampling across trees (when `multi.tree = TRUE`).
+- Custom covariance modeled via provided structural objects (e.g. VCV
+  matrices).
 
 - (Optional) Observation models for variables with measurement error:
 
@@ -142,6 +175,8 @@ eqs <- list(BR ~ BM, S ~ BR, G ~ BR, L ~ BR)
 cat(because_model(eqs, multi.tree = TRUE)$model)
 #> model {
 #>   # Common structures and priors
+#>   zeros_2[1] <- 0
+#>   zeros_2[2] <- 0
 #>   # Structural equations
 #> 
 #>   for (i in 1:N) {
@@ -157,55 +192,35 @@ cat(because_model(eqs, multi.tree = TRUE)$model)
 #>     mu_L[i] <- alpha_L + beta_L_BR*BR[i]
 #>   }
 #>   # Multivariate normal likelihoods
-#>   u_std_BR_phylo[1:N] ~ dmnorm(zeros[1:N], Prec_phylo[1:N, 1:N, K])
-#>   u_BR_phylo[i] <- u_std_BR_phylo[i] / sqrt(tau_u_BR_phylo)
 #>   for (i in 1:N) {
-#>     BR[i] ~ dnorm(mu_BR[i] + u_BR_phylo[i], tau_e_BR)
-#>     log_lik_BR[i] <- logdensity.norm(BR[i], mu_BR[i] + u_BR_phylo[i], tau_e_BR)
+#>     BR[i] ~ dnorm(mu_BR[i], tau_e_BR)
+#>     log_lik_BR[i] <- logdensity.norm(BR[i], mu_BR[i], tau_e_BR)
 #>   }
-#>   u_std_S_phylo[1:N] ~ dmnorm(zeros[1:N], Prec_phylo[1:N, 1:N, K])
-#>   u_S_phylo[i] <- u_std_S_phylo[i] / sqrt(tau_u_S_phylo)
 #>   for (i in 1:N) {
-#>     S[i] ~ dnorm(mu_S[i] + u_S_phylo[i], tau_e_S)
-#>     log_lik_S[i] <- logdensity.norm(S[i], mu_S[i] + u_S_phylo[i], tau_e_S)
+#>     S[i] ~ dnorm(mu_S[i], tau_e_S)
+#>     log_lik_S[i] <- logdensity.norm(S[i], mu_S[i], tau_e_S)
 #>   }
-#>   u_std_G_phylo[1:N] ~ dmnorm(zeros[1:N], Prec_phylo[1:N, 1:N, K])
-#>   u_G_phylo[i] <- u_std_G_phylo[i] / sqrt(tau_u_G_phylo)
 #>   for (i in 1:N) {
-#>     G[i] ~ dnorm(mu_G[i] + u_G_phylo[i], tau_e_G)
-#>     log_lik_G[i] <- logdensity.norm(G[i], mu_G[i] + u_G_phylo[i], tau_e_G)
+#>     G[i] ~ dnorm(mu_G[i], tau_e_G)
+#>     log_lik_G[i] <- logdensity.norm(G[i], mu_G[i], tau_e_G)
 #>   }
-#>   u_std_L_phylo[1:N] ~ dmnorm(zeros[1:N], Prec_phylo[1:N, 1:N, K])
-#>   u_L_phylo[i] <- u_std_L_phylo[i] / sqrt(tau_u_L_phylo)
 #>   for (i in 1:N) {
-#>     L[i] ~ dnorm(mu_L[i] + u_L_phylo[i], tau_e_L)
-#>     log_lik_L[i] <- logdensity.norm(L[i], mu_L[i] + u_L_phylo[i], tau_e_L)
+#>     L[i] ~ dnorm(mu_L[i], tau_e_L)
+#>     log_lik_L[i] <- logdensity.norm(L[i], mu_L[i], tau_e_L)
 #>   }
 #>   # Priors for structural parameters
 #>   alpha_BR ~ dnorm(0, 1.0E-6)
 #>   tau_e_BR ~ dgamma(1, 1)
-#>   tau_u_BR_phylo ~ dgamma(1, 1)
-#>   sigma_BR_phylo <- 1/sqrt(tau_u_BR_phylo)
-#>   lambdaBR <- (1/tau_u_BR_phylo) / ((1/tau_u_BR_phylo) + (1/tau_e_BR))
-#>   sigma_BR_res <- 1/sqrt(tau_e_BR)
+#>   sigmaBR <- 1/sqrt(tau_e_BR)
 #>   alpha_S ~ dnorm(0, 1.0E-6)
 #>   tau_e_S ~ dgamma(1, 1)
-#>   tau_u_S_phylo ~ dgamma(1, 1)
-#>   sigma_S_phylo <- 1/sqrt(tau_u_S_phylo)
-#>   lambdaS <- (1/tau_u_S_phylo) / ((1/tau_u_S_phylo) + (1/tau_e_S))
-#>   sigma_S_res <- 1/sqrt(tau_e_S)
+#>   sigmaS <- 1/sqrt(tau_e_S)
 #>   alpha_G ~ dnorm(0, 1.0E-6)
 #>   tau_e_G ~ dgamma(1, 1)
-#>   tau_u_G_phylo ~ dgamma(1, 1)
-#>   sigma_G_phylo <- 1/sqrt(tau_u_G_phylo)
-#>   lambdaG <- (1/tau_u_G_phylo) / ((1/tau_u_G_phylo) + (1/tau_e_G))
-#>   sigma_G_res <- 1/sqrt(tau_e_G)
+#>   sigmaG <- 1/sqrt(tau_e_G)
 #>   alpha_L ~ dnorm(0, 1.0E-6)
 #>   tau_e_L ~ dgamma(1, 1)
-#>   tau_u_L_phylo ~ dgamma(1, 1)
-#>   sigma_L_phylo <- 1/sqrt(tau_u_L_phylo)
-#>   lambdaL <- (1/tau_u_L_phylo) / ((1/tau_u_L_phylo) + (1/tau_e_L))
-#>   sigma_L_res <- 1/sqrt(tau_e_L)
+#>   sigmaL <- 1/sqrt(tau_e_L)
 #>   beta_BR_BM ~ dnorm(0, 1.0E-6)
 #>   beta_S_BR ~ dnorm(0, 1.0E-6)
 #>   beta_G_BR ~ dnorm(0, 1.0E-6)

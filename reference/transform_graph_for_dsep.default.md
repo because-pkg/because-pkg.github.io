@@ -1,6 +1,6 @@
-# Default Method for D-Sep Transformation
+# Default Method for Transform Graph
 
-Default Method for D-Sep Transformation
+Default Method for Transform Graph
 
 ## Usage
 

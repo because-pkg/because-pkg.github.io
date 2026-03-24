@@ -46,6 +46,18 @@ because_dsep(
   d-separation tests (following Shipley 2009). Currently unused by the
   d-separation logic.
 
+- poly_terms:
+
+  Internal list of polynomial terms.
+
+- categorical_vars:
+
+  Character vector of categorical variable names.
+
+- family:
+
+  Named character vector of family/distribution for response variables.
+
 - quiet:
 
   Logical; if FALSE (default), print the basis set and MAG structure. If

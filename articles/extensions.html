@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -114,18 +114,43 @@ transparently with <code>because</code> via S3 method dispatch.</li>
 <h2 id="planned-packages">Planned packages<a class="anchor" aria-label="anchor" href="#planned-packages"></a>
 </h2>
 <div class="section level3">
-<h3 id="occupancy-because-occupancy">Occupancy (<code>because.occupancy</code>)<a class="anchor" aria-label="anchor" href="#occupancy-because-occupancy"></a>
+<h3 id="detectionoccupancy-because-detection">Detection/Occupancy (<code>because.detection</code>)<a class="anchor" aria-label="anchor" href="#detectionoccupancy-because-detection"></a>
 </h3>
-<p><em>Status: In Development</em> Adds support for hierarchical single
-and joint-species single-season occupancy models within the causal
-inference framework (Occupancy SEMs).</p>
+<p><em>Status: In Development</em> Adds support for hierarchical
+single-season occupancy and Capture-Mark-Recapture (CMR) models within
+the causal inference framework.</p>
 </div>
 <div class="section level3">
 <h3 id="spatial-because-spatial">Spatial (<code>because.spatial</code>)<a class="anchor" aria-label="anchor" href="#spatial-because-spatial"></a>
 </h3>
 <p><em>Status: Planned</em> Will add support for spatially structured
 residuals (CAR/SAR models).</p>
+<hr>
 </div>
+</div>
+<div class="section level2">
+<h2 id="developing-extensions">Developing Extensions<a class="anchor" aria-label="anchor" href="#developing-extensions"></a>
+</h2>
+<p><code>because</code> uses a robust S3 generic “hook” system that
+allows developers to add support for new families or structures without
+modifying the core package.</p>
+<p>If you are interested in building an extension, please refer to the
+documentation for the internal generics in <code>R/generics.R</code>.
+Key hooks include:</p>
+<ul>
+<li>
+<code>jags_family_definition</code>: Define custom JAGS likelihood
+blocks.</li>
+<li>
+<code>prepare_structure_data</code>: Pre-process custom structural
+objects (trees, matrices).</li>
+<li>
+<code>get_inits_hook</code>: Provide specialized initial
+values.</li>
+<li>
+<code>normalize_equations_hook</code>: Handle specialized variable
+aliases.</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

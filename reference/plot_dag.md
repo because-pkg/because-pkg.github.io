@@ -108,6 +108,10 @@ plot_dag(
   `list(A = c(1, 1), B = c(2, 2))`. If provided, these will override the
   `layout` algorithm.
 
+- family:
+
+  Optional named character vector of families for response variables.
+
 ## Value
 
 A `ggplot` object that can be further customized with standard ggplot2

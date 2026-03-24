@@ -54,10 +54,10 @@ code from standard R formulas. Key features include:
 
 ## Installation
 
-To install the **stable release** (`v1.1.0`), run:
+To install the **stable release** (`v1.2.0`), run:
 
 ``` r
-remotes::install_github("because-pkg/because@v1.1.0", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.2.0", build_vignettes = TRUE)
 ```
 
 To install the **latest development version** (unstable), run:
@@ -102,8 +102,6 @@ Ubuntu/Debian) or equivalent development tools for your distribution. -
   : Create a Custom Family (Distribution) for use with because
 - [`because_format_data()`](https://because-pkg.github.io/because/reference/because_format_data.md)
   : Format Data for Because Analysis
-- [`because_lambda()`](https://because-pkg.github.io/because/reference/because_lambda.md)
-  : Calculate Pagel's Lambda from Variance Components
 - [`because_loo()`](https://because-pkg.github.io/because/reference/because_loo.md)
   : Calculate LOO-CV for a Because Model
 - [`because_loo_compare()`](https://because-pkg.github.io/because/reference/because_loo_compare.md)
@@ -111,7 +109,7 @@ Ubuntu/Debian) or equivalent development tools for your distribution. -
 - [`because_mediation()`](https://because-pkg.github.io/because/reference/because_mediation.md)
   : Automated Mediation Analysis
 - [`because_model()`](https://because-pkg.github.io/because/reference/because_model.md)
-  : Generate a JAGS model string for Phylogenetic Bayesian SEM (Because)
+  : Generate a JAGS model string for Bayesian SEM (Because)
 - [`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md)
   : Create a Custom Covariance Structure for use with because
 - [`because_waic()`](https://because-pkg.github.io/because/reference/because_waic.md)

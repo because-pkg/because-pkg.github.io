@@ -185,8 +185,12 @@ because(
 
 - dsep:
 
-  Logical; if `TRUE`, monitor only the first beta in each structural
-  equation (used for d-separation testing).
+  Logical; if `TRUE`, evaluate the model's global fit using d-separation
+  (basis set) path analysis. This identifies the complete set of
+  independence claims implied by the DAG and tests each one via Bayesian
+  inference. Results can be explored via
+  [`summary()`](https://rdrr.io/r/base/summary.html) or visualized using
+  [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md).
 
 - variability:
 
@@ -220,31 +224,13 @@ because(
 - family:
 
   Optional named character vector specifying the family/distribution for
-  response variables. Default is "gaussian" for all variables. Supported
-  values:
-
-  - "gaussian" (default)
-
-  - "binomial" (binary data)
-
-  - "multinomial" (unordered categorical \> 2 levels)
-
-  - "ordinal" (ordered categorical \> 2 levels)
-
-  - "poisson" (count data)
-
-  - "negbinomial" (overdispersed count data)
-
-  - "zip" (zero-inflated poisson): Models excess zeros with probability
-    `psi` and counts with mean `lambda`.
-
-  - "zinb" (zero-inflated negative binomial): Models excess zeros with
-    probability `psi` and overdispersed counts with mean `mu` and size
-    `r`.
-
-  Additional families (e.g., `"occupancy"`) are provided by the
-  because.detection extension package. Example:
+  response variables. Additional families (e.g., `"occupancy"`) are
+  provided by the because.detection extension package. Example:
   `family = c(Gregarious = "binomial")`.
+
+- distribution:
+
+  Deprecated alias for `family`.
 
 - latent:
 
@@ -273,13 +259,21 @@ because(
 
 - parallel:
 
-  Logical; if `TRUE`, run MCMC chains in parallel (default = FALSE).
-  Note: Requires `n.cores > 1` to take effect.
+  Logical; if `TRUE`, run MCMC chains in parallel (default = FALSE). For
+  standard SEM (`dsep = FALSE`), this runs the chains on different
+  cores. For d-separation testing (`dsep = TRUE`), this instead runs
+  individual independence tests on different cores to maximize
+  throughput. Each sub-test runs its chains sequentially. Note: Requires
+  `n.cores > 1` to take effect.
 
 - n.cores:
 
   Integer; number of CPU cores to use for parallel chains (default = 1).
   Only used when `parallel = TRUE`.
+
+- cl:
+
+  Optional cluster object for parallel execution.
 
 - ic_recompile:
 

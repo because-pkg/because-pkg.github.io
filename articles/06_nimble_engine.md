@@ -152,11 +152,12 @@ optimizations to match or exceed JAGS’s mixing quality. The following
 table documents how samplers are assigned when using
 `engine = "nimble"`:
 
-| Parameter Type                                | NIMBLE Sampler (default)        | JAGS Sampler      | Why?                                                                                  |
-|:----------------------------------------------|:--------------------------------|:------------------|:--------------------------------------------------------------------------------------|
-| **Linear coefficients** (`alpha_*`, `beta_*`) | **Gibbs (conjugate)**           | **Gibbs**         | Identical. Both use closed-form conjugate updates. Fast and exact.                    |
-| **Residual precision** (`tau_e_*`)            | **Gibbs (conjugate)**           | **Gibbs**         | Gamma prior + Normal likelihood = conjugate.                                          |
-| **Structured REs** (`u_std_.*[1:N]`)          | **Adaptive Slice** (`AF_slice`) | **Slice**         | Swapped from default `RW_block` to match JAGS’s robust mixing for correlated vectors. |
-| **Precision parameters** (`tau_u_.*`)         | **Slice** (`slice`)             | **Slice**         | Swapped from default `RW` to ensure stable convergence for variance components.       |
-| **Multinomial / Ordinal**                     | **Categorical** (`categorical`) | **Gibbs / Slice** | Specialized discrete sampler. Extremely fast and efficient.                           |
-| **Binomial / Poisson / NB**                   | **RW-MH scalar** (`RW`)         | **Slice**         | `RW` is faster per iteration; parallelization compensates for mixing differences.     |
+| Parameter Type                                | NIMBLE Sampler (default)        | JAGS Sampler      | Why?                                                                                     |
+|:----------------------------------------------|:--------------------------------|:------------------|:-----------------------------------------------------------------------------------------|
+| **Linear coefficients** (`alpha_*`, `beta_*`) | **Gibbs (conjugate)**           | **Gibbs**         | Identical. Both use closed-form conjugate updates. Fast and exact.                       |
+| **Residual precision** (`tau_e_*`)            | **Gibbs (conjugate)**           | **Gibbs**         | Gamma prior + Normal likelihood = conjugate.                                             |
+| **Structured REs** (`u_std_.*[1:N]`)          | **Adaptive Slice** (`AF_slice`) | **Slice**         | Swapped from default `RW_block` to match JAGS’s robust mixing for correlated vectors.    |
+| **Precision parameters** (`tau_u_.*`)         | **Slice** (`slice`)             | **Slice**         | Swapped from default `RW` to ensure stable convergence for variance components.          |
+| **Dispersion / Inflation** (`r_*`, `psi_*`)   | **Slice** (`slice`)             | **Slice**         | Swapped from default `RW` to match JAGS’s robust mixing and handle boundary constraints. |
+| **Multinomial / Ordinal**                     | **Categorical** (`categorical`) | **Gibbs / Slice** | Specialized discrete sampler. Extremely fast and efficient.                              |
+| **Binomial / Poisson**                        | **RW-MH scalar** (`RW`)         | **Slice**         | `RW` is faster per iteration; parallelization compensates for mixing differences.        |

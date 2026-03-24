@@ -17,6 +17,10 @@ summary(
 
 ## Arguments
 
+- object:
+
+  A `because` object.
+
 - show_internal:
 
   Logical. If `TRUE`, shows internal parameters created for

@@ -29,13 +29,31 @@ the fitting of Phylogenetic Bayesian Structural Equation Models
 
 ## Planned packages
 
-### Occupancy (`because.occupancy`)
+### Detection/Occupancy (`because.detection`)
 
-*Status: In Development* Adds support for hierarchical single and
-joint-species single-season occupancy models within the causal inference
-framework (Occupancy SEMs).
+*Status: In Development* Adds support for hierarchical single-season
+occupancy and Capture-Mark-Recapture (CMR) models within the causal
+inference framework.
 
 ### Spatial (`because.spatial`)
 
 *Status: Planned* Will add support for spatially structured residuals
 (CAR/SAR models).
+
+------------------------------------------------------------------------
+
+## Developing Extensions
+
+`because` uses a robust S3 generic “hook” system that allows developers
+to add support for new families or structures without modifying the core
+package.
+
+If you are interested in building an extension, please refer to the
+documentation for the internal generics in `R/generics.R`. Key hooks
+include:
+
+- `jags_family_definition`: Define custom JAGS likelihood blocks.
+- `prepare_structure_data`: Pre-process custom structural objects
+  (trees, matrices).
+- `get_inits_hook`: Provide specialized initial values.
+- `normalize_equations_hook`: Handle specialized variable aliases.
