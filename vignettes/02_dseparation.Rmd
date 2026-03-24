@@ -38,6 +38,7 @@ Let's load the storks dataframe available in the package and take a look at the 
 
 ```{r}
 # load data
+library(because)
 data(storks)
 plot(storks$Storks, storks$Birth,
   xlab = "Number of Stork Pairs",
@@ -179,20 +180,25 @@ summary(fit_storks)
 d-separation Tests
 ==================
 
-              Param Estimate LowerCI UpperCI Indep     P  Rhat n.eff 
-              
-Test: Area _||_ Humans | {Birth}
-   beta_Area_Humans    0.107  -0.439   0.649   Yes 0.673 1.000  3650 
-   
-Test: Birth _||_ Storks | {Area}
-  beta_Birth_Storks    0.129  -0.199   0.455   Yes 0.421 1.001  2826 
-  
-Test: Humans _||_ Storks | {Birth,Area}
- beta_Humans_Storks   -0.285  -0.691   0.141   Yes 0.169 1.002  2862 
+Test: Humans _||_ Area | {Birth} 
+        Parameter Estimate LowerCI UpperCI  Rhat
+ beta_Humans_Area    0.191  -0.648    1.06 1.004
+ n.eff
+  2055
 
-Legend:
-  Indep: 'Yes' = Conditionally Independent, 'No' = Dependent (based on 95% CI)
-  P: Bayesian probability that the posterior distribution overlaps with zero
+
+Test: Birth _||_ Storks | {Area} 
+         Parameter Estimate LowerCI UpperCI Rhat
+ beta_Birth_Storks    0.125  -0.199   0.459    1
+ n.eff
+  3082
+
+
+Test: Humans _||_ Storks | {Area,Birth} 
+          Parameter Estimate LowerCI UpperCI  Rhat
+ beta_Humans_Storks   -0.282  -0.711    0.13 1.002
+ n.eff
+  3000
 ```
 
 We can see that all three d-separation tests pass, indicating that the conditional independencies implied by our causal model hold in the data. Therefore, our model is consistent with the data.
@@ -202,10 +208,28 @@ We can see that all three d-separation tests pass, indicating that the condition
 ### Output Format
 
 ```         
-             Param Estimate LowerCI UpperCI Indep     P  Rhat n.eff 
-              
-Test: Birth _||_ Storks | {Area}
-  beta_Birth_Storks    0.129  -0.199   0.455   Yes 0.421 1.001  2826 
+d-separation Tests
+==================
+
+Test: Humans _||_ Area | {Birth} 
+        Parameter Estimate LowerCI UpperCI  Rhat
+ beta_Humans_Area    0.191  -0.648    1.06 1.004
+ n.eff
+  2055
+
+
+Test: Birth _||_ Storks | {Area} 
+         Parameter Estimate LowerCI UpperCI Rhat
+ beta_Birth_Storks    0.125  -0.199   0.459    1
+ n.eff
+  3082
+
+
+Test: Humans _||_ Storks | {Area,Birth} 
+          Parameter Estimate LowerCI UpperCI  Rhat
+ beta_Humans_Storks   -0.282  -0.711    0.13 1.002
+ n.eff
+  3000
 ```
 
 **Test**: The conditional independence being tested:
@@ -218,10 +242,6 @@ conditional independence - For `Birth _||_ Storks | {Area}`, it tests `beta_Birt
 independent, beta should be \~0
 
 **LowerCI, UpperCI**: Posterior mean and 95% credible interval of the beta parameter tested - If independent, Credibility intervals should include zero.
-
-**Indep**: Is independence supported? - `Yes`: Conditional independence is supported - `No`: Variables are not independent. *If any of the conditional independence statements fail, it means that the proposed model is not a plausible representation of the causal structure in the data.*
-
-**P**: The Bayesian probability that the posterior distribution of the beta parameter overlaps with zero - High values (e.g., \> 0.1) support independence - Low values (e.g., \< 0.05) indicate dependence
 
 **Rhat, n.eff**: MCMC diagnostics for the beta parameter tested - Rhat \~ 1 indicates convergence - n.eff: Effective sample size
 
