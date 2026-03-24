@@ -320,15 +320,6 @@ is represented by the linear regression:
 Birth ~ alphaBirth + beta_Birth_Area \* Area + error, where error is
 normally distributed with standard deviation = sigmaBirth.
 
-## Next: Phylogenetic Models
-
-Now that you understand d-separation and how to test causal models with
-`because`, you can explore more complex models and datasets. The next
-vignette will guide you through fitting Phylogenetic Bayesian models,
-which account for shared evolutionary history among species:
-[**Phylogenetic
-Models**](https://because-pkg.github.io/because/articles/03_phylogenetic_models.md)
-
 ## References
 
 Gonzalez-Voyer, A., & von Hardenberg, A. (2014). **An introduction to
