@@ -710,7 +710,11 @@ because_model <- function(
     if (is_identity) {
       # Deterministic assignment
       expr <- term_to_jags_expression(predictors[1])
-      model_lines <- c(model_lines, paste0("    ", response, "[i] <- ", expr))
+      model_lines <- c(
+        model_lines,
+        paste0("    ", response, "[i] <- ", expr),
+        "  }"
+      )
       # No parameters to monitor or priors to add for this equation
       next
     }
