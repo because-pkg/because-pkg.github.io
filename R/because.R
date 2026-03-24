@@ -1486,6 +1486,19 @@ because <- function(
     c(all.vars(eq[[3]]), all.vars(eq[[2]]))
   })))
 
+  # [FIX] Ensure parent categorical variables are included in all_vars
+  # so their missing values (NAs) are detected and handled even if they
+  # were expanded into dummy variables in the formulas.
+  cat_metadata <- attr(data, "categorical_vars")
+  if (!is.null(cat_metadata)) {
+    for (parent in names(cat_metadata)) {
+      dummies <- cat_metadata[[parent]]$dummies
+      if (any(dummies %in% all_vars)) {
+        all_vars <- unique(c(all_vars, parent))
+      }
+    }
+  }
+
   response_vars <- unique(vapply(
     equations,
     function(eq) as.character(all.vars(eq[[2]])[1]),
@@ -2428,6 +2441,14 @@ because <- function(
                 }
               }
             }
+          }
+
+          # [FIX] Skip substitution if we are inside a deterministic identity definition
+          # for an imputed factor (e.g., Rate_2 ~ I(Rate == 2)).
+          # This prevents circular expansion of 'Rate' into its own dummies.
+          is_identity_mapping <- length(vars) == 2 && grepl(sprintf("I\\(%s == [0-9]+\\)", var), deparse(eq))
+          if (is_identity_mapping) {
+            next
           }
 
           # Convert formula to character for manipulation
@@ -3935,8 +3956,11 @@ preprocess_categorical_vars <- function(
     return(data)
   }
 
-  char_cols <- sapply(data[check_cols], function(x) {
-    is.character(x) || is.factor(x)
+  # Detect categorical variables: either by type or if they already have metadata
+  cat_metadata <- attr(data, "categorical_vars")
+  char_cols <- sapply(check_cols, function(col) {
+    x <- data[[col]]
+    is.character(x) || is.factor(x) || (!is.null(cat_metadata) && col %in% names(cat_metadata))
   })
 
   if (any(char_cols)) {
@@ -3950,9 +3974,25 @@ preprocess_categorical_vars <- function(
       if (!is.null(exclude_cols) && col %in% exclude_cols) {
         next
       }
-      # Convert to factor first to get levels
-      f_vals <- factor(data[[col]])
-      levels <- levels(f_vals)
+
+      # [FIX] Preserve existing categorical metadata if present (to keep levels consistent in subsets)
+      existing_metadata <- categorical_vars[[col]]
+      if (!is.null(existing_metadata)) {
+        levels <- existing_metadata$levels
+        # If already integer/numeric, it's likely already encoded from a previous call.
+        # Use integer-to-label mapping to avoid wiping the data with NAs.
+        if (is.numeric(data[[col]])) {
+          f_vals <- factor(data[[col]], levels = seq_along(levels), labels = levels)
+        } else {
+          # Use existing levels to ensure integer encoding (1, 2, 3...) remains consistent
+          # during d-separation tests on data subsets.
+          f_vals <- factor(data[[col]], levels = levels)
+        }
+      } else {
+        # New variable: Convert to factor to discover levels
+        f_vals <- factor(data[[col]])
+        levels <- levels(f_vals)
+      }
 
       if (length(levels) < 2) {
         if (!quiet) {
@@ -3964,11 +4004,13 @@ preprocess_categorical_vars <- function(
         data[[col]] <- as.numeric(f_vals)
       } else {
         # Store metadata for model expansion
-        categorical_vars[[col]] <- list(
-          levels = levels,
-          reference = levels[1],
-          dummies = paste0(col, "_", levels[-1])
-        )
+        if (is.null(existing_metadata)) {
+          categorical_vars[[col]] <- list(
+            levels = levels,
+            reference = levels[1],
+            dummies = paste0(col, "_", levels[-1])
+          )
+        }
 
         # Convert to integer codes for JAGS
         data[[col]] <- as.integer(f_vals)
@@ -3977,6 +4019,8 @@ preprocess_categorical_vars <- function(
         # This is required so JAGS can find 'sex_m' etc.
         # We only do this for variables used as fixed predictors to save memory.
         if (is.null(dummy_vars) || col %in% dummy_vars) {
+          dummies <- categorical_vars[[col]]$dummies
+
           if (!quiet && length(levels) > 500) {
             message(sprintf(
               "Generating %d dummy variables for '%s'... this may take a moment.",
@@ -3986,8 +4030,8 @@ preprocess_categorical_vars <- function(
           }
           for (k in 2:length(levels)) {
             lev_name <- levels[k]
-            dummy_col_name <- paste0(col, "_", lev_name)
-            # Create binary column
+            dummy_col_name <- dummies[k - 1]
+            # Create binary column: 1 if matches this level, 0 if not (NAs remain NA)
             data[[dummy_col_name]] <- as.numeric(data[[col]] == k)
           }
         }
