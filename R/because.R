@@ -369,6 +369,20 @@ because <- function(
   if (is.data.frame(data) || (is.list(data) && !is.data.frame(data))) {
     available_vars <- intersect(names(data), model_vars)
     if (length(available_vars) > 0) {
+
+      # [NEW] Check for categorical_vars to preserve them and their dummies
+      cat_vars <- attr(data, "categorical_vars")
+      if (!is.null(cat_vars)) {
+        for (cv in names(cat_vars)) {
+          if (cv %in% available_vars) {
+            # Add its dummy variables to available_vars so they aren't dropped
+            available_vars <- unique(c(available_vars, cat_vars[[cv]]$dummies))
+          }
+        }
+        # Keep only the subset that actually exists in data
+        available_vars <- intersect(names(data), available_vars)
+      }
+
       if (!quiet && length(data) > length(available_vars)) {
         message(sprintf(
           "Filtering data to %d relevant columns (out of %d) to optimize memory.",
@@ -382,6 +396,11 @@ because <- function(
         data <- data[, available_vars, drop = FALSE]
       } else {
         data <- data[available_vars]
+      }
+
+      # [NEW] Restore the attribute if it was present
+      if (!is.null(cat_vars)) {
+        attr(data, "categorical_vars") <- cat_vars
       }
     }
   }
