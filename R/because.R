@@ -645,6 +645,17 @@ because <- function(
       eq_vars <- unique(c(eq_vars, random_vars))
     }
 
+    # [NEW] Add categorical dummy variables to eq_vars so they aren't dropped
+    # from the final hierarchical data list sent to JAGS.
+    if (!is.null(attr(original_data, "categorical_vars"))) {
+      cat_vars <- attr(original_data, "categorical_vars")
+      for (cv in names(cat_vars)) {
+        if (cv %in% eq_vars) {
+          eq_vars <- unique(c(eq_vars, cat_vars[[cv]]$dummies))
+        }
+      }
+    }
+
     # Remove latent variables (not in data)
     if (!is.null(latent)) {
       eq_vars <- setdiff(eq_vars, latent)
