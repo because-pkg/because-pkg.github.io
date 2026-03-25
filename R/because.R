@@ -405,6 +405,29 @@ because <- function(
     }
   }
 
+  # Handle user-requested ordinal factors BEFORE categorical expansion
+  if (!is.null(family)) {
+    for (var in names(family)) {
+      if (family[[var]] == "ordinal") {
+        if (is.data.frame(data) && var %in% names(data)) {
+          if (!is.ordered(data[[var]])) {
+            data[[var]] <- factor(data[[var]], ordered = TRUE)
+            if (!quiet) message(sprintf("Converted '%s' to ordered factor (family = 'ordinal')", var))
+          }
+        } else if (is.list(data) && !is.data.frame(data)) {
+          for (i in seq_along(data)) {
+            if (is.data.frame(data[[i]]) && var %in% names(data[[i]])) {
+              if (!is.ordered(data[[i]][[var]])) {
+                data[[i]][[var]] <- factor(data[[i]][[var]], ordered = TRUE)
+                if (!quiet) message(sprintf("Converted '%s' to ordered factor (family = 'ordinal')", var))
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   # --- Automatic Data Cleaning (Handle Character/Factor Columns) ---
   data <- preprocess_categorical_vars(
     data,
@@ -1000,6 +1023,8 @@ because <- function(
     for (var in c(available_vars, extra_cols)) {
       if (var %in% names(original_data)) {
         data_list[[var]] <- original_data[[var]]
+      } else if (var %in% names(data)) {
+        data_list[[var]] <- data[[var]]
       }
     }
 
@@ -1859,6 +1884,12 @@ because <- function(
           x$internal_name
         })
         potential_latents <- setdiff(potential_latents, poly_internal_names)
+      }
+
+      # Exclude categorical parent variables (they are replaced by dummies but are still in the model equations)
+      cat_metadata <- attr(data, "categorical_vars")
+      if (!is.null(cat_metadata)) {
+        potential_latents <- setdiff(potential_latents, names(cat_metadata))
       }
 
       if (length(potential_latents) > 0) {
@@ -3722,18 +3753,54 @@ run_single_dsep_test_v2 <- function(
           next
         }
 
-        for (k in seq_along(levels_map)[-1]) {
-          # The dummies list generally corresponds to k=2..N
-          expected_dummy <- dummies[k - 1]
-
-          # Robust check matching preprocess_categorical_vars logic
-          is_match <- if (is.numeric(vals)) {
-            vals == k
+        # Create all dummies for this parent
+        type <- cat_vars[[parent_var]]$type
+        
+        if (!is.null(type) && type == "ordered") {
+          c_mat <- cat_vars[[parent_var]]$contrasts
+          vals <- test_data[[parent_var]]
+          
+          # Handle values which might be numeric indices or strings
+          match_idx <- if (is.numeric(vals)) {
+            vals
           } else {
-            vals == levels_map[k]
+            match(vals, levels_map)
+          }
+          
+          if (any(is.na(match_idx))) {
+            print("NA found in match_idx!")
+            print(head(vals))
+            print(levels_map)
           }
 
-          test_data[[expected_dummy]] <- as.integer(is_match)
+          for (k in seq_along(dummies)) {
+            expected_dummy <- dummies[k]
+            if (is.null(test_data[[expected_dummy]]) || all(is.na(test_data[[expected_dummy]]))) {
+              test_data[[expected_dummy]] <- c_mat[match_idx, k]
+            }
+          }
+        } else {
+          for (k in 2:length(levels_map)) {
+            expected_dummy <- dummies[k - 1]
+  
+            # Check if it was extracted properly. If not, recreate it!
+            # We only recreate if it's missing or NA
+            if (
+              is.null(test_data[[expected_dummy]]) ||
+                all(is.na(test_data[[expected_dummy]]))
+            ) {
+              vals <- test_data[[parent_var]]
+  
+              # Robust check matching preprocess_categorical_vars logic
+              is_match <- if (is.numeric(vals)) {
+                vals == k
+              } else {
+                vals == levels_map[k]
+              }
+  
+              test_data[[expected_dummy]] <- as.integer(is_match)
+            }
+          }
         }
       }
     }
@@ -3777,17 +3844,26 @@ run_single_dsep_test_v2 <- function(
   # Now filter variability/family based on ALL variables in dsep_equations
   # [Manual Fix: variability needs to be handled if it's there, but here we only have family]
   all_dsep_vars <- unique(unlist(lapply(dsep_equations, all.vars)))
+  all_dsep_responses <- unique(unlist(lapply(dsep_equations, function(eq) as.character(eq)[2])))
+  
   all_dsep_vars_clean <- unique(c(
     all_dsep_vars,
     sub("^p_", "", all_dsep_vars),
     sub("^psi_", "", all_dsep_vars),
     sub("^z_", "", all_dsep_vars)
   ))
+  
+  all_dsep_responses_clean <- unique(c(
+    all_dsep_responses,
+    sub("^p_", "", all_dsep_responses),
+    sub("^psi_", "", all_dsep_responses),
+    sub("^z_", "", all_dsep_responses)
+  ))
 
   # Note: sub_variability logic removed for brevity if not strictly needed in this context
   # but we'll try to extract what we can from arguments
   sub_family <- if (!is.null(family)) {
-    family[names(family) %in% all_dsep_vars_clean]
+    family[names(family) %in% all_dsep_responses_clean]
   } else {
     NULL
   }
@@ -3979,14 +4055,16 @@ preprocess_categorical_vars <- function(
       existing_metadata <- categorical_vars[[col]]
       if (!is.null(existing_metadata)) {
         levels <- existing_metadata$levels
+        is_ord_prev <- !is.null(existing_metadata$type) && existing_metadata$type == "ordered"
+        
         # If already integer/numeric, it's likely already encoded from a previous call.
         # Use integer-to-label mapping to avoid wiping the data with NAs.
         if (is.numeric(data[[col]])) {
-          f_vals <- factor(data[[col]], levels = seq_along(levels), labels = levels)
+          f_vals <- factor(data[[col]], levels = seq_along(levels), labels = levels, ordered = is_ord_prev)
         } else {
           # Use existing levels to ensure integer encoding (1, 2, 3...) remains consistent
           # during d-separation tests on data subsets.
-          f_vals <- factor(data[[col]], levels = levels)
+          f_vals <- factor(data[[col]], levels = levels, ordered = is_ord_prev)
         }
       } else {
         # New variable: Convert to factor to discover levels
@@ -4004,20 +4082,53 @@ preprocess_categorical_vars <- function(
         data[[col]] <- as.numeric(f_vals)
       } else {
         # Store metadata for model expansion
+        is_ord <- is.ordered(f_vals)
+
         if (is.null(existing_metadata)) {
-          categorical_vars[[col]] <- list(
-            levels = levels,
-            reference = levels[1],
-            dummies = paste0(col, "_", levels[-1])
-          )
+          if (is_ord) {
+            c_mat <- stats::contr.poly(length(levels))
+            c_names <- colnames(c_mat)
+            c_names[c_names == ".L"] <- "L"
+            c_names[c_names == ".Q"] <- "Q"
+            c_names[c_names == ".C"] <- "C"
+            c_names <- gsub("\\^", "pow", c_names)
+
+            categorical_vars[[col]] <- list(
+              levels = levels,
+              reference = "Polynomial Contrast",
+              dummies = paste0(col, "_", c_names),
+              type = "ordered",
+              contrasts = c_mat
+            )
+          } else {
+            categorical_vars[[col]] <- list(
+              levels = levels,
+              reference = levels[1],
+              dummies = paste0(col, "_", levels[-1]),
+              type = "unordered"
+            )
+          }
+        } else {
+          # Update existing metadata if needed, eg hierarchical data where previous calls left it undefined contrasts
+          if (is_ord && is.null(existing_metadata$contrasts)) {
+            c_mat <- stats::contr.poly(length(levels))
+            c_names <- colnames(c_mat)
+            c_names[c_names == ".L"] <- "L"
+            c_names[c_names == ".Q"] <- "Q"
+            c_names[c_names == ".C"] <- "C"
+            c_names <- gsub("\\^", "pow", c_names)
+
+            categorical_vars[[col]]$reference <- "Polynomial Contrast"
+            categorical_vars[[col]]$dummies <- paste0(col, "_", c_names)
+            categorical_vars[[col]]$type <- "ordered"
+            categorical_vars[[col]]$contrasts <- c_mat
+          }
         }
 
         # Convert to integer codes for JAGS
         data[[col]] <- as.integer(f_vals)
 
         # Generate Dummy Variables explicitly ONLY if requested
-        # This is required so JAGS can find 'sex_m' etc.
-        # We only do this for variables used as fixed predictors to save memory.
         if (is.null(dummy_vars) || col %in% dummy_vars) {
           dummies <- categorical_vars[[col]]$dummies
 
@@ -4028,11 +4139,18 @@ preprocess_categorical_vars <- function(
               col
             ))
           }
-          for (k in 2:length(levels)) {
-            lev_name <- levels[k]
-            dummy_col_name <- dummies[k - 1]
-            # Create binary column: 1 if matches this level, 0 if not (NAs remain NA)
-            data[[dummy_col_name]] <- as.numeric(data[[col]] == k)
+          if (is_ord) {
+            c_mat <- categorical_vars[[col]]$contrasts
+            for (k in seq_along(dummies)) {
+              data[[dummies[k]]] <- c_mat[data[[col]], k]
+            }
+          } else {
+            for (k in 2:length(levels)) {
+              lev_name <- levels[k]
+              dummy_col_name <- dummies[k - 1]
+              # Create binary column: 1 if matches this level, 0 if not (NAs remain NA)
+              data[[dummy_col_name]] <- as.numeric(data[[col]] == k)
+            }
           }
         }
 

@@ -77,7 +77,14 @@ because_format_data <- function(data, species_col = "SP", tree = NULL) {
     for (col in trait_cols) {
         if (is.factor(data[[col]]) || is.character(data[[col]])) {
             # Get unique levels (excluding NA)
-            levels <- sort(unique(data[[col]][!is.na(data[[col]])]))
+            if (is.factor(data[[col]])) {
+                # Preserve factor ordering but exclude levels not present in data
+                all_levels <- levels(data[[col]])
+                present_levels <- unique(data[[col]][!is.na(data[[col]])])
+                levels <- all_levels[all_levels %in% present_levels]
+            } else {
+                levels <- sort(unique(data[[col]][!is.na(data[[col]])]))
+            }
 
             if (length(levels) < 2) {
                 warning(sprintf(
@@ -87,25 +94,58 @@ because_format_data <- function(data, species_col = "SP", tree = NULL) {
                 next
             }
 
-            # Store categorical info
-            categorical_vars[[col]] <- list(
-                levels = levels,
-                reference = levels[1],
-                dummies = paste0(col, "_", levels[-1])
-            )
+            is_ord <- is.ordered(data[[col]])
 
-            # Create dummy variables (K-1 for K levels)
-            for (i in seq_along(levels)[-1]) {
-                dummy_name <- paste0(col, "_", levels[i])
-                data[[dummy_name]] <- as.numeric(data[[col]] == levels[i])
+            if (is_ord) {
+                # Polynomial contrasts
+                c_mat <- stats::contr.poly(length(levels))
+                c_names <- colnames(c_mat)
+                c_names[c_names == ".L"] <- "L"
+                c_names[c_names == ".Q"] <- "Q"
+                c_names[c_names == ".C"] <- "C"
+                c_names <- gsub("\\^", "pow", c_names)
+
+                dummies <- paste0(col, "_", c_names)
+
+                categorical_vars[[col]] <- list(
+                    levels = levels,
+                    reference = "Polynomial Contrast",
+                    dummies = dummies,
+                    type = "ordered"
+                )
+
+                # Apply contrasts to data
+                for (i in seq_along(dummies)) {
+                    data[[dummies[i]]] <- c_mat[match(data[[col]], levels), i]
+                }
+
+                message(sprintf(
+                    "Ordered categorical variable '%s' expanded to %d polynomial contrast(s)",
+                    col,
+                    length(levels) - 1
+                ))
+            } else {
+                # Store categorical info (unordered treatment contrasts)
+                categorical_vars[[col]] <- list(
+                    levels = levels,
+                    reference = levels[1],
+                    dummies = paste0(col, "_", levels[-1]),
+                    type = "unordered"
+                )
+
+                # Create dummy variables (K-1 for K levels)
+                for (i in seq_along(levels)[-1]) {
+                    dummy_name <- paste0(col, "_", levels[i])
+                    data[[dummy_name]] <- as.numeric(data[[col]] == levels[i])
+                }
+
+                message(sprintf(
+                    "Categorical variable '%s' expanded to %d dummy variable(s) | Reference: '%s'",
+                    col,
+                    length(levels) - 1,
+                    levels[1]
+                ))
             }
-
-            message(sprintf(
-                "Categorical variable '%s' expanded to %d dummy variable(s) | Reference: '%s'",
-                col,
-                length(levels) - 1,
-                levels[1]
-            ))
         }
     }
 

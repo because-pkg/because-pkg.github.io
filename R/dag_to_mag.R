@@ -467,11 +467,13 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
       }
     }
   }
-  for (i in 1:kount) {
-    cgraph[add.edge[1, i], add.edge[2, i]] <- cgraph[
-      add.edge[2, i],
-      add.edge[1, i]
-    ] <- 1
+  if (kount > 0) {
+    for (i in seq_len(kount)) {
+      cgraph[add.edge[1, i], add.edge[2, i]] <- cgraph[
+        add.edge[2, i],
+        add.edge[1, i]
+      ] <- 1
+    }
   }
 
   #cgraph now holds the partially oriented inducing graph, with X--Y if there is an inducing
