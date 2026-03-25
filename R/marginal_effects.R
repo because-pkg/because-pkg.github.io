@@ -100,7 +100,7 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100) {
        N_s <- nrow(samples_chunk)
        
        if (is.null(N_obs) || is.null(N_s) || is.na(N_obs) || is.na(N_s) || !is.numeric(N_obs) || !is.numeric(N_s)) {
-          stop(sprintf("Failed to determine dimensions for response '%s' (N_s=%s, N_obs=%s). Please ensuring you are using a model fit with the latest version of 'because'.", 
+          stop(sprintf("Failed to determine dimensions for response '%s' (N_s=%s, N_obs=%s). Please ensure you are using a model fit with the latest version of 'because'.", 
                response_name, as.character(N_s %||% "NULL"), as.character(N_obs %||% "NULL")))
        }
 
@@ -115,63 +115,109 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100) {
        # Start with intercepts
        lp_mat <- matrix(0, nrow = N_s, ncol = N_obs)
        
-       # Add Alpha
-       if (length(alpha_p) > 0 && alpha_p %in% colnames(samples_chunk)) {
-          # alpha_p might be a vector for multinomial? 
-          # No, for multinomial we handle it differently.
-          lp_mat <- lp_mat + replicate(N_obs, samples_chunk[, alpha_p])
+       # Helper for robust parameter matching (handles var[] and var[k])
+       get_param_samples <- function(base_name, samples) {
+          clean_name <- gsub("\\[\\]$", "", base_name)
+          cols <- colnames(samples)
+          # Exact match
+          if (clean_name %in% cols) return(samples[, clean_name, drop=FALSE])
+          # Array match
+          matches <- grep(paste0("^", clean_name, "\\[\\d+\\]$"), cols, value=TRUE)
+          if (length(matches) > 0) {
+             # Return as matrix
+             return(samples[, matches, drop=FALSE])
+          }
+          return(NULL)
        }
 
-       # Add Betas
-       for(i in seq_len(nrow(beta_rows))) {
-          p_name <- beta_rows$parameter[i]
-          v_name <- beta_rows$predictor[i]
+       if (dist == "multinomial") {
+          # Multinomial Expected Value: sum(k * p_k)
+          # We need a linear predictor per category (k=2..K)
+          alpha_samples <- get_param_samples(alpha_p, samples_chunk)
+          K <- if (!is.null(alpha_samples)) ncol(alpha_samples) + 1 else 2
           
-          if (p_name %in% colnames(samples_chunk) && v_name %in% colnames(current_data)) {
-             beta_s <- samples_chunk[, p_name] # [N_s]
-             x_v <- current_data[[v_name]]     # [N_obs]
-             lp_mat <- lp_mat + (beta_s %*% t(as.matrix(x_v)))
+          # Initialize Probability Array [N_s, N_obs, K]
+          scores <- array(0, dim=c(N_s, N_obs, K)) # L[i,1] = 0
+          
+          for (k in 2:K) {
+             # Intercept for k (which is in column k-1 of alpha_samples)
+             if (!is.null(alpha_samples)) {
+                scores[,,k] <- scores[,,k] + replicate(N_obs, alpha_samples[, k-1])
+             }
+             
+             # Betas for k
+             for(i in seq_len(nrow(beta_rows))) {
+                p_name <- beta_rows$parameter[i]
+                v_name <- beta_rows$predictor[i]
+                
+                # Multinomial beta is usually beta_Var_Pred[k]
+                beta_k_name <- paste0(gsub("\\[\\]$", "", p_name), "[", k, "]")
+                if (beta_k_name %in% colnames(samples_chunk) && v_name %in% colnames(current_data)) {
+                   beta_s <- samples_chunk[, beta_k_name]
+                   x_v <- current_data[[v_name]]
+                   scores[,,k] <- scores[,,k] + (beta_s %*% t(as.matrix(x_v)))
+                }
+             }
           }
-       }
-       
-       # Convert Linear Predictor to E[Y]
-       if (dist == "gaussian") {
-          return(lp_mat)
-       } else if (dist == "binomial") {
-          return(1 / (1 + exp(-lp_mat))) # Logit -> Prob
-       } else if (dist == "ordinal") {
-          # Ordinal Expected Value: sum(k * p_k)
-          # We need cutpoints
-          # Param map store cutpoint as "cutpoint_var"
-          # samples has "cutpoint_var[1]", "cutpoint_var[2]" ...
-          base_cut_name <- gsub("\\[\\]$", "", cut_p)
-          all_param_names <- colnames(samples_chunk)
-          cut_params <- grep(paste0("^", base_cut_name, "\\[\\d+\\]$"), all_param_names, value=TRUE)
-          # Sort them 1, 2, 3
-          cut_params <- cut_params[order(as.numeric(gsub(".*\\[(\\d+)\\]$", "\\1", cut_params)))]
           
-          K <- length(cut_params) + 1
-          probs_list <- list()
+          # Softmax to get probabilities
+          # exp(L_k) / sum(exp(L_j))
+          exp_scores <- exp(scores)
+          sum_exp <- apply(exp_scores, c(1,2), sum)
           
-          # Cumulative probabilities P(Y <= k) = logit_inv(cut_k - lp)
-          prev_phi <- matrix(0, nrow=N_s, ncol=N_obs)
           ey_mat <- matrix(0, nrow=N_s, ncol=N_obs)
-          
-          for (k in 1:(K-1)) {
-             cut_s <- samples_chunk[, cut_params[k]] # [N_s]
-             # Phi_k = logit_inv(cut_k - lp)
-             phi_k <- 1 / (1 + exp(-(replicate(N_obs, cut_s) - lp_mat)))
-             p_k <- phi_k - prev_phi
+          for (k in 1:K) {
+             p_k <- exp_scores[,,k] / sum_exp
              ey_mat <- ey_mat + k * p_k
-             prev_phi <- phi_k
           }
-          # Last category K
-          p_K <- 1 - prev_phi
-          ey_mat <- ey_mat + K * p_K
           return(ey_mat)
+          
        } else {
-          # Fallback or unknown
-          return(lp_mat)
+          # Gaussian / Binomial / Ordinal Logic
+          
+          # Add Intercept
+          if (length(alpha_p) > 0) {
+             alpha_s <- get_param_samples(alpha_p, samples_chunk)
+             if (!is.null(alpha_s)) {
+                lp_mat <- lp_mat + replicate(N_obs, alpha_s[, 1])
+             }
+          }
+
+          # Add Slopes
+          for(i in seq_len(nrow(beta_rows))) {
+             p_name <- beta_rows$parameter[i]
+             v_name <- beta_rows$predictor[i]
+             
+             beta_s <- get_param_samples(p_name, samples_chunk)
+             if (!is.null(beta_s) && v_name %in% colnames(current_data)) {
+                lp_mat <- lp_mat + (beta_s[,1] %*% t(as.matrix(current_data[[v_name]])))
+             }
+          }
+          
+          if (dist == "gaussian") {
+             return(lp_mat)
+          } else if (dist == "binomial") {
+             return(1 / (1 + exp(-lp_mat)))
+          } else if (dist == "ordinal") {
+             base_cut_name <- gsub("\\[\\]$", "", cut_p)
+             cut_samples <- get_param_samples(base_cut_name, samples_chunk)
+             if (is.null(cut_samples)) return(lp_mat)
+
+             K <- ncol(cut_samples) + 1
+             prev_phi <- matrix(0, nrow=N_s, ncol=N_obs)
+             ey_mat <- matrix(0, nrow=N_s, ncol=N_obs)
+             
+             for (k in 1:(K-1)) {
+                phi_k <- 1 / (1 + exp(-(replicate(N_obs, cut_samples[, k]) - lp_mat)))
+                p_k <- phi_k - prev_phi
+                ey_mat <- ey_mat + k * p_k
+                prev_phi <- phi_k
+             }
+             ey_mat <- ey_mat + K * (1 - prev_phi)
+             return(ey_mat)
+          } else {
+             return(lp_mat)
+          }
        }
     }
 
