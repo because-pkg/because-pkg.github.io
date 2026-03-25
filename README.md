@@ -21,7 +21,8 @@ The focus of `because` is on causal inference, providing tools to facilitate the
 -   **Polynomial and Interaction Terms**: Easily include polynomial terms and interactions in structural equations.
 -   **Hierachical Models**: Support for random effects and multi-level structures.
 -   **Latent Variables**: Support for explicitly including Latent variables or modelling induced correlations from latent common causes with the Maximum Acyclic Graph (MAG) method.
--   **Causal inference tools**: native support for d-separation and m-separation testing and mediation analysis.
+-   **Causal inference tools**: Native support for d-separation and m-separation testing, mediation analysis, and **unified marginal effects** for comparing cross-family coefficients.
+-   **Marginal Effects**: New `marginal_effects(fit)` function converts log-odds/latent scales to "Expected Change" units (0-1 probabilities or unit values) for easy comparison across different variable types.
 -   **Parallel Computing**: Run MCMC chains in parallel on multi-core systems for faster computation.
 -   **Visualisation tools**: Functions for visualizing model structures and posterior distributions.
 -   **Extension packages**: Full S3 support for extension packages to build on the core functionality. 

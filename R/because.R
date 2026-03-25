@@ -2299,7 +2299,12 @@ because <- function(
       dsep_tests = dsep_tests,
       dsep_results = results, # Store individual test results for summary
       induced_correlations = induced_cors,
-      equations = equations # Store original equations for safe reuse
+      equations = equations,
+      data = data,
+      original_data = original_data,
+      family = family,
+      categorical_vars = attr(data, "categorical_vars"),
+      poly_terms = all_poly_terms
     )
     class(result) <- "because"
     return(result)
@@ -3546,6 +3551,17 @@ because <- function(
       NULL
     }
   )
+
+  # Combine with basic model info
+  result$model <- model_string
+  result$samples <- samples
+  result$parameter_map <- parameter_map
+  result$data <- data
+  result$original_data <- original_data
+  result$family <- family
+  result$categorical_vars <- attr(data, "categorical_vars")
+  result$poly_terms <- all_poly_terms
+  result$equations <- equations
 
   # Extension Hook: Extract order labels (e.g. tip labels in phylogeny)
   if (!is.null(tree)) {

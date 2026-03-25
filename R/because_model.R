@@ -726,6 +726,12 @@ because_model <- function(
     suffix <- if (response_count == 1) "" else as.character(response_count)
 
     alpha <- paste0("alpha_", response, suffix)
+    param_map[[length(param_map) + 1]] <- list(
+      response = response,
+      predictor = "(Intercept)",
+      parameter = alpha,
+      equation_index = j
+    )
     linpred <- alpha
     for (pred in predictors) {
       key <- paste(response, pred, suffix, sep = "_")
@@ -821,6 +827,17 @@ because_model <- function(
         pred_idx <- get_pred_index(pred, resp_level, hierarchical_info)
 
         linpred_k <- paste0(linpred_k, " + ", beta_name, "[k] * ", pred_idx)
+
+        # Add intercepts to parameter map (only once)
+        if (!paste0("alpha_", response) %in% names(beta_counter)) {
+          beta_counter[[paste0("alpha_", response)]] <- TRUE
+          param_map[[length(param_map) + 1]] <- list(
+            response = response,
+            predictor = "(Intercepts)",
+            parameter = paste0("alpha_", response, "[]"),
+            equation_index = j
+          )
+        }
 
         # Map (only once)
         key <- paste(response, pred, suffix, sep = "_")
@@ -969,6 +986,14 @@ because_model <- function(
           )
         }
       }
+
+      # Add cutpoints to parameter map
+      param_map[[length(param_map) + 1]] <- list(
+        response = response,
+        predictor = "(Cutpoints)",
+        parameter = paste0("cutpoint_", response, suffix),
+        equation_index = j
+      )
 
       model_lines <- c(
         model_lines,
