@@ -62,8 +62,24 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100) {
 
     # Get data for this response's level
     data_resp <- fit$original_data
-    # (Handling hierarchical data would go here in future versions)
+    if (is.null(data_resp)) {
+       # Fallback to 'data' if it is a data frame
+       if (is.data.frame(fit$data)) {
+          data_resp <- fit$data
+       } else if (is.list(fit$data)) {
+          # Try to reconstruct data frame from list
+          # (Only take elements that are vectors of the same length)
+          lengths <- sapply(fit$data, length)
+          N_guess <- as.numeric(names(sort(table(lengths), decreasing=TRUE))[1])
+          valid_cols <- names(lengths)[lengths == N_guess]
+          data_resp <- as.data.frame(fit$data[valid_cols])
+       }
+    }
     
+    if (is.null(data_resp) || nrow(data_resp) == 0) {
+       stop("Missing data in fit object. Please refit the model with the latest version of 'because'.")
+    }
+
     # Define "baseline" individual(s)
     if (identical(at, "mean")) {
        # MEM: Marginal Effect at the Mean
@@ -83,6 +99,11 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100) {
        N_obs <- nrow(current_data)
        N_s <- nrow(samples_chunk)
        
+       if (is.null(N_obs) || is.null(N_s) || is.na(N_obs) || is.na(N_s) || !is.numeric(N_obs) || !is.numeric(N_s)) {
+          stop(sprintf("Failed to determine dimensions for response '%s' (N_s=%s, N_obs=%s). Please ensuring you are using a model fit with the latest version of 'because'.", 
+               response_name, as.character(N_s %||% "NULL"), as.character(N_obs %||% "NULL")))
+       }
+
        # Extract relevant parameters
        alpha_p <- all_pm_resp$parameter[all_pm_resp$predictor %in% c("(Intercept)", "(Intercepts)")]
        beta_rows <- all_pm_resp[!all_pm_resp$predictor %in% c("(Intercept)", "(Intercepts)", "(Cutpoints)"), ]
