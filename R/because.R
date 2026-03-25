@@ -4087,6 +4087,9 @@ preprocess_categorical_vars <- function(
         if (is.null(existing_metadata)) {
           if (is_ord) {
             c_mat <- stats::contr.poly(length(levels))
+            if (ncol(c_mat) > 2) {
+              c_mat <- c_mat[, 1:2, drop = FALSE]
+            }
             c_names <- colnames(c_mat)
             c_names[c_names == ".L"] <- "L"
             c_names[c_names == ".Q"] <- "Q"
@@ -4112,6 +4115,9 @@ preprocess_categorical_vars <- function(
           # Update existing metadata if needed, eg hierarchical data where previous calls left it undefined contrasts
           if (is_ord && is.null(existing_metadata$contrasts)) {
             c_mat <- stats::contr.poly(length(levels))
+            if (ncol(c_mat) > 2) {
+              c_mat <- c_mat[, 1:2, drop = FALSE]
+            }
             c_names <- colnames(c_mat)
             c_names[c_names == ".L"] <- "L"
             c_names[c_names == ".Q"] <- "Q"
