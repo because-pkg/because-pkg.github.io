@@ -259,10 +259,35 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100) {
           
           # Update Categorical Derived Terms (Dummies/Contrasts)
           if (!is.null(fit$categorical_vars) && f_var %in% names(fit$categorical_vars)) {
-             # This is tricky without the full contrast matrix.
-             # In v1, we assume numeric incrementing of the contrasts themselves,
-             # which is an approximation for 'a unit change in the factor latent scale'.
-             # More robust handling would require re-running contr.poly on the new levels.
+             cat_info <- fit$categorical_vars[[f_var]]
+             K <- length(cat_info$levels)
+             
+             # Current values in plus_data should be numeric/factor
+             # Convert to integer index if needed
+             curr_idx <- as.integer(plus_data[[f_var]])
+             
+             if (cat_info$type == "ordered") {
+                # Polynomial contrasts
+                c_mat <- stats::contr.poly(K)
+                # Ensure we don't go out of bounds
+                idx_plus <- pmin(curr_idx, K) 
+                
+                for (i in seq_along(cat_info$dummies)) {
+                   d_name <- cat_info$dummies[i]
+                   if (d_name %in% names(plus_data)) {
+                      plus_data[[d_name]] <- c_mat[idx_plus, i]
+                   }
+                }
+             } else {
+                # Unordered: dummy variables (Var_Level)
+                idx_plus <- pmin(curr_idx, K)
+                for (i in 2:K) {
+                   d_name <- paste0(f_var, "_", cat_info$levels[i])
+                   if (d_name %in% names(plus_data)) {
+                      plus_data[[d_name]] <- as.numeric(idx_plus == i)
+                   }
+                }
+             }
           }
        }
        
