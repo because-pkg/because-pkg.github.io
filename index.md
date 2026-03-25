@@ -43,8 +43,12 @@ code from standard R formulas. Key features include:
 - **Latent Variables**: Support for explicitly including Latent
   variables or modelling induced correlations from latent common causes
   with the Maximum Acyclic Graph (MAG) method.
-- **Causal inference tools**: native support for d-separation and
-  m-separation testing and mediation analysis.
+- **Causal inference tools**: Native support for d-separation and
+  m-separation testing, mediation analysis, and **unified marginal
+  effects** for comparing cross-family coefficients.
+- **Marginal Effects**: New `marginal_effects(fit)` function converts
+  log-odds/latent scales to “Expected Change” units (0-1 probabilities
+  or unit values) for easy comparison across different variable types.
 - **Parallel Computing**: Run MCMC chains in parallel on multi-core
   systems for faster computation.
 - **Visualisation tools**: Functions for visualizing model structures
@@ -54,10 +58,10 @@ code from standard R formulas. Key features include:
 
 ## Installation
 
-To install the **stable release** (`v1.2.0`), run:
+To install the **stable release** (`v1.2.3`), run:
 
 ``` r
-remotes::install_github("because-pkg/because@v1.2.0", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.2.3", build_vignettes = TRUE)
 ```
 
 To install the **latest development version** (unstable), run:

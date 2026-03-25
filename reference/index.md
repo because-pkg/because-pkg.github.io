@@ -26,10 +26,12 @@
   : Calculate WAIC with Standard Errors for a Because Model
 - [`extract_imputed()`](https://because-pkg.github.io/because/reference/extract_imputed.md)
   : Extract Imputed Values for Missing Data
-- [`family_definitions`](https://because-pkg.github.io/because/reference/family_definitions.md)
+- [`.nimble_fn_cache`](https://because-pkg.github.io/because/reference/family_definitions.md)
   : Family Definition Generics and Default Methods
 - [`get_family()`](https://because-pkg.github.io/because/reference/get_family.md)
   : Create a family object for a given distribution
+- [`marginal_effects()`](https://because-pkg.github.io/because/reference/marginal_effects.md)
+  : Calculate Marginal Effects for Because Fit
 - [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
   : Plot DAG from Equations or Fitted Model
 - [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md)

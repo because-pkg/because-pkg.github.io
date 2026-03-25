@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -69,7 +69,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Custom Priors and Mechanistic Constraints</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/v1.2.0/vignettes/03_custom_priors.Rmd" class="external-link"><code>vignettes/03_custom_priors.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/master/vignettes/03_custom_priors.Rmd" class="external-link"><code>vignettes/03_custom_priors.Rmd</code></a></small>
       <div class="d-none name"><code>03_custom_priors.Rmd</code></div>
     </div>
 
@@ -516,30 +516,7 @@ generated model code:</p>
 <span></span>
 <span><span class="co"># Print the JAGS model</span></span>
 <span><span class="va">fit_check</span><span class="op">$</span><span class="va">model</span></span>
-<span><span class="co">#&gt; JAGS model:</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; model {</span></span>
-<span><span class="co">#&gt;   # Common structures and priors</span></span>
-<span><span class="co">#&gt;   zeros_2[1] &lt;- 0</span></span>
-<span><span class="co">#&gt;   zeros_2[2] &lt;- 0</span></span>
-<span><span class="co">#&gt;   # Structural equations</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   for (i in 1:N) {</span></span>
-<span><span class="co">#&gt;     mu_Growth_g_day[i] &lt;- alpha_Growth_g_day + beta_Growth_g_day_Temp_Centered*Temp_Centered[i]</span></span>
-<span><span class="co">#&gt;   }</span></span>
-<span><span class="co">#&gt;   # Multivariate normal likelihoods</span></span>
-<span><span class="co">#&gt;   for (i in 1:N) {</span></span>
-<span><span class="co">#&gt;     Growth_g_day[i] ~ dnorm(mu_Growth_g_day[i], tau_e_Growth_g_day)</span></span>
-<span><span class="co">#&gt;     log_lik_Growth_g_day[i] &lt;- logdensity.norm(Growth_g_day[i], mu_Growth_g_day[i], tau_e_Growth_g_day)</span></span>
-<span><span class="co">#&gt;   }</span></span>
-<span><span class="co">#&gt;   # Priors for structural parameters</span></span>
-<span><span class="co">#&gt;   alpha_Growth_g_day ~ dnorm(0, 1.0E-6)</span></span>
-<span><span class="co">#&gt;   tau_e_Growth_g_day ~ dgamma(1, 1)</span></span>
-<span><span class="co">#&gt;   sigmaGrowth_g_day &lt;- 1/sqrt(tau_e_Growth_g_day)</span></span>
-<span><span class="co">#&gt;   beta_Growth_g_day_Temp_Centered ~ dnorm(0, 1.0E-6)</span></span>
-<span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; Fully observed variables:</span></span>
-<span><span class="co">#&gt;  Growth_g_day N Temp_Centered</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "model {\n  # Common structures and priors\n  zeros_2[1] &lt;- 0\n  zeros_2[2] &lt;- 0\n  # Structural equations\n\n  for (i in 1:N) {\n    mu_Growth_g_day[i] &lt;- alpha_Growth_g_day + beta_Growth_g_day_Temp_Centered*Temp_Centered[i]\n  }\n  # Multivariate normal likelihoods\n  for (i in 1:N) {\n    Growth_g_day[i] ~ dnorm(mu_Growth_g_day[i], tau_e_Growth_g_day)\n    log_lik_Growth_g_day[i] &lt;- logdensity.norm(Growth_g_day[i], mu_Growth_g_day[i], tau_e_Growth_g_day)\n  }\n  # Priors for structural parameters\n  alpha_Growth_g_day ~ dnorm(0, 1.0E-6)\n  tau_e_Growth_g_day ~ dgamma(1, 1)\n  sigmaGrowth_g_day &lt;- 1/sqrt(tau_e_Growth_g_day)\n  beta_Growth_g_day_Temp_Centered ~ dnorm(0, 1.0E-6)\n}"</span></span></code></pre></div>
 <p>```</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
