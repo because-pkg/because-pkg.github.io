@@ -310,6 +310,11 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100) {
   }
 
   res_df <- do.call(rbind, results_list)
+  if (!is.null(res_df)) {
+     res_df$Response <- as.character(res_df$Response)
+     res_df$Predictor <- as.character(res_df$Predictor)
+     res_df$Family <- as.character(res_df$Family)
+  }
   rownames(res_df) <- NULL
   return(res_df)
 }

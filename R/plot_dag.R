@@ -339,10 +339,15 @@ plot_dag <- function(
                         if (type == "marginal" && !is.null(me_table) && e_type == "->") {
                            # Try to match w (Response) and v (Predictor) in ME table
                            # Note: w and v might have prefixes like psi_ or p_
-                           clean_w <- gsub("^(psi_|p_|z_)", "", w)
-                           clean_v <- gsub("^(psi_|p_|z_)", "", v)
+                           # Clean up names (remove prefixes, backticks, and whitespace)
+                           clean_w <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", w)))
+                           clean_v <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", v)))
                            
-                           me_row <- me_table[me_table$Response == clean_w & me_table$Predictor == clean_v, ]
+                           me_row <- me_table[
+                              trimws(gsub("[`]", "", as.character(me_table$Response))) == clean_w & 
+                              trimws(gsub("[`]", "", as.character(me_table$Predictor))) == clean_v, 
+                           ]
+                           
                            if (nrow(me_row) > 0) {
                               val <- me_row$Effect[1]
                               lower <- me_row$Lower[1]
