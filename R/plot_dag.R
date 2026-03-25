@@ -123,7 +123,8 @@ plot_dag <- function(
         current_poly_terms <- NULL
 
         if (inherits(obj, "because")) {
-            eqs <- obj$parameter_map$equations %||%
+            eqs <- obj$equations %||% 
+                obj$parameter_map$equations %||%
                 obj$input$equations %||%
                 obj$parameter_map$equations # Fallback
             if (is.null(eqs)) {
@@ -371,10 +372,33 @@ plot_dag <- function(
                                 !is.null(quantiles) &&
                                     pname %in% rownames(quantiles)
                             ) {
-                                lower <- quantiles[pname, "2.5%"]
-                                upper <- quantiles[pname, "97.5%"]
-                                
-                                # ... existing logic will handle it ...
+                                if (edge_color_scheme == "monochrome") {
+                                    sig_cat <- "default"
+                                } else {
+                                    lower <- quantiles[pname, "2.5%"]
+                                    upper <- quantiles[pname, "97.5%"]
+
+                                    if (sign(lower) == sign(upper)) {
+                                        # Significant
+                                        if (
+                                            edge_color_scheme == "directional"
+                                        ) {
+                                            if (val > 0) {
+                                                sig_cat <- "pos"
+                                            } else {
+                                                sig_cat <- "neg"
+                                            }
+                                        } else {
+                                            # Binary (sig vs ns)
+                                            sig_cat <- "sig" # Maps to black
+                                        }
+                                    } else {
+                                        # Non-significant
+                                        sig_cat <- "ns"
+                                    }
+                                }
+                            } else {
+                                sig_cat <- "default"
                             }
                         }
 
