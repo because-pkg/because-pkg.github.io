@@ -54,10 +54,10 @@ code from standard R formulas. Key features include:
 
 ## Installation
 
-To install the **stable release** (`v1.2.3`), run:
+To install the **stable release** (`v1.2.0`), run:
 
 ``` r
-remotes::install_github("because-pkg/because@v1.2.3", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.2.0", build_vignettes = TRUE)
 ```
 
 To install the **latest development version** (unstable), run:
@@ -116,7 +116,7 @@ Ubuntu/Debian) or equivalent development tools for your distribution. -
   : Calculate WAIC with Standard Errors for a Because Model
 - [`extract_imputed()`](https://because-pkg.github.io/because/reference/extract_imputed.md)
   : Extract Imputed Values for Missing Data
-- [`.nimble_fn_cache`](https://because-pkg.github.io/because/reference/family_definitions.md)
+- [`family_definitions`](https://because-pkg.github.io/because/reference/family_definitions.md)
   : Family Definition Generics and Default Methods
 - [`get_family()`](https://because-pkg.github.io/because/reference/get_family.md)
   : Create a family object for a given distribution

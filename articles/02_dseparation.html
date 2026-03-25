@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -72,7 +72,7 @@ Hardenberg</h4>
             
             <h4 data-toc-skip class="date">2026-03-25</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/master/vignettes/02_dseparation.Rmd" class="external-link"><code>vignettes/02_dseparation.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/v1.2.0/vignettes/02_dseparation.Rmd" class="external-link"><code>vignettes/02_dseparation.Rmd</code></a></small>
       <div class="d-none name"><code>02_dseparation.Rmd</code></div>
     </div>
 
@@ -115,7 +115,6 @@ number of babies born in different European countries (in thousands per
 year):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># load data</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://because-pkg.github.io/because/">because</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">storks</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">storks</span><span class="op">$</span><span class="va">Storks</span>, <span class="va">storks</span><span class="op">$</span><span class="va">Birth</span>,</span>
 <span>  xlab <span class="op">=</span> <span class="st">"Number of Stork Pairs"</span>,</span>
@@ -249,25 +248,20 @@ d-separation tests with the <code>dsep = TRUE</code> argument:</p>
 <pre><code>d-separation Tests
 ==================
 
-Test: Humans _||_ Area | {Birth} 
-        Parameter Estimate LowerCI UpperCI  Rhat
- beta_Humans_Area    0.191  -0.648    1.06 1.004
- n.eff
-  2055
+              Param Estimate LowerCI UpperCI Indep     P  Rhat n.eff 
+              
+Test: Area _||_ Humans | {Birth}
+   beta_Area_Humans    0.107  -0.439   0.649   Yes 0.673 1.000  3650 
+   
+Test: Birth _||_ Storks | {Area}
+  beta_Birth_Storks    0.129  -0.199   0.455   Yes 0.421 1.001  2826 
+  
+Test: Humans _||_ Storks | {Birth,Area}
+ beta_Humans_Storks   -0.285  -0.691   0.141   Yes 0.169 1.002  2862 
 
-
-Test: Birth _||_ Storks | {Area} 
-         Parameter Estimate LowerCI UpperCI Rhat
- beta_Birth_Storks    0.125  -0.199   0.459    1
- n.eff
-  3082
-
-
-Test: Humans _||_ Storks | {Area,Birth} 
-          Parameter Estimate LowerCI UpperCI  Rhat
- beta_Humans_Storks   -0.282  -0.711    0.13 1.002
- n.eff
-  3000</code></pre>
+Legend:
+  Indep: 'Yes' = Conditionally Independent, 'No' = Dependent (based on 95% CI)
+  P: Bayesian probability that the posterior distribution overlaps with zero</code></pre>
 <p>We can see that all three d-separation tests pass, indicating that
 the conditional independencies implied by our causal model hold in the
 data. Therefore, our model is consistent with the data.</p>
@@ -278,28 +272,10 @@ data. Therefore, our model is consistent with the data.</p>
 <div class="section level3">
 <h3 id="output-format">Output Format<a class="anchor" aria-label="anchor" href="#output-format"></a>
 </h3>
-<pre><code>d-separation Tests
-==================
-
-Test: Humans _||_ Area | {Birth} 
-        Parameter Estimate LowerCI UpperCI  Rhat
- beta_Humans_Area    0.191  -0.648    1.06 1.004
- n.eff
-  2055
-
-
-Test: Birth _||_ Storks | {Area} 
-         Parameter Estimate LowerCI UpperCI Rhat
- beta_Birth_Storks    0.125  -0.199   0.459    1
- n.eff
-  3082
-
-
-Test: Humans _||_ Storks | {Area,Birth} 
-          Parameter Estimate LowerCI UpperCI  Rhat
- beta_Humans_Storks   -0.282  -0.711    0.13 1.002
- n.eff
-  3000</code></pre>
+<pre><code>             Param Estimate LowerCI UpperCI Indep     P  Rhat n.eff 
+              
+Test: Birth _||_ Storks | {Area}
+  beta_Birth_Storks    0.129  -0.199   0.455   Yes 0.421 1.001  2826 </code></pre>
 <p><strong>Test</strong>: The conditional independence being tested:
 <code>Birth _||_ Storks | {Area}</code> which means “Storks is
 independent of Birth given Area” - <code>_||_</code>: Independence
@@ -314,6 +290,16 @@ tested for conditional independence - For
 <p><strong>LowerCI, UpperCI</strong>: Posterior mean and 95% credible
 interval of the beta parameter tested - If independent, Credibility
 intervals should include zero.</p>
+<p><strong>Indep</strong>: Is independence supported? -
+<code>Yes</code>: Conditional independence is supported -
+<code>No</code>: Variables are not independent. <em>If any of the
+conditional independence statements fail, it means that the proposed
+model is not a plausible representation of the causal structure in the
+data.</em></p>
+<p><strong>P</strong>: The Bayesian probability that the posterior
+distribution of the beta parameter overlaps with zero - High values
+(e.g., &gt; 0.1) support independence - Low values (e.g., &lt; 0.05)
+indicate dependence</p>
 <p><strong>Rhat, n.eff</strong>: MCMC diagnostics for the beta parameter
 tested - Rhat ~ 1 indicates convergence - n.eff: Effective sample
 size</p>
@@ -380,6 +366,16 @@ regression:</p>
 <p>Birth ~ alphaBirth + beta_Birth_Area * Area + error, where error is
 normally distributed with standard deviation = sigmaBirth.</p>
 </div>
+</div>
+<div class="section level2">
+<h2 id="next-phylogenetic-models">Next: Phylogenetic Models<a class="anchor" aria-label="anchor" href="#next-phylogenetic-models"></a>
+</h2>
+<p>Now that you understand d-separation and how to test causal models
+with <code>because</code>, you can explore more complex models and
+datasets. The next vignette will guide you through fitting Phylogenetic
+Bayesian models, which account for shared evolutionary history among
+species: <a href="03_phylogenetic_models.html"><strong>Phylogenetic
+Models</strong></a></p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
