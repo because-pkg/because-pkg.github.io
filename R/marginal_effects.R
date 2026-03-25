@@ -116,16 +116,30 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100) {
        lp_mat <- matrix(0, nrow = N_s, ncol = N_obs)
        
        # Helper for robust parameter matching (handles var[] and var[k])
-       get_param_samples <- function(base_name, samples) {
-          clean_name <- gsub("\\[\\]$", "", base_name)
+       get_param_samples <- function(base_names, samples) {
+          if (length(base_names) == 0) return(NULL)
+          
+          all_matches <- c()
           cols <- colnames(samples)
-          # Exact match
-          if (clean_name %in% cols) return(samples[, clean_name, drop=FALSE])
-          # Array match
-          matches <- grep(paste0("^", clean_name, "\\[\\d+\\]$"), cols, value=TRUE)
-          if (length(matches) > 0) {
+          
+          for (bn in base_names) {
+             clean_name <- gsub("\\[\\]$", "", bn)
+             
+             # Exact match
+             if (clean_name %in% cols) {
+                all_matches <- c(all_matches, clean_name)
+             } else {
+                # Array match
+                matches <- grep(paste0("^", clean_name, "\\[\\d+\\]$"), cols, value=TRUE)
+                if (length(matches) > 0) {
+                   all_matches <- c(all_matches, matches)
+                }
+             }
+          }
+          
+          if (length(all_matches) > 0) {
              # Return as matrix
-             return(samples[, matches, drop=FALSE])
+             return(samples[, unique(all_matches), drop=FALSE])
           }
           return(NULL)
        }
