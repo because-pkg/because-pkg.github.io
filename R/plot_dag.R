@@ -172,7 +172,8 @@ plot_dag <- function(
             eqs,
             induced_cors,
             family = current_family,
-            poly_terms = current_poly_terms
+            poly_terms = current_poly_terms,
+            collapse_expanded = (type == "marginal")
         )
         dag_str <- dag_result$dag_string
         interaction_nodes <- dag_result$interaction_nodes
@@ -764,8 +765,9 @@ equations_to_dag_string <- function(
     equations,
     induced_cors = NULL,
     family = NULL,
-    poly_terms = NULL # list from get_all_polynomial_terms; used for fitted models
+    poly_terms = NULL, # list from get_all_polynomial_terms; used for fitted models
     # where equations are already expanded (I(age^2) -> age_pow2)
+    collapse_expanded = FALSE
 ) {
     edges <- c()
     interaction_nodes <- list() # internal_name -> display label (e.g. "BM\u00d7M")
@@ -830,6 +832,11 @@ equations_to_dag_string <- function(
         resp <- all.vars(eq)[1]
         trm_lbls <- attr(terms(eq), "term.labels")
 
+        # Optional: Collapse expanded names back to base names
+        if (collapse_expanded) {
+           resp <- gsub("(_L|_Q|_C|_dummy|[0-9]+|_pow[0-9]+|\\[[0-9]+\\])$", "", resp)
+        }
+
         actual_resp <- if (resp %in% occ_vars) paste0("psi_", resp) else resp
 
         if (length(trm_lbls) == 0) {
@@ -858,22 +865,31 @@ equations_to_dag_string <- function(
         }
 
         for (term in trm_lbls) {
-            is_interaction <- grepl(":", term, fixed = TRUE) &&
-                !grepl("^I\\(", term)
-            is_I_call <- grepl("^I\\(", term)
+            # Optional: Collapse expanded names back to base names
+            clean_term <- term
+            if (collapse_expanded) {
+               clean_term <- gsub("(_L|_Q|_C|_dummy|[0-9]+|_pow[0-9]+|\\[[0-9]+\\])$", "", term)
+            }
+            
+            # Avoid self-loops if resp and term matched the same base name
+            if (clean_term == resp) next
+
+            is_interaction <- grepl(":", clean_term, fixed = TRUE) &&
+                !grepl("^I\\(", clean_term)
+            is_I_call <- grepl("^I\\(", clean_term)
 
             if (is_interaction || is_I_call) {
                 # --- Deterministic / interaction node (within a mixed equation) ---
                 # X:Y interactions and I() polynomial terms get a diamond node.
-                iname <- make_internal_name(term)
-                d_label <- make_display_label(term)
+                iname <- make_internal_name(clean_term)
+                d_label <- make_display_label(clean_term)
                 interaction_nodes[[iname]] <- d_label
 
                 # Component variables: split on : for interactions, all.vars for I()
                 if (is_interaction) {
-                    components <- strsplit(term, ":", fixed = TRUE)[[1]]
+                    components <- strsplit(clean_term, ":", fixed = TRUE)[[1]]
                 } else {
-                    components <- all.vars(stats::as.formula(paste("~", term)))
+                    components <- all.vars(stats::as.formula(paste("~", clean_term)))
                 }
 
                 for (comp in components) {
@@ -905,46 +921,26 @@ equations_to_dag_string <- function(
                 }
             } else {
                 # --- Regular predictor ---
-                # Check if this term is an expanded poly internal name
-                # (e.g. age_pow2 from fitted model expanded equations).
-                # If so, render it as a diamond node like I(age^2) would be.
-                if (term %in% names(poly_lookup)) {
+                # If we are collapsing, we skip the expansion-specific diamond nodes
+                # and just draw an edge from the base variable to the response.
+                if (collapse_expanded && term %in% names(poly_lookup)) {
+                   # Skip the diamond node, handled by 'clean_term' falling through to Standard path
+                } else if (!collapse_expanded && term %in% names(poly_lookup)) {
                     pt <- poly_lookup[[term]]
                     iname <- pt$internal_name # e.g. age_pow2
-                    # Build a display label identical to make_display_label("I(age^2)")
-                    superscripts <- c(
-                        "\u2070",
-                        "\u00b9",
-                        "\u00b2",
-                        "\u00b3",
-                        "\u2074",
-                        "\u2075",
-                        "\u2076",
-                        "\u2077",
-                        "\u2078",
-                        "\u2079"
-                    )
+                    # ... (rest of diamond logic) ...
+                    superscripts <- c("\u2070","\u00b9","\u00b2","\u00b3","\u2074","\u2075","\u2076","\u2077","\u2078","\u2079")
                     n <- as.integer(pt$power)
-                    d_label <- if (!is.na(n) && n >= 0 && n <= 9) {
-                        paste0(pt$base_var, superscripts[n + 1])
-                    } else {
-                        iname
-                    }
+                    d_label <- if (!is.na(n) && n >= 0 && n <= 9) paste0(pt$base_var, superscripts[n+1]) else iname
                     interaction_nodes[[iname]] <- d_label
-                    # base_var -> poly_node edge
-                    base_actual <- if (pt$base_var %in% occ_vars) {
-                        paste0("psi_", pt$base_var)
-                    } else {
-                        pt$base_var
-                    }
+                    base_actual <- if (pt$base_var %in% occ_vars) paste0("psi_", pt$base_var) else pt$base_var
                     edges <- c(edges, paste(iname, "<-", base_actual))
-                    # poly_node -> response edge
                     edges <- c(edges, paste(actual_resp, "<-", iname))
                 } else {
-                    actual_pred <- if (term %in% occ_vars) {
-                        paste0("psi_", term)
+                    actual_pred <- if (clean_term %in% occ_vars) {
+                        paste0("psi_", clean_term)
                     } else {
-                        term
+                        clean_term
                     }
                     edges <- c(edges, paste(actual_resp, "<-", actual_pred))
                 }
