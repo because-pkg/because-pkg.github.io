@@ -345,9 +345,10 @@ plot_dag <- function(
                            clean_w <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", w)))
                            clean_v <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", v)))
                            
-                           # 2. Polynomial/Contrast suffixes (var_L, var_Q, var_dummy, etc.)
-                           clean_w <- gsub("(_L|_Q|_C|_dummy|[0-9]+|_pow[0-9]+|\\[[0-9]+\\])$", "", clean_w)
-                           clean_v <- gsub("(_L|_Q|_C|_dummy|[0-9]+|_pow[0-9]+|\\[[0-9]+\\])$", "", clean_v)
+                           # 2. Suffixes (polynomials, categorical dummies, array indices)
+                           # Be aggressive: strip _ and anything following if it looks like an expansion
+                           clean_w <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", clean_w)
+                           clean_v <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", clean_v)
                            me_row <- me_table[
                               trimws(gsub("[`]", "", as.character(me_table$Response))) == clean_w & 
                               trimws(gsub("[`]", "", as.character(me_table$Predictor))) == clean_v, 
@@ -373,6 +374,10 @@ plot_dag <- function(
                               # We hide its coefficient if we are in marginal mode,
                               # because the base variable already carries the total effect info.
                               val <- NA
+                              if (type == "marginal") {
+                                 # Help identify why some paths show NAs
+                                 message(paste0("No ME match for: ", clean_w, " <- ", clean_v))
+                              }
                            }
                         } else if (!is.null(pname)) {
                             val <- stats[pname, "Mean"]
@@ -639,13 +644,10 @@ plot_dag <- function(
                 TRUE ~ paste(name, to, sep = "_")
             )
         )
-        combined_dag_data <- dplyr::distinct(
-            combined_dag_data,
-            edge_id,
-            edge_type,
-            .keep_all = TRUE
-        )
-        combined_dag_data <- dplyr::select(combined_dag_data, -edge_id)
+        combined_dag_data <- combined_dag_data |>
+            dplyr::arrange(edge_id, is.na(val)) |> # Non-NA values first for each edge_id
+            dplyr::distinct(edge_id, edge_type, .keep_all = TRUE) |>
+            dplyr::select(-edge_id)
 
         # 1. Directed Edges (Solid)
         p <- p +
@@ -834,7 +836,7 @@ equations_to_dag_string <- function(
 
         # Optional: Collapse expanded names back to base names
         if (collapse_expanded) {
-           resp <- gsub("(_L|_Q|_C|_dummy|[0-9]+|_pow[0-9]+|\\[[0-9]+\\])$", "", resp)
+           resp <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", resp)
         }
 
         actual_resp <- if (resp %in% occ_vars) paste0("psi_", resp) else resp
@@ -868,7 +870,7 @@ equations_to_dag_string <- function(
             # Optional: Collapse expanded names back to base names
             clean_term <- term
             if (collapse_expanded) {
-               clean_term <- gsub("(_L|_Q|_C|_dummy|[0-9]+|_pow[0-9]+|\\[[0-9]+\\])$", "", term)
+               clean_term <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", term)
             }
             
             # Avoid self-loops if resp and term matched the same base name
