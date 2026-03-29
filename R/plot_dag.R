@@ -146,6 +146,26 @@ plot_dag <- function(
         } else {
             # List of formulas
             eqs <- obj
+
+            # Auto-detect latent variables from structural equations:
+            # A variable that (a) never appears as a LHS response, and (b) matches
+            # common SEM latent naming conventions (L1, L2, Lat, Latent, lat_*, etc.)
+            # is automatically treated as latent (rendered as a circle).
+            if (is.null(current_latent)) {
+                lhs_vars <- vapply(eqs, function(f) deparse(f[[2]]), character(1))
+                rhs_vars <- unique(unlist(lapply(eqs, function(f) {
+                    all.vars(f[[3]])
+                })))
+                # Variables only on RHS, never a response
+                rhs_only <- setdiff(rhs_vars, lhs_vars)
+                # Match common SEM latent naming: L1, L2, Latent, latent1, lat_climate, Lat_foo
+                # Matches: L + digits, Lat/lat + optional suffix, Latent/latent + optional digits
+                latent_pattern <- "^[Ll]([0-9]+|at(ent?)?[0-9]*(_\\w*)?)$"
+                auto_latent <- rhs_only[grepl(latent_pattern, rhs_only, perl = TRUE)]
+                if (length(auto_latent) > 0) {
+                    current_latent <- unique(c(current_latent, auto_latent))
+                }
+            }
         }
 
         # Handle occupancy expansion for visualization
