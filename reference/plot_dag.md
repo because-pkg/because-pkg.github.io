@@ -64,7 +64,10 @@ plot_dag(
 - latent:
 
   Character vector of latent variable names. Overrides the model's
-  latent variables if provided.
+  latent variables if provided. If `NULL` (default) and plotting from
+  formulas, latent variables are **automatically detected** if they
+  follow the SEM naming convention (e.g., `L1`, `L2`, `Latent1`,
+  `lat_foo`) and only appear on the RHS of equations.
 
 - node_size:
 
@@ -107,7 +110,11 @@ plot_dag(
 
   Optional named list of coordinates for the nodes, e.g.
   `list(A = c(1, 1), B = c(2, 2))`. If provided, these will override the
-  `layout` algorithm.
+  `layout` algorithm. **Partial coordinates** are supported: nodes not
+  included in `coords` will be positioned according to the automatic
+  `layout`. For deterministic nodes (interactions and powers), you can
+  use the original formula string as the key (e.g.,
+  `"I(age^2)" = c(x, y)` or `"X:Y" = c(x, y)`).
 
 - family:
 
@@ -120,12 +127,30 @@ functions (e.g., `+ theme_...()`, `+ ggtitle(...)`).
 
 ## Details
 
-Interaction terms (e.g. `BM:M`) and
-[`I()`](https://rdrr.io/r/base/AsIs.html) transformations are rendered
-as **explicit intermediate nodes** (grey diamonds), following the
-Interaction DAG (IDAG) convention of Attia, Holliday & Oldmeadow (2022).
-This makes the deterministic nature of these terms visually clear and is
-consistent with how `because_dsep` treats them for d-separation.
+**Interaction and Deterministic Nodes:** Interaction terms (e.g. `BM:M`)
+and [`I()`](https://rdrr.io/r/base/AsIs.html) transformations are
+rendered as **explicit intermediate nodes** (grey diamonds), following
+the Interaction DAG (IDAG) convention of Attia, Holliday & Oldmeadow
+(2022). This makes the deterministic nature of these terms visually
+clear and is consistent with how `because_dsep` treats them for
+d-separation.
+
+**Latent Variable Auto-detection:** When plotting from a list of
+formulas, `plot_dag` automatically identifies latent variables
+(rendering them as circles) if they match common SEM naming conventions
+(like `L1`, `Latent`, `lat_climate`) and never appear as the response
+(LHS) of an equation.
+
+**Manual Positioning with Formula Strings:** When using `coords`, you
+can specify positions for interaction or power nodes by using their
+formula representation as the list key. For example:
+`coords = list(weight = c(0,0), "I(age^2)" = c(1,1), "sex:age" = c(2,2))`.
+Any node not specified in the list will maintain its position from the
+automatic layout.
+
+**Random Effects:** Formula terms containing random effects (e.g.,
+`(1|year)`) are automatically filtered out for the structural DAG
+visualization.
 
 ## References
 

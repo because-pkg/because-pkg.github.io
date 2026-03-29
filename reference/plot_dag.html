@@ -103,7 +103,11 @@ Any layout name accepted by <code><a href="https://ggraph.data-imaginist.com/ref
 
 
 <dt id="arg-latent">latent<a class="anchor" aria-label="anchor" href="#arg-latent"></a></dt>
-<dd><p>Character vector of latent variable names. Overrides the model's latent variables if provided.</p></dd>
+<dd><p>Character vector of latent variable names. Overrides the model's
+latent variables if provided. If <code>NULL</code> (default) and plotting from formulas,
+latent variables are <strong>automatically detected</strong> if they follow the SEM
+naming convention (e.g., <code>L1</code>, <code>L2</code>, <code>Latent1</code>, <code>lat_foo</code>)
+and only appear on the RHS of equations.</p></dd>
 
 
 <dt id="arg-node-size">node_size<a class="anchor" aria-label="anchor" href="#arg-node-size"></a></dt>
@@ -143,7 +147,10 @@ Any layout name accepted by <code><a href="https://ggraph.data-imaginist.com/ref
 
 <dt id="arg-coords">coords<a class="anchor" aria-label="anchor" href="#arg-coords"></a></dt>
 <dd><p>Optional named list of coordinates for the nodes, e.g. <code>list(A = c(1, 1), B = c(2, 2))</code>.
-If provided, these will override the <code>layout</code> algorithm.</p></dd>
+If provided, these will override the <code>layout</code> algorithm. <strong>Partial coordinates</strong> are supported:
+nodes not included in <code>coords</code> will be positioned according to the automatic <code>layout</code>.
+For deterministic nodes (interactions and powers), you can use the original formula string
+as the key (e.g., <code>"I(age^2)" = c(x, y)</code> or <code>"X:Y" = c(x, y)</code>).</p></dd>
 
 
 <dt id="arg-family">family<a class="anchor" aria-label="anchor" href="#arg-family"></a></dt>
@@ -156,11 +163,26 @@ If provided, these will override the <code>layout</code> algorithm.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Interaction terms (e.g. <code>BM:M</code>) and <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code> transformations are
+    <p><strong>Interaction and Deterministic Nodes:</strong>
+Interaction terms (e.g. <code>BM:M</code>) and <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code> transformations are
 rendered as <strong>explicit intermediate nodes</strong> (grey diamonds), following the
 Interaction DAG (IDAG) convention of Attia, Holliday &amp; Oldmeadow (2022).
 This makes the deterministic nature of these terms visually clear and is
 consistent with how <code>because_dsep</code> treats them for d-separation.</p>
+<p><strong>Latent Variable Auto-detection:</strong>
+When plotting from a list of formulas, <code>plot_dag</code> automatically identifies
+latent variables (rendering them as circles) if they match common SEM naming
+conventions (like <code>L1</code>, <code>Latent</code>, <code>lat_climate</code>) and never
+appear as the response (LHS) of an equation.</p>
+<p><strong>Manual Positioning with Formula Strings:</strong>
+When using <code>coords</code>, you can specify positions for interaction or
+power nodes by using their formula representation as the list key. For example:
+<code>coords = list(weight = c(0,0), "I(age^2)" = c(1,1), "sex:age" = c(2,2))</code>.
+Any node not specified in the list will maintain its position from the
+automatic layout.</p>
+<p><strong>Random Effects:</strong>
+Formula terms containing random effects (e.g., <code>(1|year)</code>) are
+automatically filtered out for the structural DAG visualization.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
