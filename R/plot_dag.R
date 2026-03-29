@@ -278,6 +278,7 @@ plot_dag <- function(
         # Get edges metadata from dagitty for finding parameters
         edges_meta <- dagitty::edges(dag_obj) # v, w, e
 
+        stats <- NULL
         quantiles <- NULL
         me_table <- NULL
         if (inherits(obj, "because") && !is.null(obj$summary)) {
