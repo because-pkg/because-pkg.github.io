@@ -199,28 +199,40 @@ plot_dag <- function(
         interaction_nodes <- dag_result$interaction_nodes
         dag_obj <- dagitty::dagitty(dag_str)
 
-        # Apply coordinates if provided
+        # 3. Tidy it up using ggdag
+        tidy_dag <- ggdag::tidy_dagitty(dag_obj, layout = layout)
+
+        # Extract data frame for plotting (nodes + edges flattened)
+        dag_data <- as.data.frame(dplyr::as_tibble(tidy_dag))
+
+        # Apply coordinates if provided (overwrites layout only for specified nodes)
         if (!is.null(coords)) {
             if (!is.list(coords)) {
                 stop(
                     "coords must be a named list of numeric vectors, e.g. list(node = c(x, y))."
                 )
             }
-            # Extract x and y vectors with names
-            x_coords <- sapply(coords, function(v) v[1])
-            y_coords <- sapply(coords, function(v) v[2])
-            names(x_coords) <- names(coords)
-            names(y_coords) <- names(coords)
-
-            dagitty::coordinates(dag_obj) <- list(x = x_coords, y = y_coords)
+            # Update positions in the tidy data frame
+            for (nm in names(coords)) {
+                new_pos <- coords[[nm]]
+                
+                # Update source positions (affecting nodes and start of arrows)
+                is_source <- which(dag_data$name == nm)
+                if (length(is_source) > 0) {
+                    dag_data$x[is_source] <- new_pos[1]
+                    dag_data$y[is_source] <- new_pos[2]
+                }
+                
+                # Update target positions (affecting end of arrows)
+                if ("to" %in% names(dag_data)) {
+                    is_target <- which(dag_data$to == nm)
+                    if (length(is_target) > 0) {
+                        dag_data$xend[is_target] <- new_pos[1]
+                        dag_data$yend[is_target] <- new_pos[2]
+                    }
+                }
+            }
         }
-
-        # 3. Tidy it up using ggdag
-        # If coords are provided, we should probably trust them, but ggdag generally behaves well if dagitty has coords.
-        tidy_dag <- ggdag::tidy_dagitty(dag_obj, layout = layout)
-
-        # Extract data frame for plotting (nodes + edges flattened)
-        dag_data <- as.data.frame(dplyr::as_tibble(tidy_dag))
 
         # Identify occupancy nodes and assign to groups for box drawing
         dag_data$occ_species <- NA_character_
