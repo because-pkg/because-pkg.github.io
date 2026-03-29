@@ -68,7 +68,8 @@ because_compare <- function(
                 x,
                 function(s) {
                     is.list(s) &&
-                        ("equations" %in% names(s) || "formula" %in% names(s))
+                        ("equations" %in% names(s) || "formula" %in% names(s)) &&
+                        !inherits(s, "because")
                 },
                 logical(1)
             ))
