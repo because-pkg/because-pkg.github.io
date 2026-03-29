@@ -18,7 +18,11 @@
 #'     \item \code{"circle"} — nodes arranged in a circle.
 #'   }
 #'   Override node positions entirely with the \code{coords} argument.
-#' @param latent Character vector of latent variable names. Overrides the model's latent variables if provided.
+#' @param latent Character vector of latent variable names. Overrides the model's
+#'   latent variables if provided. If \code{NULL} (default) and plotting from formulas, 
+#'   latent variables are **automatically detected** if they follow the SEM 
+#'   naming convention (e.g., \code{L1}, \code{L2}, \code{Latent1}, \code{lat_foo}) 
+#'   and only appear on the RHS of equations.
 #' @param node_size Size of the nodes (default 14).
 #' @param node_color Color of the node border (default "black").
 #' @param node_fill Color of the node interior (default "white").
@@ -30,18 +34,39 @@
 #' "binary" colors edges black/grey based on whether the 95\% CI excludes zero (black) or includes it (grey).
 #' "monochrome" colors all edges black.
 #' @param show_coefficients Logical; whether to print coefficient values on edges (only for fitted models).
-#' @param coords Optional named list of coordinates for the nodes, e.g. `list(A = c(1, 1), B = c(2, 2))`.
-#' If provided, these will override the `layout` algorithm.
+#' @param coords Optional named list of coordinates for the nodes, e.g. \code{list(A = c(1, 1), B = c(2, 2))}.
+#' If provided, these will override the \code{layout} algorithm. **Partial coordinates** are supported: 
+#' nodes not included in \code{coords} will be positioned according to the automatic \code{layout}. 
+#' For deterministic nodes (interactions and powers), you can use the original formula string 
+#' as the key (e.g., \code{"I(age^2)" = c(x, y)} or \code{"X:Y" = c(x, y)}).
 #' @param family Optional named character vector of families for response variables.
 #'
 #' @return A `ggplot` object that can be further customized with standard ggplot2 functions (e.g., `+ theme_...()`, `+ ggtitle(...)`).
 #'
 #' @details
+#' \strong{Interaction and Deterministic Nodes:}
 #' Interaction terms (e.g. \code{BM:M}) and \code{I()} transformations are
 #' rendered as **explicit intermediate nodes** (grey diamonds), following the
 #' Interaction DAG (IDAG) convention of Attia, Holliday & Oldmeadow (2022).
 #' This makes the deterministic nature of these terms visually clear and is
 #' consistent with how \code{because_dsep} treats them for d-separation.
+#'
+#' \strong{Latent Variable Auto-detection:}
+#' When plotting from a list of formulas, \code{plot_dag} automatically identifies 
+#' latent variables (rendering them as circles) if they match common SEM naming 
+#' conventions (like \code{L1}, \code{Latent}, \code{lat_climate}) and never 
+#' appear as the response (LHS) of an equation.
+#'
+#' \strong{Manual Positioning with Formula Strings:}
+#' When using \code{coords}, you can specify positions for interaction or 
+#' power nodes by using their formula representation as the list key. For example:
+#' \code{coords = list(weight = c(0,0), "I(age^2)" = c(1,1), "sex:age" = c(2,2))}. 
+#' Any node not specified in the list will maintain its position from the 
+#' automatic layout.
+#'
+#' \strong{Random Effects:}
+#' Formula terms containing random effects (e.g., \code{(1|year)}) are 
+#' automatically filtered out for the structural DAG visualization.
 #'
 #' @references
 #' Attia, J., Holliday, E., & Oldmeadow, C. (2022). A proposal for capturing
@@ -212,10 +237,26 @@ plot_dag <- function(
                     "coords must be a named list of numeric vectors, e.g. list(node = c(x, y))."
                 )
             }
+        # Apply coordinates if provided (overwrites layout only for specified nodes)
+        if (!is.null(coords)) {
+            if (!is.list(coords)) {
+                stop(
+                    "coords must be a named list of numeric vectors, e.g. list(node = c(x, y))."
+                )
+            }
             # Update positions in the tidy data frame
-            for (nm in names(coords)) {
-                new_pos <- coords[[nm]]
+            for (coord_key in names(coords)) {
+                new_pos <- coords[[coord_key]]
                 
+                # Match the exact key or its sanitized internal version (e.g. "I(age^2)" -> "age_pow2")
+                # This allow users to use original formula strings in the coords list.
+                nm <- if (coord_key %in% dag_data$name) {
+                    coord_key
+                } else {
+                    # sanitize_term_name matches the logic used to create deterministic nodes
+                    sanitize_term_name(coord_key)
+                }
+
                 # Update source positions (affecting nodes and start of arrows)
                 is_source <- which(dag_data$name == nm)
                 if (length(is_source) > 0) {
@@ -232,6 +273,7 @@ plot_dag <- function(
                     }
                 }
             }
+        }
         }
 
         # Identify occupancy nodes and assign to groups for box drawing

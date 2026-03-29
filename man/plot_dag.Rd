@@ -35,7 +35,11 @@ Any layout name accepted by \code{\link[ggraph]{create_layout}} can be used, inc
 }
 Override node positions entirely with the \code{coords} argument.}
 
-\item{latent}{Character vector of latent variable names. Overrides the model's latent variables if provided.}
+\item{latent}{Character vector of latent variable names. Overrides the model's
+latent variables if provided. If \code{NULL} (default) and plotting from formulas,
+latent variables are \strong{automatically detected} if they follow the SEM
+naming convention (e.g., \code{L1}, \code{L2}, \code{Latent1}, \code{lat_foo})
+and only appear on the RHS of equations.}
 
 \item{node_size}{Size of the nodes (default 14).}
 
@@ -57,7 +61,10 @@ Override node positions entirely with the \code{coords} argument.}
 \item{show_coefficients}{Logical; whether to print coefficient values on edges (only for fitted models).}
 
 \item{coords}{Optional named list of coordinates for the nodes, e.g. \code{list(A = c(1, 1), B = c(2, 2))}.
-If provided, these will override the \code{layout} algorithm.}
+If provided, these will override the \code{layout} algorithm. \strong{Partial coordinates} are supported:
+nodes not included in \code{coords} will be positioned according to the automatic \code{layout}.
+For deterministic nodes (interactions and powers), you can use the original formula string
+as the key (e.g., \code{"I(age^2)" = c(x, y)} or \code{"X:Y" = c(x, y)}).}
 
 \item{family}{Optional named character vector of families for response variables.}
 }
@@ -75,11 +82,29 @@ or a fitted \code{because} model. If a fitted model is provided:
 }
 }
 \details{
+\strong{Interaction and Deterministic Nodes:}
 Interaction terms (e.g. \code{BM:M}) and \code{I()} transformations are
 rendered as \strong{explicit intermediate nodes} (grey diamonds), following the
 Interaction DAG (IDAG) convention of Attia, Holliday & Oldmeadow (2022).
 This makes the deterministic nature of these terms visually clear and is
 consistent with how \code{because_dsep} treats them for d-separation.
+
+\strong{Latent Variable Auto-detection:}
+When plotting from a list of formulas, \code{plot_dag} automatically identifies
+latent variables (rendering them as circles) if they match common SEM naming
+conventions (like \code{L1}, \code{Latent}, \code{lat_climate}) and never
+appear as the response (LHS) of an equation.
+
+\strong{Manual Positioning with Formula Strings:}
+When using \code{coords}, you can specify positions for interaction or
+power nodes by using their formula representation as the list key. For example:
+\code{coords = list(weight = c(0,0), "I(age^2)" = c(1,1), "sex:age" = c(2,2))}.
+Any node not specified in the list will maintain its position from the
+automatic layout.
+
+\strong{Random Effects:}
+Formula terms containing random effects (e.g., \code{(1|year)}) are
+automatically filtered out for the structural DAG visualization.
 }
 \examples{
 \dontrun{
