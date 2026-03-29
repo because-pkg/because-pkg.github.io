@@ -28,7 +28,8 @@ plot_dag(
   edge_color_scheme = c("directional", "binary", "monochrome"),
   show_coefficients = TRUE,
   coords = NULL,
-  family = NULL
+  family = NULL,
+  type = c("raw", "marginal")
 )
 ```
 
