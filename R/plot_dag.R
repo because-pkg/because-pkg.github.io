@@ -888,6 +888,9 @@ equations_to_dag_string <- function(
         }
 
         for (term in trm_lbls) {
+            # Skip random effects terms (e.g. 1 | year) which dagitty can't parse
+            if (grepl("|", term, fixed = TRUE)) next
+            
             # Optional: Collapse expanded names back to base names
             clean_term <- term
             if (collapse_expanded) {
