@@ -189,8 +189,6 @@ For "binomial" variables, the model uses a logit link and a Bernoulli likelihood
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu">because_model</span><span class="op">(</span><span class="va">eqs</span>, multi.tree <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">model</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> model {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   # Common structures and priors</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   zeros_2[1] &lt;- 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   zeros_2[2] &lt;- 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   # Structural equations</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   for (i in 1:N) {</span>

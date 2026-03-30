@@ -382,7 +382,7 @@ fit_check <- because(
 
 # Print the JAGS model
 fit_check$model
-#> [1] "model {\n  # Common structures and priors\n  zeros_2[1] <- 0\n  zeros_2[2] <- 0\n  # Structural equations\n\n  for (i in 1:N) {\n    mu_Growth_g_day[i] <- alpha_Growth_g_day + beta_Growth_g_day_Temp_Centered*Temp_Centered[i]\n  }\n  # Multivariate normal likelihoods\n  for (i in 1:N) {\n    Growth_g_day[i] ~ dnorm(mu_Growth_g_day[i], tau_e_Growth_g_day)\n    log_lik_Growth_g_day[i] <- logdensity.norm(Growth_g_day[i], mu_Growth_g_day[i], tau_e_Growth_g_day)\n  }\n  # Priors for structural parameters\n  alpha_Growth_g_day ~ dnorm(0, 1.0E-6)\n  tau_e_Growth_g_day ~ dgamma(1, 1)\n  sigmaGrowth_g_day <- 1/sqrt(tau_e_Growth_g_day)\n  beta_Growth_g_day_Temp_Centered ~ dnorm(0, 1.0E-6)\n}"
+#> [1] "model {\n  # Common structures and priors\n  # Structural equations\n\n  for (i in 1:N) {\n    mu_Growth_g_day[i] <- alpha_Growth_g_day + beta_Growth_g_day_Temp_Centered*Temp_Centered[i]\n  }\n  # Multivariate normal likelihoods\n  for (i in 1:N) {\n    Growth_g_day[i] ~ dnorm(mu_Growth_g_day[i], tau_e_Growth_g_day)\n    log_lik_Growth_g_day[i] <- logdensity.norm(Growth_g_day[i], mu_Growth_g_day[i], tau_e_Growth_g_day)\n  }\n  # Priors for structural parameters\n  alpha_Growth_g_day ~ dnorm(0, 1.0E-6)\n  tau_e_Growth_g_day ~ dgamma(1, 1)\n  sigmaGrowth_g_day <- 1/sqrt(tau_e_Growth_g_day)\n  beta_Growth_g_day_Temp_Centered ~ dnorm(0, 1.0E-6)\n}"
 ```
 
 \`\`\`
