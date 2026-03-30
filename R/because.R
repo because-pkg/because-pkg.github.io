@@ -2513,6 +2513,34 @@ because <- function(
     equations <- c(equations, new_equations)
   }
 
+  # --- Ensure zero_vec and ID2 are in data if needed (for multivariate priors) ---
+  # Check if we need zero_vec (matches logic in because_model.R)
+  need_zero_vec_data <- (!is.null(induced_cors) && length(induced_cors) > 0) || 
+                        (!is.null(structures) && length(structures) > 0) ||
+                        (!is.null(family) && (any(family == "multinomial") || any(family == "ordinal")))
+
+  if (need_zero_vec_data) {
+    # Check if already provided (e.g. by hierarchical_prep), otherwise add it
+    if (is.null(data$zero_vec)) {
+      # Determine a safe max length
+      # Use 1000 as a safe minimum, or actual N if available
+      n_max <- 1000
+      if (!is.null(data$N)) n_max <- max(n_max, data$N)
+      # In hierarchical models, check for level sample sizes
+      n_names <- grep("^N_", names(data), value = TRUE)
+      if (length(n_names) > 0) {
+        for (nn in n_names) n_max <- max(n_max, data[[nn]])
+      }
+      
+      data$zero_vec <- rep(0, n_max)
+    }
+    
+    # ID2 is used for Wishart priors in induced correlations
+    if (is.null(data$ID2)) {
+      data$ID2 <- diag(2)
+    }
+  }
+
   # JAGS model code
   model_output <- because_model(
     equations = equations,

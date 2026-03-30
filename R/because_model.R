@@ -386,22 +386,8 @@ because_model <- function(
     "  # Common structures and priors"
   )
 
-  if (need_zero_vec) {
-    # Use the finest level as N for zero_vec
-    zero_vec_N <- if (!is.null(hierarchical_info)) {
-      # Hierarchy is Coarser > Finer. Finest level is at the end.
-      h_parts <- strsplit(hierarchical_info$hierarchy, ">")[[1]]
-      finest_lvl <- trimws(h_parts[length(h_parts)])
-      paste0("N_", finest_lvl)
-    } else {
-      "N"
-    }
-    model_lines <- c(
-      model_lines,
-      "  zeros_2[1] <- 0",
-      "  zeros_2[2] <- 0"
-    )
-  }
+  # NOTE: zero_vec and ID2 are now provided in the data list by the because() caller for reliability.
+  # We do NOT define them here to avoid multiple definition errors in JAGS.
 
   # --- Handle Induced Correlations (MAG) Pair Processing ---
   if (!is.null(induced_correlations)) {
