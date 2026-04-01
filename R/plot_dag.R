@@ -106,7 +106,8 @@ plot_dag <- function(
     show_coefficients = TRUE,
     coords = NULL,
     family = NULL,
-    type = c("raw", "marginal")
+    type = c("raw", "marginal"),
+    multinomial_probabilities = TRUE
 ) {
     edge_color_scheme <- match.arg(edge_color_scheme)
     type <- match.arg(type)
@@ -335,6 +336,7 @@ plot_dag <- function(
         dag_data$val <- NA_real_
         dag_data$edge_label <- NA_character_ # Initialize edge_label column
         dag_data$significant <- NA # Logical placeholder
+        dag_data$curvature <- 0 # Default curvature (straight)
 
         # Mark node types (Observed vs Latent vs Interaction)
         dag_data$type <- "Observed"
@@ -353,7 +355,7 @@ plot_dag <- function(
         edges_meta <- dagitty::edges(dag_obj) # v, w, e
 
         stats <- NULL
-        quantiles <- NULL
+                quantiles <- NULL
         me_table <- NULL
         if (inherits(obj, "because") && !is.null(obj$summary)) {
             stats <- obj$summary$statistics
@@ -362,7 +364,7 @@ plot_dag <- function(
             if (type == "marginal") {
                # Compute marginal effects (subsampled for speed)
                if (!is.null(obj$parameter_map)) {
-                  me_table <- marginal_effects(obj, samples = 100)
+                  me_table <- marginal_effects(obj, samples = 100, multinomial_probabilities = multinomial_probabilities)
                }
             }
         }
@@ -370,6 +372,7 @@ plot_dag <- function(
         # Process edges to find parameters
         if ("to" %in% names(dag_data) && nrow(edges_meta) > 0) {
             edge_rows <- which(!is.na(dag_data$to))
+            expanded_edges <- list() # Store multinomial bundles here
 
             for (idx in edge_rows) {
                 v <- dag_data$name[idx]
@@ -389,106 +392,97 @@ plot_dag <- function(
                     dag_data$edge_type[idx] <- e_type
 
                     if (!is.null(stats)) {
+                        # Default path logic (Standard or First Category)
                         val <- NA
                         sig_cat <- "default"
                         pname <- NULL
 
-                        # Marginal Effects Override
                         if (e_type == "->") {
                             # Beta: beta_w_v
                             try_pname <- paste0("beta_", w, "_", v)
-                            if (try_pname %in% rownames(stats)) {
-                                pname <- try_pname
-                            }
-                        } else if (e_type == "<->") {
-                            # Rho: rho_v_w or rho_w_v
+                            if (try_pname %in% rownames(stats)) pname <- try_pname
+                        } else if (e_type == "<->" ) {
                             pname1 <- paste0("rho_", v, "_", w)
                             pname2 <- paste0("rho_", w, "_", v)
-                            if (pname1 %in% rownames(stats)) {
-                                pname <- pname1
-                            } else if (pname2 %in% rownames(stats)) {
-                                pname <- pname2
-                            }
+                            if (pname1 %in% rownames(stats)) pname <- pname1 else if (pname2 %in% rownames(stats)) pname <- pname2
                         }
 
-                        # Marginal Effects Override (Only for directed causal edges)
+                        # Multinomial / Marginal Effects Check
                         if (type == "marginal" && !is.null(me_table) && e_type == "->") {
-                           # Try to match w (Response) and v (Predictor) in ME table
-                           # Note: w and v might have prefixes like psi_ or p_
-                           # Clean up names (remove prefixes, suffixes, backticks, and whitespace)
-                           # 1. Standard prefixes/backticks
-                           clean_w <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", w)))
-                           clean_v <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", v)))
-                           
-                           # 2. Suffixes (polynomials, categorical dummies, array indices)
-                           # Be aggressive: strip _ and anything following if it looks like an expansion
-                           clean_w <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", clean_w)
-                           clean_v <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", clean_v)
-                           me_row <- me_table[
-                              trimws(gsub("[`]", "", as.character(me_table$Response))) == clean_w & 
-                              trimws(gsub("[`]", "", as.character(me_table$Predictor))) == clean_v, 
-                           ]
-                           
-                           if (nrow(me_row) > 0) {
-                              val <- me_row$Effect[1]
-                              lower <- me_row$Lower[1]
-                              upper <- me_row$Upper[1]
-                              
-                              # Update significance based on ME CI
-                              if (edge_color_scheme != "monochrome") {
-                                 if (sign(lower) == sign(upper)) {
-                                    sig_cat <- if (edge_color_scheme == "directional") {
-                                       if (val > 0) "pos" else "neg"
-                                    } else "sig"
-                                 } else {
-                                    sig_cat <- "ns"
-                                 }
-                              }
-                           } else {
-                              # If not in ME table, might be a derived term (_L, _Q, _pow2).
-                              # We hide its coefficient if we are in marginal mode,
-                              # because the base variable already carries the total effect info.
-                              val <- NA
-                              if (type == "marginal") {
-                                 # Help identify why some paths show NAs
-                                 message(paste0("No ME match for: ", clean_w, " <- ", clean_v))
-                              }
-                           }
+                            clean_w <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", w)))
+                            clean_v <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", v)))
+                            clean_w <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", clean_w)
+                            clean_v <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", clean_v)
+                            
+                            me_rows <- me_table[
+                                trimws(gsub("[`]", "", as.character(me_table$Response))) == clean_w & 
+                                trimws(gsub("[`]", "", as.character(me_table$Predictor))) == clean_v, 
+                            ]
+
+                            if (nrow(me_rows) > 0) {
+                                # MULTINOMIAL BUNDLE LOGIC
+                                if (nrow(me_rows) > 1) {
+                                   # We will create one edge row per category.
+                                   # The original row (idx) will be replaced or marked for removal.
+                                   # Actually, we keep the original row for the first category and add the rest.
+                                   base_row <- dag_data[idx, , drop=FALSE]
+                                   
+                                   # Calculate curvatures: symmetric bundle around 0
+                                   # Formula: seq(-0.3, 0.3, length.out = K)
+                                   curvatures <- seq(-0.3, 0.3, length.out = nrow(me_rows))
+
+                                   for (k in seq_len(nrow(me_rows))) {
+                                      new_edge <- base_row
+                                      e_val <- me_rows$Effect[k]
+                                      e_low <- me_rows$Lower[k]
+                                      e_upp <- me_rows$Upper[k]
+                                      e_cat <- me_rows$Category[k]
+
+                                      new_edge$val <- e_val
+                                      new_edge$weight_abs <- abs(e_val)
+                                      new_edge$edge_label <- if (!is.na(e_cat)) as.character(e_cat) else round(e_val, 2)
+                                      new_edge$curvature <- curvatures[k]
+                                      
+                                      # Sig color
+                                      if (edge_color_scheme != "monochrome") {
+                                         if (sign(e_low) == sign(e_upp)) {
+                                            new_edge$significant <- if (edge_color_scheme == "directional") (if (e_val > 0) "pos" else "neg") else "sig"
+                                         } else {
+                                            new_edge$significant <- "ns"
+                                         }
+                                      } else {
+                                         new_edge$significant <- "default"
+                                      }
+                                      
+                                      if (k == 1) {
+                                         # Overwrite original row
+                                         dag_data[idx, ] <- new_edge
+                                      } else {
+                                         # Add to expansion list
+                                         expanded_edges[[length(expanded_edges) + 1]] <- new_edge
+                                      }
+                                   }
+                                   next # Skip standard processing
+                                } else {
+                                   # Single category (or default expected score shift)
+                                   val <- me_rows$Effect[1]
+                                   lower <- me_rows$Lower[1]
+                                   upper <- me_rows$Upper[1]
+                                   if (edge_color_scheme != "monochrome") {
+                                      if (sign(lower) == sign(upper)) {
+                                         sig_cat <- if (edge_color_scheme == "directional") (if (val > 0) "pos" else "neg") else "sig"
+                                      } else sig_cat <- "ns"
+                                   }
+                                }
+                            }
                         } else if (!is.null(pname)) {
                             val <- stats[pname, "Mean"]
-                            
-                            # Determine significance category based on scheme
-                            if (
-                                !is.null(quantiles) &&
-                                    pname %in% rownames(quantiles)
-                            ) {
-                                if (edge_color_scheme == "monochrome") {
-                                    sig_cat <- "default"
-                                } else {
-                                    lower <- quantiles[pname, "2.5%"]
-                                    upper <- quantiles[pname, "97.5%"]
-
-                                    if (sign(lower) == sign(upper)) {
-                                        # Significant
-                                        if (
-                                            edge_color_scheme == "directional"
-                                        ) {
-                                            if (val > 0) {
-                                                sig_cat <- "pos"
-                                            } else {
-                                                sig_cat <- "neg"
-                                            }
-                                        } else {
-                                            # Binary (sig vs ns)
-                                            sig_cat <- "sig" # Maps to black
-                                        }
-                                    } else {
-                                        # Non-significant
-                                        sig_cat <- "ns"
-                                    }
-                                }
-                            } else {
-                                sig_cat <- "default"
+                            if (!is.null(quantiles) && pname %in% rownames(quantiles)) {
+                                lower <- quantiles[pname, "2.5%"]
+                                upper <- quantiles[pname, "97.5%"]
+                                if (sign(lower) == sign(upper)) {
+                                    sig_cat <- if (edge_color_scheme == "directional") (if (val > 0) "pos" else "neg") else "sig"
+                                } else sig_cat <- "ns"
                             }
                         }
 
@@ -496,11 +490,14 @@ plot_dag <- function(
                             dag_data$val[idx] <- val
                             dag_data$weight_abs[idx] <- abs(val)
                             dag_data$edge_label[idx] <- round(val, 2)
-                            # Store category
                             dag_data$significant[idx] <- sig_cat
                         }
                     }
                 }
+            }
+            # Combine Expanded Edges
+            if (length(expanded_edges) > 0) {
+               dag_data <- rbind(dag_data, do.call(rbind, expanded_edges))
             }
         }
 
@@ -726,12 +723,13 @@ plot_dag <- function(
 
         # 1. Directed Edges (Solid)
         p <- p +
-            ggdag::geom_dag_edges_link(
+            ggdag::geom_dag_edges_arc(
                 data = function(x) dplyr::filter(x, edge_type == "->"),
                 mapping = ggplot2::aes(
                     edge_width = weight_abs,
                     edge_colour = significant, # Map color to significance category
-                    label = edge_label
+                    label = edge_label,
+                    curvature = curvature # Bundle Arcs
                 ),
                 angle_calc = "along",
                 label_dodge = ggplot2::unit(3, "mm"),

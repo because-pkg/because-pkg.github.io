@@ -211,7 +211,8 @@ because <- function(
   link_vars = NULL, # Hierarchical data: variables linking levels
   fix_residual_variance = NULL, # Optional: fix residual variance (tau_e) for specific variables
   priors = NULL, # Optional: custom priors list
-  reuse_models = NULL
+  reuse_models = NULL,
+  expand_ordered = FALSE
 ) {
   # Allow single formula input
   if (inherits(equations, "formula")) {
@@ -434,7 +435,8 @@ because <- function(
     target_vars = model_vars,
     dummy_vars = fixed_predictors, # Categorical fixed predictors need dummies
     exclude_cols = id_col,
-    quiet = quiet
+    quiet = quiet,
+    expand_ordered = expand_ordered
   )
 
   # --- Hierarchical Data Detection & Validation ---
@@ -4023,7 +4025,8 @@ preprocess_categorical_vars <- function(
   target_vars = NULL,
   dummy_vars = NULL,
   exclude_cols = NULL,
-  quiet = FALSE
+  quiet = FALSE,
+  expand_ordered = FALSE
 ) {
   if (is.null(data)) {
     return(NULL)
@@ -4041,7 +4044,8 @@ preprocess_categorical_vars <- function(
           target_vars = target_vars,
           dummy_vars = dummy_vars,
           exclude_cols = exclude_cols,
-          quiet = TRUE # Suppress output for recursive calls to avoid noise
+          quiet = TRUE, # Suppress output for recursive calls to avoid noise
+          expand_ordered = expand_ordered
         )
         data[[i]] <- processed
         # Collect categorical vars metadata
@@ -4130,23 +4134,33 @@ preprocess_categorical_vars <- function(
 
         if (is.null(existing_metadata)) {
           if (is_ord) {
-            c_mat <- stats::contr.poly(length(levels))
-            if (ncol(c_mat) > 2) {
-              c_mat <- c_mat[, 1:2, drop = FALSE]
-            }
-            c_names <- colnames(c_mat)
-            c_names[c_names == ".L"] <- "L"
-            c_names[c_names == ".Q"] <- "Q"
-            c_names[c_names == ".C"] <- "C"
-            c_names <- gsub("\\^", "pow", c_names)
+            if (expand_ordered) {
+              c_mat <- stats::contr.poly(length(levels))
+              if (ncol(c_mat) > 2) {
+                c_mat <- c_mat[, 1:2, drop = FALSE]
+              }
+              c_names <- colnames(c_mat)
+              c_names[c_names == ".L"] <- "L"
+              c_names[c_names == ".Q"] <- "Q"
+              c_names[c_names == ".C"] <- "C"
+              c_names <- gsub("\\^", "pow", c_names)
 
-            categorical_vars[[col]] <- list(
-              levels = levels,
-              reference = "Polynomial Contrast",
-              dummies = paste0(col, "_", c_names),
-              type = "ordered",
-              contrasts = c_mat
-            )
+              categorical_vars[[col]] <- list(
+                levels = levels,
+                reference = "Polynomial Contrast",
+                dummies = paste0(col, "_", c_names),
+                type = "ordered",
+                contrasts = c_mat
+              )
+            } else {
+              # Default: Linear only (centered integers)
+              categorical_vars[[col]] <- list(
+                levels = levels,
+                reference = "Numeric (Centered)",
+                dummies = paste0(col, "_L"),
+                type = "ordered"
+              )
+            }
           } else {
             categorical_vars[[col]] <- list(
               levels = levels,
@@ -4156,8 +4170,8 @@ preprocess_categorical_vars <- function(
             )
           }
         } else {
-          # Update existing metadata if needed, eg hierarchical data where previous calls left it undefined contrasts
-          if (is_ord && is.null(existing_metadata$contrasts)) {
+          # Update existing metadata if needed
+          if (is_ord && is.null(existing_metadata$contrasts) && expand_ordered) {
             c_mat <- stats::contr.poly(length(levels))
             if (ncol(c_mat) > 2) {
               c_mat <- c_mat[, 1:2, drop = FALSE]
@@ -4172,6 +4186,10 @@ preprocess_categorical_vars <- function(
             categorical_vars[[col]]$dummies <- paste0(col, "_", c_names)
             categorical_vars[[col]]$type <- "ordered"
             categorical_vars[[col]]$contrasts <- c_mat
+          } else if (is_ord && is.null(existing_metadata$dummies) && !expand_ordered) {
+            categorical_vars[[col]]$reference <- "Numeric (Centered)"
+            categorical_vars[[col]]$dummies <- paste0(col, "_L")
+            categorical_vars[[col]]$type <- "ordered"
           }
         }
 
@@ -4190,9 +4208,15 @@ preprocess_categorical_vars <- function(
             ))
           }
           if (is_ord) {
-            c_mat <- categorical_vars[[col]]$contrasts
-            for (k in seq_along(dummies)) {
-              data[[dummies[k]]] <- c_mat[data[[col]], k]
+            if (expand_ordered) {
+              c_mat <- categorical_vars[[col]]$contrasts
+              for (k in seq_along(dummies)) {
+                data[[dummies[k]]] <- c_mat[data[[col]], k]
+              }
+            } else {
+              # Linear centered (dummy name is col_L)
+              raw_codes <- data[[col]]
+              data[[paste0(col, "_L")]] <- raw_codes - mean(raw_codes, na.rm = TRUE)
             }
           } else {
             for (k in 2:length(levels)) {
