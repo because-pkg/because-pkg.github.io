@@ -35,7 +35,7 @@
 - [`plot_coef()`](https://because-pkg.github.io/because/reference/plot_coef.md)
   : plot_coef
 - [`plot_coef(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/plot_coef.because.md)
-  : plot_coef
+  : Plot Path Coefficients (Caterpillar Plot)
 - [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
   : Plot DAG from Equations or Fitted Model
 - [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md)

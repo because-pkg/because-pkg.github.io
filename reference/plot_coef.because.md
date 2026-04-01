@@ -1,8 +1,11 @@
-# plot_coef
+# Plot Path Coefficients (Caterpillar Plot)
 
-Creates a caterpillar plot (point and whisker) of the path coefficients
-from a `because` model. This provides a complementary view to the DAG,
-showing the exact magnitudes and uncertainties of causal effects.
+Creates a 'caterpillar plot' (point and whisker) of all path
+coefficients from a `because` model. This visualization provides a
+precise statistical complement to the
+[`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
+overview, allowing for a side-by-side comparison of effect sizes and
+their Bayesian credibility intervals.
 
 ## Usage
 
@@ -12,7 +15,7 @@ plot_coef(
   object,
   type = "marginal",
   multinomial_probabilities = TRUE,
-  color_scheme = "directional",
+  color_scheme = "sig_only",
   ...
 )
 ```
@@ -27,26 +30,33 @@ plot_coef(
 
   Character; either `"marginal"` (default) or `"raw"`.
 
-  - `"marginal"`: Shows Average Marginal Effects (AME) on the response
-    scale.
+  - `"marginal"`: Shows **Average Marginal Effects (AME)**. For
+    categorical predictors, this represents the average shift in the
+    outcome (e.g. probability or counts) associated with a one-category
+    change. This is the recommended scale for comparing cross-model
+    impacts.
 
-  - `"raw"`: Shows the raw structural parameters (betas/rhos).
+  - `"raw"`: Shows the raw structural parameters (betas/rhos) from the
+    JAGS model. Useful for model diagnostics but harder to interpret on
+    the original data scale.
 
 - multinomial_probabilities:
 
   Logical; if `TRUE` (default), expands multinomial predictors into a
-  "bundle" of category-specific effects.
+  "bundle" of category-specific effects, matching the arcs in the DAG.
 
 - color_scheme:
 
   Character; color scheme for significance. Options:
 
-  - `"directional"` (default): Blue for positive significant, Red for
-    negative, Grey otherwise.
+  - `"sig_only"` (default): Discrete Black/Grey scheme. Significant
+    paths (where 95% CI excludes zero) are Black; non-significant are
+    Light Grey.
 
-  - `"sig_only"`: Black for significant, Grey for non-significant.
+  - `"directional"`: Switched to a directional Red/Blue/Grey scheme.
 
-  - `"monochrome"`: All black.
+  - `"monochrome"`: All effects are rendered in Black regardless of
+    significance.
 
 - ...:
 
@@ -54,4 +64,29 @@ plot_coef(
 
 ## Value
 
-A `ggplot` object.
+A `ggplot` object. Use standard `ggplot2` functions like `+ ggtitle()`
+or `+ theme()` to further customize the output.
+
+## Details
+
+The function automatically sorts coefficients by the **Response
+Variable**, effectively grouping all predictors for a given outcome
+together. This hierarchy makes it intuitive to read 'down' the plot to
+see what factors contribute most to a specific part of your causal
+system.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Fit a model
+fit <- because(list(Y ~ X + Z, X ~ Z), family = c(Y="binomial", X="gaussian"), data = dat)
+
+# Plot marginal effects for intuitive interpretation
+plot_coef(fit, type = "marginal")
+
+# Customizing the plot
+library(ggplot2)
+plot_coef(fit) + labs(title = "Causal Influence on Wildlife Tolerance")
+} # }
+```
