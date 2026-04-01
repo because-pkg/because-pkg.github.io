@@ -170,10 +170,10 @@ plot_coef.because <- function(
     plot_df$Path <- factor(plot_df$Path, levels = rev(unique(plot_df$Path)))
 
     color_map <- c(
-        "pos" = "#1f78b4",     # Blue
-        "neg" = "#e31a1c",     # Red
-        "sig" = "black",
-        "non-sig" = "#999999"  # Grey
+        "pos" = "#000000",     # Black
+        "neg" = "#000000",     # Black
+        "sig" = "#000000",     # Black
+        "non-sig" = "#bdbdbd"  # Light Grey
     )
 
     p <- ggplot2::ggplot(
