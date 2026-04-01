@@ -316,7 +316,7 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100, multino
 
              if (cat_info$type == "ordered") {
                c_mat    <- stats::contr.poly(K)
-               idx_plus <- pmin(curr_idx, K)
+               idx_plus <- pmin(curr_idx + 1, K)
                for (i in seq_along(cat_info$dummies)) {
                  d_name <- cat_info$dummies[i]
                  if (d_name %in% names(plus_data)) {
@@ -324,7 +324,7 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100, multino
                  }
                }
              } else {
-               idx_plus <- pmin(curr_idx, K)
+               idx_plus <- pmin(curr_idx + 1, K)
                for (i in 2:K) {
                  d_name <- paste0(f_var, "_", cat_info$levels[i])
                  if (d_name %in% names(plus_data)) {
