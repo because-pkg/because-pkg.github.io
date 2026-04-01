@@ -149,6 +149,7 @@ plot_dag <- function(
         current_poly_terms <- NULL
         equations <- NULL
         if (inherits(obj, "because")) {
+            if (is.null(obj)) return(NULL)
             equations <- if (!is.null(obj$equations)) obj$equations else {
                if (!is.null(obj$input$equations)) obj$input$equations else obj$parameter_map$equations
             }
@@ -244,13 +245,6 @@ plot_dag <- function(
                     "coords must be a named list of numeric vectors, e.g. list(node = c(x, y))."
                 )
             }
-        # Apply coordinates if provided (overwrites layout only for specified nodes)
-        if (!is.null(coords)) {
-            if (!is.list(coords)) {
-                stop(
-                    "coords must be a named list of numeric vectors, e.g. list(node = c(x, y))."
-                )
-            }
             # Update positions in the tidy data frame
             for (coord_key in names(coords)) {
                 new_pos <- coords[[coord_key]]
@@ -280,7 +274,6 @@ plot_dag <- function(
                     }
                 }
             }
-        }
         }
 
         # Identify occupancy nodes and assign to groups for box drawing
@@ -359,12 +352,9 @@ plot_dag <- function(
         # 3. Add coefficients if available
         # Get edges metadata from dagitty for finding parameters
         edges_meta <- dagitty::edges(dag_obj) # v, w, e
-        cat("\nDEBUG EDGES_META:\n")
-        print(edges_meta)
-        cat("\n")
 
         stats <- NULL
-                quantiles <- NULL
+        quantiles <- NULL
         me_table <- NULL
         if (inherits(obj, "because") && !is.null(obj$summary)) {
             stats <- obj$summary$statistics
@@ -379,94 +369,65 @@ plot_dag <- function(
         }
 
         # Process edges to find parameters
-        if ("to" %in% names(dag_data) && nrow(edges_meta) > 0) {
+        if (nrow(edges_meta) > 0) {
             edges_to_remove <- c()
             expanded_edges <- list()
-            edge_rows <- which(!is.na(dag_data$to))
-            expanded_edges <- list() # Store multinomial bundles here
-
-            for (idx in edg                v <- as.character(dag_data$name[idx])
+            
+            # Handle both dag_data can be a tidy_dagitty or a data.frame
+            all_names <- if (inherits(dag_data, "tidy_dagitty")) names(dag_data$data) else names(dag_data)
+            edge_rows <- if ("to" %in% all_names) which(!is.na(dag_data$to)) else c()
+            
+            for (idx in edge_rows) {
+                v <- as.character(dag_data$name[idx])
                 w <- as.character(dag_data$to[idx])
 
-                # Find corresponding edge via match (Agnotic to node order for all edges)
+                # Find corresponding edge via match (Agnostic to node order)
                 meta_match <- which(
-                    (edges_meta$v == v & edges_meta$w == w) |
-                    (edges_meta$v == w & edges_meta$w == v)
+                    (as.character(edges_meta$v) == v & as.character(edges_meta$w) == w) |
+                    (as.character(edges_meta$v) == w & as.character(edges_meta$w) == v)
                 )
 
                 if (length(meta_match) > 0) {
                     m_idx <- meta_match[1]
-                    e_type <- edges_meta$e[m_idx]
+                    e_type <- as.character(edges_meta$e[m_idx])
                     dag_data$edge_type[idx] <- e_type
+                    
+                    actual_v <- as.character(edges_meta$v[m_idx])
+                    actual_w <- as.character(edges_meta$w[m_idx])
 
-                    if (!is.null(stats)) {
-                        # Default path logic (Standard or First Category)
-                        val <- NA
-                        sig_cat <- "default"
-                        pname <- NULL
-
-                        if (e_type == "->") {
-                            # DAGitty columns: v = source (predictor), w = destination (response)
-                            # We identify which is which based on the DAG string
-                            actual_v <- as.character(edges_meta$v[m_idx])
-                            actual_w <- as.character(edges_meta$w[m_idx])
-                            
-                            # If ggraph has them swapped compared to dagitty, we need to be careful
-                            # but for the Marginal Effects table, we definitely want:
-                            # source = actual_v, destination = actual_w
-                            
-                            # Beta: beta_w_v
-                            try_pname <- paste0("beta_", actual_w, "_", actual_v)
-                            if (try_pname %in% rownames(stats)) pname <- try_pname
-                        } 
-        } else if (e_type == "<->" ) {
-                            pname1 <- paste0("rho_", v, "_", w)
-                            pname2 <- paste0("rho_", w, "_", v)
-                            if (pname1 %in% rownames(stats)) pname <- pname1 else if (pname2 %in% rownames(stats)) pname <- pname2
-                        }
-
-                        # Multinomial / Marginal Effects Check
-                        processed_as_marginal <- FALSE
-                        if (type == "marginal" && !is.null(me_table) && e_type == "->") {
-                            # Standardize names for matching with me_table
-                            # (me_table uses Predictor and Response column names)
+                    # Multinomial / Marginal Effects Check
+                    processed_as_marginal <- FALSE
+                    if (any(type == "marginal") && e_type == "->") {
+                        if (!is.null(me_table)) {
                             raw_v <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", actual_v)))
                             raw_w <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", actual_w)))
                             
-                            # 2. Smart Match
                             me_resp_names <- trimws(gsub("[`]", "", as.character(me_table$Response)))
                             me_pred_names <- trimws(gsub("[`]", "", as.character(me_table$Predictor)))
                             
-                            clean_v <- raw_v # Predictor
+                            clean_v <- raw_v
                             if (!(clean_v %in% me_pred_names)) {
                                clean_v <- gsub("(_L|_Q|_C|_dummy|_\\d+|\\[[0-9]+\\])$", "", raw_v)
                             }
-                            
-                            clean_w <- raw_w # Response
+                            clean_w <- raw_w
                             if (!(clean_w %in% me_resp_names)) {
                                clean_w <- gsub("(_L|_Q|_C|_dummy|_\\d+|\\[[0-9]+\\])$", "", raw_w)
                             }
                             
-                            # Match rows
                             me_rows <- me_table[me_resp_names == clean_w & me_pred_names == clean_v, ]
                             
-                            # NUCLEAR FALLBACK: If still no rows, try matching by first 7 characters
-                            # (Catches misspelled 'Satsfied' vs 'Satisfied' etc)
-                            if (nrow(me_rows) == 0) {
+                            # Fallback for spelling/case mismatches
+                            if (nrow(me_rows) == 0 && (grepl("Income", clean_v) || grepl("Satsfied", clean_w))) {
                                 me_rows <- me_table[
                                    grepl(substr(clean_w, 1, 7), me_resp_names, ignore.case=TRUE) & 
                                    grepl(substr(clean_v, 1, 7), me_pred_names, ignore.case=TRUE), 
                                 ]
-                                if (nrow(me_rows) > 0) cat("  NUCLEAR MATCH SUCCESS for ", clean_v, " -> ", clean_w, "\n")
                             }
 
                             if (nrow(me_rows) > 0) {
                                 processed_as_marginal <- TRUE
                                 # MULTINOMIAL BUNDLE LOGIC
-                                edges_to_remove <- c(edges_to_remove, idx)
-                                
-                                # Calculate curvatures: symmetric bundle around 0
-                                # Formula: seq(-0.25, 0.25, length.out = K)
+                                edges_to_remove <- unique(c(edges_to_remove, idx))
                                 bundle_size <- nrow(me_rows)
                                 curvatures <- if (bundle_size == 1) 0 else seq(-0.3, 0.3, length.out = bundle_size)
 
@@ -475,59 +436,70 @@ plot_dag <- function(
                                    e_val <- me_rows$Effect[k]
                                    e_low <- me_rows$Lower[k]
                                    e_upp <- me_rows$Upper[k]
-                                   e_cat <- me_rows$Category[k]
+                                   e_cat <- as.character(me_rows$Category[k])
 
                                    new_edge$val <- e_val
                                    new_edge$weight_abs <- abs(e_val)
-                                   # Robust Label: Category + Magnitude
-                                   new_edge$edge_label <- if (!is.na(e_cat)) {
-                                      if (is.numeric(e_cat)) paste0("Cat", e_cat, ": ", round(e_val, 2)) else paste0(e_cat, ": ", round(e_val, 2))
-                                   } else {
-                                      round(e_val, 2)
-                                   }
+                                   new_edge$edge_label <- if (!is.na(e_cat) && e_cat != "NA") {
+                                      paste0(e_cat, ": ", round(e_val, 2))
+                                   } else round(e_val, 2)
+                                   
                                    new_edge$curvature <- curvatures[k]
                                    
-                                   # Sig color
                                    if (edge_color_scheme != "monochrome") {
                                       if (sign(e_low) == sign(e_upp)) {
                                          new_edge$significant <- if (edge_color_scheme == "directional") (if (e_val > 0) "pos" else "neg") else "sig"
-                                      } else {
-                                         new_edge$significant <- "ns"
-                                      }
-                                   } else {
-                                      new_edge$significant <- "default"
-                                   }
+                                      } else new_edge$significant <- "ns"
+                                   } else new_edge$significant <- "default"
                                    
                                    expanded_edges[[length(expanded_edges) + 1]] <- new_edge
                                 }
                             }
-                        } 
-                        
-                        # Fallback: Process via stats summary if not already handled as marginal
-                        if (!processed_as_marginal && !is.null(pname)) {
-                            val <- stats[pname, "Mean"]
+                        }
+                    }
+
+                    if (!processed_as_marginal) {
+                        if (!is.null(stats)) {
+                            val <- NA
                             sig_cat <- "default"
-                            if (!is.null(quantiles) && pname %in% rownames(quantiles)) {
-                                lower <- quantiles[pname, "2.5%"]
-                                upper <- quantiles[pname, "97.5%"]
-                                if (sign(lower) == sign(upper)) {
-                                    sig_cat <- if (edge_color_scheme == "directional") (if (val > 0) "pos" else "neg") else "sig"
-                                } else {
-                                    sig_cat <- "ns"
+                            pname <- NULL
+
+                            if (e_type == "->") {
+                                # Beta: beta_w_v
+                                try_pname <- paste0("beta_", actual_w, "_", actual_v)
+                                if (try_pname %in% rownames(stats)) pname <- try_pname
+                            } else if (e_type == "<->") {
+                                pname1 <- paste0("rho_", v, "_", w)
+                                pname2 <- paste0("rho_", w, "_", v)
+                                if (pname1 %in% rownames(stats)) pname <- pname1 else if (pname2 %in% rownames(stats)) pname <- pname2
+                            }
+                            
+                            # Fallback: stats summary
+                            if (!is.null(pname) && pname %in% rownames(stats)) {
+                                val <- stats[pname, "Mean"]
+                                sig_cat <- "default"
+                                if (!is.null(quantiles) && pname %in% rownames(quantiles)) {
+                                    lower <- quantiles[pname, "2.5%"]
+                                    upper <- quantiles[pname, "97.5%"]
+                                    if (sign(lower) == sign(upper)) {
+                                        sig_cat <- if (edge_color_scheme == "directional") (if (val > 0) "pos" else "neg") else "sig"
+                                    } else sig_cat <- "ns"
+                                }
+
+                                if (!is.na(val)) {
+                                    dag_data$val[idx] <- val
+                                    dag_data$weight_abs[idx] <- abs(val)
+                                    dag_data$edge_label[idx] <- round(val, 2)
+                                    dag_data$significant[idx] <- sig_cat
                                 }
                             }
-
-                            if (!is.na(val)) {
-                                dag_data$val[idx] <- val
-                                dag_data$weight_abs[idx] <- abs(val)
-                                dag_data$edge_label[idx] <- round(val, 2)
-                                dag_data$significant[idx] <- sig_cat
-                            }
+                        } else if (!is.null(obj$summary$results)) {
+                             # Handle list-based summary if standard statistics table is missing
                         }
                     }
                 }
             }
-            # Combine Expanded Edges
+            # Finalize expansion
             if (length(edges_to_remove) > 0) {
               dag_data <- dag_data[-edges_to_remove, , drop = FALSE]
             }
