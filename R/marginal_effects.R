@@ -223,7 +223,17 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100, multino
     
     all_pm_resp <- pm[pm$response == resp, ]
     
+    # Identify all focal variables (base names)
+    # We strip suffixes like _L, _dummy, [1], or _CategoryName
     focal_vars <- unique(sapply(resp_paths$predictor, function(p) {
+        # First try against known categorical dummies to avoid over-stripping
+        match_cat <- NULL
+        for (cv in names(fit$categorical_vars)) {
+           if (startsWith(p, paste0(cv, "_"))) {
+              return(cv)
+           }
+        }
+        # Fallback to general regex stripping
         gsub("(_L|_Q|_C|_dummy|_\\d+|\\[\\d+\\])$", "", p)
     }))
 
@@ -361,16 +371,31 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100, multino
            }
          } else {
            me_samples <- rowMeans(ey_plus - ey_base, na.rm = TRUE)
-           results_list[[length(results_list) + 1]] <- data.frame(
-             Response         = resp,
-             Predictor        = f_var,
-             Category         = NA,
-             Effect           = mean(me_samples, na.rm = TRUE),
-             Lower            = quantile(me_samples, (1 - prob) / 2, na.rm = TRUE),
-             Upper            = quantile(me_samples, 1 - (1 - prob) / 2, na.rm = TRUE),
-             Family           = dist,
-             stringsAsFactors = FALSE
-           )
+          
+          # Check if this specific focal_var was actually a multinomial dummy
+          # (e.g. IncomeActivities_Crop)
+          final_predictor <- f_var
+          final_category  <- NA
+          
+          for (cv in names(fit$categorical_vars)) {
+             cv_info <- fit$categorical_vars[[cv]]
+             if (cv_info$type != "ordered" && startsWith(f_var, paste0(cv, "_"))) {
+                final_predictor <- cv
+                final_category  <- sub(paste0("^", cv, "_"), "", f_var)
+                break
+             }
+          }
+
+          results_list[[length(results_list) + 1]] <- data.frame(
+            Response         = resp,
+            Predictor        = final_predictor,
+            Category         = final_category,
+            Effect           = mean(me_samples, na.rm = TRUE),
+            Lower            = quantile(me_samples, (1 - prob) / 2, na.rm = TRUE),
+            Upper            = quantile(me_samples, 1 - (1 - prob) / 2, na.rm = TRUE),
+            Family           = dist,
+            stringsAsFactors = FALSE
+          )
          }
        }
     }

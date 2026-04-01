@@ -2,13 +2,13 @@
 % Please edit documentation in R/plot_coef.R
 \name{plot_coef.because}
 \alias{plot_coef.because}
-\title{plot_coef}
+\title{Plot Path Coefficients (Caterpillar Plot)}
 \usage{
 \method{plot_coef}{because}(
   object,
   type = "marginal",
   multinomial_probabilities = TRUE,
-  color_scheme = "directional",
+  color_scheme = "sig_only",
   ...
 )
 }
@@ -17,27 +17,54 @@
 
 \item{type}{Character; either \code{"marginal"} (default) or \code{"raw"}.
 \itemize{
-\item \code{"marginal"}: Shows Average Marginal Effects (AME) on the response scale.
-\item \code{"raw"}: Shows the raw structural parameters (betas/rhos).
+\item \code{"marginal"}: Shows \strong{Average Marginal Effects (AME)}. For categorical
+predictors, this represents the average shift in the outcome (e.g. probability or counts)
+associated with a one-category change. This is the recommended scale for
+comparing cross-model impacts.
+\item \code{"raw"}: Shows the raw structural parameters (betas/rhos) from the JAGS model.
+Useful for model diagnostics but harder to interpret on the original data scale.
 }}
 
 \item{multinomial_probabilities}{Logical; if \code{TRUE} (default), expands
-multinomial predictors into a "bundle" of category-specific effects.}
+multinomial predictors into a "bundle" of category-specific effects,
+matching the arcs in the DAG.}
 
 \item{color_scheme}{Character; color scheme for significance. Options:
 \itemize{
-\item \code{"directional"} (default): Blue for positive significant, Red for negative, Grey otherwise.
-\item \code{"sig_only"}: Black for significant, Grey for non-significant.
-\item \code{"monochrome"}: All black.
+\item \code{"sig_only"} (default): Discrete Black/Grey scheme. Significant paths
+(where 95\% CI excludes zero) are Black; non-significant are Light Grey.
+\item \code{"directional"}: Switched to a directional Red/Blue/Grey scheme.
+\item \code{"monochrome"}: All effects are rendered in Black regardless of significance.
 }}
 
 \item{...}{Additional arguments.}
 }
 \value{
-A \code{ggplot} object.
+A \code{ggplot} object. Use standard \code{ggplot2} functions like \code{+ ggtitle()}
+or \code{+ theme()} to further customize the output.
 }
 \description{
-Creates a caterpillar plot (point and whisker) of the path coefficients
-from a \code{because} model. This provides a complementary view to the DAG,
-showing the exact magnitudes and uncertainties of causal effects.
+Creates a 'caterpillar plot' (point and whisker) of all path coefficients
+from a \code{because} model. This visualization provides a precise statistical
+complement to the \code{plot_dag()} overview, allowing for a side-by-side
+comparison of effect sizes and their Bayesian credibility intervals.
+}
+\details{
+The function automatically sorts coefficients by the \strong{Response Variable},
+effectively grouping all predictors for a given outcome together. This
+hierarchy makes it intuitive to read 'down' the plot to see what factors
+contribute most to a specific part of your causal system.
+}
+\examples{
+\dontrun{
+# Fit a model
+fit <- because(list(Y ~ X + Z, X ~ Z), family = c(Y="binomial", X="gaussian"), data = dat)
+
+# Plot marginal effects for intuitive interpretation
+plot_coef(fit, type = "marginal")
+
+# Customizing the plot
+library(ggplot2)
+plot_coef(fit) + labs(title = "Causal Influence on Wildlife Tolerance")
+}
 }
