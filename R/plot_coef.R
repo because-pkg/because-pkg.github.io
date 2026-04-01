@@ -66,10 +66,11 @@ plot_coef.because <- function(
         if (is.null(object$parameter_map)) {
             stop("Marginal effects require a parameter map. Did you fit the model with because()?")
         }
-        # Use a higher sample size for the coefficient plot than for the DAG (better precision)
+        # Use high precision for all marginal plots
+        set.seed(12345)
         me_table <- marginal_effects(
             object, 
-            samples = 250, 
+            samples = 1000, 
             multinomial_probabilities = multinomial_probabilities
         )
     } else {
@@ -94,9 +95,6 @@ plot_coef.because <- function(
     )
 
     if (type == "marginal") {
-        # High-precision marginal effects (synchronized with plot_dag)
-        me_table <- marginal_effects(object, samples = 500, multinomial_probabilities = TRUE)
-        
         # Process Marginal Effects Table
         for (i in seq_len(nrow(me_table))) {
             resp <- as.character(me_table$Response[i])

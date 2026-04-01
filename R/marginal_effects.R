@@ -9,12 +9,12 @@
 #' @param at Character or list. If NULL (default), calculates Average Marginal Effects (AME).
 #'   If "mean", calculates Marginal Effects at the Mean (MEM).
 #' @param prob Numeric; probability mass for the credible interval (default 0.95).
-#' @param samples Integer. Number of posterior samples to use (default 100 for speed).
+#' @param samples Integer. Number of posterior samples to use (default 1000 for precision and consistency across plots).
 #' @param multinomial_probabilities Logical. If TRUE, returns granular probability shifts for each category
 #'   of multinomial (unordered) responses instead of a single expected value shift. Default FALSE.
 #' @return A data frame with marginal effects per path.
 #' @export
-marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100, multinomial_probabilities = FALSE) {
+marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multinomial_probabilities = FALSE) {
   if (is.null(fit$parameter_map)) {
     stop("Fit object does not contain a parameter_map. Please refit the model.")
   }

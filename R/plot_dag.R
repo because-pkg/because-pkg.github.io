@@ -361,9 +361,9 @@ plot_dag <- function(
             quantiles <- obj$summary$quantiles
             
             if (type == "marginal") {
-               # Compute marginal effects (subsampled for speed)
+               # Compute marginal effects (High samples for consistency with plot_coef)
                if (!is.null(obj$parameter_map)) {
-                  me_table <- marginal_effects(obj, samples = 500, multinomial_probabilities = multinomial_probabilities)
+                  me_table <- marginal_effects(obj, samples = 1000, multinomial_probabilities = multinomial_probabilities)
                }
             }
         }
