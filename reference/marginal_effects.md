@@ -9,7 +9,13 @@ response).
 ## Usage
 
 ``` r
-marginal_effects(fit, at = NULL, prob = 0.95, samples = 100)
+marginal_effects(
+  fit,
+  at = NULL,
+  prob = 0.95,
+  samples = 100,
+  multinomial_probabilities = FALSE
+)
 ```
 
 ## Arguments
@@ -31,6 +37,12 @@ marginal_effects(fit, at = NULL, prob = 0.95, samples = 100)
 - samples:
 
   Integer. Number of posterior samples to use (default 100 for speed).
+
+- multinomial_probabilities:
+
+  Logical. If TRUE, returns granular probability shifts for each
+  category of multinomial (unordered) responses instead of a single
+  expected value shift. Default FALSE.
 
 ## Value
 
