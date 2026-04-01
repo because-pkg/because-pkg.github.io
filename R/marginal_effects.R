@@ -253,83 +253,125 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 100, multino
 
     # 4. Calculate Marginal Effect for each focal variable
     for (f_var in focal_vars) {
-       # Base Prediction
-       ey_base <- predict_ey(samples_mat, base_data, dist, resp, all_pm_resp, multinomial_probabilities)
-       
-       # Plus One Prediction
-       plus_data <- base_data
-       if (f_var %in% names(plus_data)) {
-          if (is.numeric(plus_data[[f_var]])) {
-             plus_data[[f_var]] <- plus_data[[f_var]] + 1
-          }
-          
-          if (!is.null(fit$poly_terms)) {
-             for (pt in fit$poly_terms) {
-                if (pt$base_var == f_var) {
-                   plus_data[[pt$internal_name]] <- plus_data[[f_var]]^pt$power
-                }
-             }
-          }
-          
-          if (!is.null(fit$categorical_vars) && f_var %in% names(fit$categorical_vars)) {
-             cat_info <- fit$categorical_vars[[f_var]]
-             K <- length(cat_info$levels)
-             curr_idx <- as.integer(plus_data[[f_var]])
-             
-             if (cat_info$type == "ordered") {
-                c_mat <- stats::contr.poly(K)
-                idx_plus <- pmin(curr_idx, K) 
-                for (i in seq_along(cat_info$dummies)) {
-                   d_name <- cat_info$dummies[i]
-                   if (d_name %in% names(plus_data)) {
-                      plus_data[[d_name]] <- c_mat[idx_plus, i]
-                   }
-                }
-             } else {
-                idx_plus <- pmin(curr_idx, K)
-                for (i in 2:K) {
-                   d_name <- paste0(f_var, "_", cat_info$levels[i])
-                   if (d_name %in% names(plus_data)) {
-                      plus_data[[d_name]] <- as.numeric(idx_plus == i)
-                   }
-                }
-             }
-          }
-       }
-       
-       ey_plus <- predict_ey(samples_mat, plus_data, dist, resp, all_pm_resp, multinomial_probabilities)
-       
-       # Aggregate Results
-       if (dist == "multinomial" && multinomial_probabilities) {
-         K <- dim(ey_base)[3]
-         resp_cat_info <- fit$categorical_vars[[resp]]
-         resp_levels <- if(!is.null(resp_cat_info)) resp_cat_info$levels else paste0("Level", 1:K)
-         
-         for (k in 1:K) {
-           me_samples_k <- rowMeans(ey_plus[,,k] - ey_base[,,k], na.rm=TRUE)
+       # Check if the predictor is an unordered multinomial (factor) variable
+       pred_cat_info <- fit$categorical_vars[[f_var]]
+       pred_is_multinomial <- !is.null(pred_cat_info) && pred_cat_info$type != "ordered"
+
+       if (pred_is_multinomial && multinomial_probabilities) {
+         # --- Multinomial PREDICTOR: compare each category k vs. reference (k=1) ---
+         K_pred        <- length(pred_cat_info$levels)
+         pred_levels   <- pred_cat_info$levels
+
+         # Build the reference (category 1) data for all observations
+         ref_data <- base_data
+         for (i in 2:K_pred) {
+           d_name <- paste0(f_var, "_", pred_cat_info$levels[i])
+           if (d_name %in% names(ref_data)) ref_data[[d_name]] <- 0L
+         }
+         ey_ref <- predict_ey(samples_mat, ref_data, dist, resp, all_pm_resp, FALSE)
+
+         for (k in 2:K_pred) {
+           # Set data to category k
+           cat_data <- ref_data
+           d_name   <- paste0(f_var, "_", pred_cat_info$levels[k])
+           if (d_name %in% names(cat_data)) cat_data[[d_name]] <- 1L
+
+           ey_cat      <- predict_ey(samples_mat, cat_data, dist, resp, all_pm_resp, FALSE)
+           me_samples  <- rowMeans(ey_cat - ey_ref, na.rm = TRUE)
+
            results_list[[length(results_list) + 1]] <- data.frame(
-             Response = resp,
-             Predictor = f_var,
-             Category = resp_levels[k],
-             Effect = mean(me_samples_k, na.rm=TRUE),
-             Lower = quantile(me_samples_k, (1 - prob)/2, na.rm=TRUE),
-             Upper = quantile(me_samples_k, 1 - (1 - prob)/2, na.rm=TRUE),
-             Family = dist,
+             Response         = resp,
+             Predictor        = f_var,
+             Category         = pred_levels[k],
+             Effect           = mean(me_samples, na.rm = TRUE),
+             Lower            = quantile(me_samples, (1 - prob) / 2, na.rm = TRUE),
+             Upper            = quantile(me_samples, 1 - (1 - prob) / 2, na.rm = TRUE),
+             Family           = dist,
              stringsAsFactors = FALSE
            )
          }
+
        } else {
-         me_samples <- rowMeans(ey_plus - ey_base, na.rm=TRUE)
-         results_list[[length(results_list) + 1]] <- data.frame(
-           Response = resp,
-           Predictor = f_var,
-           Category = NA,
-           Effect = mean(me_samples, na.rm=TRUE),
-           Lower = quantile(me_samples, (1 - prob)/2, na.rm=TRUE),
-           Upper = quantile(me_samples, 1 - (1 - prob)/2, na.rm=TRUE),
-           Family = dist,
-           stringsAsFactors = FALSE
-         )
+         # --- Standard predictor: base prediction vs. +1 increment ---
+         ey_base <- predict_ey(samples_mat, base_data, dist, resp, all_pm_resp, multinomial_probabilities)
+
+         plus_data <- base_data
+         if (f_var %in% names(plus_data)) {
+           if (is.numeric(plus_data[[f_var]])) {
+             plus_data[[f_var]] <- plus_data[[f_var]] + 1
+           }
+
+           if (!is.null(fit$poly_terms)) {
+             for (pt in fit$poly_terms) {
+               if (pt$base_var == f_var) {
+                 plus_data[[pt$internal_name]] <- plus_data[[f_var]]^pt$power
+               }
+             }
+           }
+
+           if (!is.null(fit$categorical_vars) && f_var %in% names(fit$categorical_vars)) {
+             cat_info <- fit$categorical_vars[[f_var]]
+             K <- length(cat_info$levels)
+             curr_idx <- as.integer(plus_data[[f_var]])
+
+             if (cat_info$type == "ordered") {
+               c_mat    <- stats::contr.poly(K)
+               idx_plus <- pmin(curr_idx, K)
+               for (i in seq_along(cat_info$dummies)) {
+                 d_name <- cat_info$dummies[i]
+                 if (d_name %in% names(plus_data)) {
+                   plus_data[[d_name]] <- c_mat[idx_plus, i]
+                 }
+               }
+             } else {
+               idx_plus <- pmin(curr_idx, K)
+               for (i in 2:K) {
+                 d_name <- paste0(f_var, "_", cat_info$levels[i])
+                 if (d_name %in% names(plus_data)) {
+                   plus_data[[d_name]] <- as.numeric(idx_plus == i)
+                 }
+               }
+             }
+           }
+         }
+
+         ey_plus <- predict_ey(samples_mat, plus_data, dist, resp, all_pm_resp, multinomial_probabilities)
+
+         # Aggregate Results
+         if (dist == "multinomial" && multinomial_probabilities) {
+           K             <- dim(ey_base)[3]
+           resp_cat_info <- fit$categorical_vars[[resp]]
+           resp_levels   <- if (!is.null(resp_cat_info)) resp_cat_info$levels else paste0("Level", 1:K)
+
+           for (k in 1:6) { # Note: Hardcoded limits like this are risky, but K was 1:K previously. Fixed below.
+           } # Placeholder fix as I reconstruct
+           
+           for (k in 1:K) {
+             me_samples_k <- rowMeans(ey_plus[,,k] - ey_base[,,k], na.rm = TRUE)
+             results_list[[length(results_list) + 1]] <- data.frame(
+               Response         = resp,
+               Predictor        = f_var,
+               Category         = resp_levels[k],
+               Effect           = mean(me_samples_k, na.rm = TRUE),
+               Lower            = quantile(me_samples_k, (1 - prob) / 2, na.rm = TRUE),
+               Upper            = quantile(me_samples_k, 1 - (1 - prob) / 2, na.rm = TRUE),
+               Family           = dist,
+               stringsAsFactors = FALSE
+             )
+           }
+         } else {
+           me_samples <- rowMeans(ey_plus - ey_base, na.rm = TRUE)
+           results_list[[length(results_list) + 1]] <- data.frame(
+             Response         = resp,
+             Predictor        = f_var,
+             Category         = NA,
+             Effect           = mean(me_samples, na.rm = TRUE),
+             Lower            = quantile(me_samples, (1 - prob) / 2, na.rm = TRUE),
+             Upper            = quantile(me_samples, 1 - (1 - prob) / 2, na.rm = TRUE),
+             Family           = dist,
+             stringsAsFactors = FALSE
+           )
+         }
        }
     }
   }

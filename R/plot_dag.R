@@ -440,7 +440,8 @@ plot_dag <- function(
 
                                       new_edge$val <- e_val
                                       new_edge$weight_abs <- abs(e_val)
-                                      new_edge$edge_label <- if (!is.na(e_cat)) as.character(e_cat) else round(e_val, 2)
+                                      # Robust Label: Category + Magnitude
+                                      new_edge$edge_label <- if (!is.na(e_cat)) paste0(e_cat, ": ", round(e_val, 2)) else round(e_val, 2)
                                       new_edge$curvature <- curvatures[k]
                                       
                                       # Sig color
@@ -509,15 +510,13 @@ plot_dag <- function(
         dag_data$edge_type[
             is.na(dag_data$edge_type) & !is.na(dag_data$to)
         ] <- "->"
-        # Default significance to "default" (black)
+        # Ensure factor levels for significance (Re-apply after adding bundles)
         if (!"significant" %in% names(dag_data)) {
             dag_data$significant <- "default"
         }
         dag_data$significant[is.na(dag_data$significant)] <- "default"
-
-        # Ensure factor levels
         dag_data$significant <- factor(
-            dag_data$significant,
+            as.character(dag_data$significant),
             levels = c("pos", "neg", "sig", "ns", "default")
         )
 
@@ -630,7 +629,35 @@ plot_dag <- function(
         p <- p + ggplot2::facet_wrap(~model_label)
     }
 
-    # Edges Layer: Split into Directed and Bidirected
+    # --- Node Background Layer (drawn BEFORE edges so arrowheads show on top) ---
+    # We draw filled squares/circles here so the arrow shaft is hidden inside the node,
+    # but the arrowhead (at xend) is drawn ON TOP of this fill by the edge layers.
+    node_data <- combined_dag_data |>
+        dplyr::filter(!is.na(x) & !is.na(y)) |>
+        dplyr::distinct(name, .keep_all = TRUE)
+
+    p <- p +
+        ggplot2::geom_point(
+            data = node_data,
+            ggplot2::aes(x = x, y = y, shape = type, fill = type),
+            size   = uniform_node_size,
+            color  = node_color,
+            stroke = node_stroke,
+            inherit.aes = FALSE
+        ) +
+        ggplot2::scale_shape_manual(
+            values = c(Observed = 22, Latent = 21, Interaction = 23),
+            guide = "none"
+        ) +
+        ggplot2::scale_fill_manual(
+            values = c(
+                Observed    = node_fill,
+                Latent      = node_fill,
+                Interaction = "grey85"
+            ),
+            guide = "none"
+        )
+
     if ("edge_type" %in% names(combined_dag_data)) {
         # Normalize bidirected edges to curve AWAY from the graph center.
         # Heuristic:
@@ -704,75 +731,94 @@ plot_dag <- function(
             }
         }
 
-        # Deduplicate bidirected edges to prevent double plotting
-        combined_dag_data <- dplyr::mutate(
-            combined_dag_data,
-            edge_id = dplyr::case_when(
-                edge_type == "<->" ~ paste(
-                    pmin(name, to), # Use sorting for ID just to be robust/safe
+        # Handle Bidirected Edges (Deduplicate A<->B vs B<->A)
+        bidirected_edges <- combined_dag_data |>
+            dplyr::filter(edge_type == "<->") |>
+            dplyr::mutate(
+                edge_id = paste(
+                    pmin(name, to),
                     pmax(name, to),
                     sep = "_"
-                ),
-                TRUE ~ paste(name, to, sep = "_")
-            )
-        )
-        combined_dag_data <- combined_dag_data |>
-            dplyr::arrange(edge_id, is.na(val)) |> # Non-NA values first for each edge_id
-            dplyr::distinct(edge_id, edge_type, .keep_all = TRUE) |>
+                )
+            ) |>
+            dplyr::distinct(edge_id, .keep_all = TRUE) |>
             dplyr::select(-edge_id)
+        
+        # Handle Directed Edges (Preserve All for Multi-Category Bundles)
+        directed_edges <- combined_dag_data |>
+            dplyr::filter(edge_type == "->")
 
-        # 1. Directed Edges (Solid)
-        p <- p +
-            ggdag::geom_dag_edges_arc(
-                data = function(x) dplyr::filter(x, edge_type == "->"),
-                mapping = ggplot2::aes(
-                    edge_width = weight_abs,
-                    edge_colour = significant, # Map color to significance category
-                    label = edge_label,
-                    curvature = curvature # Bundle Arcs
-                ),
-                angle_calc = "along",
-                label_dodge = ggplot2::unit(3, "mm"),
-                start_cap = cap_size,
-                end_cap = cap_size
+        combined_dag_data <- dplyr::bind_rows(directed_edges, bidirected_edges)
+
+        # 1. Directed Edges - using geom_dag_edges_arc which supports start/end caps.
+        # By slicing data per curvature BEFORE building each layer, we avoid the
+        # R lazy-eval bug where all layers would use the last curvature value.
+        dir_edges <- directed_edges |>
+            dplyr::mutate(
+                dx    = xend - x,
+                dy    = yend - y,
+                mid_x = (x + xend) / 2 - curvature * dy / 2,
+                mid_y = (y + yend) / 2 + curvature * dx / 2
             )
 
-        # 2. Bidirected Edges (Solid Grey, Curved, Double Arrow)
-        p <- p +
-            ggdag::geom_dag_edges_arc(
-                data = function(x) dplyr::filter(x, edge_type == "<->"),
-                mapping = ggplot2::aes(
-                    label = edge_label # Keep label
-                ),
-                edge_width = 0.3, # Constant thin width
-                curvature = 0.5, # Sharper curve to avoid corners/overlap
-                edge_colour = "grey60", # Fixed grey color
-                edge_linetype = "solid", # Continuous line
-                angle_calc = "along",
-                label_dodge = ggplot2::unit(3, "mm"),
-                arrow = ggplot2::arrow(
-                    length = ggplot2::unit(2.5, "mm"),
-                    type = "closed",
-                    ends = "both"
-                ),
-                start_cap = cap_size,
-                end_cap = cap_size
-            )
+        if (nrow(dir_edges) > 0) {
+            unique_curvatures <- sort(unique(dir_edges$curvature))
+            edge_layers <- lapply(seq_along(unique_curvatures), function(i) {
+                cv <- unique_curvatures[i]
+                ld <- dir_edges[abs(dir_edges$curvature - cv) < 1e-6, , drop = FALSE]
+                force(cv); force(ld)
+                ggdag::geom_dag_edges_arc(
+                    data       = ld,
+                    mapping    = ggplot2::aes(
+                        edge_width  = weight_abs,
+                        edge_colour = significant,
+                        label       = edge_label
+                    ),
+                    curvature   = cv,
+                    angle_calc  = "along",
+                    label_dodge = ggplot2::unit(3, "mm"),
+                    start_cap   = cap_size,
+                    end_cap     = cap_size
+                )
+            })
+            p <- p + edge_layers
+        }
 
-        # Scales
+        # 2. Bidirected Edges (grey, double arrow)
+        if (nrow(bidirected_edges) > 0) {
+            p <- p +
+                ggdag::geom_dag_edges_arc(
+                    data        = bidirected_edges,
+                    mapping     = ggplot2::aes(label = edge_label),
+                    curvature   = 0.5,
+                    edge_width  = 0.3,
+                    edge_colour = "grey60",
+                    angle_calc  = "along",
+                    label_dodge = ggplot2::unit(3, "mm"),
+                    arrow       = ggplot2::arrow(
+                        length = ggplot2::unit(2.5, "mm"),
+                        type   = "closed",
+                        ends   = "both"
+                    ),
+                    start_cap   = cap_size,
+                    end_cap     = cap_size
+                )
+        }
+
+        # Scales (ggraph edge aesthetics)
         p <- p +
-            ggraph::scale_edge_width_continuous(
-                range = edge_width_range,
-                guide = "none"
-            ) +
             ggraph::scale_edge_colour_manual(
                 values = c(
-                    "pos" = "firebrick", # Red for positive sig
-                    "neg" = "dodgerblue", # Blue for negative sig
-                    "sig" = "black", # Black for significant (no direction)
-                    "ns" = "grey70", # Grey for non-sig
-                    "default" = "black" # Black for structural/none
+                    "pos"     = "firebrick",
+                    "neg"     = "dodgerblue",
+                    "sig"     = "black",
+                    "ns"      = "grey70",
+                    "default" = "black"
                 ),
+                guide = "none"
+            ) +
+            ggraph::scale_edge_width_continuous(
+                range = edge_width_range,
                 guide = "none"
             )
     } else {
@@ -783,33 +829,14 @@ plot_dag <- function(
             )
     }
 
-    # Nodes Layer (Final, Single Layer)
-    # Interaction nodes (Attia et al. 2022) get a distinct diamond shape + grey fill
+    # --- Node Text Labels (Final Top Layer) ---
     p <- p +
-        ggplot2::geom_point(
-            ggplot2::aes(shape = type, fill = type),
-            size = uniform_node_size,
-            color = node_color,
-            stroke = node_stroke
-        ) +
         ggdag::geom_dag_text(
-            ggplot2::aes(label = label_display),
-            size = text_size,
-            colour = "black"
-        ) +
-        # Observed = square (22), Latent = circle (21), Interaction = diamond (23)
-        ggplot2::scale_shape_manual(
-            values = c(Observed = 22, Latent = 21, Interaction = 23),
-            guide = "none"
-        ) +
-        # Interaction nodes get a light grey fill to distinguish them
-        ggplot2::scale_fill_manual(
-            values = c(
-                Observed = node_fill,
-                Latent = node_fill,
-                Interaction = "grey85"
-            ),
-            guide = "none"
+            data = node_data,
+            ggplot2::aes(x = x, y = y, label = label_display),
+            size   = text_size,
+            colour = "black",
+            inherit.aes = FALSE
         )
 
     return(p)
