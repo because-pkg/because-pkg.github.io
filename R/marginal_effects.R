@@ -269,7 +269,7 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
        pred_cat_info <- fit$categorical_vars[[f_var]]
        pred_is_multinomial <- !is.null(pred_cat_info) && pred_cat_info$type != "ordered"
 
-       if (pred_is_multinomial && multinomial_probabilities) {
+       if (pred_is_multinomial) {
          # --- Multinomial PREDICTOR: compare each category k vs. reference (k=1) ---
          K_pred        <- length(pred_cat_info$levels)
          pred_levels   <- pred_cat_info$levels
@@ -280,7 +280,7 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
            d_name <- paste0(f_var, "_", pred_cat_info$levels[i])
            if (d_name %in% names(ref_data)) ref_data[[d_name]] <- 0L
          }
-         ey_ref <- predict_ey(samples_mat, ref_data, dist, resp, all_pm_resp, FALSE)
+         ey_ref <- predict_ey(samples_mat, ref_data, dist, resp, all_pm_resp, multinomial_probabilities)
 
          for (k in 2:K_pred) {
            # Set data to category k
@@ -288,19 +288,39 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
            d_name   <- paste0(f_var, "_", pred_cat_info$levels[k])
            if (d_name %in% names(cat_data)) cat_data[[d_name]] <- 1L
 
-           ey_cat      <- predict_ey(samples_mat, cat_data, dist, resp, all_pm_resp, FALSE)
-           me_samples  <- rowMeans(ey_cat - ey_ref, na.rm = TRUE)
-
-           results_list[[length(results_list) + 1]] <- data.frame(
-             Response         = resp,
-             Predictor        = f_var,
-             Category         = pred_levels[k],
-             Effect           = mean(me_samples, na.rm = TRUE),
-             Lower            = quantile(me_samples, (1 - prob) / 2, na.rm = TRUE),
-             Upper            = quantile(me_samples, 1 - (1 - prob) / 2, na.rm = TRUE),
-             Family           = dist,
-             stringsAsFactors = FALSE
-           )
+           ey_cat      <- predict_ey(samples_mat, cat_data, dist, resp, all_pm_resp, multinomial_probabilities)
+           
+           if (dist == "multinomial" && multinomial_probabilities) {
+               K_resp <- dim(ey_ref)[3]
+               resp_cat_info <- fit$categorical_vars[[resp]]
+               resp_levels <- if (!is.null(resp_cat_info)) resp_cat_info$levels else paste0("Level", 1:K_resp)
+               
+               for (r_k in 1:K_resp) {
+                   me_samples_k <- rowMeans(ey_cat[,,r_k] - ey_ref[,,r_k], na.rm = TRUE)
+                   results_list[[length(results_list) + 1]] <- data.frame(
+                     Response         = resp,
+                     Predictor        = f_var,
+                     Category         = paste0(pred_levels[k], " -> ", resp_levels[r_k]),
+                     Effect           = mean(me_samples_k, na.rm = TRUE),
+                     Lower            = quantile(me_samples_k, (1 - prob) / 2, na.rm = TRUE),
+                     Upper            = quantile(me_samples_k, 1 - (1 - prob) / 2, na.rm = TRUE),
+                     Family           = dist,
+                     stringsAsFactors = FALSE
+                   )
+               }
+           } else {
+               me_samples  <- rowMeans(ey_cat - ey_ref, na.rm = TRUE)
+               results_list[[length(results_list) + 1]] <- data.frame(
+                 Response         = resp,
+                 Predictor        = f_var,
+                 Category         = pred_levels[k],
+                 Effect           = mean(me_samples, na.rm = TRUE),
+                 Lower            = quantile(me_samples, (1 - prob) / 2, na.rm = TRUE),
+                 Upper            = quantile(me_samples, 1 - (1 - prob) / 2, na.rm = TRUE),
+                 Family           = dist,
+                 stringsAsFactors = FALSE
+               )
+           }
          }
 
        } else {
@@ -355,9 +375,6 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
            resp_cat_info <- fit$categorical_vars[[resp]]
            resp_levels   <- if (!is.null(resp_cat_info)) resp_cat_info$levels else paste0("Level", 1:K)
 
-           for (k in 1:6) { # Note: Hardcoded limits like this are risky, but K was 1:K previously. Fixed below.
-           } # Placeholder fix as I reconstruct
-           
            for (k in 1:K) {
              me_samples_k <- rowMeans(ey_plus[,,k] - ey_base[,,k], na.rm = TRUE)
              results_list[[length(results_list) + 1]] <- data.frame(
