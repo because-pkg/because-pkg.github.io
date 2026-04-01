@@ -9,7 +9,8 @@ preprocess_categorical_vars(
   target_vars = NULL,
   dummy_vars = NULL,
   exclude_cols = NULL,
-  quiet = FALSE
+  quiet = FALSE,
+  expand_ordered = FALSE
 )
 }
 \arguments{

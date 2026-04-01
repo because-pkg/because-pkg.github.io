@@ -481,6 +481,13 @@ plot_dsep <- function(object, ...) {
     UseMethod("plot_dsep")
 }
 
+#' plot_coef
+#' @rdname plot_coef
+#' @export
+plot_coef <- function(object, ...) {
+    UseMethod("plot_coef")
+}
+
 #' @keywords internal
 #' @export
 prepare_structure_data.matrix <- function(structure, data, ...) {

@@ -39,7 +39,8 @@ because(
   link_vars = NULL,
   fix_residual_variance = NULL,
   priors = NULL,
-  reuse_models = NULL
+  reuse_models = NULL,
+  expand_ordered = FALSE
 )
 }
 \arguments{

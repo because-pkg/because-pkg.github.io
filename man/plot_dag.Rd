@@ -18,7 +18,8 @@ plot_dag(
   show_coefficients = TRUE,
   coords = NULL,
   family = NULL,
-  type = c("raw", "marginal")
+  type = c("raw", "marginal"),
+  multinomial_probabilities = TRUE
 )
 }
 \arguments{

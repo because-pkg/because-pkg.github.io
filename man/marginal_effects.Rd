@@ -4,7 +4,13 @@
 \alias{marginal_effects}
 \title{Calculate Marginal Effects for Because Fit}
 \usage{
-marginal_effects(fit, at = NULL, prob = 0.95, samples = 100)
+marginal_effects(
+  fit,
+  at = NULL,
+  prob = 0.95,
+  samples = 100,
+  multinomial_probabilities = FALSE
+)
 }
 \arguments{
 \item{fit}{A because fit object.}
@@ -15,6 +21,9 @@ If "mean", calculates Marginal Effects at the Mean (MEM).}
 \item{prob}{Numeric; probability mass for the credible interval (default 0.95).}
 
 \item{samples}{Integer. Number of posterior samples to use (default 100 for speed).}
+
+\item{multinomial_probabilities}{Logical. If TRUE, returns granular probability shifts for each category
+of multinomial (unordered) responses instead of a single expected value shift. Default FALSE.}
 }
 \value{
 A data frame with marginal effects per path.
