@@ -94,6 +94,9 @@ plot_coef.because <- function(
     )
 
     if (type == "marginal") {
+        # High-precision marginal effects (synchronized with plot_dag)
+        me_table <- marginal_effects(object, samples = 500, multinomial_probabilities = TRUE)
+        
         # Process Marginal Effects Table
         for (i in seq_len(nrow(me_table))) {
             resp <- as.character(me_table$Response[i])

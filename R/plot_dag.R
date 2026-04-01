@@ -364,7 +364,7 @@ plot_dag <- function(
             if (type == "marginal") {
                # Compute marginal effects (subsampled for speed)
                if (!is.null(obj$parameter_map)) {
-                  me_table <- marginal_effects(obj, samples = 100, multinomial_probabilities = multinomial_probabilities)
+                  me_table <- marginal_effects(obj, samples = 500, multinomial_probabilities = multinomial_probabilities)
                }
             }
         }
