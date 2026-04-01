@@ -147,28 +147,27 @@ plot_dag <- function(
         current_latent <- latent
         current_family <- family
         current_poly_terms <- NULL
-
+        equations <- NULL
         if (inherits(obj, "because")) {
-            eqs <- obj$equations %||% 
-                obj$parameter_map$equations %||%
-                obj$input$equations %||%
-                obj$parameter_map$equations # Fallback
-            if (is.null(eqs)) {
+            equations <- if (!is.null(obj$equations)) obj$equations else {
+               if (!is.null(obj$input$equations)) obj$input$equations else obj$parameter_map$equations
+            }
+            
+            if (is.null(equations)) {
                 stop(
                     "Could not find equations in 'because' object. Please refit the model or manually pass equations."
                 )
             }
             # Use object's latent vars if not overridden
             if (is.null(current_latent)) {
-                current_latent <- obj$input$latent
+                current_latent <- if (!is.null(obj$latent)) obj$latent else obj$input$latent
             }
             # Also get family if not provided
             if (is.null(current_family)) {
-                current_family <- obj$input$family
+                current_family <- if (!is.null(obj$family)) obj$family else obj$input$family
             }
             # Read stored poly_terms so diamond nodes are reconstructed correctly
-            # (because() expands I(age^2) -> age_pow2 before storing equations)
-            current_poly_terms <- obj$input$poly_terms
+            current_poly_terms <- if (!is.null(obj$poly_terms)) obj$poly_terms else obj$input$poly_terms
         } else {
             # List of formulas
             eqs <- obj
@@ -178,8 +177,8 @@ plot_dag <- function(
             # common SEM latent naming conventions (L1, L2, Lat, Latent, lat_*, etc.)
             # is automatically treated as latent (rendered as a circle).
             if (is.null(current_latent)) {
-                lhs_vars <- vapply(eqs, function(f) deparse(f[[2]]), character(1))
-                rhs_vars <- unique(unlist(lapply(eqs, function(f) {
+                lhs_vars <- vapply(equations, function(f) deparse(f[[2]]), character(1))
+                rhs_vars <- unique(unlist(lapply(equations, function(f) {
                     all.vars(f[[3]])
                 })))
                 # Variables only on RHS, never a response
@@ -210,20 +209,27 @@ plot_dag <- function(
         # 2. Convert to dagitty syntax
         induced_cors <- NULL
         if (inherits(obj, "because")) {
-            induced_cors <- obj$induced_correlations %||%
-                obj$input$induced_correlations
+            induced_cors <- if (!is.null(obj$induced_correlations)) obj$induced_correlations else obj$input$induced_correlations
         }
 
-        dag_result <- equations_to_dag_string(
-            eqs,
-            induced_cors,
-            family = current_family,
-            poly_terms = current_poly_terms,
-            collapse_expanded = (type == "marginal")
-        )
-        dag_str <- dag_result$dag_string
-        interaction_nodes <- dag_result$interaction_nodes
-        dag_obj <- dagitty::dagitty(dag_str)
+        # Check if DAG needs reconstruction
+        dag_obj <- NULL
+        interaction_nodes <- NULL
+        
+        if (inherits(obj, "because") && !is.null(obj$dag)) {
+           dag_obj <- obj$dag
+        } else {
+           dag_result <- equations_to_dag_string(
+               equations,
+               induced_cors,
+               family = current_family,
+               poly_terms = current_poly_terms,
+               collapse_expanded = (type == "marginal")
+           )
+           dag_str <- dag_result$dag_string
+           interaction_nodes <- dag_result$interaction_nodes
+           dag_obj <- dagitty::dagitty(dag_str)
+        }
 
         # 3. Tidy it up using ggdag
         tidy_dag <- ggdag::tidy_dagitty(dag_obj, layout = layout)
@@ -353,6 +359,9 @@ plot_dag <- function(
         # 3. Add coefficients if available
         # Get edges metadata from dagitty for finding parameters
         edges_meta <- dagitty::edges(dag_obj) # v, w, e
+        cat("\nDEBUG EDGES_META:\n")
+        print(edges_meta)
+        cat("\n")
 
         stats <- NULL
                 quantiles <- NULL
@@ -371,19 +380,18 @@ plot_dag <- function(
 
         # Process edges to find parameters
         if ("to" %in% names(dag_data) && nrow(edges_meta) > 0) {
+            edges_to_remove <- c()
+            expanded_edges <- list()
             edge_rows <- which(!is.na(dag_data$to))
             expanded_edges <- list() # Store multinomial bundles here
 
-            for (idx in edge_rows) {
-                v <- dag_data$name[idx]
-                w <- dag_data$to[idx]
+            for (idx in edg                v <- as.character(dag_data$name[idx])
+                w <- as.character(dag_data$to[idx])
 
-                # Find corresponding edge via match
+                # Find corresponding edge via match (Agnotic to node order for all edges)
                 meta_match <- which(
                     (edges_meta$v == v & edges_meta$w == w) |
-                        (edges_meta$e == "<->" &
-                            edges_meta$v == w &
-                            edges_meta$w == v)
+                    (edges_meta$v == w & edges_meta$w == v)
                 )
 
                 if (length(meta_match) > 0) {
@@ -398,105 +406,131 @@ plot_dag <- function(
                         pname <- NULL
 
                         if (e_type == "->") {
+                            # DAGitty columns: v = source (predictor), w = destination (response)
+                            # We identify which is which based on the DAG string
+                            actual_v <- as.character(edges_meta$v[m_idx])
+                            actual_w <- as.character(edges_meta$w[m_idx])
+                            
+                            # If ggraph has them swapped compared to dagitty, we need to be careful
+                            # but for the Marginal Effects table, we definitely want:
+                            # source = actual_v, destination = actual_w
+                            
                             # Beta: beta_w_v
-                            try_pname <- paste0("beta_", w, "_", v)
+                            try_pname <- paste0("beta_", actual_w, "_", actual_v)
                             if (try_pname %in% rownames(stats)) pname <- try_pname
-                        } else if (e_type == "<->" ) {
+                        } 
+        } else if (e_type == "<->" ) {
                             pname1 <- paste0("rho_", v, "_", w)
                             pname2 <- paste0("rho_", w, "_", v)
                             if (pname1 %in% rownames(stats)) pname <- pname1 else if (pname2 %in% rownames(stats)) pname <- pname2
                         }
 
                         # Multinomial / Marginal Effects Check
+                        processed_as_marginal <- FALSE
                         if (type == "marginal" && !is.null(me_table) && e_type == "->") {
-                            clean_w <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", w)))
-                            clean_v <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", v)))
-                            clean_w <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", clean_w)
-                            clean_v <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", clean_v)
+                            # Standardize names for matching with me_table
+                            # (me_table uses Predictor and Response column names)
+                            raw_v <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", actual_v)))
+                            raw_w <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", actual_w)))
                             
-                            me_rows <- me_table[
-                                trimws(gsub("[`]", "", as.character(me_table$Response))) == clean_w & 
-                                trimws(gsub("[`]", "", as.character(me_table$Predictor))) == clean_v, 
-                            ]
+                            # 2. Smart Match
+                            me_resp_names <- trimws(gsub("[`]", "", as.character(me_table$Response)))
+                            me_pred_names <- trimws(gsub("[`]", "", as.character(me_table$Predictor)))
+                            
+                            clean_v <- raw_v # Predictor
+                            if (!(clean_v %in% me_pred_names)) {
+                               clean_v <- gsub("(_L|_Q|_C|_dummy|_\\d+|\\[[0-9]+\\])$", "", raw_v)
+                            }
+                            
+                            clean_w <- raw_w # Response
+                            if (!(clean_w %in% me_resp_names)) {
+                               clean_w <- gsub("(_L|_Q|_C|_dummy|_\\d+|\\[[0-9]+\\])$", "", raw_w)
+                            }
+                            
+                            # Match rows
+                            me_rows <- me_table[me_resp_names == clean_w & me_pred_names == clean_v, ]
+                            
+                            # NUCLEAR FALLBACK: If still no rows, try matching by first 7 characters
+                            # (Catches misspelled 'Satsfied' vs 'Satisfied' etc)
+                            if (nrow(me_rows) == 0) {
+                                me_rows <- me_table[
+                                   grepl(substr(clean_w, 1, 7), me_resp_names, ignore.case=TRUE) & 
+                                   grepl(substr(clean_v, 1, 7), me_pred_names, ignore.case=TRUE), 
+                                ]
+                                if (nrow(me_rows) > 0) cat("  NUCLEAR MATCH SUCCESS for ", clean_v, " -> ", clean_w, "\n")
+                            }
 
                             if (nrow(me_rows) > 0) {
+                                processed_as_marginal <- TRUE
                                 # MULTINOMIAL BUNDLE LOGIC
-                                if (nrow(me_rows) > 1) {
-                                   # We will create one edge row per category.
-                                   # The original row (idx) will be replaced or marked for removal.
-                                   # Actually, we keep the original row for the first category and add the rest.
-                                   base_row <- dag_data[idx, , drop=FALSE]
+                                edges_to_remove <- c(edges_to_remove, idx)
+                                
+                                # Calculate curvatures: symmetric bundle around 0
+                                # Formula: seq(-0.25, 0.25, length.out = K)
+                                bundle_size <- nrow(me_rows)
+                                curvatures <- if (bundle_size == 1) 0 else seq(-0.3, 0.3, length.out = bundle_size)
+
+                                for (k in seq_len(bundle_size)) {
+                                   new_edge <- dag_data[idx, , drop=FALSE]
+                                   e_val <- me_rows$Effect[k]
+                                   e_low <- me_rows$Lower[k]
+                                   e_upp <- me_rows$Upper[k]
+                                   e_cat <- me_rows$Category[k]
+
+                                   new_edge$val <- e_val
+                                   new_edge$weight_abs <- abs(e_val)
+                                   # Robust Label: Category + Magnitude
+                                   new_edge$edge_label <- if (!is.na(e_cat)) {
+                                      if (is.numeric(e_cat)) paste0("Cat", e_cat, ": ", round(e_val, 2)) else paste0(e_cat, ": ", round(e_val, 2))
+                                   } else {
+                                      round(e_val, 2)
+                                   }
+                                   new_edge$curvature <- curvatures[k]
                                    
-                                   # Calculate curvatures: symmetric bundle around 0
-                                   # Formula: seq(-0.3, 0.3, length.out = K)
-                                   curvatures <- seq(-0.3, 0.3, length.out = nrow(me_rows))
-
-                                   for (k in seq_len(nrow(me_rows))) {
-                                      new_edge <- base_row
-                                      e_val <- me_rows$Effect[k]
-                                      e_low <- me_rows$Lower[k]
-                                      e_upp <- me_rows$Upper[k]
-                                      e_cat <- me_rows$Category[k]
-
-                                      new_edge$val <- e_val
-                                      new_edge$weight_abs <- abs(e_val)
-                                      # Robust Label: Category + Magnitude
-                                      new_edge$edge_label <- if (!is.na(e_cat)) paste0(e_cat, ": ", round(e_val, 2)) else round(e_val, 2)
-                                      new_edge$curvature <- curvatures[k]
-                                      
-                                      # Sig color
-                                      if (edge_color_scheme != "monochrome") {
-                                         if (sign(e_low) == sign(e_upp)) {
-                                            new_edge$significant <- if (edge_color_scheme == "directional") (if (e_val > 0) "pos" else "neg") else "sig"
-                                         } else {
-                                            new_edge$significant <- "ns"
-                                         }
-                                      } else {
-                                         new_edge$significant <- "default"
-                                      }
-                                      
-                                      if (k == 1) {
-                                         # Overwrite original row
-                                         dag_data[idx, ] <- new_edge
-                                      } else {
-                                         # Add to expansion list
-                                         expanded_edges[[length(expanded_edges) + 1]] <- new_edge
-                                      }
-                                   }
-                                   next # Skip standard processing
-                                } else {
-                                   # Single category (or default expected score shift)
-                                   val <- me_rows$Effect[1]
-                                   lower <- me_rows$Lower[1]
-                                   upper <- me_rows$Upper[1]
+                                   # Sig color
                                    if (edge_color_scheme != "monochrome") {
-                                      if (sign(lower) == sign(upper)) {
-                                         sig_cat <- if (edge_color_scheme == "directional") (if (val > 0) "pos" else "neg") else "sig"
-                                      } else sig_cat <- "ns"
+                                      if (sign(e_low) == sign(e_upp)) {
+                                         new_edge$significant <- if (edge_color_scheme == "directional") (if (e_val > 0) "pos" else "neg") else "sig"
+                                      } else {
+                                         new_edge$significant <- "ns"
+                                      }
+                                   } else {
+                                      new_edge$significant <- "default"
                                    }
+                                   
+                                   expanded_edges[[length(expanded_edges) + 1]] <- new_edge
                                 }
                             }
-                        } else if (!is.null(pname)) {
+                        } 
+                        
+                        # Fallback: Process via stats summary if not already handled as marginal
+                        if (!processed_as_marginal && !is.null(pname)) {
                             val <- stats[pname, "Mean"]
+                            sig_cat <- "default"
                             if (!is.null(quantiles) && pname %in% rownames(quantiles)) {
                                 lower <- quantiles[pname, "2.5%"]
                                 upper <- quantiles[pname, "97.5%"]
                                 if (sign(lower) == sign(upper)) {
                                     sig_cat <- if (edge_color_scheme == "directional") (if (val > 0) "pos" else "neg") else "sig"
-                                } else sig_cat <- "ns"
+                                } else {
+                                    sig_cat <- "ns"
+                                }
                             }
-                        }
 
-                        if (!is.na(val)) {
-                            dag_data$val[idx] <- val
-                            dag_data$weight_abs[idx] <- abs(val)
-                            dag_data$edge_label[idx] <- round(val, 2)
-                            dag_data$significant[idx] <- sig_cat
+                            if (!is.na(val)) {
+                                dag_data$val[idx] <- val
+                                dag_data$weight_abs[idx] <- abs(val)
+                                dag_data$edge_label[idx] <- round(val, 2)
+                                dag_data$significant[idx] <- sig_cat
+                            }
                         }
                     }
                 }
             }
             # Combine Expanded Edges
+            if (length(edges_to_remove) > 0) {
+              dag_data <- dag_data[-edges_to_remove, , drop = FALSE]
+            }
             if (length(expanded_edges) > 0) {
                dag_data <- rbind(dag_data, do.call(rbind, expanded_edges))
             }
