@@ -1440,6 +1440,9 @@ because <- function(
       }
     }
 
+    # Identify categorical variables and their K levels
+    cat_vars_metadata <- attr(data, "categorical_vars")
+
     for (var in names(family)) {
       if (family[[var]] %in% c("multinomial", "ordinal")) {
         if (!var %in% names(data)) {
@@ -1451,15 +1454,28 @@ because <- function(
           ))
         }
 
-        val <- data[[var]]
-        if (is.factor(val)) {
-          K <- nlevels(val)
-          data[[var]] <- as.integer(val)
+        # Determine K (number of levels)
+        # PRIORITIZE existing categorical metadata if available
+        if (!is.null(cat_vars_metadata) && var %in% names(cat_vars_metadata)) {
+          K <- length(cat_vars_metadata[[var]]$levels)
+          val <- data[[var]]
+          if (is.factor(val)) {
+             data[[var]] <- as.integer(val)
+          } else if (is.character(val)) {
+             data[[var]] <- as.integer(factor(val, levels = cat_vars_metadata[[var]]$levels))
+          }
         } else {
-          # Assume it's already integer or character
-          val <- as.factor(val)
-          K <- nlevels(val)
-          data[[var]] <- as.integer(val)
+          # Fallback: Detect from current data vector
+          val <- data[[var]]
+          if (is.factor(val)) {
+            K <- nlevels(val)
+            data[[var]] <- as.integer(val)
+          } else {
+            # Assume it's already integer or character
+            val <- as.factor(val)
+            K <- nlevels(val)
+            data[[var]] <- as.integer(val)
+          }
         }
 
         if (family[[var]] == "multinomial" && K < 3) {
@@ -3775,6 +3791,11 @@ run_single_dsep_test_v2 <- function(
       hierarchical_info$hierarchy,
       hierarchical_info$link_vars
     )
+    
+    # [FIX] Preserve categorical metadata for K detection in sub-models
+    if (!is.null(cat_vars)) {
+      attr(test_data, "categorical_vars") <- cat_vars
+    }
 
     # [FIX] Recreate dummy variables in test_data
     for (parent_var in names(dummies_to_create)) {
