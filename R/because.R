@@ -3749,6 +3749,15 @@ run_single_dsep_test_v2 <- function(
   if (!is.null(hierarchical_info)) {
     # Extract variables from this test equation
     test_vars <- all.vars(test_eq)
+    
+    # [FIX] all.vars() captures random effect grouping variables (like "id") from (1|id).
+    # If these are link_vars, we MUST remove them from test_vars so they aren't evaluated
+    # by infer_variable_level() which crashes on link_vars. get_data_for_variables
+    # natively preserves link_vars during joins, so dropping them here is safe.
+    if (!is.null(hierarchical_info$link_vars)) {
+      l_vars <- unlist(hierarchical_info$link_vars, use.names=FALSE)
+      test_vars <- setdiff(test_vars, l_vars)
+    }
 
     # [FIX] Add random effect grouping variables to test_vars
     # Otherwise get_data_for_variables removes them, causing "Unknown variable N_SiteID"
@@ -3776,11 +3785,9 @@ run_single_dsep_test_v2 <- function(
     # [FIX] Handle categorical dummy variables
     # We need their PARENT variables to fetch the data, then recreate dummies manually.
     dummies_to_create <- list()
+    cat_vars <- NULL
 
-    if (
-      is.data.frame(original_data) &&
-        !is.null(attr(original_data, "categorical_vars"))
-    ) {
+    if (!is.null(attr(original_data, "categorical_vars"))) {
       cat_vars <- attr(original_data, "categorical_vars")
 
       # Check all cat vars to see if their dummies are needed (or if parent is needed)
@@ -3817,11 +3824,7 @@ run_single_dsep_test_v2 <- function(
         vals <- test_data[[parent_var]]
 
         # Recreate dummies: sex_m = as.integer(sex == 2) etc.
-        cat_vars_attr <- if (is.data.frame(original_data)) {
-          attr(original_data, "categorical_vars")
-        } else {
-          NULL
-        }
+        cat_vars_attr <- attr(original_data, "categorical_vars")
         levels_map <- if (
           !is.null(cat_vars_attr) && parent_var %in% names(cat_vars_attr)
         ) {
@@ -3886,10 +3889,7 @@ run_single_dsep_test_v2 <- function(
     }
 
     # [FIX] Restore categorical_vars attribute dropped by merge/get_data
-    if (
-      is.data.frame(original_data) &&
-        !is.null(attr(original_data, "categorical_vars"))
-    ) {
+    if (!is.null(attr(original_data, "categorical_vars"))) {
       attr(test_data, "categorical_vars") <- attr(
         original_data,
         "categorical_vars"
