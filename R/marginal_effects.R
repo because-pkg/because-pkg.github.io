@@ -249,6 +249,9 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
           valid_cols <- names(lengths)[lengths == N_guess]
           data_resp <- as.data.frame(fit$data[valid_cols])
        }
+    } else if (is.list(data_resp) && !is.data.frame(data_resp)) {
+       # Hierarchical data: merge all dataframes into a single flat dataframe
+       data_resp <- Reduce(function(x, y) merge(x, y, by = intersect(names(x), names(y)), all = TRUE), data_resp)
     }
     
     if (is.null(data_resp) || nrow(data_resp) == 0) {

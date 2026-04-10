@@ -3758,7 +3758,19 @@ run_single_dsep_test_v2 <- function(
         function(x) x$group,
         character(1)
       ))
-      test_vars <- unique(c(test_vars, random_groups))
+      
+      # [FIX] Do not add random groups to test_vars if they are link_vars,
+      # because link_vars are not in 'levels' and will crash infer_variable_level.
+      # get_data_for_variables automatically retains link_vars during joins anyway.
+      if (!is.null(hierarchical_info$link_vars)) {
+          # Handle named vector of link_vars
+          l_vars <- unlist(hierarchical_info$link_vars, use.names=FALSE)
+          random_groups <- setdiff(random_groups, l_vars)
+      }
+      
+      if (length(random_groups) > 0) {
+          test_vars <- unique(c(test_vars, random_groups))
+      }
     }
 
     # [FIX] Handle categorical dummy variables
