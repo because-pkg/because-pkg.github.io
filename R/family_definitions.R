@@ -139,8 +139,17 @@ jags_family_precision_prior.because_family_gaussian <- function(
     param_name,
     ...
 ) {
-    # Vague prior is safe for Gaussian
-    return(paste0(param_name, " ~ dgamma(1, 1)"))
+    # Half-uniform prior on sigma: scale-invariant, robust to unscaled data.
+    # Gelman (2006) advises against putting priors directly on precision (tau);
+    # a flat prior on sigma works well whether data are standardised or raw.
+    # tau is derived as 1/sigma^2 for use in the dnorm() likelihood.
+    # Upper bound of 100 covers virtually all ecological residual SDs;
+    # users with extreme raw scales can override via the `priors` argument.
+    sigma_name <- sub("^tau_e_", "sigma_e_", param_name)
+    return(c(
+        paste0(sigma_name, " ~ dunif(0, 100)"),
+        paste0(param_name, " <- 1 / (", sigma_name, " * ", sigma_name, ")")
+    ))
 }
 
 #' @keywords internal

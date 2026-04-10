@@ -51,7 +51,7 @@ df <- data.frame(Temp_Centered, Growth_g_day)
 
 ### Default Model
 
-Let's fit a standard model first. By default, `because` assigns wide Gaussian priors (`dnorm(0, 1.0E-6)`) to intercepts (`alpha`) and slopes (`beta`), and Gamma priors (`dgamma(1, 1)`) to precisions (`tau`).
+Let's fit a standard model first. By default, `because` assigns wide Gaussian priors (`dnorm(0, 1.0E-6)`) to intercepts (`alpha`) and slopes (`beta`). For Gaussian response variables, the **residual standard deviation** gets a half-uniform prior: `sigma_e ~ dunif(0, 100)`, from which the precision is derived as `tau_e <- 1 / (sigma_e * sigma_e)`. This is scale-invariant and works safely whether data are standardised or on their original (raw) scale.
 
 ```{r default_model}
 fit_default <- because(
@@ -68,11 +68,13 @@ Now, suppose we have strong prior knowledge from scaling theory or previous lite
 
 The parameter names usually follow this convention:
 
-**Intercepts**: `alphaResponseVariable` (e.g., `alphaGrowth_g_day`)
+**Intercepts**: `alpha_{Response}` (e.g., `alpha_Growth_g_day`)
 
-**Slopes**: `beta_Response_Predictor` (e.g., `beta_Growth_g_day_Temp_Centered`)
+**Slopes**: `beta_{Response}_{Predictor}` (e.g., `beta_Growth_g_day_Temp_Centered`)
 
-**Residual precision:** `tau_e_Response`
+**Residual SD (Gaussian):** `sigma_e_{Response}` (e.g., `sigma_e_Growth_g_day`) — this is what you override in `priors` for Gaussian responses.
+
+**Residual precision (derived):** `tau_e_{Response}` — set automatically from `sigma_e`; do not set directly unless you need a legacy dgamma override.
 
 ```{r custom_model}
 # Define our custom priors
@@ -162,15 +164,18 @@ plot_posterior(
 )
 ```
 
-## Example 3: Informing Residual Variance components
+## Example 3: Informing Residual Variance Components
 
-We usually estimate the residual variance (`sigma` or its inverse `tau`) from the data. However, you might have prior knowledge about the expected noise level.
+We usually estimate the residual standard deviation (`sigma_e`) from the data. However, you might have prior knowledge about the expected noise level — for example, a laboratory instrument with known precision, or a measurement protocol with a documented coefficient of variation.
 
 > [!NOTE] **Distinction from `variability` argument**: The `variability` argument in `because()` is designed for **Measurement Error** in predictors (Error-in-Variables) or when you have repeated measures per individual.
 >
-> Custom priors on `tau_e`, shown below, are for providing information about the **Residual Variance** of the response variable (which includes both Process Error and unrecognized Observation Error).
+> Custom priors on `sigma_e_*`, shown below, are for providing information about the **Residual Variance** of the *response* variable (which includes both Process Error and unrecognised Observation Error).
 
-For example, if you know the precision of your scale is roughly 2 g, this gives you a strong expectation for the residual standard deviation (sigma).
+> [!TIP] **Why `sigma_e` and not `tau_e`?**
+> Since version `>= 0.5`, `because` priors Gaussian residual error on the **standard deviation** scale (`sigma_e ~ dunif(0, 100)`). This is scale-invariant: it works correctly whether your response variable is in grams or tonnes. The precision `tau_e` is derived deterministically as `tau_e <- 1 / (sigma_e * sigma_e)` and **cannot be given a prior directly** — use `sigma_e_*` as the override key.
+
+For example, if field protocol experience tells you that measurement noise in growth measurements is typically 1–3 g/day, you can constrain the prior on `sigma_e` accordingly:
 
 ```{r variance_prior}
 # Simulate small, noisy dataset
@@ -181,20 +186,20 @@ Temp_Small <- rnorm(N_small, 20, 5)
 Growth_Small <- 0.5 * Temp_Small + rnorm(N_small, sd = 3)
 df_small <- data.frame(Growth_g_day = Growth_Small, Temp_Centered = Temp_Small - 20)
 
-# 1. Default Model (Weak Prior)
-# The data (SD=3) will dominate, finding a sigma around 3 with wide uncertainty.
+# 1. Default Model
+# dunif(0, 100) on sigma_e: completely open to any residual SD up to 100.
+# With only 15 observations the posterior will be wide.
 fit_default_var <- because(
     equations = list(Growth_g_day ~ Temp_Centered),
     data = df_small,
     quiet = TRUE
 )
 
-# 2. Constrained Model (Strong Prior)
-# Suppose we have theoretical reasons to believe residual SD should be small (~1.0).
-# Precision = 1/1^2 = 1.
-# dgamma(20, 20) -> Mean 1, Variance 0.05 (Strong)
+# 2. Constrained Model
+# Prior knowledge: residual SD should be small, around 1 g/day.
+# dunif(0, 2) restricts sigma_e to [0, 2], strongly informative.
 variance_prior <- list(
-    tau_e_Growth_g_day = "dgamma(20, 20)"
+    sigma_e_Growth_g_day = "dunif(0, 2)"
 )
 
 fit_constrained_var <- because(
@@ -204,12 +209,14 @@ fit_constrained_var <- because(
     quiet = TRUE
 )
 
-# Visualize: The constrained posterior will be shifted left (towards 1) and sharper
+# Visualize: The constrained posterior for sigma will be shifted left (towards 1) and sharper
 plot_posterior(
     list(Default = fit_default_var, Constrained = fit_constrained_var),
     parameter = "sigma"
 )
 ```
+
+> [!NOTE] **Legacy `tau_e_*` overrides**: If you previously used `priors = list(tau_e_Response = "dgamma(...)")`, this still works — `because` checks for a `tau_e_*` entry in `priors` first and uses it verbatim, bypassing the sigma parameterisation entirely. This ensures backward compatibility.
 
 ## Default Priors Reference
 
@@ -219,7 +226,9 @@ It is important to know what you are overriding. `because` aims to use **weakly 
 |:---|:---|:---|:---|
 | **Intercepts** | `alpha_*` | `dnorm(0, 1.0E-6)` | Wide Normal (Precision 1e-6 = Variance 1,000,000) |
 | **Coefficients** | `beta_*` | `dnorm(0, 1.0E-6)` | Wide Normal |
-| **Precision** | `tau_*` | `dgamma(1, 1)` | Gamma(1,1). Weakly informative for precision/variance components. |
+| **Residual SD (Gaussian)** | `sigma_e_*` | `dunif(0, 100)` | Half-uniform on σ; scale-invariant, robust to raw or standardised data. Override with `sigma_e_*` in `priors`. |
+| **Residual Precision (Gaussian)** | `tau_e_*` | *derived* | Set deterministically as `1/(sigma_e * sigma_e)`. Not assigned a prior directly. |
+| **Precision (other families)** | `tau_*` | `dgamma(1, 1)` | Gamma(1,1) for non-Gaussian precision/variance components (random effects, structural). |
 | **Phylo Signal** | `lambda_*` | `dunif(0, 1)` | Uniform on [0,1] |
 | **Zero-Inflation** | `psi_*` | `dbeta(1, 1)` | Beta(1,1) (Uniform on [0,1]) |
 | **Ordinal Cutpoints** | `cutpoint_*` | `dnorm(0, 1e-6)` | First cutpoint fixed, others relative or specifically ordered |
@@ -235,9 +244,9 @@ Common patterns:
 
 -   `alpha_{Response}`: Intercept
 -   `beta_{Response}_{Predictor}`: Regression coefficient
--   `tau_e_{Response}`: Residual precision
--   `sigma_{Response}`: Residual standard deviation (derived, usually not set directly as prior, set `tau` instead)
--   `lambda_{Response}`: Phylogenetic signal (0-1)
+-   `sigma_e_{Response}`: Residual standard deviation for Gaussian responses — **use this key in `priors` to override the default `dunif(0, 100)`**
+-   `tau_e_{Response}`: Residual precision (derived from `sigma_e`; not directly set via priors — use `sigma_e_*` instead)
+-   `lambda_{Response}`: Phylogenetic signal (0–1)
 -   `psi_{Response}`: Zero-inflation probability
 
 If you are unsure, run a quick model with `n.adapt=0, n.iter=0` (just compilation) and check the generated model code:

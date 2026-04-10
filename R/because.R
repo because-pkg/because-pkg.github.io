@@ -140,7 +140,8 @@
 #'           with exponential or logit link functions by constraining the sampler away from astronomically
 #'           large variances during adaptation.
 #'   }
-#'   Example: \code{list(alpha_Response = "dnorm(0, 0.001)", tau_e_Response = "dgamma(1, 1)")}.
+#'   Example: \code{list(alpha_Response = "dnorm(0, 0.001)", sigma_e_Response = "dunif(0, 50)")}.
+
 #' @param reuse_models List of previously fitted 'because' models to scan for reusable d-separation test results.
 #'   If a test in the current run matches a test in a reused model (same formula), the result is copied
 #'   instead of re-running JAGS. **Note**: Ensuring that the data is consistent is the user's responsibility.
