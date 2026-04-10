@@ -8,7 +8,7 @@ marginal_effects(
   fit,
   at = NULL,
   prob = 0.95,
-  samples = 100,
+  samples = 1000,
   multinomial_probabilities = FALSE
 )
 }
@@ -20,7 +20,7 @@ If "mean", calculates Marginal Effects at the Mean (MEM).}
 
 \item{prob}{Numeric; probability mass for the credible interval (default 0.95).}
 
-\item{samples}{Integer. Number of posterior samples to use (default 100 for speed).}
+\item{samples}{Integer. Number of posterior samples to use (default 1000 for precision and consistency across plots).}
 
 \item{multinomial_probabilities}{Logical. If TRUE, returns granular probability shifts for each category
 of multinomial (unordered) responses instead of a single expected value shift. Default FALSE.}
