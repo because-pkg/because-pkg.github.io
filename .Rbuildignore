@@ -35,5 +35,7 @@
 ^test_hierarchy\.R$
 ^update_templates\.R$
 ^verify_summary_fix\.R$
+^build_vignettes\.R$
+
 ^Meta$
 ^doc$
