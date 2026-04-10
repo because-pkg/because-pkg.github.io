@@ -222,16 +222,20 @@ For "binomial" variables, the model uses a logit link and a Bernoulli likelihood
 <span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   # Priors for structural parameters</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_BR ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_BR ~ dgamma(1, 1)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_e_BR ~ dunif(0, 100)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_BR &lt;- 1 / (sigma_e_BR * sigma_e_BR)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   sigmaBR &lt;- 1/sqrt(tau_e_BR)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_S ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_S ~ dgamma(1, 1)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_e_S ~ dunif(0, 100)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_S &lt;- 1 / (sigma_e_S * sigma_e_S)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   sigmaS &lt;- 1/sqrt(tau_e_S)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_G ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_G ~ dgamma(1, 1)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_e_G ~ dunif(0, 100)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_G &lt;- 1 / (sigma_e_G * sigma_e_G)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   sigmaG &lt;- 1/sqrt(tau_e_G)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_L ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_L ~ dgamma(1, 1)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_e_L ~ dunif(0, 100)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_L &lt;- 1 / (sigma_e_L * sigma_e_L)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   sigmaL &lt;- 1/sqrt(tau_e_L)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   beta_BR_BM ~ dnorm(0, 1.0E-6)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   beta_S_BR ~ dnorm(0, 1.0E-6)</span>

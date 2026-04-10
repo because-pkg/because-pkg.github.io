@@ -327,7 +327,7 @@ because(
     away from astronomically large variances during adaptation.
 
   Example:
-  `list(alpha_Response = "dnorm(0, 0.001)", tau_e_Response = "dgamma(1, 1)")`.
+  `list(alpha_Response = "dnorm(0, 0.001)", sigma_e_Response = "dunif(0, 50)")`.
 
 - reuse_models:
 

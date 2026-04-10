@@ -217,39 +217,45 @@ the chain:
 <span><span class="co">#&gt; Graph information:</span></span>
 <span><span class="co">#&gt;    Observed stochastic nodes: 600</span></span>
 <span><span class="co">#&gt;    Unobserved stochastic nodes: 11</span></span>
-<span><span class="co">#&gt;    Total graph size: 3021</span></span>
+<span><span class="co">#&gt;    Total graph size: 3028</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Initializing model</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                            Mean    SD Naive SE Time-series SE   2.5%    50%</span></span>
-<span><span class="co">#&gt; alpha_Abundance           0.000 0.069    0.003          0.003 -0.132 -0.001</span></span>
-<span><span class="co">#&gt; alpha_Moisture           -0.002 0.051    0.002          0.002 -0.099 -0.003</span></span>
-<span><span class="co">#&gt; alpha_Temp                0.005 0.048    0.002          0.002 -0.080  0.004</span></span>
-<span><span class="co">#&gt; beta_Abundance_Elevation -0.157 0.101    0.005          0.005 -0.341 -0.160</span></span>
-<span><span class="co">#&gt; beta_Abundance_Moisture   0.353 0.091    0.004          0.004  0.180  0.356</span></span>
-<span><span class="co">#&gt; beta_Abundance_Temp       0.408 0.119    0.005          0.005  0.189  0.411</span></span>
-<span><span class="co">#&gt; beta_Moisture_Temp       -0.709 0.052    0.002          0.002 -0.806 -0.709</span></span>
-<span><span class="co">#&gt; beta_Temp_Elevation      -0.738 0.048    0.002          0.002 -0.830 -0.743</span></span>
-<span><span class="co">#&gt; sigmaAbundance            0.935 0.047    0.002          0.002  0.854  0.932</span></span>
-<span><span class="co">#&gt; sigmaMoisture             0.712 0.035    0.002          0.001  0.644  0.712</span></span>
-<span><span class="co">#&gt; sigmaTemp                 0.678 0.034    0.002          0.001  0.617  0.678</span></span>
+<span><span class="co">#&gt; alpha_Abundance          -0.002 0.064    0.003          0.003 -0.129 -0.004</span></span>
+<span><span class="co">#&gt; alpha_Moisture           -0.005 0.051    0.002          0.002 -0.106 -0.006</span></span>
+<span><span class="co">#&gt; alpha_Temp               -0.001 0.048    0.002          0.002 -0.092 -0.002</span></span>
+<span><span class="co">#&gt; beta_Abundance_Elevation -0.156 0.095    0.004          0.004 -0.352 -0.160</span></span>
+<span><span class="co">#&gt; beta_Abundance_Moisture   0.358 0.090    0.004          0.004  0.189  0.359</span></span>
+<span><span class="co">#&gt; beta_Abundance_Temp       0.416 0.115    0.005          0.005  0.201  0.415</span></span>
+<span><span class="co">#&gt; beta_Moisture_Temp       -0.710 0.051    0.002          0.002 -0.813 -0.709</span></span>
+<span><span class="co">#&gt; beta_Temp_Elevation      -0.741 0.048    0.002          0.002 -0.828 -0.742</span></span>
+<span><span class="co">#&gt; sigmaAbundance            0.934 0.049    0.002          0.002  0.843  0.932</span></span>
+<span><span class="co">#&gt; sigmaMoisture             0.711 0.037    0.002          0.002  0.645  0.709</span></span>
+<span><span class="co">#&gt; sigmaTemp                 0.674 0.034    0.002          0.002  0.610  0.672</span></span>
+<span><span class="co">#&gt; sigma_e_Abundance         0.934 0.049    0.002          0.002  0.843  0.932</span></span>
+<span><span class="co">#&gt; sigma_e_Moisture          0.711 0.037    0.002          0.002  0.645  0.709</span></span>
+<span><span class="co">#&gt; sigma_e_Temp              0.674 0.034    0.002          0.002  0.610  0.672</span></span>
 <span><span class="co">#&gt;                           97.5%  Rhat n.eff</span></span>
-<span><span class="co">#&gt; alpha_Abundance           0.138 1.004   480</span></span>
-<span><span class="co">#&gt; alpha_Moisture            0.087 1.002   480</span></span>
-<span><span class="co">#&gt; alpha_Temp                0.107 1.001   693</span></span>
-<span><span class="co">#&gt; beta_Abundance_Elevation  0.054 1.001   480</span></span>
-<span><span class="co">#&gt; beta_Abundance_Moisture   0.537 0.998   493</span></span>
-<span><span class="co">#&gt; beta_Abundance_Temp       0.628 1.000   578</span></span>
-<span><span class="co">#&gt; beta_Moisture_Temp       -0.612 0.998   550</span></span>
-<span><span class="co">#&gt; beta_Temp_Elevation      -0.648 1.013   492</span></span>
-<span><span class="co">#&gt; sigmaAbundance            1.030 0.998   442</span></span>
-<span><span class="co">#&gt; sigmaMoisture             0.783 0.998   603</span></span>
-<span><span class="co">#&gt; sigmaTemp                 0.744 1.000   604</span></span>
+<span><span class="co">#&gt; alpha_Abundance           0.125 1.004   583</span></span>
+<span><span class="co">#&gt; alpha_Moisture            0.099 0.999   434</span></span>
+<span><span class="co">#&gt; alpha_Temp                0.091 1.002   499</span></span>
+<span><span class="co">#&gt; beta_Abundance_Elevation  0.032 1.000   487</span></span>
+<span><span class="co">#&gt; beta_Abundance_Moisture   0.530 0.999   508</span></span>
+<span><span class="co">#&gt; beta_Abundance_Temp       0.642 1.003   565</span></span>
+<span><span class="co">#&gt; beta_Moisture_Temp       -0.615 0.999   465</span></span>
+<span><span class="co">#&gt; beta_Temp_Elevation      -0.647 1.001   480</span></span>
+<span><span class="co">#&gt; sigmaAbundance            1.030 0.998   480</span></span>
+<span><span class="co">#&gt; sigmaMoisture             0.780 1.001   480</span></span>
+<span><span class="co">#&gt; sigmaTemp                 0.746 1.005   480</span></span>
+<span><span class="co">#&gt; sigma_e_Abundance         1.030 0.998   480</span></span>
+<span><span class="co">#&gt; sigma_e_Moisture          0.780 1.001   480</span></span>
+<span><span class="co">#&gt; sigma_e_Temp              0.746 1.005   480</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; DIC:</span></span>
 <span><span class="co">#&gt; Mean deviance:  1377 </span></span>
-<span><span class="co">#&gt; penalty 11.16 </span></span>
-<span><span class="co">#&gt; Penalized deviance: 1388</span></span></code></pre></div>
+<span><span class="co">#&gt; penalty 11.23 </span></span>
+<span><span class="co">#&gt; Penalized deviance: 1389</span></span></code></pre></div>
 <p>We can also plot the fitted causal model with its standardised
 paths:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -271,9 +277,9 @@ indirect components.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">med_results</span><span class="op">$</span><span class="va">summary</span></span>
 <span><span class="co">#&gt;                    Type       Mean         SD      Lower       Upper</span></span>
-<span><span class="co">#&gt; 1          Total Effect -0.2736813 0.06781102 -0.4064066 -0.12873398</span></span>
-<span><span class="co">#&gt; 2         Direct Effect -0.1570835 0.10138569 -0.3412616  0.05359304</span></span>
-<span><span class="co">#&gt; 3 Total Indirect Effect -0.1165978 0.07616327 -0.2766890  0.02484438</span></span></code></pre></div>
+<span><span class="co">#&gt; 1          Total Effect -0.2757059 0.06687637 -0.4093048 -0.15266327</span></span>
+<span><span class="co">#&gt; 2         Direct Effect -0.1563994 0.09541511 -0.3515907  0.03157144</span></span>
+<span><span class="co">#&gt; 3 Total Indirect Effect -0.1193065 0.07344900 -0.2604293  0.02290439</span></span></code></pre></div>
 <p><strong>Interpretation (Standardized Units):</strong> * <strong>Total
 Effect</strong>: The net impact of Elevation on Abundance in SD units. *
 <strong>Direct Effect</strong>: The path
@@ -290,13 +296,13 @@ valid paths from exposure to outcome in the DAG.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">med_results</span><span class="op">$</span><span class="va">paths</span></span>
 <span><span class="co">#&gt;                                         Path     Type       Mean         SD</span></span>
-<span><span class="co">#&gt; 1 Elevation -&gt; Temp -&gt; Moisture -&gt; Abundance Indirect  0.1847236 0.05171803</span></span>
-<span><span class="co">#&gt; 2             Elevation -&gt; Temp -&gt; Abundance Indirect -0.3013214 0.09070711</span></span>
-<span><span class="co">#&gt; 3                     Elevation -&gt; Abundance   Direct -0.1570835 0.10138569</span></span>
+<span><span class="co">#&gt; 1 Elevation -&gt; Temp -&gt; Moisture -&gt; Abundance Indirect  0.1887720 0.05302702</span></span>
+<span><span class="co">#&gt; 2             Elevation -&gt; Temp -&gt; Abundance Indirect -0.3080785 0.08725969</span></span>
+<span><span class="co">#&gt; 3                     Elevation -&gt; Abundance   Direct -0.1563994 0.09541511</span></span>
 <span><span class="co">#&gt;         Lower       Upper</span></span>
-<span><span class="co">#&gt; 1  0.09250807  0.30043116</span></span>
-<span><span class="co">#&gt; 2 -0.47230373 -0.14221839</span></span>
-<span><span class="co">#&gt; 3 -0.34126157  0.05359304</span></span></code></pre></div>
+<span><span class="co">#&gt; 1  0.09457531  0.29462758</span></span>
+<span><span class="co">#&gt; 2 -0.48333762 -0.14229962</span></span>
+<span><span class="co">#&gt; 3 -0.35159070  0.03157144</span></span></code></pre></div>
 <p>We expect to see three distinct paths:</p>
 <ol style="list-style-type: decimal">
 <li>

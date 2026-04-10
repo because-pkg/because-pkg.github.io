@@ -298,7 +298,7 @@ By default, <code>because</code> uses "boundary-avoiding" regularizing priors fo
 This regularizing prior (Gelman 2006, McElreath 2020) prevents numerical overflow in models
 with exponential or logit link functions by constraining the sampler away from astronomically
 large variances during adaptation.</p></li>
-</ul><p>Example: <code>list(alpha_Response = "dnorm(0, 0.001)", tau_e_Response = "dgamma(1, 1)")</code>.</p></dd>
+</ul><p>Example: <code>list(alpha_Response = "dnorm(0, 0.001)", sigma_e_Response = "dunif(0, 50)")</code>.</p></dd>
 
 
 <dt id="arg-reuse-models">reuse_models<a class="anchor" aria-label="anchor" href="#arg-reuse-models"></a></dt>

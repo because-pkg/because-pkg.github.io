@@ -13,7 +13,7 @@ marginal_effects(
   fit,
   at = NULL,
   prob = 0.95,
-  samples = 100,
+  samples = 1000,
   multinomial_probabilities = FALSE
 )
 ```
@@ -36,7 +36,8 @@ marginal_effects(
 
 - samples:
 
-  Integer. Number of posterior samples to use (default 100 for speed).
+  Integer. Number of posterior samples to use (default 1000 for
+  precision and consistency across plots).
 
 - multinomial_probabilities:
 

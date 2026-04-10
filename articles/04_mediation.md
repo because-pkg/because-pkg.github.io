@@ -126,39 +126,45 @@ fit <- because(
 #> Graph information:
 #>    Observed stochastic nodes: 600
 #>    Unobserved stochastic nodes: 11
-#>    Total graph size: 3021
+#>    Total graph size: 3028
 #> 
 #> Initializing model
 summary(fit)
 #>                            Mean    SD Naive SE Time-series SE   2.5%    50%
-#> alpha_Abundance           0.000 0.069    0.003          0.003 -0.132 -0.001
-#> alpha_Moisture           -0.002 0.051    0.002          0.002 -0.099 -0.003
-#> alpha_Temp                0.005 0.048    0.002          0.002 -0.080  0.004
-#> beta_Abundance_Elevation -0.157 0.101    0.005          0.005 -0.341 -0.160
-#> beta_Abundance_Moisture   0.353 0.091    0.004          0.004  0.180  0.356
-#> beta_Abundance_Temp       0.408 0.119    0.005          0.005  0.189  0.411
-#> beta_Moisture_Temp       -0.709 0.052    0.002          0.002 -0.806 -0.709
-#> beta_Temp_Elevation      -0.738 0.048    0.002          0.002 -0.830 -0.743
-#> sigmaAbundance            0.935 0.047    0.002          0.002  0.854  0.932
-#> sigmaMoisture             0.712 0.035    0.002          0.001  0.644  0.712
-#> sigmaTemp                 0.678 0.034    0.002          0.001  0.617  0.678
+#> alpha_Abundance          -0.002 0.064    0.003          0.003 -0.129 -0.004
+#> alpha_Moisture           -0.005 0.051    0.002          0.002 -0.106 -0.006
+#> alpha_Temp               -0.001 0.048    0.002          0.002 -0.092 -0.002
+#> beta_Abundance_Elevation -0.156 0.095    0.004          0.004 -0.352 -0.160
+#> beta_Abundance_Moisture   0.358 0.090    0.004          0.004  0.189  0.359
+#> beta_Abundance_Temp       0.416 0.115    0.005          0.005  0.201  0.415
+#> beta_Moisture_Temp       -0.710 0.051    0.002          0.002 -0.813 -0.709
+#> beta_Temp_Elevation      -0.741 0.048    0.002          0.002 -0.828 -0.742
+#> sigmaAbundance            0.934 0.049    0.002          0.002  0.843  0.932
+#> sigmaMoisture             0.711 0.037    0.002          0.002  0.645  0.709
+#> sigmaTemp                 0.674 0.034    0.002          0.002  0.610  0.672
+#> sigma_e_Abundance         0.934 0.049    0.002          0.002  0.843  0.932
+#> sigma_e_Moisture          0.711 0.037    0.002          0.002  0.645  0.709
+#> sigma_e_Temp              0.674 0.034    0.002          0.002  0.610  0.672
 #>                           97.5%  Rhat n.eff
-#> alpha_Abundance           0.138 1.004   480
-#> alpha_Moisture            0.087 1.002   480
-#> alpha_Temp                0.107 1.001   693
-#> beta_Abundance_Elevation  0.054 1.001   480
-#> beta_Abundance_Moisture   0.537 0.998   493
-#> beta_Abundance_Temp       0.628 1.000   578
-#> beta_Moisture_Temp       -0.612 0.998   550
-#> beta_Temp_Elevation      -0.648 1.013   492
-#> sigmaAbundance            1.030 0.998   442
-#> sigmaMoisture             0.783 0.998   603
-#> sigmaTemp                 0.744 1.000   604
+#> alpha_Abundance           0.125 1.004   583
+#> alpha_Moisture            0.099 0.999   434
+#> alpha_Temp                0.091 1.002   499
+#> beta_Abundance_Elevation  0.032 1.000   487
+#> beta_Abundance_Moisture   0.530 0.999   508
+#> beta_Abundance_Temp       0.642 1.003   565
+#> beta_Moisture_Temp       -0.615 0.999   465
+#> beta_Temp_Elevation      -0.647 1.001   480
+#> sigmaAbundance            1.030 0.998   480
+#> sigmaMoisture             0.780 1.001   480
+#> sigmaTemp                 0.746 1.005   480
+#> sigma_e_Abundance         1.030 0.998   480
+#> sigma_e_Moisture          0.780 1.001   480
+#> sigma_e_Temp              0.746 1.005   480
 #> 
 #> DIC:
 #> Mean deviance:  1377 
-#> penalty 11.16 
-#> Penalized deviance: 1388
+#> penalty 11.23 
+#> Penalized deviance: 1389
 ```
 
 We can also plot the fitted causal model with its standardised paths:
@@ -184,9 +190,9 @@ med_results <- because_mediation(fit, exposure = "Elevation", outcome = "Abundan
 ``` r
 med_results$summary
 #>                    Type       Mean         SD      Lower       Upper
-#> 1          Total Effect -0.2736813 0.06781102 -0.4064066 -0.12873398
-#> 2         Direct Effect -0.1570835 0.10138569 -0.3412616  0.05359304
-#> 3 Total Indirect Effect -0.1165978 0.07616327 -0.2766890  0.02484438
+#> 1          Total Effect -0.2757059 0.06687637 -0.4093048 -0.15266327
+#> 2         Direct Effect -0.1563994 0.09541511 -0.3515907  0.03157144
+#> 3 Total Indirect Effect -0.1193065 0.07344900 -0.2604293  0.02290439
 ```
 
 **Interpretation (Standardized Units):** \* **Total Effect**: The net
@@ -203,13 +209,13 @@ from exposure to outcome in the DAG.
 ``` r
 med_results$paths
 #>                                         Path     Type       Mean         SD
-#> 1 Elevation -> Temp -> Moisture -> Abundance Indirect  0.1847236 0.05171803
-#> 2             Elevation -> Temp -> Abundance Indirect -0.3013214 0.09070711
-#> 3                     Elevation -> Abundance   Direct -0.1570835 0.10138569
+#> 1 Elevation -> Temp -> Moisture -> Abundance Indirect  0.1887720 0.05302702
+#> 2             Elevation -> Temp -> Abundance Indirect -0.3080785 0.08725969
+#> 3                     Elevation -> Abundance   Direct -0.1563994 0.09541511
 #>         Lower       Upper
-#> 1  0.09250807  0.30043116
-#> 2 -0.47230373 -0.14221839
-#> 3 -0.34126157  0.05359304
+#> 1  0.09457531  0.29462758
+#> 2 -0.48333762 -0.14229962
+#> 3 -0.35159070  0.03157144
 ```
 
 We expect to see three distinct paths:
