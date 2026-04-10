@@ -3240,13 +3240,7 @@ because_model <- function(
             " # Fixed"
           )
         } else {
-          tau_line <- paste0(
-            "    ",
-            paste0(
-              "    ",
-              get_precision_prior(paste0("tau_e_", response, "[k]"), response)
-            )
-          )
+          tau_line <- paste0("    ", get_precision_prior(paste0("tau_e_", response, "[k]"), response))
         }
 
         model_lines <- c(
@@ -3279,10 +3273,7 @@ because_model <- function(
             " # Fixed"
           )
         } else {
-          tau_line <- paste0(
-            "    ",
-            get_precision_prior(paste0("tau_e_", response, "[k]"), response)
-          )
+          tau_line <- paste0("    ", get_precision_prior(paste0("tau_e_", response, "[k]"), response))
         }
 
         model_lines <- c(
@@ -3392,13 +3383,7 @@ because_model <- function(
           paste0("  for (k in 2:", K_var, ") {"),
           paste0("    alpha_", response, "[k] ~ dnorm(0, 1.0E-6)"),
           paste0("    lambda_", response, "[k] ~ dunif(0, 1)"),
-          paste0(
-            "    ",
-            paste0(
-              "    ",
-              get_precision_prior(paste0("tau_", response, "[k]"), response)
-            )
-          ),
+          paste0("    ", get_precision_prior(paste0("tau_", response, "[k]"), response)),
           "  }"
         )
       }
@@ -4227,10 +4212,7 @@ because_model <- function(
             " # Fixed residual variance"
           )
         } else {
-          tau_line <- paste0(
-            "  ",
-            get_precision_prior(paste0("tau_e_", var), var)
-          )
+          tau_line <- paste0("  ", get_precision_prior(paste0("tau_e_", var), var))
         }
 
         # Independent Predictor Prior
@@ -4261,10 +4243,7 @@ because_model <- function(
               " # Fixed residual variance"
             )
           } else {
-            tau_line <- paste0(
-              "  ",
-              get_precision_prior(paste0("tau_e_", var), var)
-            )
+            tau_line <- paste0("  ", get_precision_prior(paste0("tau_e_", var), var))
           }
 
           # Multiple Structures: Estimate independent variance components
