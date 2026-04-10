@@ -304,9 +304,9 @@ summary.because <- function(
             # The 'beta' is strict because we might want to see 'sigma_det' if that ever exists?
             # Usually these are betas linking the deterministic term.
 
-            # Pattern: ^beta_.*_det_ OR ^beta_.*_times_ (for the pre-fix version)
-            # Safe bet: contains "_det_" or "_times_" combined with beta
-            internal_idx <- grep("^beta_.*(_det_|_times_)", rownames(combined))
+            # Pattern: ^beta_.*_det_ OR ^beta_.*_1_times_ (for the pre-fix version)
+            # Safe bet: contains "_det_" or "_1_times_" combined with beta
+            internal_idx <- grep("^beta_.*(_det_|_1_times_)", rownames(combined))
 
             if (length(internal_idx) > 0) {
                 combined <- combined[-internal_idx, , drop = FALSE]

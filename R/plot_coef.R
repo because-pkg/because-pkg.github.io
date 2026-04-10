@@ -136,7 +136,7 @@ plot_coef.because <- function(
          target_params <- param_names[grepl("^(beta_|rho_)", param_names)]
          
          # Exclude internal deterministic link parameters
-         target_params <- target_params[!grepl("(_det_|_times_)", target_params)]
+         target_params <- target_params[!grepl("(_det_|_1_times_)", target_params)]
 
          for (pname in target_params) {
              est  <- stats[pname, "Mean"]
