@@ -420,7 +420,34 @@ dsep_standard <- function(
       t_eq <- tests[[t_idx]]
       resp <- as.character(t_eq)[2]
 
-      # Find random terms for response (handle both Species and psi_Species)
+      base_resp <- sub("^psi_", "", resp)
+      vocab_rand <- Filter(
+        function(x) {
+          # Must match response name
+          if (x$response != resp && x$response != base_resp) {
+            return(FALSE)
+          }
+
+          # If hierarchical info is present, check level compatibility
+          if (!is.null(hierarchical_info)) {
+            r_lvl <- get_var_level_dsep(base_resp, hierarchical_info)
+            g_lvl <- get_var_level_dsep(x$group, hierarchical_info)
+
+            # If both levels are known, check compatibility (group must be coarser or equal)
+            if (!is.null(r_lvl) && !is.null(g_lvl)) {
+              if (
+                !is_valid_structure_mapping_dsep(
+                  g_lvl,
+                  r_lvl,
+                  hierarchical_info
+                )
+              ) {
+                return(FALSE)
+              }
+            }
+          }
+          return(TRUE)
+        },
         random_terms
       )
 
