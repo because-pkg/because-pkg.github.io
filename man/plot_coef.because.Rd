@@ -6,7 +6,7 @@
 \usage{
 \method{plot_coef}{because}(
   object,
-  type = "marginal",
+  type = "raw",
   multinomial_probabilities = TRUE,
   color_scheme = "sig_only",
   ...
@@ -15,13 +15,13 @@
 \arguments{
 \item{object}{A \code{because} object.}
 
-\item{type}{Character; either \code{"marginal"} (default) or \code{"raw"}.
+\item{type}{Character; either \code{"raw"} (default) or \code{"marginal"}.
 \itemize{
 \item \code{"marginal"}: Shows \strong{Average Marginal Effects (AME)}. For categorical
 predictors, this represents the average shift in the outcome (e.g. probability or counts)
 associated with a one-category change. This is the recommended scale for
 comparing cross-model impacts.
-\item \code{"raw"}: Shows the raw structural parameters (betas/rhos) from the JAGS model.
+\item \code{"raw"} (default): Shows the raw structural parameters (betas/rhos) from the JAGS model.
 Useful for model diagnostics but harder to interpret on the original data scale.
 }}
 

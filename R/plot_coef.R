@@ -6,12 +6,12 @@
 #' comparison of effect sizes and their Bayesian credibility intervals.
 #'
 #' @param object A `because` object.
-#' @param type Character; either `"marginal"` (default) or `"raw"`.
+#' @param type Character; either `"raw"` (default) or `"marginal"`.
 #'   - `"marginal"`: Shows **Average Marginal Effects (AME)**. For categorical 
 #'     predictors, this represents the average shift in the outcome (e.g. probability or counts) 
 #'     associated with a one-category change. This is the recommended scale for 
 #'     comparing cross-model impacts.
-#'   - `"raw"`: Shows the raw structural parameters (betas/rhos) from the JAGS model. 
+#'   - `"raw"` (default): Shows the raw structural parameters (betas/rhos) from the JAGS model. 
 #'     Useful for model diagnostics but harder to interpret on the original data scale.
 #' @param multinomial_probabilities Logical; if `TRUE` (default), expands 
 #'   multinomial predictors into a "bundle" of category-specific effects, 
@@ -48,7 +48,7 @@
 #' @importFrom ggplot2 ggplot aes geom_pointrange geom_hline coord_flip labs theme_minimal scale_color_manual
 plot_coef.because <- function(
     object,
-    type = "marginal",
+    type = "raw",
     multinomial_probabilities = TRUE,
     color_scheme = "sig_only",
     ...

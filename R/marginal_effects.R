@@ -238,6 +238,12 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
         # Fallback to general regex stripping
         gsub("(_L|_Q|_C|_dummy|_\\d+|\\[\\d+\\])$", "", p)
     }))
+    
+    # Filter out interaction and deterministic polynomial terms entirely. 
+    # Marginal effects intrinsically integrate these when perturbing the base variables,
+    # so they should not appear as independent predictors to be tweaked.
+    focal_vars <- focal_vars[!grepl("_x_|_pow", focal_vars)]
+
 
     data_resp <- fit$original_data
     if (is.null(data_resp)) {
