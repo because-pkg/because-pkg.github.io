@@ -1170,8 +1170,10 @@ because <- function(
     # It's an S3 object with list base - use class name
     class_name <- class(tree)[1]
     # Check if it's a multi-object type (contains multiple items)
-    if (length(tree) > 1 && is.null(names(tree))) {
+    # Defense: Ignore list-based S3 objects that represent a single entity (like 'phylo')
+    if (length(tree) > 1 && is.null(names(tree)) && !inherits(tree, "phylo") && !inherits(tree, "spatial_knn")) {
       is_multiple <- TRUE
+      N_trees <- length(tree)
     }
     structures[[class_name]] <- tree
   } else if (
@@ -1181,15 +1183,26 @@ because <- function(
     structures <- tree
     # Check for multi-objects in the list
     for (s in structures) {
-      if (is.list(s) && length(s) > 1 && !is.matrix(s)) {
+      if (is.list(s) && length(s) > 1 && !is.matrix(s) && !inherits(s, "phylo")) {
         # Generic list with multiple items (likely replicates or multiPhylo)
         is_multiple <- TRUE
+        if (!exists("N_trees")) N_trees <- length(structures)
       }
     }
   } else {
     # Any other S3 object (phylo, spatial_knn, etc.) - use class name
     class_name <- class(tree)[1]
+    # Check for multiPhylo specifically
+    if (inherits(tree, "multiPhylo")) {
+      is_multiple <- TRUE
+      N_trees <- length(tree)
+    }
     structures[[class_name]] <- tree
+  }
+
+  # Ensure N_trees is available if is_multiple is true
+  if (is_multiple && !exists("N_trees")) {
+     N_trees <- length(structures)
   }
 
   structure_names <- names(structures)
@@ -1250,13 +1263,13 @@ because <- function(
       # Determine N from the processed structure
       # Look for any square matrix or 3D array in the data_list
       current_N <- NULL
-      for (d_name in names(prep_res$data_list)) {
-        obj <- prep_res$data_list[[d_name]]
+      for (obj in prep_res$data_list) {
         if (is.matrix(obj) && nrow(obj) == ncol(obj)) {
           current_N <- nrow(obj)
           break
-        } else if (is.array(obj) && length(dim(obj)) == 3) {
+        } else if (is.array(obj) && length(dim(obj)) == 3 && dim(obj)[1] == dim(obj)[2]) {
           current_N <- dim(obj)[1]
+          if (is_multiple && !exists("N_trees")) N_trees <- dim(obj)[3]
           break
         }
       }
@@ -1264,10 +1277,7 @@ because <- function(
       # If still NULL, check for 'n' attribute (safe way)
       if (is.null(current_N)) {
         n_attr <- attr(structure_obj, "n")
-        if (!is.numeric(n_attr)) {
-          n_attr <- NULL
-        } # Validate
-        if (!is.null(n_attr)) {
+        if (is.numeric(n_attr)) {
           current_N <- n_attr
         }
       }
@@ -1277,9 +1287,6 @@ because <- function(
       if (!is.null(hierarchical_info) && !is.null(current_N)) {
         # Check which level matches this count
         for (lvl in names(hierarchical_info$levels)) {
-          # Heuristic: Find level with matching N
-          # In truly hierarchical models, we have the counts.
-          # For now, let's assume if there's a match, it's the intended level.
           n_name <- paste0("N_", lvl)
           if (!is.null(data[[n_name]]) && data[[n_name]] == current_N) {
             s_level <- lvl
@@ -1306,6 +1313,16 @@ because <- function(
 
     if (!is.null(hierarchical_info)) {
       hierarchical_info$structure_levels <- structure_levels
+    }
+
+    # Finalize is_multiple logic (if multiple structures were found during processing)
+    if (exists("N_trees") && N_trees > 1) {
+      is_multiple <- TRUE
+    }
+
+    # Ensure Ntree is in the JAGS data list if uncertainty is active
+    if (is_multiple && exists("N_trees")) {
+      data$Ntree <- N_trees
     }
 
     # Optimized formulation is always used

@@ -862,8 +862,8 @@ because_model <- function(
           beta_counter[[paste0("alpha_", response)]] <- TRUE
           param_map[[length(param_map) + 1]] <- list(
             response = response,
-            predictor = "(Intercept)",
-            parameter = paste0("alpha_", response),
+            predictor = "(Intercepts)",
+            parameter = paste0("alpha_", response, "[]"),
             equation_index = j,
             type = "coefficient"
           )
@@ -1775,6 +1775,7 @@ because_model <- function(
                 )
               )
             }
+            model_lines <- c(model_lines, "  }")
           }
         }
       } else if (dist == "binomial") {

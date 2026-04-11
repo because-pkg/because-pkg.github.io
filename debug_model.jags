@@ -36,6 +36,7 @@ model {
     u_Metabolic_Rate_species_struct[i] <- u_std_Metabolic_Rate_species_struct[i] / sqrt(tau_u_Metabolic_Rate_species_struct)
     Metabolic_Rate[i] ~ dnorm(mu_Metabolic_Rate[i] + u_Metabolic_Rate_site_struct[i] + u_Metabolic_Rate_species_struct[i], tau_e_Metabolic_Rate)
     log_lik_Metabolic_Rate[i] <- logdensity.norm(Metabolic_Rate[i], mu_Metabolic_Rate[i] + u_Metabolic_Rate_site_struct[i] + u_Metabolic_Rate_species_struct[i], tau_e_Metabolic_Rate)
+  }
   u_std_Thermal_Tol_site_struct[1:N] ~ dmnorm(zeros[1:N], Prec_site_struct[1:N, 1:N, K])
     # Phylogenetic precision matrix (pre-calculated)
   u_std_Thermal_Tol_species_struct[1:N] ~ dmnorm(zeros[1:N], Prec_species_struct[1:N, 1:N, K])
@@ -44,6 +45,7 @@ model {
     u_Thermal_Tol_species_struct[i] <- u_std_Thermal_Tol_species_struct[i] / sqrt(tau_u_Thermal_Tol_species_struct)
     Thermal_Tol[i] ~ dnorm(mu_Thermal_Tol[i] + u_Thermal_Tol_site_struct[i] + u_Thermal_Tol_species_struct[i], tau_e_Thermal_Tol)
     log_lik_Thermal_Tol[i] <- logdensity.norm(Thermal_Tol[i], mu_Thermal_Tol[i] + u_Thermal_Tol_site_struct[i] + u_Thermal_Tol_species_struct[i], tau_e_Thermal_Tol)
+  }
   u_std_U_Resource_site_struct[1:N] ~ dmnorm(zeros[1:N], Prec_site_struct[1:N, 1:N, K])
     # Phylogenetic precision matrix (pre-calculated)
   u_std_U_Resource_species_struct[1:N] ~ dmnorm(zeros[1:N], Prec_species_struct[1:N, 1:N, K])
@@ -52,6 +54,7 @@ model {
     u_U_Resource_species_struct[i] <- u_std_U_Resource_species_struct[i] / sqrt(tau_u_U_Resource_species_struct)
     U_Resource[i] ~ dnorm(mu_U_Resource[i] + u_U_Resource_site_struct[i] + u_U_Resource_species_struct[i], tau_e_U_Resource)
     log_lik_U_Resource[i] <- logdensity.norm(U_Resource[i], mu_U_Resource[i] + u_U_Resource_site_struct[i] + u_U_Resource_species_struct[i], tau_e_U_Resource)
+  }
   u_std_NDVI_site_struct[1:N] ~ dmnorm(zeros[1:N], Prec_site_struct[1:N, 1:N, K])
     # Phylogenetic precision matrix (pre-calculated)
   u_std_NDVI_species_struct[1:N] ~ dmnorm(zeros[1:N], Prec_species_struct[1:N, 1:N, K])
@@ -60,6 +63,7 @@ model {
     u_NDVI_species_struct[i] <- u_std_NDVI_species_struct[i] / sqrt(tau_u_NDVI_species_struct)
     NDVI[i] ~ dnorm(mu_NDVI[i] + u_NDVI_site_struct[i] + u_NDVI_species_struct[i], tau_e_NDVI)
     log_lik_NDVI[i] <- logdensity.norm(NDVI[i], mu_NDVI[i] + u_NDVI_site_struct[i] + u_NDVI_species_struct[i], tau_e_NDVI)
+  }
   u_std_Flower_Cover_site_struct[1:N] ~ dmnorm(zeros[1:N], Prec_site_struct[1:N, 1:N, K])
     # Phylogenetic precision matrix (pre-calculated)
   u_std_Flower_Cover_species_struct[1:N] ~ dmnorm(zeros[1:N], Prec_species_struct[1:N, 1:N, K])
@@ -68,6 +72,7 @@ model {
     u_Flower_Cover_species_struct[i] <- u_std_Flower_Cover_species_struct[i] / sqrt(tau_u_Flower_Cover_species_struct)
     Flower_Cover[i] ~ dnorm(mu_Flower_Cover[i] + u_Flower_Cover_site_struct[i] + u_Flower_Cover_species_struct[i], tau_e_Flower_Cover)
     log_lik_Flower_Cover[i] <- logdensity.norm(Flower_Cover[i], mu_Flower_Cover[i] + u_Flower_Cover_site_struct[i] + u_Flower_Cover_species_struct[i], tau_e_Flower_Cover)
+  }
   u_std_Temperature_site_struct[1:N] ~ dmnorm(zeros[1:N], Prec_site_struct[1:N, 1:N, K])
     # Phylogenetic precision matrix (pre-calculated)
   u_std_Temperature_species_struct[1:N] ~ dmnorm(zeros[1:N], Prec_species_struct[1:N, 1:N, K])
@@ -76,6 +81,7 @@ model {
     u_Temperature_species_struct[i] <- u_std_Temperature_species_struct[i] / sqrt(tau_u_Temperature_species_struct)
     Temperature[i] ~ dnorm(mu_Temperature[i] + u_Temperature_site_struct[i] + u_Temperature_species_struct[i], tau_e_Temperature)
     log_lik_Temperature[i] <- logdensity.norm(Temperature[i], mu_Temperature[i] + u_Temperature_site_struct[i] + u_Temperature_species_struct[i], tau_e_Temperature)
+  }
   tau_site_struct_Abundance ~ dgamma(0.01, 0.01)
   sigma_site_struct_Abundance <- 1/sqrt(tau_site_struct_Abundance)
   err_site_struct_Abundance[1:N] ~ dmnorm(zero_vec[1:N], tau_site_struct_Abundance * Prec_site_struct[1:N, 1:N, 1])
