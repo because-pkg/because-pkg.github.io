@@ -350,14 +350,9 @@ mag_basis_to_formulas <- function(
             if (
                 !is.null(var1_lvl) && !is.null(var2_lvl) && var1_lvl != var2_lvl
             ) {
-                # Determine hierarchy order. The hierarchy string is "parent > child > grandchild"
-                # so earlier elements are coarser.
-                hier_array <- trimws(strsplit(
-                    hierarchical_info$hierarchy,
-                    ">"
-                )[[1]])
-                var1_idx <- match(var1_lvl, hier_array)
-                var2_idx <- match(var2_lvl, hier_array)
+                hier_str <- hierarchical_info$hierarchy
+                var1_idx <- get_level_depth(var1_lvl, hier_str)
+                var2_idx <- get_level_depth(var2_lvl, hier_str)
 
                 # If var1 is coarser (smaller index), swap so var2 (finer) becomes response
                 if (

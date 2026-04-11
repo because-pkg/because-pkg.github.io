@@ -615,3 +615,27 @@ auto_stack_multispecies_data <- function(data, equations, quiet = FALSE) {
         is_stacked = TRUE
     ))
 }
+#' Get Depth of a Level in Hierarchy
+#'
+#' Correctly handles multi-chain hierarchies (semicolons).
+#' Returns the 1-indexed depth (1 = coarsest).
+#' If a level appears in multiple chains, returns the maximum depth.
+#'
+#' @param lvl Level name to find
+#' @param hierarchy_str Hierarchy string
+#' @return Integer depth
+get_level_depth <- function(lvl, hierarchy_str) {
+  if (is.null(lvl) || is.null(hierarchy_str)) return(NA)
+  
+  paths <- strsplit(hierarchy_str, "\\s*;\\s*")[[1]]
+  paths <- lapply(paths, function(p) trimws(strsplit(p, "\\s*>\\s*")[[1]]))
+  
+  depths <- sapply(paths, function(p) {
+    idx <- match(lvl, p)
+    if (is.na(idx)) return(NA)
+    return(idx)
+  })
+  
+  if (all(is.na(depths))) return(NA)
+  return(max(depths, na.rm = TRUE))
+}
