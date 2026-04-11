@@ -13,7 +13,7 @@ their Bayesian credibility intervals.
 # S3 method for class 'because'
 plot_coef(
   object,
-  type = "marginal",
+  type = "raw",
   multinomial_probabilities = TRUE,
   color_scheme = "sig_only",
   ...
@@ -28,7 +28,7 @@ plot_coef(
 
 - type:
 
-  Character; either `"marginal"` (default) or `"raw"`.
+  Character; either `"raw"` (default) or `"marginal"`.
 
   - `"marginal"`: Shows **Average Marginal Effects (AME)**. For
     categorical predictors, this represents the average shift in the
@@ -36,9 +36,9 @@ plot_coef(
     change. This is the recommended scale for comparing cross-model
     impacts.
 
-  - `"raw"`: Shows the raw structural parameters (betas/rhos) from the
-    JAGS model. Useful for model diagnostics but harder to interpret on
-    the original data scale.
+  - `"raw"` (default): Shows the raw structural parameters (betas/rhos)
+    from the JAGS model. Useful for model diagnostics but harder to
+    interpret on the original data scale.
 
 - multinomial_probabilities:
 

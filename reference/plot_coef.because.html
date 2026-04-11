@@ -60,7 +60,7 @@ comparison of effect sizes and their Bayesian credibility intervals.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'because'</span></span>
 <span><span class="fu"><a href="plot_coef.html">plot_coef</a></span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
-<span>  type <span class="op">=</span> <span class="st">"marginal"</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"raw"</span>,</span>
 <span>  multinomial_probabilities <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  color_scheme <span class="op">=</span> <span class="st">"sig_only"</span>,</span>
 <span>  <span class="va">...</span></span>
@@ -76,11 +76,11 @@ comparison of effect sizes and their Bayesian credibility intervals.</p>
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
-<dd><p>Character; either <code>"marginal"</code> (default) or <code>"raw"</code>.</p><ul><li><p><code>"marginal"</code>: Shows <strong>Average Marginal Effects (AME)</strong>. For categorical
+<dd><p>Character; either <code>"raw"</code> (default) or <code>"marginal"</code>.</p><ul><li><p><code>"marginal"</code>: Shows <strong>Average Marginal Effects (AME)</strong>. For categorical
 predictors, this represents the average shift in the outcome (e.g. probability or counts)
 associated with a one-category change. This is the recommended scale for
 comparing cross-model impacts.</p></li>
-<li><p><code>"raw"</code>: Shows the raw structural parameters (betas/rhos) from the JAGS model.
+<li><p><code>"raw"</code> (default): Shows the raw structural parameters (betas/rhos) from the JAGS model.
 Useful for model diagnostics but harder to interpret on the original data scale.</p></li>
 </ul></dd>
 
