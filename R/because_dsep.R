@@ -164,6 +164,13 @@ is_cross_hierarchy_test <- function(test_eq, hierarchical_info) {
     return(FALSE)
   }
   test_var <- attr(test_eq, "test_var")
+  
+  # FALLBACK: If attribute is missing, assume first predictor on RHS is the focal one
+  if (is.null(test_var)) {
+    rhs_vars <- all.vars(test_eq)[-1]
+    if (length(rhs_vars) > 0) test_var <- rhs_vars[1]
+  }
+
   if (is.null(test_var)) return(FALSE)
 
   # Response is the LHS

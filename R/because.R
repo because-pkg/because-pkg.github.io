@@ -1988,7 +1988,10 @@ because <- function(
 
     # Extension Hook: Translate tests where response is specialized (e.g. psi_)
     dsep_tests <- lapply(dsep_tests, function(eq) {
-      dsep_test_translation_hook(family_obj, eq)
+      attr_val <- attr(eq, "test_var")
+      new_eq <- dsep_test_translation_hook(family_obj, eq)
+      if (!is.null(attr_val)) attr(new_eq, "test_var") <- attr_val
+      new_eq
     })
 
     # (Original translation block removed)
