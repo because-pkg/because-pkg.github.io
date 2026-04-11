@@ -2035,10 +2035,6 @@ because <- function(
         n_cross
       ))
       for (lbl in skipped_labels) message(lbl)
-      message(sprintf(
-        "(These tests require a cross-level index not yet implemented in the",
-        " compiler; they are guaranteed independent by the hierarchical structure.)"
-      ))
     }
     dsep_tests_skipped <- dsep_tests[cross_hier_flags]
     dsep_tests <- dsep_tests[!cross_hier_flags]

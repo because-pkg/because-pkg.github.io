@@ -207,7 +207,11 @@ is_cross_hierarchy_test <- function(test_eq, hierarchical_info) {
     if (is.null(cv_lvl)) next
     cv_in_a <- any(sapply(paths[path_a], function(p) cv_lvl %in% p))
     cv_in_b <- any(sapply(paths[path_b], function(p) cv_lvl %in% p))
-    if (cv_in_a && cv_in_b) return(FALSE)  # bridging variable found
+
+    # A variable bridges only if it appears in BOTH lineages. 
+    # Example: 'obs' appears in both 'site > survey > obs' and 'species > obs'.
+    # A variable at 'site' level does not bridge 'survey' to 'species'.
+    if (cv_in_a && cv_in_b) return(FALSE)
   }
 
   return(TRUE)
