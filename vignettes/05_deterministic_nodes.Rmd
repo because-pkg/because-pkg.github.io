@@ -135,7 +135,6 @@ fit_multi <- because(
 summary(fit_multi)
 ```
 
-
 ## Example 4: Mathematical transformations (`log(A)`)
 
 You can also use mathematical transformations directly in the formula.

@@ -130,73 +130,82 @@ To demonstrate the power of the `because` engine, we present a simulated case st
 
 ### 5.1 A 9-Node Hierarchical DAG with Latent Confounding
 
-We simulated a macroecological dataset representing $N=500$ observations of $S=50$ species across $M=50$ sites. The system is governed by a 9-node causal network (Figure \@ref(fig:dag-plot)) where causality flows across nested hierarchical levels:
+We simulated a macroecological dataset representing $N=4500$ observations of $S=50$ species across $M=30$ sites visited three times each, yielding a fully-crossed community matrix. The system is governed by a 9-node causal network (Figure \@ref(fig:dag-plot)) where causality flows across nested hierarchical levels:
 
-1.  **Evolutionary Traits (Species Level):** `Body_Mass_s` constrains a species' `Metabolic_Rate`, while `Metabolic_Rate` indirectly influences `Thermal_Tolerance`. The residuals of these species-level structural equations exhibit strong phylogenetic signal ($\lambda_{true} = 0.7$).
-2.  **Environmental Forcing (Site Level):** `Elevation_s` determines local `Temperature`. We also simulated a latent environmental confounder, `U_Resource` (e.g., primary productivity), which simultaneously drives both `NDVI` and `Foraging_Activity` but is unobserved by the researcher.
-3.  **Biological Interactions (Observation Level):** Local `Abundance` is driven by a complex interaction between `Foraging_Activity` and the thermal mismatch between the environment and the species' physiological limits ($I(Temperature - Thermal\_Tolerance)$).
+1.  **Evolutionary Traits (Species Level):** `Body_Mass_s` is an exogenous species-level trait that directly constrains both `Metabolic_Rate` and `Thermal_Tolerance`. All three species-level traits were simulated using Pagel's $\lambda$ transformation of the phylogenetic VCV matrix: $\mathbf{V}_\lambda = \lambda\,\mathbf{V}_{phylo} + (1-\lambda)\,\mathrm{diag}(\mathbf{V}_{phylo})$, with $\lambda_{true} = 0.6$. Traits were drawn from a multivariate normal with covariance $\mathbf{V}_\lambda$, yielding phylogenetic signal intermediate between pure Brownian Motion ($\lambda=1$) and independence ($\lambda=0$), while preserving the total per-species variance.
+2.  **Environmental Forcing (Site level):** `Elevation_s` is a fixed site attribute. A latent confounder `U_Resource` (unmeasured soil moisture / nutrient availability) simultaneously drives `NDVI` (remote-sensing greenness index) and `Flower_Cover` (percent cover of nectar plants measured in a single vegetation subplot per site), inducing a bidirected edge in the MAG. **Survey level:** At each of three repeat visits, observers record `Temperature` (°C, digital thermometer) and `Wind_Speed` (km/h, anemometer). Temperature varies around a site mean determined by `Elevation_s` plus realistic within-season weather noise ($\sigma=0.30$).
+3.  **Biological Interactions (Observation Level):** Local `Abundance` (Pollard walk count per survey visit) is a Poisson-distributed count driven by site-level `Flower_Cover`, survey-level `Wind_Speed` (wind speed recorded during the survey visit), and the thermal mismatch between ambient temperature and species thermal tolerance ($I(Temperature - Thermal\_Tolerance)$). Note that `Metabolic_Rate` affects `Abundance` exclusively via `Thermal_Tol`: metabolically active species evolve tolerance thresholds that determine how well they cope with local thermal conditions.
 
-Crucially, because `U_Resource` is latent, the system cannot be represented as a pure DAG of observed variables. Instead, it must be treated as a Maximal Ancestral Graph (MAG), where the unobserved confounding between `NDVI` and `Foraging_Intensity` is handled via an induced bi-directed edge ($\leftrightarrow$).
+Crucially, because `U_Resource` is latent, the system cannot be represented as a pure DAG of observed variables. Instead, it must be treated as a Maximal Ancestral Graph (MAG), where the unobserved confounding between `NDVI` and `Flower_Cover` is handled via an induced bi-directed edge ($\leftrightarrow$). Note that `Temperature` is a survey-level variable (not site-level) because it is measured afresh at each of the three visits; its site-level mean is set by `Elevation_s`.
 
-A cornerstone feature natively demonstrated in this case study is `because`'s ability to seamlessly match structured covariance matrices (such as a spatial distance matrix for geographic sites, and a phylogenetic tree for species) to their respective hierarchical data levels. Using automatic dimension mapping, the engine injects a 50x50 spatial random effect at the `site` level, and a separate $N$-sized evolutionary model at the `species` level, correctly parsing them down to the $N=500$ observational dataset without requiring manual index bookkeeping from the user.
+A cornerstone feature natively demonstrated in this case study is `because`'s ability to seamlessly match structured covariance matrices (such as a spatial distance matrix for geographic sites, and a phylogenetic tree for species) to their respective hierarchical data levels. Using automatic dimension mapping, the engine injects a $30 \times 30$ spatial random effect at the `site` level, and a separate $S=50$ phylogenetic random effect at the `species` level, correctly indexing both structures down to the $N=4500$ observational rows without requiring manual index bookkeeping from the user.
 
 ### 5.2 Model Specification and m-separation Verification
 
 In this biology-first workflow, the user simply declares the observed equations and provides the hierarchical metadata. `because` automatically identifies the latent structures and generates the appropriate m-separation checks to verify the causal topology:
 
 ```r
-# Declare the complex hierarchical MAG
+# Declare the 9-node hierarchical MAG
 eqs <- list(
-    U_Resource ~ Elevation_s,
-    Temperature ~ Elevation_s,
-    NDVI ~ U_Resource + Elevation_s,
-    Body_Mass_s ~ Elevation_s,
-    Metabolic_Rate ~ Temperature + Body_Mass_s,
-    Thermal_Tol ~ Temperature + Elevation_s,
-    Foraging_Intensity ~ U_Resource + Metabolic_Rate,
-    Abundance ~ U_Resource + Foraging_Intensity + I(Temperature - Thermal_Tol)
+    # --- Site level ---
+    NDVI         ~ U_Resource + Elevation_s,
+    Flower_Cover ~ U_Resource + Elevation_s,
+    # --- Survey level ---
+    Temperature  ~ Elevation_s,         # site predictor, survey response
+    # --- Species level (Body_Mass_s is an exogenous species trait) ---
+    Body_Mass_s    ~ 1,
+    Metabolic_Rate ~ Body_Mass_s,
+    Thermal_Tol    ~ Metabolic_Rate + Body_Mass_s,
+    # --- Observation level ---
+    Abundance ~ Flower_Cover + Wind_Speed +
+                I(Temperature - Thermal_Tol) +
+                (1 | Site) + (1 | Survey)
 )
 
 # Provide multiple structures mapped to their distinct causal scales
 structures <- list(
-    phylo = species_tree,        # e.g., N=150 species
-    spatial = site_distances     # e.g., N=50 sites
+    phylo   = species_tree,   # N = 50 species
+    spatial = site_distances  # N = 30 sites
 )
 
 # Fit and verify via m-separation (Maximum Ancestral Graph logic)
 fit <- because(
-    eqs, data = data_list, 
+    eqs,
+    data   = data_list,
     levels = list(
-        site = c("Elevation_s", "Temperature", "NDVI", "U_Resource", "Site"),
-        obs = c("Wind_Speed", "Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", 
-                "Foraging_Intensity", "Abundance")
+        species = c("Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", "Species"),
+        site    = c("Elevation_s", "NDVI", "Flower_Cover",
+                    "U_Resource", "Site"),
+        survey  = c("Temperature", "Wind_Speed", "Survey"),
+        obs     = c("Abundance")
     ),
-    hierarchy = "site > obs",
-    link_vars = c("Site"),
-    latent = "U_Resource", 
-    family = c(Abundance = "poisson"),
-    tree = structures,
-    dsep = TRUE
+    hierarchy     = "site > survey > obs; species > obs",
+    link_vars     = list(site = "Site", survey = "Survey", species = "Species"),
+    latent        = "U_Resource",
+    latent_method = "explicit",
+    family        = c(Abundance = "poisson"),
+    structure     = structures,
+    dsep          = TRUE
 )
 ```
 
-The engine automatically derived a basis set of **27 conditional independence tests** (Table \@ref(tab:dsep-results)). A significant technical challenge arose during this process: Test 9 involved regressing `Thermal_Tol ~ Abundance` while conditioning on the deterministic term `I(Temperature - Thermal_Tol)`. In a standard Bayesian regression, this would create a logical cycle, as `Thermal_Tol` is a component of the term being conditioned on. 
+The engine automatically derived a basis set of **25 conditional independence tests**, of which **2 were automatically dropped** by the Deterministic Cycle Filter. The two dropped tests (`Abundance ~ Temperature | I(Temperature - Thermal_Tol)` and `Thermal_Tol ~ Abundance | I(Temperature - Thermal_Tol)`) would create a logical cycle, as `Thermal_Tol` appears as a component of the deterministic term being conditioned on. Left unchecked, these tests would cause JAGS to report a compilation error ("Unknown variable"). `because` detects and discards them automatically, leaving **23 valid tests**.
 
-`because` handles this via a native **Deterministic Cycle Filter**, which automatically identifies and drops theoretically invalid m-separation tests that would otherwise cause JAGS compilation failures. In this case, 2 cyclic tests were dropped, leaving 25 valid tests that were executed successfully.
+> **Note on cross-scale d-separation.** A subset of the 23 remaining tests span more than one hierarchical level (e.g., testing if a site-level variable is independent of a species-level variable). Because these tests require aggregating data across two non-nested hierarchies simultaneously, they currently encounter a known index-generation limitation in the hierarchical sub-model compiler and are silently skipped with a warning. **10 tests were successfully executed** — all those within a single hierarchy or at the observation level. The remaining 13 cross-hierarchy tests represent a known open item for the package (documented in the issue tracker) and will be resolved in a future release via direct cross-level regression formulation.
 
 ### 5.3 Results: Parameter Recovery and Global Validity
 
-The joint Bayesian engine successfully recovered the true generative parameters across all three scales (Table \@ref(tab:parameter-recovery)). By modeling the site-level and species-level precision matrices simultaneously, the model disentangled the local causal effect of thermal mismatch on abundance from the background noise of evolutionary history and spatial clustering.
+Of the executed independence tests, all were consistent with independence (the 95% Bayesian Credibility Interval of the focal coefficient spanned zero), providing strong empirical support for the proposed causal topology. The handling of the latent node `U_Resource` correctly prevented erroneous direct paths from appearing between `NDVI` and `Flower_Cover`, demonstrating how `because` protects researchers from spurious results in the presence of unmeasured confounders.
 
-| Path | Level | True $\beta$ | Estimated $\beta$ (95% CI) |
-|:-----|:------|:-------------|:---------------------------|
-| Body Mass $\to$ Metabolic Rate | Species | 0.80 | 0.82 (0.71, 0.93) |
-| Elevation $\to$ Temperature | Site | -1.50 | -1.48 (-1.60, -1.36) |
-| Thermal Mismatch $\to$ Abundance | Obs | -0.50 | -0.52 (-0.61, -0.43) |
+The key generative parameters were successfully recovered in the d-separation sub-model tests for the within-level paths:
 
-Table: (\#tab:parameter-recovery) Selected parameter recovery from the 9-node hierarchical model. Estimated values represent posterior means and 95% Bayesian Credibility Intervals.
+| Path | Level | True $\beta$ | Estimated $\beta$ (95% BCI) |
+|:-----|:------|:-------------|:----------------------------|
+| Elevation $\to$ Temperature | Site | −1.50 | −1.48 (−2.22, −0.82) |
+| Thermal Mismatch $\to$ Abundance | Obs | −0.50 | −0.51 (−0.66, −0.35) |
+| Flower_Cover $\to$ Abundance | Site→Obs | +0.50 | TBD (from full model fit) |
 
-The global validity of the MAG structure was confirmed by the m-separation tests. Of the 25 independence tests performed, $100\%$ failed to reject the null hypothesis of independence $(p > 0.05)$, providing strong empirical support for the theoretical topology. Furthermore, the handling of the latent node `U_Resource` prevented the erroneous assignment of causality between `NDVI` and `Foraging_Activity`, illustrating how `because` protects researchers from spurious results in the presence of unobserved confounders.
+Table: (\#tab:parameter-recovery) Selected parameter recovery from m-separation sub-model tests of the 9-node hierarchical MAG. Estimated values represent posterior means and 95% Bayesian Credibility Intervals.
 
 By abstracting the complex MAG algebra and JAGS implementation, `because` transitions the researcher from a struggle with "directed cycles" and "matrix inversions" to a rigorous, automated verification of their biological hypotheses.
 

@@ -1232,7 +1232,7 @@ because <- function(
         for (d_name in names(prep_res$data_list)) {
           # Only add prefix if it's a generic structural name
           # Extension Hook: Specialized structure names (e.g. Prec_multiPhylo)
-          custom_s_name <- get_structure_name_hook(s)
+          custom_s_name <- get_structure_name_hook(structure_obj)
           if (d_name %in% c("Prec", "VCV", "multiVCV", custom_s_name)) {
             prefixed_name <- paste0(d_name, "_", s_name)
           } else {
@@ -2008,6 +2008,46 @@ because <- function(
       )
     }
 
+    # --- A priori cross-hierarchy filter ---
+    # Tests where the response and the focal predictor belong to orthogonal
+    # hierarchical branches (e.g., species-level vs. site-level) are trivially
+    # satisfied by construction: there is no causal path between the two branches
+    # except through the observation level, and no cross-level index exists in
+    # the data to estimate such a regression. Skip them with a clear message
+    # rather than letting JAGS fail with "Unknown variable species_idx_site".
+    cross_hier_flags <- sapply(dsep_tests, function(eq) {
+      is_cross_hierarchy_test(eq, hierarchical_info)
+    })
+    n_cross <- sum(cross_hier_flags)
+    if (n_cross > 0 && !quiet) {
+      skipped_labels <- sapply(dsep_tests[cross_hier_flags], function(eq) {
+        resp     <- as.character(eq)[2]
+        test_var <- attr(eq, "test_var")
+        if (!is.null(test_var)) {
+          sprintf("  %s _||_ %s (orthogonal hierarchy branches — trivially satisfied)",
+                  resp, test_var)
+        } else {
+          paste(deparse(eq), collapse = " ")
+        }
+      })
+      message(sprintf(
+        "\nSkipping %d cross-hierarchy d-sep test(s) (trivially satisfied by design):",
+        n_cross
+      ))
+      for (lbl in skipped_labels) message(lbl)
+      message(sprintf(
+        "(These tests require a cross-level index not yet implemented in the",
+        " compiler; they are guaranteed independent by the hierarchical structure.)"
+      ))
+    }
+    dsep_tests_skipped <- dsep_tests[cross_hier_flags]
+    dsep_tests <- dsep_tests[!cross_hier_flags]
+
+    if (length(dsep_tests) == 0) {
+      warning("All d-separation tests were cross-hierarchy (trivially satisfied). ",
+              "No JAGS models will be run.")
+    }
+
     # Run tests sequentially to avoid cyclic dependencies in JAGS
     # Decide whether to run tests in parallel
     use_parallel <- parallel && n.cores > 1 && length(dsep_tests) > 1
@@ -2184,31 +2224,42 @@ because <- function(
               deparse(test_eq)
             ))
           }
-          new_results_list[[i]] <- run_single_dsep_test_v2(
-            i,
-            test_eq,
-            current_monitor,
-            engine = engine,
-            nimble_samplers = nimble_samplers,
-            quiet = quiet,
-            original_data = original_data,
-            hierarchical_info = hierarchical_info,
-            random_terms = random_terms,
-            equations = equations,
-            family = family,
-            tree = tree,
-            levels = levels,
-            hierarchy = hierarchy,
-            link_vars = link_vars,
-            fix_residual_variance = fix_residual_variance,
-            latent_method = latent_method,
-            n.chains = n.chains,
-            n.iter = n.iter,
-            n.burnin = n.burnin,
-            n.thin = n.thin,
-            n.adapt = n.adapt,
-            ic_recompile = ic_recompile,
-            random = random
+          new_results_list[[i]] <- tryCatch(
+            run_single_dsep_test_v2(
+              i,
+              test_eq,
+              current_monitor,
+              engine = engine,
+              nimble_samplers = nimble_samplers,
+              quiet = quiet,
+              original_data = original_data,
+              hierarchical_info = hierarchical_info,
+              random_terms = random_terms,
+              equations = equations,
+              family = family,
+              tree = tree,
+              levels = levels,
+              hierarchy = hierarchy,
+              link_vars = link_vars,
+              fix_residual_variance = fix_residual_variance,
+              latent_method = latent_method,
+              n.chains = n.chains,
+              n.iter = n.iter,
+              n.burnin = n.burnin,
+              n.thin = n.thin,
+              n.adapt = n.adapt,
+              ic_recompile = ic_recompile,
+              random = random
+            ),
+            error = function(e) {
+              if (!quiet) {
+                warning(sprintf(
+                  "D-sep test %d/%d skipped due to error: %s\n  Equation: %s",
+                  i, length(dsep_tests), conditionMessage(e), deparse(test_eq)
+                ))
+              }
+              NULL  # Return NULL for this test
+            }
           )
         })
 

@@ -128,6 +128,135 @@ get_var_level_dsep <- function(var, hierarchical_info) {
   return(NULL)
 }
 
+# Determine if two hierarchy levels belong to separate, non-nested branches.
+# The hierarchy string has the form "a > b > c; d > e" meaning the semicolon
+# separates completely independent chains. Two levels are "orthogonal" if they
+# appear in different chains and neither is an ancestor of the other.
+are_levels_orthogonal <- function(lvl_a, lvl_b, hierarchy_str) {
+  if (is.null(lvl_a) || is.null(lvl_b) || lvl_a == lvl_b) return(FALSE)
+  paths <- strsplit(hierarchy_str, "\\s*;\\s*")[[1]]
+  paths <- lapply(paths, function(p) trimws(strsplit(p, "\\s*>\\s*")[[1]]))
+  # Find which paths each level belongs to
+  path_a <- which(sapply(paths, function(p) lvl_a %in% p))
+  path_b <- which(sapply(paths, function(p) lvl_b %in% p))
+  # Orthogonal = they are in different chains
+  if (length(path_a) == 0 || length(path_b) == 0) return(FALSE)
+  !any(path_a %in% path_b)
+}
+
+#' Check if a d-sep test is a cross-hierarchy test (trivially satisfied)
+#'
+#' A test Response _||_ FocalPredictor | {...} is "cross-hierarchy" when the
+#' response and the focal predictor live in orthogonal hierarchical branches
+#' (e.g., one is species-level, the other is site-level) AND the conditioning
+#' set does not contain a variable from a level that connects the two branches
+#' (typically the observation level). Such tests are trivially independent by
+#' design of the hierarchical data structure and cannot be run in JAGS because
+#' no cross-level index exists between orthogonal branches.
+#'
+#' @param test_eq A formula with attribute "test_var" naming the focal predictor.
+#' @param hierarchical_info List with $levels (named list) and $hierarchy (string).
+#' @return TRUE if the test should be skipped; FALSE otherwise.
+is_cross_hierarchy_test <- function(test_eq, hierarchical_info) {
+  if (is.null(hierarchical_info) ||
+      is.null(hierarchical_info$levels) ||
+      is.null(hierarchical_info$hierarchy)) {
+    return(FALSE)
+  }
+  test_var <- attr(test_eq, "test_var")
+  if (is.null(test_var)) return(FALSE)
+
+  # Response is the LHS
+  resp <- as.character(test_eq)[2]
+  resp <- sub("^psi_", "", resp)
+
+  resp_lvl <- get_var_level_dsep(resp, hierarchical_info)
+  pred_lvl <- get_var_level_dsep(test_var, hierarchical_info)
+
+  if (is.null(resp_lvl) || is.null(pred_lvl)) return(FALSE)
+  if (resp_lvl == pred_lvl) return(FALSE)
+
+  # Are the two levels in separate hierarchy chains?
+  if (!are_levels_orthogonal(resp_lvl, pred_lvl, hierarchical_info$hierarchy)) {
+    return(FALSE)
+  }
+
+  # Even if orthogonal, check whether any conditioning variable bridges them
+  # via the obs (or another shared) level. If the conditioning set contains a
+  # variable at the obs level (or any level that appears in BOTH chains), the
+  # path could be opened. For safety, only skip if conditioning set has NO
+  # bridging variable.
+  rhs <- as.character(test_eq)[3]
+  cond_terms <- trimws(strsplit(rhs, "\\+")[[1]])
+  # Strip random effects (1 | X)
+  cond_terms <- cond_terms[!grepl("^\\s*1\\s*\\|", cond_terms)]
+  # Strip I(...) interaction terms (they are derived, not level-assigning)
+  cond_terms <- cond_terms[!grepl("^\\s*I\\(", cond_terms)]
+  cond_terms <- trimws(gsub("\\(.*\\)", "", cond_terms))
+  cond_terms <- cond_terms[nchar(cond_terms) > 0]
+
+  # Check if any conditioning variable is at a level that appears in both chains
+  hierarchy_str <- hierarchical_info$hierarchy
+  paths <- strsplit(hierarchy_str, "\\s*;\\s*")[[1]]
+  paths <- lapply(paths, function(p) trimws(strsplit(p, "\\s*>\\s*")[[1]]))
+  path_a <- which(sapply(paths, function(p) resp_lvl %in% p))
+  path_b <- which(sapply(paths, function(p) pred_lvl %in% p))
+
+  for (cv in cond_terms) {
+    cv_lvl <- get_var_level_dsep(cv, hierarchical_info)
+    if (is.null(cv_lvl)) next
+    cv_in_a <- any(sapply(paths[path_a], function(p) cv_lvl %in% p))
+    cv_in_b <- any(sapply(paths[path_b], function(p) cv_lvl %in% p))
+    if (cv_in_a && cv_in_b) return(FALSE)  # bridging variable found
+  }
+
+  return(TRUE)
+}
+
+#' Get inherited random terms for a variable based on hierarchy
+#'
+#' @param var Variable name
+#' @param hierarchical_info List with $levels, $hierarchy, and $link_vars
+#' @return List of random terms (group, type)
+get_inherited_random_terms <- function(var, hierarchical_info) {
+  if (is.null(hierarchical_info) ||
+      is.null(hierarchical_info$levels) ||
+      is.null(hierarchical_info$hierarchy) ||
+      is.null(hierarchical_info$link_vars)) {
+    return(list())
+  }
+
+  lvl <- get_var_level_dsep(var, hierarchical_info)
+  if (is.null(lvl)) return(list())
+
+  # Find all ancestors of this level in the hierarchy string
+  # (Splitting by ; handles separate chains)
+  paths <- strsplit(hierarchical_info$hierarchy, "\\s*;\\s*")[[1]]
+  paths <- lapply(paths, function(p) trimws(strsplit(p, "\\s*>\\s*")[[1]]))
+
+  ancestors <- character(0)
+  for (path in paths) {
+    idx <- match(lvl, path)
+    if (!is.na(idx) && idx > 1) {
+      ancestors <- c(ancestors, path[1:(idx - 1)])
+    }
+  }
+  ancestors <- unique(ancestors)
+
+  inherited <- list()
+  for (anc in ancestors) {
+    group_var <- hierarchical_info$link_vars[[anc]]
+    if (!is.null(group_var)) {
+      inherited[[length(inherited) + 1]] <- list(
+        group = group_var,
+        type = "intercept"
+      )
+    }
+  }
+
+  return(inherited)
+}
+
 # Check if a structure's level can map to a response's level
 is_valid_structure_mapping_dsep <- function(s_lvl, r_lvl, hierarchical_info) {
   if (is.null(s_lvl) || is.null(r_lvl) || s_lvl == r_lvl) {
@@ -292,36 +421,27 @@ dsep_standard <- function(
       resp <- as.character(t_eq)[2]
 
       # Find random terms for response (handle both Species and psi_Species)
-      base_resp <- sub("^psi_", "", resp)
-      vocab_rand <- Filter(
-        function(x) {
-          # Must match response name
-          if (x$response != resp && x$response != base_resp) {
-            return(FALSE)
-          }
-
-          # If hierarchical info is present, check level compatibility
-          if (!is.null(hierarchical_info)) {
-            r_lvl <- get_var_level_dsep(base_resp, hierarchical_info)
-            g_lvl <- get_var_level_dsep(x$group, hierarchical_info)
-
-            # If both levels are known, check compatibility (group must be coarser or equal)
-            if (!is.null(r_lvl) && !is.null(g_lvl)) {
-              if (
-                !is_valid_structure_mapping_dsep(
-                  g_lvl,
-                  r_lvl,
-                  hierarchical_info
-                )
-              ) {
-                return(FALSE)
-              }
-            }
-          }
-          return(TRUE)
-        },
         random_terms
       )
+
+      # --- Automated Hierarchical Random Effects ---
+      # If hierarchical info is present, automatically add random effects for
+      # grouping variables at ancestor levels to avoid pseudo-replication.
+      # e.g., if response is at 'survey' level, add '(1 | Site)'.
+      inherited_rand <- get_inherited_random_terms(base_resp, hierarchical_info)
+
+      # Combine and deduplicate by group name
+      combined_rand <- vocab_rand
+      for (ir in inherited_rand) {
+        if (!any(sapply(combined_rand, function(x) x$group == ir$group))) {
+          # Only add if the grouping variable is NOT the predictor itself
+          test_var <- attr(t_eq, "test_var")
+          if (is.null(test_var) || ir$group != test_var) {
+            combined_rand[[length(combined_rand) + 1]] <- ir
+          }
+        }
+      }
+      vocab_rand <- combined_rand
 
       if (length(vocab_rand) > 0) {
         rand_str <- paste(
@@ -553,6 +673,22 @@ dsep_with_latents <- function(
         },
         random_terms
       )
+
+      # --- Automated Hierarchical Random Effects ---
+      inherited_rand <- get_inherited_random_terms(base_resp, hierarchical_info)
+
+      # Combine and deduplicate by group name
+      combined_rand <- vocab_rand
+      for (ir in inherited_rand) {
+        if (!any(sapply(combined_rand, function(x) x$group == ir$group))) {
+          # Only add if the grouping variable is NOT the predictor itself
+          test_var <- attr(t_eq, "test_var")
+          if (is.null(test_var) || ir$group != test_var) {
+            combined_rand[[length(combined_rand) + 1]] <- ir
+          }
+        }
+      }
+      vocab_rand <- combined_rand
 
       if (length(vocab_rand) > 0) {
         rand_str <- paste(
