@@ -1,0 +1,60 @@
+model {
+  # Common structures and priors
+  # Structural equations
+
+  for (i in 1:N) {
+    mu_BR[i] <- alpha_BR + beta_BR_BM*BM[i]
+  }
+  for (i in 1:N) {
+    mu_S[i] <- alpha_S + beta_S_BR*BR[i]
+  }
+  for (i in 1:N) {
+    mu_G[i] <- alpha_G + beta_G_BR*BR[i]
+  }
+  for (i in 1:N) {
+    mu_L[i] <- alpha_L + beta_L_BR*BR[i]
+  }
+  # Multivariate normal likelihoods
+  for (i in 1:N) {
+    BR[i] ~ dnorm(mu_BR[i], tau_e_BR)
+    log_lik_BR[i] <- logdensity.norm(BR[i], mu_BR[i], tau_e_BR)
+  }
+  for (i in 1:N) {
+    S[i] ~ dnorm(mu_S[i], tau_e_S)
+    log_lik_S[i] <- logdensity.norm(S[i], mu_S[i], tau_e_S)
+  }
+  for (i in 1:N) {
+    G[i] ~ dnorm(mu_G[i], tau_e_G)
+    log_lik_G[i] <- logdensity.norm(G[i], mu_G[i], tau_e_G)
+  }
+  for (i in 1:N) {
+    L[i] ~ dnorm(mu_L[i], tau_e_L)
+    log_lik_L[i] <- logdensity.norm(L[i], mu_L[i], tau_e_L)
+  }
+  # Priors for structural parameters
+  alpha_BR ~ dnorm(0, 1.0E-6)
+  sigma_e_BR ~ dunif(0, 100)
+  tau_e_BR <- 1 / (sigma_e_BR * sigma_e_BR)
+  sigmaBR <- 1/sqrt(tau_e_BR)
+  alpha_S ~ dnorm(0, 1.0E-6)
+  sigma_e_S ~ dunif(0, 100)
+  tau_e_S <- 1 / (sigma_e_S * sigma_e_S)
+  sigmaS <- 1/sqrt(tau_e_S)
+  alpha_G ~ dnorm(0, 1.0E-6)
+  sigma_e_G ~ dunif(0, 100)
+  tau_e_G <- 1 / (sigma_e_G * sigma_e_G)
+  sigmaG <- 1/sqrt(tau_e_G)
+  alpha_L ~ dnorm(0, 1.0E-6)
+  sigma_e_L ~ dunif(0, 100)
+  tau_e_L <- 1 / (sigma_e_L * sigma_e_L)
+  sigmaL <- 1/sqrt(tau_e_L)
+  beta_BR_BM ~ dnorm(0, 1.0E-6)
+  beta_S_BR ~ dnorm(0, 1.0E-6)
+  beta_G_BR ~ dnorm(0, 1.0E-6)
+  beta_L_BR ~ dnorm(0, 1.0E-6)
+  # Phylogenetic uncertainty weighting
+  for (k in 1:Ntree) {
+    p_tree[k] <- 1/Ntree
+  }
+  K ~ dcat(p_tree[1:Ntree])
+}
