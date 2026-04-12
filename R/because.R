@@ -2855,6 +2855,10 @@ because <- function(
       if (!is.matrix(data[[pv]])) {
         data[[pv]] <- as.matrix(data[[pv]])
       }
+      # [STABILITY] Add small diagonal jitter (nugget) to ensure positive definiteness
+      # and prevent numerical singularities during C++ compilation.
+      # Ref: Rasmussen & Williams (2006), Gaussian Processes for Machine Learning.
+      diag(data[[pv]]) <- diag(data[[pv]]) + 1e-6
     }
   }
 
@@ -3025,7 +3029,15 @@ because <- function(
       if (!p %in% names(nimble_inits)) {
         if (grepl("^(tau_|sigmay_|sigmap_|sigmar_)", p)) {
           nimble_inits[[p]] <- 1
-        } else if (grepl("^(alpha_|beta_|err_|rho_|cutpoint_|lambda_)", p)) {
+        } else if (grepl("^alpha_", p)) {
+          # [STABILITY] Initialize intercepts to response mean to avoid -Inf LogProb
+          resp_name <- sub("^alpha_", "", p)
+          if (resp_name %in% names(data)) {
+            nimble_inits[[p]] <- mean(as.numeric(data[[resp_name]]), na.rm = TRUE)
+          } else {
+            nimble_inits[[p]] <- 0
+          }
+        } else if (grepl("^(beta_|err_|rho_|cutpoint_|lambda_)", p)) {
           nimble_inits[[p]] <- 0
         } else if (grepl("^psi_", p)) {
           nimble_inits[[p]] <- 0.5
@@ -3114,7 +3126,9 @@ because <- function(
       for (re_var in struct_re_vars) {
         # removeSamplers can take the target name directly
         mcmc_conf$removeSamplers(re_var)
-        mcmc_conf$addSampler(target = re_var, type = "AF_slice")
+        # [PERFORMANCE] Use RW_block for structured random effects
+        # AF_slice is robust but extremely slow to initialize for large vectors
+        mcmc_conf$addSampler(target = re_var, type = "RW_block")
       }
 
       if (!quiet) {
@@ -3166,8 +3180,15 @@ because <- function(
     }
 
     nimble_mcmc <- nimble::buildMCMC(mcmc_conf)
-    compiled_model <- nimble::compileNimble(nimble_model)
-    compiled_mcmc <- nimble::compileNimble(nimble_mcmc, project = nimble_model)
+    
+    # [PERFORMANCE] Skip main-thread compilation if running in parallel
+    # to avoid redundant triple/quadruple compilation overhead.
+    if (!parallel || n.cores == 1 || n.chains == 1) {
+      compiled_model <- nimble::compileNimble(nimble_model)
+      compiled_mcmc <- nimble::compileNimble(nimble_mcmc, project = nimble_model)
+    } else {
+      compiled_mcmc <- NULL
+    }
 
     if (parallel && n.cores > 1 && n.chains > 1) {
       # Parallel execution for NIMBLE
@@ -3300,7 +3321,8 @@ because <- function(
         if (length(struct_re_vars) > 0) {
           for (re_var in struct_re_vars) {
             worker_conf$removeSamplers(re_var)
-            worker_conf$addSampler(target = re_var, type = "AF_slice")
+            # [PERFORMANCE] Use RW_block for workers to match main thread
+            worker_conf$addSampler(target = re_var, type = "RW_block")
           }
         }
 
