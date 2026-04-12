@@ -26,6 +26,8 @@ jags_structure_definition.default <- function(
     loop_bound <- args$loop_bound %||% "N"
     k_idx <- args$category_index # e.g. "k" or "2"
     is_multi <- args$is_multi %||% FALSE
+    zeros_name <- args$zeros_name %||% "zeros"
+    i_index <- args$i_index %||% "i"
 
     prec_name <- paste0("Prec_", s_name)
     err_var <- paste0("err_", s_name, "_", variable_name)
@@ -71,8 +73,11 @@ jags_structure_definition.default <- function(
         ),
         paste0(
             "  ",
+            # Standard Multivariate Normal definition for the error vector
             err_index,
-            " ~ dmnorm(zero_vec[1:",
+            " ~ dmnorm(",
+            zeros_name,
+            "[1:",
             loop_bound,
             "], ",
             tau_var,
@@ -84,10 +89,11 @@ jags_structure_definition.default <- function(
     )
 
     # Term to add to linear predictor
+    # This is where we use the hierarchical index bridge (e.g. site_idx_obs[i])
     term_str <- if (!is.null(k_idx)) {
-        paste0(err_var, "[i, ", k_idx, "]")
+        paste0(err_var, "[", i_index, ", ", k_idx, "]")
     } else {
-        paste0(err_var, "[i]")
+        paste0(err_var, "[", i_index, "]")
     }
 
     return(list(

@@ -212,6 +212,14 @@ because_model <- function(
     return(paste0("zeros_", lvl))
   }
 
+  # Helper: Get hierarchical level name for a random effect grouping variable
+  get_random_level <- function(response, group_var, h_info) {
+    if (is.null(h_info)) {
+      return(NULL)
+    }
+    return(get_var_level(group_var, h_info))
+  }
+
   # Helper: Get level for a structure
   get_struct_lvl <- function(s_name, h_info) {
     if (is.null(h_info) || is.null(h_info$structure_levels)) {
@@ -356,6 +364,25 @@ because_model <- function(
 
   # Helper: Get N string (for hierarchical-aware array dimensions)
   N_str <- function() main_loop_N
+
+  # Helper: Check if a structure is multi-object
+  is_struct_multi <- function(s_name) {
+    # 1. Consult hierarchy if available
+    if (!is.null(hierarchical_info$structure_multi) && s_name %in% names(hierarchical_info$structure_multi)) {
+      status <- hierarchical_info$structure_multi[[s_name]]
+      if (!is.null(status)) return(as.logical(status))
+    }
+
+    # 2. Case-specific fallback for common names
+    phylo_aliases <- c("phylo", "tree", "multiPhylo", "phylogeny", "custom")
+    if (s_name %in% phylo_aliases) {
+      if (!is.null(multi.tree)) return(as.logical(multi.tree))
+      return(FALSE)
+    }
+
+    # 3. Default to FALSE for spatial, custom matrices unless explicitly flagged
+    return(FALSE)
+  }
 
   has_structure <- !is.null(structure_names) && length(structure_names) > 0
   has_random <- !is.null(random_structure_names) &&
@@ -1592,8 +1619,6 @@ because_model <- function(
           } else {
             # Optimized Random Effects Formulation (Additive)
             additive_terms <- ""
-            obs_loop_preamble <- c()
-
             # 1. Structures (Phylo, Spatial, etc.)
             for (s_name in structure_names) {
               if (
@@ -1605,87 +1630,38 @@ because_model <- function(
               ) {
                 next
               }
+
               # Structure properties
               s_lvl <- get_struct_lvl(s_name, hierarchical_info)
               s_bound <- if (is.null(s_lvl)) loop_bound else paste0("N_", s_lvl)
               s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
-              s_suffix <- paste0("_", s_name)
-              u_std <- paste0("u_std_", response, suffix, s_suffix)
-              u <- paste0("u_", response, suffix, s_suffix)
-              tau_u <- paste0("tau_u_", response, suffix, s_suffix)
 
-              # Call Generic to define the error term u ~ dmnorm(...)
-              def <- jags_structure_definition(
+              # Hierarchical bridge index (e.g. site_idx_obs[i])
+              s_idx_var <- get_struct_index(s_name, response, hierarchical_info)
+
+              # Call Generic to define the error vector u ~ dmnorm(...)
+              s_def <- jags_structure_definition(
                 structures[[s_name]],
-                variable_name = u_std,
-                optimize = TRUE,
-                precision_parameter = tau_u
+                variable_name = response,
+                s_name = s_name,
+                loop_bound = s_bound,
+                zeros_name = s_zeros,
+                is_multi = is_struct_multi(s_name),
+                i_index = s_idx_var
               )
 
-              if (!is.null(def$setup_code)) {
-                model_lines <- c(model_lines, def$setup_code)
+              if (!is.null(s_def$setup_code)) {
+                model_lines <- c(model_lines, s_def$setup_code)
+              }
+              model_lines <- c(model_lines, s_def$model_lines)
+              
+              if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
+                 additive_terms <- paste0(additive_terms, " + ", s_def$term)
               }
 
-              prec_name <- paste0("Prec_", s_name)
-              prec_index <- if (!is.null(def$prec_index)) {
-                def$prec_index
-              } else if (multi.tree && is_multi_structure) {
-                paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, ", K]")
-              } else {
-                paste0(prec_name, "[1:", s_bound, ", 1:", s_bound, "]")
-              }
-
-              # Vector Math: MNORM (OUTSIDE loop)
-              model_lines <- c(
-                model_lines,
-                paste0(
-                  "  ",
-                  u_std,
-                  "[1:",
-                  s_bound,
-                  "] ~ dmnorm(",
-                  s_zeros,
-                  "[1:",
-                  s_bound,
-                  "], ",
-                  prec_index,
-                  ")"
-                )
-              )
-              
-              # Observation Math: Transform (INSIDE loop later)
-              obs_loop_preamble <- c(
-                obs_loop_preamble,
-                paste0(
-                  "    ",
-                  u,
-                  "[i] <- ",
-                  u_std,
-                  "[",
-                  get_struct_index(s_name, response, hierarchical_info),
-                  "] / sqrt(",
-                  tau_u,
-                  ")"
-                )
-              )
-              
-              additive_terms <- paste0(additive_terms, " + ", u, "[i]")
-              
               # Map structural parameters
-              param_map[[length(param_map) + 1]] <- list(
-                response = response,
-                predictor = s_name,
-                parameter = tau_u,
-                equation_index = NA,
-                type = "structure"
-              )
-              param_map[[length(param_map) + 1]] <- list(
-                response = response,
-                predictor = s_name,
-                parameter = paste0("sigma_", s_name, "_", response),
-                equation_index = NA,
-                type = "structure"
-              )
+              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_", s_name, "_", response), equation_index = NA, type = "structure")
+              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", s_name, "_", response), equation_index = NA, type = "structure")
             }
 
             # 2. Random Effects (Grouped)
@@ -1696,46 +1672,23 @@ because_model <- function(
               u_std <- paste0("u_std_", response, suffix, s_suffix)
               u <- paste0("u_", response, suffix, s_suffix)
               tau_u <- paste0("tau_u_", response, suffix, s_suffix)
-              n_groups <- paste0("N_", r_name)
-              zeros_name <- paste0("zeros_", r_name)
+              
+              # Determine hierarchical level if available
+              r_lvl <- get_random_level(response, r_name, hierarchical_info)
+              n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
+              zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
               prec_name <- paste0("Prec_", r_name)
 
-              # Global Vector Math
               model_lines <- c(
                 model_lines,
-                paste0(
-                  "  ",
-                  u_std,
-                  "[1:",
-                  n_groups,
-                  "] ~ dmnorm(",
-                  zeros_name,
-                  "[1:",
-                  n_groups,
-                  "], ",
-                  prec_name,
-                  "[1:",
-                  n_groups,
-                  ", 1:",
-                  n_groups,
-                  "])"
-                ),
-                paste0("  for (g in 1:", n_groups, ") {"),
-                paste0("    ", u, "[g] <- ", u_std, "[g] / sqrt(", tau_u, ")"),
-                paste0("  }")
+                paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
+                paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- ", u_std, "[g] / sqrt(", tau_u, ") }")
               )
               
-              # Smart Indexing Logic
               group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
               additive_terms <- paste0(additive_terms, " + ", u, "[", group_idx, "]")
               
-              param_map[[length(param_map) + 1]] <- list(
-                response = response,
-                predictor = r_name,
-                parameter = tau_u,
-                equation_index = NA,
-                type = "structure"
-              )
+              param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
             }
 
             # 3. Unified Observation Loop
@@ -1743,7 +1696,6 @@ because_model <- function(
             model_lines <- c(
               model_lines,
               paste0("  for (i in 1:", loop_bound, ") {"),
-              obs_loop_preamble, # Inject per-observation transforms
               paste0(
                 "    ",
                 response_var,
@@ -1807,12 +1759,20 @@ because_model <- function(
             s_lvl <- get_struct_lvl(s_name, hierarchical_info)
             s_bound <- if (is.null(s_lvl)) loop_bound else paste0("N_", s_lvl)
             s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
-            s_suffix <- paste0("_", s_name)
-            u_std <- paste0("u_std_", response, suffix, s_suffix)
-            u <- paste0("u_", response, suffix, s_suffix)
-            tau_u <- paste0("tau_u_", response, suffix, s_suffix)
 
-            s_def <- jags_structure_definition(structures[[s_name]], variable_name = response, s_name = s_name, loop_bound = s_bound, category_index = NULL)
+            # Hierarchical bridge index (e.g. site_idx_obs[i])
+            s_idx_var <- get_struct_index(s_name, response, hierarchical_info)
+
+            s_def <- jags_structure_definition(
+              structures[[s_name]],
+              variable_name = response,
+              s_name = s_name,
+              loop_bound = s_bound,
+              zeros_name = s_zeros,
+              category_index = NULL,
+              is_multi = is_struct_multi(s_name),
+              i_index = s_idx_var
+            )
             if (!is.null(s_def)) {
               if (!is.null(s_def$setup_code)) model_lines <- c(model_lines, s_def$setup_code)
               
@@ -1825,8 +1785,6 @@ because_model <- function(
               
               # Add to observation math
               if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
-                 local_obs_code <- c(local_obs_code, paste0("    u_", s_name, "_", response, suffix, "[i] <- ", s_def$term)) # Note: Generic term might need careful index mapping
-                 # Actually, better to use the term directly in total_u if it's already indexed
                  total_u <- paste0(total_u, " + ", s_def$term)
               }
             }
@@ -1840,8 +1798,11 @@ because_model <- function(
             u_std <- paste0("u_std_", response, suffix, s_suffix)
             u <- paste0("u_", response, suffix, s_suffix)
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
-            n_groups <- paste0("N_", r_name)
-            zeros_name <- paste0("zeros_", r_name)
+            
+            # Determine hierarchical level if available
+            r_lvl <- get_random_level(response, r_name, hierarchical_info)
+            n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
+            zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
             prec_name <- paste0("Prec_", r_name)
 
             model_lines <- c(
@@ -1906,9 +1867,14 @@ because_model <- function(
                   if (is.null(s_name) || s_name == "") s_name <- paste0("Struct", s_idx)
                   s_obj <- structures[[s_idx]]
 
-                  if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(response, hierarchical_info), hierarchical_info)) next
+                  s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+                  s_bound <- if (is.null(s_lvl)) get_loop_bound(response, hierarchical_info) else paste0("N_", s_lvl)
+                  s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
 
-                  s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = get_loop_bound(response, hierarchical_info), category_index = "k", is_multi = (multi.tree && is_multi_structure))
+                  # Hierarchical bridge index (e.g. site_idx_obs[i])
+                  s_idx_var <- get_struct_index(s_name, response, hierarchical_info)
+
+                  s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, category_index = "k", is_multi = is_struct_multi(s_name), i_index = s_idx_var)
                   if (!is.null(s_def)) {
                     if (!is.null(s_def$setup_code)) model_lines <- c(model_lines, s_def$setup_code)
                     model_lines <- c(model_lines, s_def$model_lines)
@@ -1931,8 +1897,11 @@ because_model <- function(
                 u_std <- paste0("u_std_", response, suffix, s_suffix)
                 u <- paste0("u_", response, suffix, s_suffix)
                 tau_u <- paste0("tau_u_", response, suffix, s_suffix)
-                n_groups <- paste0("N_", r_name)
-                zeros_name <- paste0("zeros_", r_name)
+                
+                # Determine hierarchical level if available
+                r_lvl <- get_random_level(response, r_name, hierarchical_info)
+                n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
+                zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
                 prec_name <- paste0("Prec_", r_name)
 
                 model_lines <- c(
@@ -1985,9 +1954,14 @@ because_model <- function(
                   if (is.null(s_name) || s_name == "") s_name <- paste0("Struct", s_idx)
                   s_obj <- structures[[s_idx]]
 
-                  if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(response, hierarchical_info), hierarchical_info)) next
+                  s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+                  s_bound <- if (is.null(s_lvl)) get_loop_bound(response, hierarchical_info) else paste0("N_", s_lvl)
+                  s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
 
-                  s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = get_loop_bound(response, hierarchical_info), is_multi = (multi.tree && is_multi_structure))
+                  # Hierarchical bridge index (e.g. site_idx_obs[i])
+                  s_idx_var <- get_struct_index(s_name, response, hierarchical_info)
+
+                  s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, is_multi = is_struct_multi(s_name), i_index = s_idx_var)
                   if (!is.null(s_def)) {
                     if (!is.null(s_def$setup_code)) model_lines <- c(model_lines, s_def$setup_code)
                     model_lines <- c(model_lines, s_def$model_lines)
@@ -2010,8 +1984,11 @@ because_model <- function(
                 u_std <- paste0("u_std_", response, suffix, s_suffix)
                 u <- paste0("u_", response, suffix, s_suffix)
                 tau_u <- paste0("tau_u_", response, suffix, s_suffix)
-                n_groups <- paste0("N_", r_name)
-                zeros_name <- paste0("zeros_", r_name)
+                
+                # Determine hierarchical level if available
+                r_lvl <- get_random_level(response, r_name, hierarchical_info)
+                n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
+                zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
                 prec_name <- paste0("Prec_", r_name)
 
                 model_lines <- c(
@@ -2072,7 +2049,14 @@ because_model <- function(
 
               if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(response, hierarchical_info), hierarchical_info)) next
 
-              s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = get_loop_bound(response, hierarchical_info), is_multi = (multi.tree && is_multi_structure))
+              s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+              s_bound <- if (is.null(s_lvl)) get_loop_bound(response, hierarchical_info) else paste0("N_", s_lvl)
+              s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
+
+              # Hierarchical bridge index (e.g. site_idx_obs[i])
+              s_idx_var <- get_struct_index(s_name, response, hierarchical_info)
+
+              s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, is_multi = is_struct_multi(s_name), i_index = s_idx_var)
               if (!is.null(s_def)) {
                 if (!is.null(s_def$setup_code)) model_lines <- c(model_lines, s_def$setup_code)
                 
@@ -2099,8 +2083,11 @@ because_model <- function(
             u_std <- paste0("u_std_", response, suffix, s_suffix)
             u <- paste0("u_", response, suffix, s_suffix)
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
-            n_groups <- paste0("N_", r_name)
-            zeros_name <- paste0("zeros_", r_name)
+            
+            # Determine hierarchical level if available
+            r_lvl <- get_random_level(response, r_name, hierarchical_info)
+            n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
+            zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
             prec_name <- paste0("Prec_", r_name)
 
             model_lines <- c(
@@ -2260,7 +2247,7 @@ because_model <- function(
                 variable_name = response,
                 s_name = s_name,
                 loop_bound = get_loop_bound(response, hierarchical_info),
-                is_multi = (multi.tree && is_multi_structure)
+                is_multi = is_struct_multi(s_name)
               )
 
               if (!is.null(s_def)) {
@@ -2333,27 +2320,23 @@ because_model <- function(
               }
             }
             prec_name <- paste0("Prec_", r_name)
+            this_is_multi <- is_struct_multi(r_name)
+            
+            if (multi.tree && this_is_multi) {
+              model_lines <- c(
+                model_lines,
+                paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, ", K])")
+              )
+            } else {
+              model_lines <- c(
+                model_lines,
+                paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])")
+              )
+            }
             zeros_name <- paste0("zeros_", r_name)
 
             model_lines <- c(
               model_lines,
-              paste0(
-                "  ",
-                u_std,
-                "[1:",
-                n_groups,
-                "] ~ dmnorm(",
-                zeros_name,
-                "[1:",
-                n_groups,
-                "], ",
-                prec_name,
-                "[1:",
-                n_groups,
-                ", 1:",
-                n_groups,
-                "])"
-              ),
               paste0("  for (g in 1:", n_groups, ") {"),
               paste0("    ", u, "[g] <- ", u_std, "[g] / sqrt(", tau_u, ")"),
               paste0("  }")
@@ -2434,7 +2417,7 @@ because_model <- function(
           variable_name = var,
           s_name = s_name,
           loop_bound = loop_bound,
-          is_multi = is_multi_structure
+          is_multi = is_struct_multi(s_name)
         )
 
         if (!is.null(s_def)) {
@@ -3529,7 +3512,7 @@ because_model <- function(
           )
         )
 
-        if (is_multi_structure) {
+        if (is_struct_multi(s_name)) {
           model_lines <- c(
             model_lines,
             paste0(
@@ -3725,7 +3708,7 @@ because_model <- function(
   if (!is.null(induced_correlations) && FALSE) {
     s_name <- if (length(structure_names) > 0) structure_names[1] else "struct"
     for (var in correlated_vars) {
-      if (is_multi_structure) {
+      if (is_struct_multi(s_name)) {
         model_lines <- c(
           model_lines,
           paste0(
@@ -3845,19 +3828,32 @@ because_model <- function(
             u_var <- paste0("u_", var, s_suffix)
             tau_u <- paste0("tau_u_", var, s_suffix)
 
-            # Call Generic to define the error term u ~ dmnorm(...)
-            def <- jags_structure_definition(
+            # Hierarchical info
+            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+            s_bound <- if (is.null(s_lvl)) get_loop_bound(var, hierarchical_info) else paste0("N_", s_lvl)
+            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
+
+            # Hierarchical bridge index (e.g. site_idx_obs[i])
+            s_idx_var <- get_struct_index(s_name, var, hierarchical_info)
+
+            # Call Generic to define the error vector u ~ dmnorm(...)
+            s_def <- jags_structure_definition(
               structures[[s_name]],
-              variable_name = u_var,
-              optimize = TRUE,
-              precision_parameter = tau_u
+              variable_name = var,
+              s_name = s_name,
+              loop_bound = s_bound,
+              zeros_name = s_zeros,
+              is_multi = is_struct_multi(s_name),
+              i_index = s_idx_var
             )
 
-            if (!is.null(def$error_prior)) {
-              model_lines <- c(model_lines, def$error_prior)
+            if (!is.null(s_def$model_lines)) {
+              model_lines <- c(model_lines, s_def$model_lines)
             }
 
-            additive_terms <- paste0(additive_terms, " + ", u_var, "[i]")
+            if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
+               additive_terms <- paste0(additive_terms, " + ", s_def$term)
+            }
           }
         }
 

@@ -264,9 +264,9 @@ fit <- because(
     latent_method = "explicit",
     family       = c(Abundance = "poisson"),
     structure    = structures,
-    dsep         = TRUE,
-    n.iter       = 5000,
-    n.burnin     = 2000,
+    dsep         = FALSE,
+    n.iter       = 1500,
+    n.burnin     = 500,
     n.chains     = 3,
     n.cores      = 3,
     quiet        = FALSE

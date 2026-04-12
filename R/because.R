@@ -213,7 +213,9 @@ because <- function(
   fix_residual_variance = NULL, # Optional: fix residual variance (tau_e) for specific variables
   priors = NULL, # Optional: custom priors list
   reuse_models = NULL,
-  expand_ordered = FALSE
+  expand_ordered = FALSE,
+  structure_multi = NULL,
+  structure_levels = NULL
 ) {
   # Allow single formula input
   if (inherits(equations, "formula")) {
@@ -486,30 +488,46 @@ because <- function(
           )
         }
       }
-      # Store hierarchical info for later use
-      hierarchical_info <- list(
-        data = data,
-        levels = levels,
-        hierarchy = hierarchy,
-        link_vars = link_vars
-      )
+    # Store hierarchical info for later use
+    hierarchical_info <- list(
+      data = data,
+      levels = levels,
+      hierarchy = hierarchy,
+      link_vars = link_vars
+    )
 
-      if (!quiet) {
-        message("Hierarchical data structure detected: ", hierarchy)
-      }
+    # Internal: Inject structural metadata if provided in sub-calls (e.g. from d-sep tests)
+    if (!is.null(structure_multi)) {
+      hierarchical_info$structure_multi <- structure_multi
     }
-  } else {
-    # Single-level data - check if hierarchical metadata was provided anyway (e.g. for d-sep tests)
-    if (!is.null(levels) && !is.null(hierarchy)) {
-      is_hierarchical <- FALSE # Data is flat, so NOT hierarchical for prep purposes
-      hierarchical_info <- list(
-        data = data,
-        levels = levels,
-        hierarchy = hierarchy,
-        link_vars = link_vars
-      )
+    if (!is.null(structure_levels)) {
+      hierarchical_info$structure_levels <- structure_levels
+    }
+
+    if (!quiet) {
+      message("Hierarchical data structure detected: ", hierarchy)
     }
   }
+} else {
+  # Single-level data - check if hierarchical metadata was provided anyway (e.g. for d-sep tests)
+  if (!is.null(levels) && !is.null(hierarchy)) {
+    is_hierarchical <- FALSE # Data is flat, so NOT hierarchical for prep purposes
+    hierarchical_info <- list(
+      data = data,
+      levels = levels,
+      hierarchy = hierarchy,
+      link_vars = link_vars
+    )
+    
+    # Internal: Inject structural metadata if provided in sub-calls
+    if (!is.null(structure_multi)) {
+      hierarchical_info$structure_multi <- structure_multi
+    }
+    if (!is.null(structure_levels)) {
+      hierarchical_info$structure_levels <- structure_levels
+    }
+  }
+}
 
   # --- Random Effects Parsing ---
   # Extract (1|Group) and update equations to be fixed-effects only
@@ -1229,6 +1247,7 @@ because <- function(
     }
   } else {
     structure_levels <- list()
+    structure_multi <- list()
     # Use S3 Generic for Processing
     for (s_name in structure_names) {
       structure_obj <- structures[[s_name]]
@@ -1260,15 +1279,17 @@ because <- function(
         next
       }
 
-      # Determine N from the processed structure
+      # Determine N and multi-status from the processed structure
       # Look for any square matrix or 3D array in the data_list
       current_N <- NULL
+      is_this_one_multi <- FALSE
       for (obj in prep_res$data_list) {
         if (is.matrix(obj) && nrow(obj) == ncol(obj)) {
           current_N <- nrow(obj)
           break
         } else if (is.array(obj) && length(dim(obj)) == 3 && dim(obj)[1] == dim(obj)[2]) {
           current_N <- dim(obj)[1]
+          is_this_one_multi <- TRUE
           if (is_multiple && !exists("N_trees")) N_trees <- dim(obj)[3]
           break
         }
@@ -1295,6 +1316,7 @@ because <- function(
         }
       }
       structure_levels[[s_name]] <- s_level
+      structure_multi[[s_name]]  <- is_this_one_multi
 
       if (!is.null(current_N)) {
         if (is.null(N)) {
@@ -1313,6 +1335,7 @@ because <- function(
 
     if (!is.null(hierarchical_info)) {
       hierarchical_info$structure_levels <- structure_levels
+      hierarchical_info$structure_multi  <- structure_multi
     }
 
     # Finalize is_multiple logic (if multiple structures were found during processing)
@@ -2657,6 +2680,13 @@ because <- function(
 
   model_string <- model_output$model
   parameter_map <- model_output$parameter_map
+
+  # Prune unused tactical variables to avoid JAGS warnings
+  for (v in c("N", "zeros", "zero_vec")) {
+    if (v %in% names(data) && !grepl(paste0("\\b", v, "\\b"), model_string)) {
+      data[[v]] <- NULL
+    }
+  }
 
   model_file <- tempfile(fileext = ".jg")
   writeLines(model_string, model_file)
@@ -4088,7 +4118,9 @@ run_single_dsep_test_v2 <- function(
     random = random,
     levels = levels,
     hierarchy = hierarchy,
-    link_vars = link_vars
+    link_vars = link_vars,
+    structure_multi = hierarchical_info$structure_multi,
+    structure_levels = hierarchical_info$structure_levels
   )
 
   # Only add NIMBLE arguments if the version of because() on this node supports them
