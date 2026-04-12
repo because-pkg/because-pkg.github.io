@@ -32,6 +32,7 @@ jags_structure_definition.default <- function(
     prec_name <- paste0("Prec_", s_name)
     err_var <- paste0("err_", s_name, "_", variable_name)
     tau_var <- paste0("tau_", s_name, "_", variable_name)
+    scaled_prec_var <- paste0("ScaledPrec_", s_name, "_", variable_name)
 
     # Category suffix for parameter names if needed
     k_suffix <- if (!is.null(k_idx)) paste0("_", k_idx) else ""
@@ -73,6 +74,20 @@ jags_structure_definition.default <- function(
         ),
         paste0(
             "  ",
+            scaled_prec_var,
+            k_suffix,
+            "[1:",
+            loop_bound,
+            ", 1:",
+            loop_bound,
+            "] <- ",
+            tau_var,
+            k_suffix,
+            " * ",
+            prec_index
+        ),
+        paste0(
+            "  ",
             # Standard Multivariate Normal definition for the error vector
             err_index,
             " ~ dmnorm(",
@@ -80,11 +95,13 @@ jags_structure_definition.default <- function(
             "[1:",
             loop_bound,
             "], ",
-            tau_var,
+            scaled_prec_var,
             k_suffix,
-            " * ",
-            prec_index,
-            ")"
+            "[1:",
+            loop_bound,
+            ", 1:",
+            loop_bound,
+            "])"
         )
     )
 
