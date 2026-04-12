@@ -30,18 +30,21 @@ jags_structure_definition.default <- function(
     i_index <- args$i_index %||% "i"
 
     prec_name <- paste0("Prec_", s_name)
-    err_var <- paste0("err_", s_name, "_", variable_name)
     tau_var <- paste0("tau_", s_name, "_", variable_name)
-    scaled_prec_var <- paste0("ScaledPrec_", s_name, "_", variable_name)
+    raw_var <- paste0("err_raw_", s_name, "_", variable_name)
+    sig_var <- sub("tau_", "sigma_", tau_var)
 
     # Category suffix for parameter names if needed
     k_suffix <- if (!is.null(k_idx)) paste0("_", k_idx) else ""
 
+    # Unique loop variable for this structure and response
+    j_idx <- paste0("j_", s_name, "_", variable_name)
+
     # Indexing for the error variable definition
-    err_index <- if (!is.null(k_idx)) {
-        paste0(err_var, "[1:", loop_bound, ", ", k_idx, "]")
+    raw_index <- if (!is.null(k_idx)) {
+        paste0(raw_var, "[1:", loop_bound, ", ", k_idx, "]")
     } else {
-        paste0(err_var, "[1:", loop_bound, "]")
+        paste0(raw_var, "[1:", loop_bound, "]")
     }
 
     # Precision matrix indexing (multi-structure)
@@ -65,7 +68,7 @@ jags_structure_definition.default <- function(
         paste0("  ", tau_var, k_suffix, " ~ dgamma(0.01, 0.01)"),
         paste0(
             "  ",
-            sub("tau_", "sigma_", tau_var),
+            sig_var,
             k_suffix,
             " <- 1/sqrt(",
             tau_var,
@@ -74,35 +77,52 @@ jags_structure_definition.default <- function(
         ),
         paste0(
             "  ",
-            scaled_prec_var,
-            k_suffix,
-            "[1:",
-            loop_bound,
-            ", 1:",
-            loop_bound,
-            "] <- ",
-            tau_var,
-            k_suffix,
-            " * ",
-            prec_index
-        ),
-        paste0(
-            "  ",
-            # Standard Multivariate Normal definition for the error vector
-            err_index,
+            # Standardized Multivariate Normal with FIXED precision matrix
+            # (NIMBLE loves fixed precision because it can pre-calculate Cholesky)
+            raw_index,
             " ~ dmnorm(",
             zeros_name,
             "[1:",
             loop_bound,
             "], ",
-            scaled_prec_var,
-            k_suffix,
-            "[1:",
-            loop_bound,
-            ", 1:",
-            loop_bound,
-            "])"
-        )
+            prec_index,
+            ")"
+        ),
+        paste0("  for (", j_idx, " in 1:", loop_bound, ") {"),
+        if (!is.null(k_idx)) {
+            paste0(
+                "    ",
+                err_var,
+                "[",
+                j_idx,
+                ", ",
+                k_idx,
+                "] <- ",
+                raw_var,
+                "[",
+                j_idx,
+                ", ",
+                k_idx,
+                "] * ",
+                sig_var,
+                k_suffix
+            )
+        } else {
+            paste0(
+                "    ",
+                err_var,
+                "[",
+                j_idx,
+                "] <- ",
+                raw_var,
+                "[",
+                j_idx,
+                "] * ",
+                sig_var,
+                k_suffix
+            )
+        },
+        "  }"
     )
 
     # Term to add to linear predictor
