@@ -51,22 +51,25 @@ model {
     log_lik_Flower_Cover[i] <- logdensity.norm(Flower_Cover[i], mu_Flower_Cover[i] + err_spatial_Flower_Cover[i] + u_Flower_Cover_Site[group_Site[i]], tau_e_Flower_Cover)
   }
     # Phylogenetic precision matrix (pre-calculated)
-    lambda ~ dgamma(0.001, 0.001)
-    Body_Mass_s[1:N_species] ~ dmnorm(zeros_species[1:N_species], lambda * Prec_phylo[1:N_species, 1:N_species])
+    lambda_phylo_Body_Mass_s ~ dgamma(0.001, 0.001)
+    sigma_phylo_Body_Mass_s <- 1/sqrt(lambda_phylo_Body_Mass_s)
+    Body_Mass_s[1:N_species] ~ dmnorm(zeros_species[1:N_species], lambda_phylo_Body_Mass_s * Prec_phylo[1:N_species, 1:N_species])
   for (i in 1:N_species) {
     Body_Mass_s[i] ~ dnorm(mu_Body_Mass_s[i] + Body_Mass_s[i], tau_e_Body_Mass_s)
     log_lik_Body_Mass_s[i] <- logdensity.norm(Body_Mass_s[i], mu_Body_Mass_s[i] + Body_Mass_s[i], tau_e_Body_Mass_s)
   }
     # Phylogenetic precision matrix (pre-calculated)
-    lambda ~ dgamma(0.001, 0.001)
-    Metabolic_Rate[1:N_species] ~ dmnorm(zeros_species[1:N_species], lambda * Prec_phylo[1:N_species, 1:N_species])
+    lambda_phylo_Metabolic_Rate ~ dgamma(0.001, 0.001)
+    sigma_phylo_Metabolic_Rate <- 1/sqrt(lambda_phylo_Metabolic_Rate)
+    Metabolic_Rate[1:N_species] ~ dmnorm(zeros_species[1:N_species], lambda_phylo_Metabolic_Rate * Prec_phylo[1:N_species, 1:N_species])
   for (i in 1:N_species) {
     Metabolic_Rate[i] ~ dnorm(mu_Metabolic_Rate[i] + Metabolic_Rate[i], tau_e_Metabolic_Rate)
     log_lik_Metabolic_Rate[i] <- logdensity.norm(Metabolic_Rate[i], mu_Metabolic_Rate[i] + Metabolic_Rate[i], tau_e_Metabolic_Rate)
   }
     # Phylogenetic precision matrix (pre-calculated)
-    lambda ~ dgamma(0.001, 0.001)
-    Thermal_Tol[1:N_species] ~ dmnorm(zeros_species[1:N_species], lambda * Prec_phylo[1:N_species, 1:N_species])
+    lambda_phylo_Thermal_Tol ~ dgamma(0.001, 0.001)
+    sigma_phylo_Thermal_Tol <- 1/sqrt(lambda_phylo_Thermal_Tol)
+    Thermal_Tol[1:N_species] ~ dmnorm(zeros_species[1:N_species], lambda_phylo_Thermal_Tol * Prec_phylo[1:N_species, 1:N_species])
   for (i in 1:N_species) {
     Thermal_Tol[i] ~ dnorm(mu_Thermal_Tol[i] + Thermal_Tol[i], tau_e_Thermal_Tol)
     log_lik_Thermal_Tol[i] <- logdensity.norm(Thermal_Tol[i], mu_Thermal_Tol[i] + Thermal_Tol[i], tau_e_Thermal_Tol)
@@ -83,8 +86,9 @@ model {
     log_lik_Temperature[i] <- logdensity.norm(Temperature[i], mu_Temperature[i] + err_spatial_Temperature[site_idx_survey[i]] + u_Temperature_Site[group_Site[site_idx_survey[i]]] + u_Temperature_Survey[group_Survey[i]], tau_e_Temperature)
   }
     # Phylogenetic precision matrix (pre-calculated)
-    lambda ~ dgamma(0.001, 0.001)
-    Abundance[1:N_species] ~ dmnorm(zeros_species[1:N_species], lambda * Prec_phylo[1:N_species, 1:N_species])
+    lambda_phylo_Abundance ~ dgamma(0.001, 0.001)
+    sigma_phylo_Abundance <- 1/sqrt(lambda_phylo_Abundance)
+    Abundance[1:N_species] ~ dmnorm(zeros_species[1:N_species], lambda_phylo_Abundance * Prec_phylo[1:N_species, 1:N_species])
   tau_spatial_Abundance ~ dgamma(0.01, 0.01)
   sigma_spatial_Abundance <- 1/sqrt(tau_spatial_Abundance)
   err_spatial_Abundance[1:N_site] ~ dmnorm(zeros_site[1:N_site], tau_spatial_Abundance * Prec_spatial[1:N_site, 1:N_site])
