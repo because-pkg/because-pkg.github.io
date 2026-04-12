@@ -32,7 +32,8 @@ Imports:
     dagitty,
     ggdag,
     ggraph,
-    dplyr
+    dplyr,
+    bayesplot
 Depends: 
     R (>= 3.5)
 RoxygenNote: 7.3.3
