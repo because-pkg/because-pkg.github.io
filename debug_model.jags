@@ -33,8 +33,10 @@ model {
   # Multivariate normal likelihoods
   tau_spatial_NDVI ~ dgamma(0.01, 0.01)
   sigma_spatial_NDVI <- 1/sqrt(tau_spatial_NDVI)
-  ScaledPrec_spatial_NDVI[1:N_site, 1:N_site] <- tau_spatial_NDVI * Prec_spatial[1:N_site, 1:N_site]
-  err_spatial_NDVI[1:N_site] ~ dmnorm(zeros_site[1:N_site], ScaledPrec_spatial_NDVI[1:N_site, 1:N_site])
+  err_raw_spatial_NDVI[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (j_spatial_NDVI in 1:N_site) {
+    err_spatial_NDVI[j_spatial_NDVI] <- err_raw_spatial_NDVI[j_spatial_NDVI] * sigma_spatial_NDVI
+  }
   u_std_NDVI_Site[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_Site[1:N_site, 1:N_site])
   for (g in 1:N_site) { u_NDVI_Site[g] <- u_std_NDVI_Site[g] / sqrt(tau_u_NDVI_Site) }
   for (i in 1:N_site) {
@@ -42,8 +44,10 @@ model {
   }
   tau_spatial_Flower_Cover ~ dgamma(0.01, 0.01)
   sigma_spatial_Flower_Cover <- 1/sqrt(tau_spatial_Flower_Cover)
-  ScaledPrec_spatial_Flower_Cover[1:N_site, 1:N_site] <- tau_spatial_Flower_Cover * Prec_spatial[1:N_site, 1:N_site]
-  err_spatial_Flower_Cover[1:N_site] ~ dmnorm(zeros_site[1:N_site], ScaledPrec_spatial_Flower_Cover[1:N_site, 1:N_site])
+  err_raw_spatial_Flower_Cover[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (j_spatial_Flower_Cover in 1:N_site) {
+    err_spatial_Flower_Cover[j_spatial_Flower_Cover] <- err_raw_spatial_Flower_Cover[j_spatial_Flower_Cover] * sigma_spatial_Flower_Cover
+  }
   u_std_Flower_Cover_Site[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_Site[1:N_site, 1:N_site])
   for (g in 1:N_site) { u_Flower_Cover_Site[g] <- u_std_Flower_Cover_Site[g] / sqrt(tau_u_Flower_Cover_Site) }
   for (i in 1:N_site) {
@@ -75,8 +79,10 @@ model {
   }
   tau_spatial_Temperature ~ dgamma(0.01, 0.01)
   sigma_spatial_Temperature <- 1/sqrt(tau_spatial_Temperature)
-  ScaledPrec_spatial_Temperature[1:N_site, 1:N_site] <- tau_spatial_Temperature * Prec_spatial[1:N_site, 1:N_site]
-  err_spatial_Temperature[1:N_site] ~ dmnorm(zeros_site[1:N_site], ScaledPrec_spatial_Temperature[1:N_site, 1:N_site])
+  err_raw_spatial_Temperature[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (j_spatial_Temperature in 1:N_site) {
+    err_spatial_Temperature[j_spatial_Temperature] <- err_raw_spatial_Temperature[j_spatial_Temperature] * sigma_spatial_Temperature
+  }
   u_std_Temperature_Site[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_Site[1:N_site, 1:N_site])
   for (g in 1:N_site) { u_Temperature_Site[g] <- u_std_Temperature_Site[g] / sqrt(tau_u_Temperature_Site) }
   u_std_Temperature_Survey[1:N_survey] ~ dmnorm(zeros_survey[1:N_survey], Prec_Survey[1:N_survey, 1:N_survey])
@@ -91,8 +97,10 @@ model {
     err_phylo_Abundance[1:N_species] ~ dmnorm(zeros_species[1:N_species], scaled_prec_phylo_Abundance[1:N_species, 1:N_species])
   tau_spatial_Abundance ~ dgamma(0.01, 0.01)
   sigma_spatial_Abundance <- 1/sqrt(tau_spatial_Abundance)
-  ScaledPrec_spatial_Abundance[1:N_site, 1:N_site] <- tau_spatial_Abundance * Prec_spatial[1:N_site, 1:N_site]
-  err_spatial_Abundance[1:N_site] ~ dmnorm(zeros_site[1:N_site], ScaledPrec_spatial_Abundance[1:N_site, 1:N_site])
+  err_raw_spatial_Abundance[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (j_spatial_Abundance in 1:N_site) {
+    err_spatial_Abundance[j_spatial_Abundance] <- err_raw_spatial_Abundance[j_spatial_Abundance] * sigma_spatial_Abundance
+  }
   u_std_Abundance_Site[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_Site[1:N_site, 1:N_site])
   for (g in 1:N_site) { u_Abundance_Site[g] <- u_std_Abundance_Site[g] / sqrt(tau_u_Abundance_Site) }
   u_std_Abundance_Survey[1:N_survey] ~ dmnorm(zeros_survey[1:N_survey], Prec_Survey[1:N_survey, 1:N_survey])

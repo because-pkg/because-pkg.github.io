@@ -2847,6 +2847,17 @@ because <- function(
     }
   }
 
+  # --- NIMBLE pre-processing ---
+  # Ensure all variables used as precision/covariance matrices are numeric matrices
+  if (engine == "nimble" && is.list(data)) {
+    prec_vars <- names(data)[grepl("^Prec_", names(data))]
+    for (pv in prec_vars) {
+      if (!is.matrix(data[[pv]])) {
+        data[[pv]] <- as.matrix(data[[pv]])
+      }
+    }
+  }
+
   # Add pointwise log-likelihood monitoring if WAIC requested
   # (Future: LOO will also use this)
   if (WAIC) {
@@ -2947,6 +2958,15 @@ because <- function(
     # Extensions can implement nimble_family_optimization to provide
     # specialized distributions (e.g. dImperfect) and model transformations.
     nimble_funcs <- list()
+    if (!requireNamespace("nimble", quietly = TRUE)) {
+      stop("Package 'nimble' is required for engine = 'nimble'.")
+    }
+    # Attach NIMBLE to the search path to ensure internal utility functions 
+    # like calc_dmnormAltParams are visible during model expansion.
+    if (!("package:nimble" %in% search())) {
+      suppressMessages(library(nimble))
+    }
+
     nimble_string <- model_string
 
     # Generic cleanup for NIMBLE: strip JAGS-specific log-density nodes
@@ -3234,6 +3254,11 @@ because <- function(
         # Jitter seed for this chain
         curr_inits <- extension_inits
         # Add RNG seed if possible or just rely on global seed if set
+
+        # Ensure NIMBLE is attached on the worker
+        if (!("package:nimble" %in% search())) {
+          suppressMessages(library(nimble))
+        }
 
         worker_model <- nimble::nimbleModel(
           code = nimble_code,
