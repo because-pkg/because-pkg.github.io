@@ -30,6 +30,7 @@ jags_structure_definition.default <- function(
     i_index <- args$i_index %||% "i"
 
     prec_name <- paste0("Prec_", s_name)
+    err_var <- paste0("err_", s_name, "_", variable_name)
     tau_var <- paste0("tau_", s_name, "_", variable_name)
     raw_var <- paste0("err_raw_", s_name, "_", variable_name)
     sig_var <- sub("tau_", "sigma_", tau_var)
