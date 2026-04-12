@@ -3241,9 +3241,16 @@ because <- function(
             monitor <- setdiff(monitor, paste0("z_", v))
           }
         }
+        # Assign functions to local environment so nimbleModel can find them
         if (length(nimble_funcs) > 0) {
-          for (fn_name in unique(names(nimble_funcs))) {
-            assign(fn_name, nimble_funcs[[fn_name]], envir = .because_env)
+          unique_names <- unique(names(nimble_funcs))
+          for (fn_name in unique_names) {
+            assign(fn_name, nimble_funcs[[fn_name]], envir = environment())
+            
+            # Explicitly register with NIMBLE if it looks like a distribution
+            if (startsWith(fn_name, "d")) {
+              try(nimble::registerDistributions(nimble_funcs[fn_name]), silent = TRUE)
+            }
           }
         }
 
@@ -3313,35 +3320,46 @@ because <- function(
           project = worker_model
         )
 
-        samples <- nimble::runMCMC(
-          worker_c_mcmc,
-          niter = n.iter,
-          nburnin = n.burnin,
-          nchains = 1,
-          thin = n.thin,
-          samplesAsCodaMCMC = TRUE
-        )
-        return(samples)
+        # --- Execute MCMC ---
+        # Wrap everything in try to avoid hanging the cluster on error
+        res <- try({
+          samples <- nimble::runMCMC(
+            worker_c_mcmc,
+            niter = n.iter,
+            nburnin = n.burnin,
+            nchains = 1,
+            thin = n.thin,
+            samplesAsCodaMCMC = TRUE,
+            WAIC = WAIC
+          )
+          samples
+        }, silent = TRUE)
+
+        if (inherits(res, "try-error")) {
+          return(paste("NIMBLE WORKER ERROR:", as.character(res)))
+        }
+        return(res)
       }
 
       # Export all required variables to worker nodes
       parallel::clusterExport(
         cl,
         c(
-          "model_string",
-          "data",
-          "family",
-          "extension_inits",
-          "monitor",
-          "n.iter",
-          "n.burnin",
-          "n.thin",
-          "WAIC",
-          "quiet",
-          "run_nimble_chain"
+          "model_string", "data", "family", "extension_inits",
+          "monitor", "n.iter", "n.burnin", "n.thin",
+          "WAIC", "quiet", "run_nimble_chain", "nimble_samplers"
         ),
         envir = environment()
       )
+
+      # Copy S3 methods to workers if package isn't installed
+      # (Necessary for devtools::load_all sessions)
+      if ("package:because" %in% search()) {
+        parallel::clusterEvalQ(cl, library(because))
+      }
+      if ("package:because.phybase" %in% search()) {
+        parallel::clusterEvalQ(cl, library(because.phybase))
+      }
 
       chain_results <- parallel::parLapply(cl, seq_len(n.chains), function(i) {
         run_nimble_chain(
