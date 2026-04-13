@@ -11,9 +11,9 @@ packages <- c("devtools", "dplyr", "ape", "brms", "MASS", "Rcpp",
               "nimble", "phylolm", "phylopath", "MCMCglmm")
 lapply(packages, function(p) if(!require(p, character.only=TRUE)) install.packages(p))
 
-cat("\n--- Installing 'because' Ecosystem ---\n")
-devtools::install_github("achazhardenberg/because", upgrade = "never", force = TRUE)
-devtools::install_github("achazhardenberg/because.phybase", upgrade = "never", force = TRUE)
+# --- Installing 'because' Ecosystem ---
+# devtools::install_github("achazhardenberg/because", upgrade = "never", force = TRUE)
+# devtools::install_github("achazhardenberg/because.phybase", upgrade = "never", force = TRUE)
 
 library(because)
 library(because.phybase)
@@ -23,7 +23,19 @@ library(dplyr)
 library(nimble)
 library(MCMCglmm)
 
-n_cores <- parallel::detectCores()
+# Resource Detection
+n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK", parallel::detectCores()))
+if (is.na(n_cores)) n_cores <- 4
+args <- commandArgs(trailingOnly = TRUE)
+task_id <- if(length(args) > 0) as.numeric(args[1]) else 0
+
+# Mapping:
+# 1: because (JAGS)
+# 2: because (NIMBLE)
+# 3: brms
+# 4: MCMCglmm
+# 5: Classical Baselines (phylopath + GLMs)
+# 0: Run all (Default/Local)
 
 # 2. DATA GENERATION (Hierarchical + REAL Phylo + REAL Spatial)
 set.seed(42)
@@ -84,58 +96,87 @@ eqs <- list(NDVI ~ U_Resource + Elevation_s, Flower_Cover ~ U_Resource + Elevati
             Abundance ~ Flower_Cover + NDVI + Body_Mass_s + Wind_Speed + I(Temperature - Thermal_Tol) + (1|Site) + (1|Survey))
 
 # --- because (The Simultaneous Master - JAGS) ---
-cat("\n--- Running because (JAGS with REAL Spatial & REAL Phylo) ---\n")
-fit_because_jags <- because(eqs, data = d_obs, structure = structures,
-                       levels = list(species = c("Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", "Species"),
-                                     site    = c("Elevation_s", "NDVI", "Flower_Cover", "Site"),
-                                     survey  = c("Temperature", "Wind_Speed", "Survey"),
-                                     obs     = c("Abundance")),
-                       hierarchy = "site > survey > obs; species > obs",
-                       link_vars = list(site = "Site", survey = "Survey", species = "Species"),
-                       latent = "U_Resource", latent_method = "explicit", 
-                       engine = "jags", parallel = TRUE)
-saveRDS(fit_because_jags, "server_because_jags_final_fit.rds")
+if (task_id == 1 || task_id == 0) {
+    # Status: Running because (JAGS)
+    fit_because_jags <- because(eqs, data = d_obs, structure = structures,
+                           levels = list(species = c("Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", "Species"),
+                                         site    = c("Elevation_s", "NDVI", "Flower_Cover", "Site"),
+                                         survey  = c("Temperature", "Wind_Speed", "Survey"),
+                                         obs     = c("Abundance")),
+                           hierarchy = "site > survey > obs; species > obs",
+                           link_vars = list(site = "Site", survey = "Survey", species = "Species"),
+                           latent = "U_Resource", latent_method = "explicit", 
+                           engine = "jags", parallel = TRUE)
+    saveRDS(fit_because_jags, "server_because_jags_final_fit.rds")
+}
 
 # --- because (The Simultaneous Master - NIMBLE) ---
-cat("\n--- Running because (NIMBLE with REAL Spatial & REAL Phylo) ---\n")
-fit_because_nimble <- because(eqs, data = d_obs, structure = structures,
-                       levels = list(species = c("Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", "Species"),
-                                     site    = c("Elevation_s", "NDVI", "Flower_Cover", "Site"),
-                                     survey  = c("Temperature", "Wind_Speed", "Survey"),
-                                     obs     = c("Abundance")),
-                       hierarchy = "site > survey > obs; species > obs",
-                       link_vars = list(site = "Site", survey = "Survey", species = "Species"),
-                       latent = "U_Resource", latent_method = "explicit", 
-                       engine = "nimble", parallel = TRUE)
-saveRDS(fit_because_nimble, "server_because_nimble_final_fit.rds")
+if (task_id == 2 || task_id == 0) {
+    # Status: Running because (NIMBLE)
+    fit_because_nimble <- because(eqs, data = d_obs, structure = structures,
+                           levels = list(species = c("Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", "Species"),
+                                         site    = c("Elevation_s", "NDVI", "Flower_Cover", "Site"),
+                                         survey  = c("Temperature", "Wind_Speed", "Survey"),
+                                         obs     = c("Abundance")),
+                           hierarchy = "site > survey > obs; species > obs",
+                           link_vars = list(site = "Site", survey = "Survey", species = "Species"),
+                           latent = "U_Resource", latent_method = "explicit", 
+                           engine = "nimble", parallel = TRUE)
+    saveRDS(fit_because_nimble, "server_because_nimble_final_fit.rds")
+}
 
 # --- brms (The Expert Bayesian Baseline) ---
-cat("\n--- Running brms (Spatial + Phylo PGLMM) ---\n")
-# Fair Comparison: Give brms all species-level traits
-bf_abund <- bf(Abundance ~ Flower_Cover + NDVI + Body_Mass_s + Metabolic_Rate + Thermal_Tol + (1 | gr(Site, cov = V_spatial)) + (1 | gr(Species, cov = Vcv_phylo)))
+if (task_id == 3 || task_id == 0) {
+    # Status: Running brms (Spatial + Phylo PGLMM)
+    # Fair Comparison: Give brms all species-level traits
+    bf_abund <- bf(Abundance ~ Flower_Cover + NDVI + Body_Mass_s + Metabolic_Rate + Thermal_Tol + (1 | gr(Site, cov = V_spatial)) + (1 | gr(Species, cov = Vcv_phylo)))
 
-fit_brms <- brm(bf_abund, data = d_obs, data2 = list(V_spatial = V_spatial, Vcv_phylo = Vcv_phylo), 
-                family = poisson(), cores = n_cores, iter = 4000)
-saveRDS(fit_brms, "server_brms_final_fit.rds")
+    fit_brms <- brm(bf_abund, data = d_obs, data2 = list(V_spatial = V_spatial, Vcv_phylo = Vcv_phylo), 
+                    family = poisson(), cores = n_cores, iter = 4000)
+    saveRDS(fit_brms, "server_brms_final_fit.rds")
+}
 
 # --- MCMCglmm (The Sequential Spatial PGLMM) ---
-cat("\n--- Running MCMCglmm (Spatial PGLMM) ---\n")
-inv_phylo   <- inverseA(species_tree, nodes = "tips", scale = TRUE)$Ainv
-inv_spatial <- as(solve(V_spatial), "dgCMatrix")
-rownames(inv_spatial) <- colnames(inv_spatial) <- rownames(V_spatial)
+if (task_id == 4 || task_id == 0) {
+    # Status: Running MCMCglmm (Spatial PGLMM)
+    inv_phylo   <- inverseA(species_tree, nodes = "tips", scale = TRUE)$Ainv
+    inv_spatial <- as(solve(V_spatial), "dgCMatrix")
+    rownames(inv_spatial) <- colnames(inv_spatial) <- rownames(V_spatial)
 
-prior_mcmc <- list(R = list(V = 1, nu = 0.002), 
-                   G = list(G1 = list(V = 1, nu = 0.002), 
-                            G2 = list(V = 1, nu = 0.002),
-                            G3 = list(V = 1, nu = 0.002)))
+    prior_mcmc <- list(R = list(V = 1, nu = 0.002), 
+                       G = list(G1 = list(V = 1, nu = 0.002), 
+                                G2 = list(V = 1, nu = 0.002),
+                                G3 = list(V = 1, nu = 0.002)))
 
-fit_mcmc <- MCMCglmm(Abundance ~ Flower_Cover + NDVI + Body_Mass_s + Wind_Speed + Temperature + Thermal_Tol,
-                     random = ~Site + Survey + Species, 
-                     ginverse = list(Species = inv_phylo, Site = inv_spatial), 
-                     prior = prior_mcmc, family = "poisson", data = d_obs,
-                     nitt = 60000, burnin = 10000)
-saveRDS(fit_mcmc, "server_mcmcglmm_final_fit.rds")
+    fit_mcmc <- MCMCglmm(Abundance ~ Flower_Cover + NDVI + Body_Mass_s + Wind_Speed + Temperature + Thermal_Tol,
+                         random = ~Site + Survey + Species, 
+                         ginverse = list(Species = inv_phylo, Site = inv_spatial), 
+                         prior = prior_mcmc, family = "poisson", data = d_obs,
+                         nitt = 60000, burnin = 10000)
+    saveRDS(fit_mcmc, "server_mcmcglmm_final_fit.rds")
+}
+
+# --- Classical Baselines (The Simultaneous-Sequential Hybrids) ---
+if (task_id == 5 || task_id == 0) {
+    # Status: Running phylopath & Standard GLMs
+    
+    # 1. Standard Poisson GLM (Ignore Hierarchies)
+    fit_glm <- glm(Abundance ~ Flower_Cover + NDVI + Body_Mass_s + Wind_Speed + Temperature + Thermal_Tol, 
+                   family = poisson(), data = d_obs)
+    saveRDS(fit_glm, "server_glm_final_fit.rds")
+
+    # 2. phylopath (PGLS-based Causal Inference)
+    # Note: phylopath requires species-averaged data or it ignores 
+    # the site-level variances. We'll use the d_species data for this pass.
+    # Model specification for phylopath
+    m_phys <- define_model_set(
+        full = list(Thermal_Tol ~ Metabolic_Rate + Body_Mass_s,
+                    Metabolic_Rate ~ Body_Mass_s)
+    )
+    fit_phylopath <- phylo_path(m_phys, data = d_species, tree = species_tree, method = "pgls_lambda")
+    saveRDS(fit_phylopath, "server_phylopath_final_fit.rds")
+}
 
 # FINAL SAVE
 save.image("benchmark_FINAL_results.RData")
-cat("\n[Success] Benchmark complete.\n")
+# [Success] Benchmark complete.

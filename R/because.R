@@ -2204,48 +2204,121 @@ because <- function(
 
         # Run tests in parallel
         # Only run the necessary tests
-        par_results <- parallel::parLapply(
-          cl,
-          tests_to_run_indices,
-          function(i) {
+        # We use pbapply for a live progress bar if available, otherwise fallback to parLapply
+        # Note: pblapply and parLapply have different argument orders for 'cl'
+        if (requireNamespace("pbapply", quietly = TRUE)) {
+          par_results <- pbapply::pblapply(
+            X = tests_to_run_indices,
+            cl = cl,
+            FUN = function(i) {
             test_eq <- dsep_tests[[i]]
 
             # Use "interpretable" monitoring mode.
             current_monitor <- "interpretable"
 
-            run_single_dsep_test_v2(
-              i,
-              test_eq,
-              current_monitor,
-              engine = engine,
-              nimble_samplers = nimble_samplers,
-              quiet = quiet,
-              original_data = original_data,
-              hierarchical_info = hierarchical_info,
-              random_terms = random_terms,
-              equations = equations,
-              family = family,
-              tree = tree,
-              levels = levels,
-              hierarchy = hierarchy,
-              link_vars = link_vars,
-              fix_residual_variance = fix_residual_variance,
-              latent_method = latent_method,
-              n.chains = n.chains,
-              n.iter = n.iter,
-              n.burnin = n.burnin,
-              n.thin = n.thin,
-              n.adapt = n.adapt,
-              ic_recompile = ic_recompile,
-              random = random
-            )
+            tryCatch({
+              run_single_dsep_test_v2(
+                i,
+                test_eq,
+                current_monitor,
+                engine = engine,
+                nimble_samplers = nimble_samplers,
+                quiet = quiet,
+                original_data = original_data,
+                hierarchical_info = hierarchical_info,
+                random_terms = random_terms,
+                equations = equations,
+                family = family,
+                tree = tree,
+                levels = levels,
+                hierarchy = hierarchy,
+                link_vars = link_vars,
+                fix_residual_variance = fix_residual_variance,
+                latent_method = latent_method,
+                n.chains = n.chains,
+                n.iter = n.iter,
+                n.burnin = n.burnin,
+                n.thin = n.thin,
+                n.adapt = n.adapt,
+                ic_recompile = ic_recompile,
+                random = random
+              )
+            }, error = function(e) {
+              # Return error info to parent session for reporting
+              list(
+                error = conditionMessage(e),
+                test_idx = i,
+                equation = paste(deparse(test_eq), collapse = " ")
+              )
+            })
           }
         )
+        } else {
+          par_results <- parallel::parLapply(
+            cl = cl,
+            X = tests_to_run_indices,
+            fun = function(i) {
+              test_eq <- dsep_tests[[i]]
+
+              # Use "interpretable" monitoring mode.
+              current_monitor <- "interpretable"
+
+              tryCatch({
+                run_single_dsep_test_v2(
+                  i,
+                  test_eq,
+                  current_monitor,
+                  engine = engine,
+                  nimble_samplers = nimble_samplers,
+                  quiet = quiet,
+                  original_data = original_data,
+                  hierarchical_info = hierarchical_info,
+                  random_terms = random_terms,
+                  equations = equations,
+                  family = family,
+                  tree = tree,
+                  levels = levels,
+                  hierarchy = hierarchy,
+                  link_vars = link_vars,
+                  fix_residual_variance = fix_residual_variance,
+                  latent_method = latent_method,
+                  n.chains = n.chains,
+                  n.iter = n.iter,
+                  n.burnin = n.burnin,
+                  n.thin = n.thin,
+                  n.adapt = n.adapt,
+                  ic_recompile = ic_recompile,
+                  random = random
+                )
+              }, error = function(e) {
+                # Return error info to parent session for reporting
+                list(
+                  error = conditionMessage(e),
+                  test_idx = i,
+                  equation = paste(deparse(test_eq), collapse = " ")
+                )
+              })
+            }
+          )
+        }
 
         # Merge parallel results into new_results_list
         for (j in seq_along(tests_to_run_indices)) {
           idx <- tests_to_run_indices[j]
-          new_results_list[[idx]] <- par_results[[j]]
+          res <- par_results[[j]]
+          
+          # Check if the result is an error object from tryCatch
+          if (is.list(res) && !is.null(res$error)) {
+            if (!quiet) {
+              warning(sprintf(
+                "D-sep test %d/%d skipped due to error: %s\n  Equation: %s",
+                res$test_idx, length(dsep_tests), res$error, res$equation
+              ))
+            }
+            new_results_list[[idx]] <- NULL
+          } else {
+            new_results_list[[idx]] <- res
+          }
         }
       } else {
         # Sequential execution

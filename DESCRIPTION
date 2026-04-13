@@ -33,7 +33,8 @@ Imports:
     ggdag,
     ggraph,
     dplyr,
-    bayesplot
+    bayesplot,
+    pbapply
 Depends: 
     R (>= 3.5)
 RoxygenNote: 7.3.3
