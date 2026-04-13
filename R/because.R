@@ -2234,6 +2234,7 @@ because <- function(
                 hierarchy = hierarchy,
                 link_vars = link_vars,
                 fix_residual_variance = fix_residual_variance,
+                latent = latent,
                 latent_method = latent_method,
                 n.chains = n.chains,
                 n.iter = n.iter,
@@ -2288,6 +2289,7 @@ because <- function(
                   n.thin = n.thin,
                   n.adapt = n.adapt,
                   ic_recompile = ic_recompile,
+                  latent = latent,
                   random = random
                 )
               }, error = function(e) {
@@ -2354,6 +2356,7 @@ because <- function(
               hierarchy = hierarchy,
               link_vars = link_vars,
               fix_residual_variance = fix_residual_variance,
+              latent = latent,
               latent_method = latent_method,
               n.chains = n.chains,
               n.iter = n.iter,
@@ -3965,6 +3968,7 @@ run_single_dsep_test_v2 <- function(
   hierarchy = NULL,
   link_vars = NULL,
   fix_residual_variance = NULL,
+  latent = NULL,
   latent_method = "correlations",
   n.chains = 3,
   n.iter = 12500,
@@ -4247,7 +4251,7 @@ run_single_dsep_test_v2 <- function(
     dsep = FALSE,
     family = sub_family,
     fix_residual_variance = fix_residual_variance,
-    latent = NULL,
+    latent = latent,
     latent_method = latent_method,
     parallel = FALSE,
     n.cores = 1,

@@ -1,4 +1,4 @@
-# Verification Script v5: Valid DAG with Worker Failure
+# Verification Script v6: Hierarchical D-Sep with Latent
 # Achaz von Hardenberg
 # 13 April 2026
 
@@ -8,34 +8,68 @@ library(parallel)
 # Load the local version of because
 devtools::load_all("/Users/achazhardenberg/Library/CloudStorage/Dropbox/Repos/because")
 
-# 1. Simulate Small Data (X -> Y -> Z)
+# 1. Simulate Hierarchical Data (Site / Individual)
 set.seed(42)
-N <- 50
-X <- rnorm(N)
-Y <- 0.5 * X + rnorm(N)
-Z <- -2 + 0.3 * Y + rnorm(N) # Z has negative values
-data <- data.frame(X=X, Y=Y, Z=Z)
+N_sites <- 5
+N_per_site <- 10
+N <- N_sites * N_per_site
 
-# 2. Define Equations (X -> Y -> Z implies X _||_ Z | Y)
-eqs <- list(
-  Y ~ X,
-  Z ~ Y
+sites <- rep(1:N_sites, each=N_per_site)
+Site_Eff <- rnorm(N_sites)[sites]
+
+# U_Resource is latent (NOT in the site_data)
+# But it influences both NDVI and Temperature
+U_Resource_vals <- rnorm(N_sites)[sites] 
+
+# Site-level data (NO U_Resource)
+site_data <- data.frame(
+  Site = 1:N_sites,
+  Elevation = rnorm(N_sites)
 )
 
-message("\n--- Testing Worker Robustness (DAG X -> Y -> Z) ---")
-message("Force Poisson fit on negative Z in parallel...")
+# Observation-level data
+obs_data <- data.frame(
+  Site = sites,
+  NDVI = 0.5 * U_Resource_vals + rnorm(N),
+  Temperature = 0.8 * U_Resource_vals + 0.2 * Site_Eff + rnorm(N)
+)
 
-# This should generate 1 test: Z ~ X + Y (or X ~ Z + Y)
-# We force Z to be poisson, which will fail during JAGS initialization.
+# Hierarchical list
+data_list <- list(
+  site = site_data,
+  obs = obs_data
+)
 
-fit_bad <- because(
+# Levels
+# U_Resource is in 'levels' for 'site' but NOT in the site_data frame
+levels_list <- list(
+  site = c("Elevation", "U_Resource", "Site"), 
+  obs  = c("NDVI", "Temperature")
+)
+
+# Equations (DAG: Elevation -> Temperature; U_Resource -> NDVI, U_Resource -> Temperature)
+# Basis set should include Elevation _||_ NDVI | {} (conditional on nothing or Site?)
+eqs <- list(
+  Temperature ~ Elevation + U_Resource,
+  NDVI ~ U_Resource
+)
+
+message("\n--- Testing Latent Hierarchical Propagation ---")
+message("U_Resource is latent and lives at 'site' level.")
+
+# This should work now without "Variables not found in site dataset: U_Resource"
+fit <- because(
   eqs,
-  data = data,
+  data = data_list,
+  levels = levels_list,
+  hierarchy = "site > obs",
+  link_vars = list(site = "Site"),
+  latent = "U_Resource",
   dsep = TRUE,
   parallel = TRUE,
   n.cores = 2,
-  n.iter = 500,
-  family = c(Z = "poisson") # This will fail in worker
+  n.iter = 500
 )
 
 message("\nVerification Complete.")
+print(fit$dsep)
