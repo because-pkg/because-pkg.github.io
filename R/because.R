@@ -1404,6 +1404,26 @@ because <- function(
           data[[n_name]] <- N
         }
       }
+
+      # [ROBUSTNESS FIX] Generate synonymous N_var and zeros_var for ALL grouping variables
+      # that belong to this level. This ensures that random effects like (1 | SiteID) 
+      # find N_SiteID even if the level is named "site".
+      lvl_vars <- hierarchical_info$levels[[lvl_name]]
+      for (v_nm in lvl_vars) {
+        # Check both the variable name and common random effect index names
+        potential_names <- c(v_nm, paste0(v_nm, "ID"), paste0(v_nm, "_id"))
+        for (p_nm in potential_names) {
+            nn_name <- paste0("N_", p_nm)
+            zz_name <- paste0("zeros_", p_nm)
+            
+            if (is.null(data[[nn_name]])) {
+                 data[[nn_name]] <- data[[n_name]]
+            }
+            if (is.null(data[[zz_name]])) {
+                 data[[zz_name]] <- data[[z_name]]
+            }
+        }
+      }
     }
   }
   # Only add 'zeros' vector if using ZIP or ZINB (Poisson trick)

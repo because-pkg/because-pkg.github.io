@@ -244,7 +244,12 @@ summary.because <- function(
         })
 
         # Bind all results efficiently
-        results <- do.call(rbind, results_list)
+        # [FIX] Handle case where all results are NULL (all tests skipped/failed)
+        if (is.null(results_list) || length(results_list) == 0 || all(vapply(results_list, is.null, logical(1)))) {
+            results <- NULL
+        } else {
+            results <- do.call(rbind, results_list)
+        }
 
         # Store components in list instead of printing
         out <- list(
@@ -401,6 +406,13 @@ print.summary.because <- function(x, ...) {
         results <- x$results
         cat("d-separation Tests\n")
         cat("==================\n\n")
+        
+        # [FIX] Graceful handling of empty/NULL results
+        if (is.null(results) || nrow(results) == 0) {
+            cat("No test results found. Check if tests were skipped or all d-sep sub-models failed.\n\n")
+            return(invisible(x))
+        }
+
         # Print each test on a separate block
         for (i in seq_len(nrow(results))) {
             cat(paste0("Test: ", results$Test[i]), "\n")
