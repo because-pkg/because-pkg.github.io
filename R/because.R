@@ -224,6 +224,13 @@ because <- function(
 
   engine <- match.arg(tolower(engine), c("jags", "nimble"))
 
+  # --- Robust Parameter Initialization (Handle NULL inputs from recursive calls) ---
+  if (is.null(n.chains)) n.chains <- 3
+  if (is.null(n.iter)) n.iter <- 12500
+  if (is.null(n.thin)) n.thin <- 10
+  if (is.null(n.burnin)) n.burnin <- floor(n.iter / 5)
+  if (is.null(n.adapt)) n.adapt <- floor(n.iter / 5)
+
   if (!quiet) {
     is_list_debug <- is.list(data) && !is.data.frame(data)
   }
@@ -1364,12 +1371,16 @@ because <- function(
     if (is.data.frame(data) && nrow(data) > 0) {
       N <- nrow(data)
     } else if (is.list(data) && length(data) > 0) {
-      # For lists, use length of first vector element
-      first_vec <- data[[1]]
-      if (is.vector(first_vec) || is.factor(first_vec)) {
-        N <- length(first_vec)
-      } else if (is.matrix(first_vec) || is.array(first_vec)) {
-        N <- nrow(first_vec)
+      # For hierarchical lists, N should be the row count of the FINEST grain level.
+      # If not specified, we take the row count of the first element in data.
+      # [FIX] Use nrow() instead of length() to avoid counting columns!
+      first_obj <- data[[1]]
+      if (is.data.frame(first_obj)) {
+        N <- nrow(first_obj)
+      } else if (is.vector(first_obj) || is.factor(first_obj)) {
+        N <- length(first_obj)
+      } else if (is.matrix(first_obj) || is.array(first_obj)) {
+        N <- nrow(first_obj)
       }
     }
   }
@@ -1385,7 +1396,13 @@ because <- function(
       }
       n_name <- paste0("N_", lvl_name)
       if (is.null(data[[n_name]])) {
-        data[[n_name]] <- N
+        # [FIX] For hierarchical models, extraction should come from the level's row count
+        if (is.list(data) && !is.null(data[[lvl_name]])) {
+          data[[n_name]] <- nrow(data[[lvl_name]])
+        } else {
+          # Fallback to total N (for non-hierarchical or flat data frames)
+          data[[n_name]] <- N
+        }
       }
     }
   }
