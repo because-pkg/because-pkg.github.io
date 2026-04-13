@@ -231,6 +231,13 @@ because <- function(
   if (is.null(n.burnin)) n.burnin <- floor(n.iter / 5)
   if (is.null(n.adapt)) n.adapt <- floor(n.iter / 5)
 
+  # [FIX] Ensure all MCMC parameters are coercible to non-negative integer for JAGS
+  n.chains <- as.integer(max(1, n.chains))
+  n.iter <- as.integer(max(1, n.iter))
+  n.thin <- as.integer(max(1, n.thin))
+  n.burnin <- as.integer(max(0, n.burnin))
+  n.adapt <- as.integer(max(0, n.adapt))
+
   if (!quiet) {
     is_list_debug <- is.list(data) && !is.data.frame(data)
   }
@@ -1396,13 +1403,28 @@ because <- function(
       }
       n_name <- paste0("N_", lvl_name)
       if (is.null(data[[n_name]])) {
-        # [FIX] For hierarchical models, extraction should come from the level's row count
-        if (is.list(data) && !is.null(data[[lvl_name]])) {
-          data[[n_name]] <- nrow(data[[lvl_name]])
+        # [FIX 2026-04-13] Support both hierarchical lists and flattened data frames.
+        # This ensuring d-sep sub-models can find their level counts.
+        if (is.data.frame(data) && !is.null(data[[lvl_name]])) {
+          # Flat data frame case: calculate number of unique IDs
+          data[[n_name]] <- as.integer(length(unique(na.omit(data[[lvl_name]]))))[1]
+        } else if (is.list(data) && !is.null(data[[lvl_name]])) {
+          # Hierarchical list case: use nrow of the level-specific table
+          if (is.data.frame(data[[lvl_name]]) || is.matrix(data[[lvl_name]])) {
+            data[[n_name]] <- as.integer(nrow(data[[lvl_name]]))[1]
+          } else {
+            # Fallback for vectors/columns in hierarchical lists
+            data[[n_name]] <- as.integer(length(data[[lvl_name]]))[1]
+          }
         } else {
-          # Fallback to total N (for non-hierarchical or flat data frames)
-          data[[n_name]] <- N
+          # Fallback to total N (for flat data frames or non-hierarchical models)
+          data[[n_name]] <- as.integer(N)[1]
         }
+      }
+
+      # Final safety: Ensure n_name is a scalar integer if it was set
+      if (!is.null(data[[n_name]])) {
+        data[[n_name]] <- as.integer(data[[n_name]])[1]
       }
 
       # [ROBUSTNESS FIX] Generate synonymous N_var and zeros_var for ALL grouping variables
@@ -1411,7 +1433,15 @@ because <- function(
       lvl_vars <- hierarchical_info$levels[[lvl_name]]
       for (v_nm in lvl_vars) {
         # Check both the variable name and common random effect index names
-        potential_names <- c(v_nm, paste0(v_nm, "ID"), paste0(v_nm, "_id"))
+        # [ROBUSTNESS] Added case-insensitive variants (Title Case, UPPER CASE)
+        v_title <- paste0(toupper(substring(v_nm, 1, 1)), substring(v_nm, 2))
+        
+        potential_names <- unique(c(
+            v_nm, v_title, toupper(v_nm), 
+            paste0(v_nm, "ID"), paste0(v_title, "ID"),
+            paste0(v_nm, "_id"), paste0(v_title, "_id")
+        ))
+        
         for (p_nm in potential_names) {
             nn_name <- paste0("N_", p_nm)
             zz_name <- paste0("zeros_", p_nm)
@@ -1426,6 +1456,41 @@ because <- function(
       }
     }
   }
+
+  # --- [NEW] Map Link Variables (IDs) to Counts ---
+  # Ensures JAGS finds loop bounds for grouping variables not listed in 'levels'
+  if (!is.null(hierarchical_info$link_vars) && !is.null(hierarchical_info$data)) {
+    for (lk_var in hierarchical_info$link_vars) {
+      # Find which level (dataframe) contains this link variable
+      # If multiple, find the one with the fewest rows (the level where it's defined)
+      potential_lvls <- character(0)
+      for (l_nm in names(hierarchical_info$data)) {
+         if (lk_var %in% colnames(hierarchical_info$data[[l_nm]])) {
+            potential_lvls <- c(potential_lvls, l_nm)
+         }
+      }
+      
+      if (length(potential_lvls) > 0) {
+        # Pick the level with minimum rows
+        r_counts <- vapply(potential_lvls, function(l) nrow(hierarchical_info$data[[l]]), numeric(1))
+        best_lvl <- potential_lvls[which.min(r_counts)]
+        best_n <- r_counts[best_lvl]
+        
+        # Generate names (Raw, Title, Upper)
+        v_title <- paste0(toupper(substring(lk_var, 1, 1)), substring(lk_var, 2))
+        pot_names <- unique(c(lk_var, v_title, toupper(lk_var)))
+        
+        for (p_nm in pot_names) {
+            nn_name <- paste0("N_", p_nm)
+            if (is.null(data[[nn_name]])) {
+              data[[nn_name]] <- best_n
+            }
+        }
+      }
+    }
+  }
+
+  # Only add 'zeros' vector if using ZIP or ZINB (Poisson trick)
   # Only add 'zeros' vector if using ZIP or ZINB (Poisson trick)
   # OR if we have structures (which often use dmnorm(zeros, ...))
   if (!is.null(N)) {
@@ -4026,15 +4091,10 @@ run_single_dsep_test_v2 <- function(
     # Extract variables from this test equation
     test_vars <- all.vars(test_eq)
     
-    # [FIX] all.vars() captures random effect grouping variables (like "id") from (1|id).
-    # If these are link_vars, we MUST remove them from test_vars so they aren't evaluated
-    # by infer_variable_level() which crashes on link_vars. get_data_for_variables
-    # natively preserves link_vars during joins, so dropping them here is safe.
-    if (!is.null(hierarchical_info$link_vars)) {
-      l_vars <- unlist(hierarchical_info$link_vars, use.names=FALSE)
-      test_vars <- setdiff(test_vars, l_vars)
-    }
-
+    # [FIX 2026-04-13] we NO LONGER strip link_vars from test_vars.
+    # infer_variable_level() now has a fallback to search data columns,
+    # and get_data_for_variables() needs these IDs to correctly assemble/join levels.
+    
     # [FIX] Add random effect grouping variables to test_vars
     # Otherwise get_data_for_variables removes them, causing "Unknown variable N_SiteID"
     if (!is.null(random_terms) && length(random_terms) > 0) {
@@ -4043,15 +4103,6 @@ run_single_dsep_test_v2 <- function(
         function(x) x$group,
         character(1)
       ))
-      
-      # [FIX] Do not add random groups to test_vars if they are link_vars,
-      # because link_vars are not in 'levels' and will crash infer_variable_level.
-      # get_data_for_variables automatically retains link_vars during joins anyway.
-      if (!is.null(hierarchical_info$link_vars)) {
-          # Handle named vector of link_vars
-          l_vars <- unlist(hierarchical_info$link_vars, use.names=FALSE)
-          random_groups <- setdiff(random_groups, l_vars)
-      }
       
       if (length(random_groups) > 0) {
           test_vars <- unique(c(test_vars, random_groups))

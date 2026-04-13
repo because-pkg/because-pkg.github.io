@@ -176,7 +176,7 @@ extract_bidirected_edges <- function(mag) {
 
     correlations <- list()
 
-    for (i in seq_len(n - 1)) {
+    for (i in seq_len(max(0, n - 1))) {
         for (j in (i + 1):n) {
             if (mag[i, j] == 100 && mag[j, i] == 100) {
                 # Bidirected edge found

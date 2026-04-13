@@ -280,7 +280,8 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
   #
   full.vars <- row.names(full.DAG)
   full.vars.index <- seq_along(full.vars)
-  n.observed <- length(full.vars) - length(latents)
+  all_latents <- if (is.null(latents) || (length(latents) == 1 && is.na(latents[1]))) character(0) else latents
+  n.observed <- length(full.vars) - length(all_latents)
   observed.DAG <- full.DAG
   observed.vars <- full.vars
   observed.vars.index <- full.vars.index
@@ -294,7 +295,7 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
 
   # cat("the original DAG is:", "\n")
   total.n.vars <- dim(full.DAG)[2]
-  for (i in seq_len(total.n.vars - 1)) {
+  for (i in seq_len(max(0, total.n.vars - 1))) {
     for (j in (i + 1):total.n.vars) {
       if (full.DAG[i, j] == 1 & full.DAG[j, i] == 0) {
         # cat(full.vars[i], "->", full.vars[j], "\n")
@@ -455,7 +456,7 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
     n.observed,
     dimnames = list(observed.vars, observed.vars)
   )
-  for (i in seq_len(n.observed - 1)) {
+  for (i in seq_len(max(0, n.observed - 1))) {
     for (j in (i + 1):n.observed) {
       if (observed.DAG[i, j] == 1 & observed.DAG[j, i] == 0) {
         cgraph[i, j] <- 1
@@ -490,7 +491,7 @@ DAG.to.MAG <- function(full.DAG, latents = NA, conditioning.latents = NULL) {
   # The next section simply prints the results to the screen
   # cat("Mixed Acyclic Graph involving only the observed variables:", "\n")
   ind.vars <- rep(T, n.observed)
-  for (i in seq_len(n.observed - 1)) {
+  for (i in seq_len(max(0, n.observed - 1))) {
     for (j in (i + 1):n.observed) {
       if (cgraph[i, j] == 1 & cgraph[j, i] == 0) {
         # cat(observed.vars[i], "->", observed.vars[j], "\n")

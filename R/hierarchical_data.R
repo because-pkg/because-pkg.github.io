@@ -222,12 +222,23 @@ validate_hierarchical_data <- function(
 #'
 #' @param var Character, variable name
 #' @param levels List mapping variable names to level names
+#' @param data Optional list of data.frames for fallback searching
 #' @return Character, level name
 #' @keywords internal
-infer_variable_level <- function(var, levels) {
+infer_variable_level <- function(var, levels, data = NULL) {
     for (level_name in names(levels)) {
         if (var %in% levels[[level_name]]) {
             return(level_name)
+        }
+    }
+
+    # [FALLBACK] Search data columns if not in levels list
+    # This allows structural IDs (link_vars) to be used without explicit level declaration
+    if (!is.null(data)) {
+        for (level_name in names(data)) {
+            if (is.data.frame(data[[level_name]]) && var %in% colnames(data[[level_name]])) {
+                return(level_name)
+            }
         }
     }
 
@@ -269,7 +280,7 @@ get_data_for_variables <- function(
 
     # Determine which level each variable belongs to
     var_levels <- sapply(variables, function(v) {
-        infer_variable_level(v, levels)
+        infer_variable_level(v, levels, data = data)
     })
 
     # Get unique levels needed
