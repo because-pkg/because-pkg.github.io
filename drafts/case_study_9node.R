@@ -88,6 +88,7 @@ Vcv      <- vcv.phylo(species_tree)
 V_lambda <- PAGEL_LAMBDA * Vcv + (1 - PAGEL_LAMBDA) * diag(diag(Vcv))
 
 Body_Mass_s <- as.vector(mvrnorm(1, rep(0, N_Species), V_lambda))
+# REAL Evolutionary Confounding: residuals are now weighted
 eps_MR      <- as.vector(mvrnorm(1, rep(0, N_Species), 0.15^2 * V_lambda))
 Metabolic_Rate <- BETA_BM_MR * Body_Mass_s + eps_MR
 eps_TT      <- as.vector(mvrnorm(1, rep(0, N_Species), 0.10^2 * V_lambda))
@@ -116,7 +117,12 @@ cat(sprintf("  Thermal_Tol    : mean = %.2f, sd = %.2f\n",
 # SECTION D: SITE LEVEL  (M = 30 sites)
 # Fixed attributes — measured once per site across the season.
 # ============================================================
-Elevation_s  <- rnorm(N_Site)
+# --- REAL Spatial Confounding: Elevation is now Spatially Weighted ---
+site_coords <- cbind(runif(N_Site, 0, 10), runif(N_Site, 0, 10))
+rownames(site_coords) <- paste0("Site_", 1:N_Site)
+V_spatial <- exp(-as.matrix(dist(site_coords)) / 1.0) 
+
+Elevation_s <- as.vector(MASS::mvrnorm(1, rep(0, N_Site), V_spatial))
 U_Resource   <- BETA_ELEV_URES * Elevation_s + rnorm(N_Site, 0, 0.50)  # LATENT
 
 # NDVI and Flower_Cover both driven by same latent U_Resource
@@ -135,11 +141,6 @@ d_site <- data.frame(
     Flower_Cover = Flower_Cover,
     U_Resource   = NA_real_   # Latent: JAGS will estimate from NDVI equation
 )
-
-# Spatial exponential-decay covariance matrix (for site-level random effect)
-site_coords <- cbind(runif(N_Site, 0, 10), runif(N_Site, 0, 10))
-rownames(site_coords) <- d_site$Site
-V_spatial   <- exp(-as.matrix(dist(site_coords)) / 0.5)
 
 # ============================================================
 # SECTION E: SURVEY LEVEL  (3 surveys per site × 30 sites = 90 surveys)
@@ -245,11 +246,13 @@ eqs <- list(
 )
 
 # ============================================================
-# SECTION I: FIT MODEL
+# SECTION I: FIT MODELS (Two-Step Causal Pipeline)
 # ============================================================
-cat("\nFitting 9-node hierarchical MAG with because()...\n\n")
 
-fit <- because(
+# --- STEP 1: CAUSAL VALIDATION (Basis Set Tests) ---
+# We fit the d-separation sub-models to test the MAG topology.
+cat("\n[STEP 1] Running Causal Validation (d-separation tests)...\n")
+fit_val <- because(
     eqs,
     data      = data_list,
     levels    = list(
@@ -263,25 +266,44 @@ fit <- because(
     latent_method = "explicit",
     family       = c(Abundance = "poisson"),
     structure    = structures,
-    dsep         = FALSE,
-    n.iter       = 1500,
-    n.burnin     = 500,
-    n.chains     = 3,
-    engine = "nimble",
-    parallel = TRUE,
-    n.cores      = 3,
-    quiet        = FALSE
+    dsep         = TRUE,     # Returns the Basis Set tests
+    parallel     = TRUE
 )
 
-plot_dag(fit)
+# --- STEP 2: STRUCTURAL ESTIMATION (Joint Model) ---
+# Once validated, we fit the full DAG to retrieve path coefficients.
+cat("\n[STEP 2] Running Structural Estimation (Joint MAG)...\n")
+fit_jags <- because(
+    eqs,
+    data      = data_list,
+    levels    = list(
+        species = c("Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", "Species"),
+        site    = c("Elevation_s", "NDVI", "Flower_Cover", "U_Resource", "Site"),
+        survey  = c("Temperature", "Wind_Speed", "Survey"),
+        obs     = c("Abundance")),
+    hierarchy    = "site > survey > obs; species > obs",
+    link_vars    = list(site = "Site", survey = "Survey", species = "Species"),
+    latent       = "U_Resource",
+    latent_method = "explicit",
+    family       = c(Abundance = "poisson"),
+    structure    = structures,
+    dsep         = FALSE,    # Returns the Path Coefficients
+    parallel     = TRUE
+)
+
+# (Optional) NIMBLE Engine for high-speed estimation
+# fit_nimble <- because(eqs, data = data_list, ..., engine = "nimble")
+
+# Set 'fit' to fit_jags for results below, but use fit_val for the summary
+plot_dag(fit_jags)
 
 # ============================================================
 # SECTION J: RESULTS
 # ============================================================
-cat("\n\n=== M-SEPARATION BASIS TESTS ===\n")
-s <- summary(fit)
-if (!is.null(s$results)) {
-    res <- s$results
+cat("\n\n=== M-SEPARATION BASIS TESTS (from STEP 1) ===\n")
+s_val <- summary(fit_val)
+if (!is.null(s_val$results)) {
+    res <- s_val$results
     consistent <- sum(res$LowerCI < 0 & res$UpperCI > 0, na.rm = TRUE)
     cat(sprintf("Tests in basis set:                      25\n"))
     cat(sprintf("Tests executed (cross-hierarchy skipped): %d\n", nrow(res)))
@@ -291,11 +313,13 @@ if (!is.null(s$results)) {
     cat("\nDetailed results:\n")
     print(res[, intersect(c("Test", "Parameter", "Estimate", "LowerCI", "UpperCI"),
                           colnames(res))], row.names = FALSE)
+    # Visual Causal Validation Plot
+    plot_dsep(fit_val)
 }
 
-cat("\n\n=== PARAMETER RECOVERY ===\n")
-if (!is.null(fit$samples)) {
-    mat   <- as.matrix(fit$samples)
+cat("\n=== PARAMETER RECOVERY (from STEP 2) ===\n")
+if (!is.null(fit_jags$samples)) {
+    mat   <- as.matrix(fit_jags$samples)
     betas <- grep("^beta_", colnames(mat), value = TRUE)
     est   <- apply(mat[, betas, drop = FALSE], 2, mean)
     lo    <- apply(mat[, betas, drop = FALSE], 2, quantile, 0.025)
@@ -304,4 +328,23 @@ if (!is.null(fit$samples)) {
         cat(sprintf("  %-52s | Est: %+.2f (95%% BCI: %+.2f, %+.2f)\n",
                     b, est[b], lo[b], hi[b]))
 }
+
+# ============================================================
+# SECTION K: DIAGNOSTICS & PPC
+# ============================================================
+cat("\n\n=== GENERATING DIAGNOSTIC PLOTS ===\n")
+# 1. Structural Comparison
+plot_coef(fit_jags)
+
+# 2. Posterior Predictive Checks (The Causal Chain)
+cat("\nRunning PPC for the entire causal chain...\n")
+# We check both the final outcome (Abundance) and the intermediate causal drivers
+diagnostic_nodes <- c("Metabolic_Rate", "Thermal_Tol", "Flower_Cover", "Temperature", "Abundance")
+
+for (node in diagnostic_nodes) {
+    cat(sprintf("  PPC for %s...\n", node))
+    # Note: in a real session, these would pop up as separate plot windows or facets
+    print(pp_check(fit_jags, resp = node, type = "dens_overlay"))
+}
+
 cat("\n=== DONE ===\n")
