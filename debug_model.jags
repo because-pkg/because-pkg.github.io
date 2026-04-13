@@ -2,42 +2,24 @@ model {
   # Common structures and priors
   # Induced Correlations (Latent Variables) - Pair Processing
   # Structural equations
-    # Deterministic nodes (Interactions / Logic)
-  for (i in 1:N_obs) {
-    Temperature_minus_Thermal_Tol[i] <- Temperature[survey_idx_obs[i]] - Thermal_Tol[species_idx_obs[i]]
-  }
 
-  for (i in 1:N_obs) {
-    # Poisson log link for Abundance
-    mu_Abundance[i] <- exp(max(-20, min(10, alpha_Abundance + beta_Abundance_Elevation_s*Elevation_s[site_idx_obs[i]] + beta_Abundance_Flower_Cover*Flower_Cover[site_idx_obs[i]] + beta_Abundance_Temperature_minus_Thermal_Tol*Temperature_minus_Thermal_Tol[i] + beta_Abundance_Wind_Speed*Wind_Speed[survey_idx_obs[i]] + err_Abundance[i])))
-    Abundance[i] ~ dpois(mu_Abundance[i])
-    log_lik_Abundance[i] <- logdensity.pois(Abundance[i], mu_Abundance[i])
+  for (i in 1:N_survey) {
+    mu_Wind_Speed[i] <- alpha_Wind_Speed + beta_Wind_Speed_Elevation_s*Elevation_s[site_idx_survey[i]]
   }
   # Multivariate normal likelihoods
-  u_std_Abundance_Site[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_Site[1:N_site, 1:N_site])
-  for (g in 1:N_site) { u_Abundance_Site[g] <- u_std_Abundance_Site[g] / sqrt(tau_u_Abundance_Site) }
-  u_std_Abundance_Survey[1:N_survey] ~ dmnorm(zeros_survey[1:N_survey], Prec_Survey[1:N_survey, 1:N_survey])
-  for (g in 1:N_survey) { u_Abundance_Survey[g] <- u_std_Abundance_Survey[g] / sqrt(tau_u_Abundance_Survey) }
-  u_std_Abundance_Species[1:N_species] ~ dmnorm(zeros_species[1:N_species], Prec_Species[1:N_species, 1:N_species])
-  for (g in 1:N_species) { u_Abundance_Species[g] <- u_std_Abundance_Species[g] / sqrt(tau_u_Abundance_Species) }
-  # Random effects for Poisson: Abundance
-  for (i in 1:N_obs) {
-    epsilon_Abundance[i] ~ dnorm(0, tau_e_Abundance)
-    err_Abundance[i] <- epsilon_Abundance[i] + u_Abundance_Site[group_Site[site_idx_obs[i]]] + u_Abundance_Survey[group_Survey[survey_idx_obs[i]]] + u_Abundance_Species[group_Species[species_idx_obs[i]]]
+  u_std_Wind_Speed_Site[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_Site[1:N_site, 1:N_site])
+  for (g in 1:N_site) { u_Wind_Speed_Site[g] <- u_std_Wind_Speed_Site[g] / sqrt(tau_u_Wind_Speed_Site) }
+  for (i in 1:N_survey) {
+    Wind_Speed[i] ~ dnorm(mu_Wind_Speed[i] + u_Wind_Speed_Site[group_Site[site_idx_survey[i]]], tau_e_Wind_Speed)
+    log_lik_Wind_Speed[i] <- logdensity.norm(Wind_Speed[i], mu_Wind_Speed[i] + u_Wind_Speed_Site[group_Site[site_idx_survey[i]]], tau_e_Wind_Speed)
   }
   # Priors for structural parameters
-  alpha_Abundance ~ dnorm(0, 1.0E-6)
-  tau_e_Abundance ~ dgamma(10, 10)
-  tau_u_Abundance_Site ~ dgamma(10, 10)
-  sigma_Abundance_Site <- 1/sqrt(tau_u_Abundance_Site)
-  tau_u_Abundance_Survey ~ dgamma(10, 10)
-  sigma_Abundance_Survey <- 1/sqrt(tau_u_Abundance_Survey)
-  tau_u_Abundance_Species ~ dgamma(10, 10)
-  sigma_Abundance_Species <- 1/sqrt(tau_u_Abundance_Species)
-  sigma_Abundance_res <- 1/sqrt(tau_e_Abundance)
-  beta_Abundance_Elevation_s ~ dnorm(0, 1.0E-6)
-  beta_Abundance_Flower_Cover ~ dnorm(0, 1.0E-6)
-  beta_Abundance_Temperature_minus_Thermal_Tol ~ dnorm(0, 1.0E-6)
-  beta_Abundance_Wind_Speed ~ dnorm(0, 1.0E-6)
+  alpha_Wind_Speed ~ dnorm(0, 1.0E-6)
+  sigma_e_Wind_Speed ~ dunif(0, 100)
+  tau_e_Wind_Speed <- 1 / (sigma_e_Wind_Speed * sigma_e_Wind_Speed)
+  tau_u_Wind_Speed_Site ~ dgamma(1, 1)
+  sigma_Wind_Speed_Site <- 1/sqrt(tau_u_Wind_Speed_Site)
+  sigma_Wind_Speed_res <- 1/sqrt(tau_e_Wind_Speed)
+  beta_Wind_Speed_Elevation_s ~ dnorm(0, 1.0E-6)
   # Predictor priors for imputation
 }
