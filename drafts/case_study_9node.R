@@ -256,8 +256,7 @@ fit <- because(
         species = c("Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", "Species"),
         site    = c("Elevation_s", "NDVI", "Flower_Cover", "U_Resource", "Site"),
         survey  = c("Temperature", "Wind_Speed", "Survey"),
-        obs     = c("Abundance")
-    ),
+        obs     = c("Abundance")),
     hierarchy    = "site > survey > obs; species > obs",
     link_vars    = list(site = "Site", survey = "Survey", species = "Species"),
     latent       = "U_Resource",
@@ -268,9 +267,13 @@ fit <- because(
     n.iter       = 1500,
     n.burnin     = 500,
     n.chains     = 3,
+    engine = "nimble",
+    parallel = TRUE,
     n.cores      = 3,
     quiet        = FALSE
 )
+
+plot_dag(fit)
 
 # ============================================================
 # SECTION J: RESULTS

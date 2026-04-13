@@ -115,7 +115,7 @@ eqs <- list(
 start_time <- Sys.time()
 fit_full <- because(
     eqs, data = data_list,
-    structures = structures, 
+    structure = structures, 
     levels = list(
         species = c("Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", "Species"),
         site    = c("Elevation_s", "NDVI", "Flower_Cover", "U_Resource", "Site"),
@@ -125,33 +125,82 @@ fit_full <- because(
     hierarchy = "site > survey > obs; species > obs",
     link_vars = list(site = "Site", survey = "Survey", species = "Species"),
     latent    = "U_Resource",
-    engine    = "nimble", parallel = FALSE, 
-    n.iter    = 1200, n.burnin = 400, quiet = TRUE
+    engine    = "jags", parallel = TRUE, 
+    n.iter    = 12500, n.burnin = 2500, quiet = TRUE
 )
 time_because <- difftime(Sys.time(), start_time, units="secs")
 
+# --- SAFETY SAVE ---
+cat("\n[Success] saving because fit to 'because_local_results.rds'...\n")
+saveRDS(list(fit = fit_full, time = time_because, data = d_obs), "because_local_results.rds")
+
 # ============================================================
-# SECTION C: "brms" ANALYSIS (Multivariate SEM)
+# SECTION C.1: "brms" ANALYSIS (Naive Multivariate SEM)
 # ============================================================
-cat("\n--- Fitting Multivariate Bayesian SEM ('brms') ---\n")
+cat("\n--- Fitting Naive Multivariate Bayesian SEM ('brms') ---\n")
+cat("Note: This treats all 4500 rows as independent observations for traits.\n")
 
 # Multivariate Formulas in brms to match the SEM structure
+# U_Resource is modeled as the shared random effect (1 | p | Site)
 bf_abund <- bf(Abundance ~ Flower_Cover + Wind_Speed + mismatch + 
                (1 | gr(Species, cov = A)) + (1 | gr(Site, cov = S)) + (1 | Survey))
 bf_tt    <- bf(Thermal_Tol ~ Metabolic_Rate + Body_Mass_s + (1 | gr(Species, cov = A)))
 bf_mr    <- bf(Metabolic_Rate ~ Body_Mass_s + (1 | gr(Species, cov = A)))
 bf_temp  <- bf(Temperature ~ Elevation_s + (1 | gr(Site, cov = S)))
+bf_ndvi  <- bf(NDVI ~ Elevation_s + (1 | p | Site))
+bf_flwr  <- bf(Flower_Cover ~ Elevation_s + (1 | p | Site))
 
 start_time <- Sys.time()
-fit_brms <- brm(
-    bf_abund + bf_tt + bf_mr + bf_temp + set_rescor(FALSE),
+fit_brms_naive <- brm(
+    bf_abund + bf_tt + bf_mr + bf_temp + bf_ndvi + bf_flwr + set_rescor(FALSE),
     data = d_obs,
     data2 = list(A = A, S = S),
     family = list(Abundance = poisson(), Thermal_Tol = gaussian(), 
-                Metabolic_Rate = gaussian(), Temperature = gaussian()),
+                Metabolic_Rate = gaussian(), Temperature = gaussian(),
+                NDVI = gaussian(), Flower_Cover = gaussian()),
+    control = list(adapt_delta = 0.95, max_treedepth = 12),
     cores = 1, iter = 1200, warmup = 400, refresh = 0
 )
-time_brms <- difftime(Sys.time(), start_time, units="secs")
+time_brms_naive <- difftime(Sys.time(), start_time, units="secs")
+
+# ============================================================
+# SECTION C.2: "brms" ANALYSIS (Expert - Proper Resolution)
+# ============================================================
+cat("\n--- Fitting Expert Multivariate Bayesian SEM ('brms') ---\n")
+cat("Note: Using subset() and mi() to honor N=50 trait resolution.\n")
+
+# Create indicators for high-level unique rows to avoid pseudoreplication
+d_obs$is_species <- !duplicated(d_obs$Species)
+d_obs$is_site    <- !duplicated(d_obs$Site)
+d_obs$is_survey  <- !duplicated(d_obs$Survey)
+
+# Expert formulas: 
+# 1. High-level vars estimated ONLY on unique rows (subset)
+# 2. Observation-level Abundance uses the estimated traits via mi()
+bf_abund_exp <- bf(Abundance ~ mi(Flower_Cover) + Wind_Speed + (mi(Temperature) - mi(Thermal_Tol)) + 
+                   (1 | gr(Species, cov = A)) + (1 | gr(Site, cov = S)) + (1 | Survey))
+
+bf_tt_exp    <- bf(Thermal_Tol | mi() ~ Metabolic_Rate + Body_Mass_s + (1 | gr(Species, cov = A)), subset = is_species)
+bf_mr_exp    <- bf(Metabolic_Rate ~ Body_Mass_s + (1 | gr(Species, cov = A)), subset = is_species)
+
+bf_flwr_exp  <- bf(Flower_Cover | mi() ~ Elevation_s + (1 | p | Site), subset = is_site)
+bf_ndvi_exp  <- bf(NDVI ~ Elevation_s + (1 | p | Site), subset = is_site)
+
+bf_temp_exp  <- bf(Temperature | mi() ~ Elevation_s + (1 | Survey), subset = is_survey)
+
+# Note: This compilation takes significant time due to the mi() linking logic
+start_time <- Sys.time()
+fit_brms_expert <- brm(
+    bf_abund_exp + bf_tt_exp + bf_mr_exp + bf_ndvi_exp + bf_flwr_exp + bf_temp_exp + set_rescor(FALSE),
+    data = d_obs,
+    data2 = list(A = A, S = S),
+    family = list(Abundance = poisson(), Thermal_Tol = gaussian(), 
+                Metabolic_Rate = gaussian(), NDVI = gaussian(), 
+                Flower_Cover = gaussian(), Temperature = gaussian()),
+    control = list(adapt_delta = 0.99, max_treedepth = 15),
+    cores = 1, iter = 1200, warmup = 400, refresh = 0
+)
+time_brms_expert <- difftime(Sys.time(), start_time, units="secs")
 
 # ============================================================
 # SECTION D: COLLAPSED ANALYSIS (Species-Averaged)
@@ -174,13 +223,25 @@ fit_naive <- lm(Abundance_mean ~ Flower_mean + Wind_mean + mismatch_mean, data =
 
 # Fit phylosem
 if (has_phylosem) {
-    cat("Fitting 'phylosem' on averaged data...\n")
+    cat("Fitting 'phylosem' with Latent Variables on averaged data...\n")
+    
+    # 1. Add U_Resource column (filled with NA for estimation)
+    d_collapsed$U_Resource <- NA_real_
+    
+    # 2. Define syntax with Latent Resource
     model_syntax <- "
-        Abundance_mean ~ Flower_mean + Wind_mean + mismatch_mean
+        # Measurement Model: Proxies for Latent Resource
+        U_Resource =~ 1*Flower_mean + NDVI_mean
+        
+        # Structural Model
+        Abundance_mean ~ U_Resource + Wind_mean + mismatch_mean
         Metabolic_Rate ~ Body_Mass_s
         Thermal_Tol ~ Metabolic_Rate + Body_Mass_s
     "
-    fit_psem <- phylosem(sem = model_syntax, data = d_collapsed, tree = species_tree)
+    
+    # 3. Fit Model
+    fit_psem <- phylosem(sem = model_syntax, data = d_collapsed, 
+                         tree = species_tree, family = "poisson")
 }
 
 # ============================================================
@@ -196,9 +257,15 @@ s_full <- summary(fit_full)$results
 me_flower <- s_full[s_full$Parameter == "beta_Flower_Cover_Abundance", ]
 me_tt_mr  <- s_full[s_full$Parameter == "beta_Metabolic_Rate_Thermal_Tol", ]
 
-# Extract from brms
-b_flower <- if("Abundance_Flower_Cover" %in% rownames(fixef(fit_brms))) summary(fit_brms)$fixed["Abundance_Flower_Cover", ] else list(Estimate=NA, `l-95% CI`=NA, `u-95% CI`=NA)
-b_tt_mr  <- if("ThermalTol_Metabolic_Rate" %in% rownames(fixef(fit_brms))) summary(fit_brms)$fixed["ThermalTol_Metabolic_Rate", ] else list(Estimate=NA, `l-95% CI`=NA, `u-95% CI`=NA)
+# Extract from brms (Naive)
+b_flower <- if("Abundance_Flower_Cover" %in% rownames(fixef(fit_brms_naive))) summary(fit_brms_naive)$fixed["Abundance_Flower_Cover", ] else list(Estimate=NA, `l-95% CI`=NA, `u-95% CI`=NA)
+b_tt_mr  <- if("ThermalTol_Metabolic_Rate" %in% rownames(fixef(fit_brms_naive))) summary(fit_brms_naive)$fixed["ThermalTol_Metabolic_Rate", ] else list(Estimate=NA, `l-95% CI`=NA, `u-95% CI`=NA)
+
+# Extract from brms (Expert)
+# Note: mi() predictors are named like 'Abundance_miFlower_Cover'
+fix_expert <- fixef(fit_brms_expert)
+be_flower <- if("Abundance_miFlower_Cover" %in% rownames(fix_expert)) summary(fit_brms_expert)$fixed["Abundance_miFlower_Cover", ] else list(Estimate=NA, `l-95% CI`=NA, `u-95% CI`=NA)
+be_tt_mr  <- if("ThermalTol_Metabolic_Rate" %in% rownames(fix_expert)) summary(fit_brms_expert)$fixed["ThermalTol_Metabolic_Rate", ] else list(Estimate=NA, `l-95% CI`=NA, `u-95% CI`=NA)
 
 # Extract from Naive (Simplified)
 s_naive <- summary(fit_naive)$coefficients["Flower_mean", ]
@@ -217,19 +284,19 @@ cat("============================================================\n")
 
 # Table 1: Abundance Path (Flower -> Abundance, True = 0.50)
 table_1 <- data.frame(
-    Approach  = c("True Value", "because (Full SEM)", "brms (Multivariate)", "phylosem (Averaged)", "Naive (Averaged)"),
-    Estimate  = c(0.50, me_flower$Estimate, b_flower["Estimate"], if(has_phylosem) psem_flower$Estimate else NA, s_naive["Estimate"]),
+    Approach  = c("True Value", "because (Full SEM)", "brms (Expert)", "brms (Naive)", "phylosem (Averaged)", "Naive (Averaged)"),
+    Estimate  = c(0.50, me_flower$Estimate, be_flower["Estimate"], b_flower["Estimate"], if(has_phylosem) psem_flower$Estimate else NA, s_naive["Estimate"]),
     Bias      = NA,
-    CI_Width  = c(NA, me_flower$UpperCI - me_flower$LowerCI, b_flower["u-95% CI"] - b_flower["l-95% CI"], if(has_phylosem) 3.92*psem_flower$Std.Err else NA, 3.92*s_naive["Std. Error"])
+    CI_Width  = c(NA, me_flower$UpperCI - me_flower$LowerCI, be_flower["u-95% CI"] - be_flower["l-95% CI"], b_flower["u-95% CI"] - b_flower["l-95% CI"], if(has_phylosem) 3.92*psem_flower$Std.Err else NA, 3.92*s_naive["Std. Error"])
 )
 table_1$Bias <- table_1$Estimate - 0.50
 
 # Table 2: Trait Path (Metabolic Rate -> Thermal Tol, True = 0.60)
 table_2 <- data.frame(
-    Approach  = c("True Value", "because (Full SEM)", "brms (Multivariate)", "phylosem (Averaged)"),
-    Estimate  = c(0.60, me_tt_mr$Estimate, b_tt_mr["Estimate"], if(has_phylosem) psem_tt_mr$Estimate else NA),
+    Approach  = c("True Value", "because (Full SEM)", "brms (Expert)", "brms (Naive)", "phylosem (Averaged)"),
+    Estimate  = c(0.60, me_tt_mr$Estimate, be_tt_mr["Estimate"], b_tt_mr["Estimate"], if(has_phylosem) psem_tt_mr$Estimate else NA),
     Bias      = NA,
-    CI_Width  = c(NA, me_tt_mr$UpperCI - me_tt_mr$LowerCI, b_tt_mr["u-95% CI"] - b_tt_mr["l-95% CI"], if(has_phylosem) 3.92*psem_tt_mr$Std.Err else NA)
+    CI_Width  = c(NA, me_tt_mr$UpperCI - me_tt_mr$LowerCI, be_tt_mr["u-95% CI"] - be_tt_mr["l-95% CI"], b_tt_mr["u-95% CI"] - b_tt_mr["l-95% CI"], if(has_phylosem) 3.92*psem_tt_mr$Std.Err else NA)
 )
 table_2$Bias <- table_2$Estimate - 0.60
 
@@ -239,9 +306,18 @@ print(table_1, row.names = FALSE)
 cat("\nTable 2: Trait-Path (Metabolic_Rate -> Thermal_Tol)\n")
 print(table_2, row.names = FALSE)
 
-cat("\nRuntime Efficiency (secs):\n")
 cat(sprintf("  - because: %.1f\n", as.numeric(time_because)))
-cat(sprintf("  - brms   : %.1f\n", as.numeric(time_brms)))
+cat(sprintf("  - brms (Naive): %.1f\n", as.numeric(time_brms_naive)))
+cat(sprintf("  - brms (Expert): %.1f\n", as.numeric(time_brms_expert)))
+
+# Calculate Speedup Factors
+speedup_naive  <- as.numeric(time_brms_naive) / as.numeric(time_because)
+speedup_expert <- as.numeric(time_brms_expert) / as.numeric(time_because)
+
+cat("\nComputational Advantage (Speedup Factor):\n")
+cat(sprintf("  - speedup vs brms (Naive):  %.2fx\n", speedup_naive))
+cat(sprintf("  - speedup vs brms (Expert): %.2fx\n", speedup_expert))
+cat("  * Note: 'because' avoid Stan's Gradient Penalty by only sampling traits at N=50 resolution.\n")
 
 # ============================================================
 # SECTION F: DIAGNOSTICS
@@ -278,6 +354,31 @@ dsep_tests <- because_dsep(fit_full$equations, latent = "U_Resource")
 cat("\nMAG Basis Set (Selected Tests):\n")
 print(head(dsep_tests, 5)) 
 
+# ============================================================
+# SECTION H: COMPUTATION & PHILOSOPHY COMPARISON
+# ============================================================
+cat("\n\n============================================================\n")
+cat("      COMPUTATION & PHILOSOPHY: why 'because'?\n")
+cat("============================================================\n")
+
+philosophy_df <- data.frame(
+    Feature            = c("Discrete Latent Vars", "Structural Validation", "Resolution Control", "Sampling Logic", "Compilation Time"),
+    because            = c("Native (JAGS/Gibbs)", "Pre-hoc (d-sep)", "Local (Honest)", "Component-wise", "Fast (BUGS/C++)"),
+    brms_Stan          = c("Manual Marginalization", "Post-hoc (Beta checks)", "Global (Flat)", "Global (HMC)", "Slow (Full C++)"),
+    stringsAsFactors   = FALSE
+)
+
+print(philosophy_df, row.names = FALSE)
+
+cat("\nPHILOSOPHICAL SUMMARY:\n")
+cat("1. 'because' prioritizes STRUCTURAL RIGOR over sampling speed. By validating \n")
+cat("   d-separation, it ensures the model GEOMETRY is correct before estimation.\n")
+cat("2. HONEST UNCERTAINTY: By separating hierarchical resolutions, 'because' avoids\n")
+cat("   the pseudoreplication inherent in flattened multivariate SEMs.\n")
+cat("3. MODULARITY: JAGS/NIMBLE allows 'because' to handle discrete and deterministic\n")
+cat("   nodes that are incompatible with Stan's HMC requirements.\n")
+cat("============================================================\n")
+
 # --- THEORETICAL CAPABILITY COMPARISON ---
 cat("\n\n============================================================\n")
 cat("      THEORETICAL COMPARISON: CAPABILITIES & RESOLUTION\n")
@@ -286,8 +387,9 @@ cat("============================================================\n")
 theory_df <- data.frame(
     Capability       = c("Hierarchical Levels", "Data Resolution (N)", "Resolution Integrity", "Dual-Covariance", "Structural Diagnostics"),
     because          = c("Full (Site/Survey/Obs)", "4500", "TRUE (N=50 traits)", "TRUE (Native)", "Native (d-sep/m-sep)"),
-    brms             = c("Full (Site/Survey/Obs)", "4500", "FALSE (Pseudorep.)", "TRUE (Complex)", "None (Post-hoc only)"),
-    phylosem         = c("No (Species only)", "50", "N/A", "No (Phylo only)", "None"),
+    brms_Expert      = c("Full (Site/Survey/Obs)", "4500", "TRUE (mi Syntax)", "TRUE (Complex)", "None (Post-hoc only)"),
+    brms_Naive       = c("Full (Site/Survey/Obs)", "4500", "FALSE (Pseudorep.)", "TRUE (Complex)", "None"),
+    phylosem_Latent  = c("No (Species only)", "50", "TRUE (Species-level only)", "No (Phylo only)", "None"),
     Naive_GLM        = c("None", "50", "N/A", "None", "None")
 )
 
