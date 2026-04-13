@@ -136,6 +136,14 @@ Ubuntu/Debian) or equivalent development tools for your distribution. -
   : plot_dsep
 - [`plot_posterior()`](https://because-pkg.github.io/because/reference/plot_posterior.md)
   : Plot Posterior Distributions for Model Comparison
+- [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)
+  : posterior_predict
+- [`posterior_predict(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/posterior_predict.because.md)
+  : Generate Posterior Predictive Draws for Because Models
+- [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
+  : pp_check
+- [`pp_check(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/pp_check.because.md)
+  : Posterior Predictive Checks for Because Fits
 - [`storks`](https://because-pkg.github.io/because/reference/storks.md)
   : Data on Stork Populations and Human Birth Rates
 - [`summary(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/summary.because.md)
