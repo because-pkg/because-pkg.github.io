@@ -2889,7 +2889,7 @@ because <- function(
             equations,
             latent = latent,
             random_terms = random_terms,
-            quiet = FALSE
+            quiet = quiet
           ))
         }
       },
@@ -4335,7 +4335,7 @@ run_single_dsep_test_v2 <- function(
     DIC = FALSE,
     WAIC = FALSE,
     n.adapt = n.adapt,
-    quiet = quiet,
+    quiet = TRUE,
     dsep = FALSE,
     family = sub_family,
     fix_residual_variance = fix_residual_variance,
