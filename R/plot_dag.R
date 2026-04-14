@@ -96,11 +96,11 @@ plot_dag <- function(
     x,
     layout = "kk",
     latent = NULL,
-    node_size = 14,
+    node_size = 12,
     node_color = "black",
     node_fill = "white",
-    node_stroke = 1.5,
-    text_size = 4,
+    node_stroke = 1.2,
+    text_size = 3.5,
     edge_width_range = c(0.5, 2),
     edge_color_scheme = c("directional", "binary", "monochrome"),
     show_coefficients = TRUE,
@@ -321,13 +321,13 @@ plot_dag <- function(
         # Heuristic: base size + scaling factor * chars * text_size
         # Typically node_size=14 covers ~3 chars at text_size=4.
         # Reduced multiplier to prevent excessive size in compact/Rmd plots.
-        calc_size <- 8 + (max_chars * 1.8 * (text_size / 4))
+        calc_size <- min(25, 6 + (max_chars * 1.3 * (text_size / 3.5)))
 
         # Use simple logic: manual node_size is a baseline, but we ensure it fits.
         # However, user asked to "make the boxes size the same... according to the longest".
         # So we use the calculated max size for ALL nodes stringently.
         # We will take the maximum of the default/user input and the calculated requirement.
-        current_node_size <- max(node_size, calc_size)
+        current_node_size <- if (node_size == 12) max(10, calc_size) else node_size
 
         # Initialize columns for ALL edges
         dag_data$edge_type <- NA_character_
@@ -628,8 +628,8 @@ plot_dag <- function(
         # prevent clipping of large nodes
         ggplot2::coord_cartesian(clip = "off") +
         # Expand axes to give space for nodes
-        ggplot2::scale_x_continuous(expand = ggplot2::expansion(mult = 0.2)) +
-        ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 0.2))
+        ggplot2::scale_x_continuous(expand = ggplot2::expansion(mult = 0.25)) +
+        ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 0.25))
 
     if (length(unique(combined_dag_data$model_label)) > 1) {
         p <- p + ggplot2::facet_wrap(~model_label)

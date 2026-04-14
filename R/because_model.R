@@ -3311,6 +3311,9 @@ because_model <- function(
 
   unique_betas <- setdiff(unique_betas, excluded_betas)
 
+  # Track which latent variables have been "pinned" with a sign constraint on their first indicator
+  pinned_latents <- character()
+
   for (beta in unique_betas) {
     # Isolate response part of beta name: beta_Response_Predictor
     # Assuming names are strictly beta_Resp_Pred, but Resp could contain underscores if user did so.
@@ -3354,6 +3357,20 @@ because_model <- function(
           )
       ) {
         default_beta <- "dnorm(0, 1)"
+      }
+    }
+
+    # APPLY SIGN CONSTRAINT FOR LATENT IDENTIFIABILITY
+    # If the predictor is a latent variable AND it is the first indicator encountered,
+    # we truncate the prior to be positive to resolve sign-flip ambiguity.
+    if (!is.null(latent) && length(latent) > 0) {
+      for (lat in latent) {
+        # Match beta_ANYTHING_LatentVariable
+        if (!lat %in% pinned_latents && grepl(paste0("_", lat, "$"), beta)) {
+          default_beta <- paste0(default_beta, " T(0,)")
+          pinned_latents <- c(pinned_latents, lat)
+          break
+        }
       }
     }
 

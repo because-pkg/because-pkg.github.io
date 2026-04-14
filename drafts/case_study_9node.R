@@ -105,7 +105,7 @@ V_spatial <- exp(-as.matrix(dist(site_coords)) / 1.0)
 
 Elevation_s <- as.vector(MASS::mvrnorm(1, rep(0, N_Site), V_spatial))
 # U_Resource is modeled as N(0, 1) standard noise for the MAG demonstration
-U_Resource   <- rnorm(N_Site, 0, 1.0)  
+U_Resource   <- rnorm(N_Site, 0, 1.0)
 
 # NDVI and Flower_Cover both driven by same latent U_Resource
 # → induces the bidirected edge NDVI ↔ Flower_Cover in the MAG
@@ -243,7 +243,7 @@ fit_jags <- because(
     dsep         = FALSE,    # Returns the Path Coefficients
     parallel     = TRUE,
     n.cores = 3,
-    n.iter = 500
+    n.iter = 5000
 )
 
 # RESULTS

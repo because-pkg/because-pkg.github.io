@@ -851,13 +851,15 @@ plot_dsep.because <- function(object, ...) {
     res$Test[dup_tests] <- paste0(res$Test[dup_tests], " (", res$Parameter[dup_tests], ")")
   }
 
+  # Create Simplified labels for the plot: Response _||_ TestVar
+  # This strips the conditioning set for better readability on the Y axis
+  res$Label <- gsub("^I\\( ([^, ]+) , ([^, ]+).*", "\\1 _||_ \\2", res$Test)
+
   # Create Plot
-  # We use the 'Test' string as Y axis, but we might want to clean it up or wrap it
-  # We use coord_flip to make it a horizontal caterpillar plot
   p <- ggplot2::ggplot(
     res,
     ggplot2::aes(
-      x = stats::reorder(Test, seq_len(nrow(res))),
+      x = stats::reorder(Label, seq_len(nrow(res))),
       y = Estimate,
       ymin = LowerCI,
       ymax = UpperCI
@@ -865,11 +867,11 @@ plot_dsep.because <- function(object, ...) {
   ) +
     ggplot2::geom_hline(
       yintercept = 0,
-      color = "firebrick",
+      color = "grey50",
       linetype = "dashed",
-      linewidth = 0.8
+      linewidth = 0.7
     ) +
-    ggplot2::geom_pointrange(size = 0.6, fatten = 2) +
+    ggplot2::geom_pointrange(linewidth = 0.8, size = 0.5, fatten = 3) +
     ggplot2::coord_flip() +
     ggplot2::labs(
       title = "d-separation Independence Tests",
@@ -879,7 +881,7 @@ plot_dsep.because <- function(object, ...) {
     ) +
     ggplot2::theme_minimal() +
     ggplot2::theme(
-      axis.text.y = ggplot2::element_text(family = "mono", size = 9),
+      axis.text.y = ggplot2::element_text(size = 11),
       panel.grid.minor = ggplot2::element_blank()
     )
 
