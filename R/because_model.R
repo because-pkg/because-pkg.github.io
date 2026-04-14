@@ -3776,7 +3776,7 @@ because_model <- function(
           paste0(
             "    ",
             var,
-            "[i] ~ dnorm(0, 1)  # Standardized latent variable"
+            "[i] ~ dnorm(mu", var, "[i], 1)  # Standardized latent variable with parents"
           ),
           paste0("  }")
         )
@@ -3808,7 +3808,7 @@ because_model <- function(
           paste0(
             "    ",
             var,
-            "[i] ~ dnorm(0, 1)  # Standardized latent variable"
+            "[i] ~ dnorm(mu", var, "[i], 1)  # Standardized latent variable with parents"
           ),
           paste0("  }")
         )

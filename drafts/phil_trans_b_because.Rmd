@@ -157,7 +157,7 @@ To demonstrate the analytical capabilities of the `because` engine, we present a
 We simulated a macroecological dataset representing $N=4500$ observations of $S=50$ species across $M=30$ sites. The system is governed by a 9-node structural network (Figure \@ref(fig:dag-plot)) where causality flows across nested hierarchical levels:
 
 1.  **Evolutionary Traits (Species Level):** `Body_Mass_s` is an exogenous species-level trait constraining both `Metabolic_Rate` and `Thermal_Tolerance`. Species traits were simulated using a Pagel's $\lambda$ transformation ($\lambda_{true} = 0.6$) of the phylogenetic VCV matrix.
-2.  **Environmental Forcing (Site & Survey levels):** `Elevation_s` is a site attribute. A latent confounder `U_Resource` (unmeasured soil moisture availability) simultaneously drives `NDVI` and `Flower_Cover`. The inclusion of these site-level remote sensing surrogates demonstrates how `because` implement the causal "scaling up" advocated for in contemporary macroecology [@vancleemput2025].
+2.  **Environmental Forcing (Site & Survey levels):** `Elevation_s` is a site attribute driven by local spatial autocorrelation. A latent confounder `U_Resource` (representing unmeasured micro-topographical soil moisture availability independent of altitude) simultaneously drives `NDVI` and `Flower_Cover`. The inclusion of these site-level remote sensing surrogates demonstrates how `because` implement the causal "scaling up" advocated for in contemporary macroecology [@vancleemput2025].
 3.  **Biological Interactions (Observation Level):** Local `Abundance` is a Poisson-distributed count driven by `Flower_Cover`, `Wind_Speed`, and the thermal mismatch between ambient temperature and species thermal tolerance threshold ($I(Temperature - Thermal\_Tolerance)$). This experimental design mirrors the causal requirements for hierarchical climate change attribution in ecology (e.g., @dudney2025).
 
 As detailed in **Section 4.5**, the presence of the unmeasured variable `U_Resource` necessitates the treatment of the system as a Maximal Ancestral Graph (MAG). The unmeasured confounding between `NDVI` and `Flower_Cover` is resolved via an induced bi-directed edge ($\leftrightarrow$), while the engine matches the phylogenetic precision matrix ($50 \times 50$) and the spatial precision matrix ($30 \times 30$) to their respective levels, correctly indexing the structured residuals down to the global observational scale.
@@ -169,12 +169,12 @@ In this biology-first workflow, the causal topology is declared using standard `
 # Declare the 9-node hierarchical MAG
 eqs <- list(
     # Site level
-    NDVI         ~ U_Resource + Elevation_s,
+    NDVI         ~ U_Resource,
     Flower_Cover ~ U_Resource + Elevation_s,
     # Species level
     Body_Mass_s    ~ 1,
     Metabolic_Rate ~ Body_Mass_s,
-    Thermal_Tol    ~ Metabolic_Rate + Body_Mass_s,
+    Thermal_Tol    ~ Body_Mass_s,
     # Survey level
     Temperature  ~ Elevation_s,
     # Observation level
@@ -215,7 +215,7 @@ The key generative parameters were successfully recovered in the joint model (Ta
 | Elevation $\to$ Temperature | Site | −1.50 | TBD [Posterior Mean (BCI)] |
 | Thermal Mismatch $\to$ Abundance | Obs | −0.50 | TBD [Posterior Mean (BCI)] |
 | Flower_Cover $\to$ Abundance | Site→Obs | +0.50 | TBD [Posterior Mean (BCI)] |
-| Metabolic_Rate $\to$ Thermal_Tol | Species | +0.60 | TBD [Posterior Mean (BCI)] |
+| Body_Mass $\to$ Thermal_Tol | Species | +0.60 | TBD [Posterior Mean (BCI)] |
 
 Table: (\#tab:parameter-recovery) Posterior parameter recovery for the 9-node hierarchical MAG. Estimated values represent posterior means and 95% Bayesian Credibility Intervals (BCIs).
 

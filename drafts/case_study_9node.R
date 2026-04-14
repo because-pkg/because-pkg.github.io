@@ -32,15 +32,15 @@ set.seed(42)
 
 # Species-level causal paths
 BETA_BM_MR          <-  0.80   # Body_Mass_s    → Metabolic_Rate
-BETA_MR_TT          <-  0.60   # Metabolic_Rate → Thermal_Tol
-BETA_BM_TT          <-  0.20   # Body_Mass_s    → Thermal_Tol (direct)
+BETA_MR_TT          <-  0.00   # Decoupled
+BETA_BM_TT          <-  0.60   # Body_Mass_s    → Thermal_Tol
 
 # Site-level causal paths
-# Elevation_s drives both the long-run mean Temperature (via site-level effect
-# transmitted into each survey) and the two remote-sensing variables.
-BETA_ELEV_URES      <-  0.80   # Elevation_s  → U_Resource (latent)
+# Elevation_s drives the long-run mean Temperature.
+# U_Resource (Soil moisture) is an independent latent confounder.
+BETA_ELEV_URES      <-  0.00   # Decoupled
 BETA_URES_NDVI      <-  0.50   # U_Resource   → NDVI
-BETA_ELEV_NDVI      <-  0.30   # Elevation_s  → NDVI  (direct)
+BETA_ELEV_NDVI      <-  0.00   # Decoupled
 BETA_URES_FC        <-  0.60   # U_Resource   → Flower_Cover
 BETA_ELEV_FC        <-  0.20   # Elevation_s  → Flower_Cover (direct)
 
@@ -83,7 +83,7 @@ Body_Mass_s <- as.vector(mvrnorm(1, rep(0, N_Species), V_lambda))
 eps_MR      <- as.vector(mvrnorm(1, rep(0, N_Species), 0.15^2 * V_lambda))
 Metabolic_Rate <- BETA_BM_MR * Body_Mass_s + eps_MR
 eps_TT      <- as.vector(mvrnorm(1, rep(0, N_Species), 0.10^2 * V_lambda))
-Thermal_Tol <- BETA_MR_TT * Metabolic_Rate + BETA_BM_TT * Body_Mass_s + eps_TT
+Thermal_Tol <- BETA_BM_TT * Body_Mass_s + eps_TT # No MR effect
 
 names(Body_Mass_s) <- names(Metabolic_Rate) <- names(Thermal_Tol) <-
     species_tree$tip.label
@@ -104,7 +104,8 @@ rownames(site_coords) <- paste0("Site_", 1:N_Site)
 V_spatial <- exp(-as.matrix(dist(site_coords)) / 1.0)
 
 Elevation_s <- as.vector(MASS::mvrnorm(1, rep(0, N_Site), V_spatial))
-U_Resource   <- BETA_ELEV_URES * Elevation_s + rnorm(N_Site, 0, 0.50)  # LATENT
+# U_Resource is modeled as N(0, 1) standard noise for the MAG demonstration
+U_Resource   <- rnorm(N_Site, 0, 1.0)  
 
 # NDVI and Flower_Cover both driven by same latent U_Resource
 # → induces the bidirected edge NDVI ↔ Flower_Cover in the MAG
@@ -188,12 +189,12 @@ structures <- list(
 
 eqs <- list(
     #Site level
-    NDVI         ~ U_Resource + Elevation_s,
+    NDVI         ~ U_Resource,
     Flower_Cover ~ U_Resource + Elevation_s,
     # Species level
     Body_Mass_s    ~ 1,
     Metabolic_Rate ~ Body_Mass_s,
-    Thermal_Tol    ~ Metabolic_Rate + Body_Mass_s,
+    Thermal_Tol    ~ Body_Mass_s,
     # Survey level: Elevation_s (site) predicts Temperature (survey)
     Temperature  ~ Elevation_s,
     # Observation level
@@ -204,23 +205,24 @@ eqs <- list(
 
 # CONDITIONAL INDEPENDENCIES TESTS
 # We fit the d-separation sub-models to test the MAG topology.
-fit_val <- because(
-    eqs,
-    data      = data_list,
-    levels    = list(
-        species = c("Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", "Species"),
-        site    = c("Elevation_s", "NDVI", "Flower_Cover", "U_Resource", "Site"),
-        survey  = c("Temperature", "Wind_Speed", "Survey"),
-        obs     = c("Abundance")),
-    hierarchy    = "site > survey > obs; species > obs",
-    link_vars    = list(site = "Site", survey = "Survey", species = "Species"),
-    latent       = "U_Resource",
-    latent_method = "explicit",
-    family       = c(Abundance = "poisson"),
-    structure    = structures,
-    dsep         = TRUE,     # Returns the Basis Set tests
-    parallel     = TRUE
-)
+# fit_val <- because(
+#     eqs,
+#     data      = data_list,
+#     levels    = list(
+#         species = c("Body_Mass_s", "Metabolic_Rate", "Thermal_Tol", "Species"),
+#         site    = c("Elevation_s", "NDVI", "Flower_Cover", "U_Resource", "Site"),
+#         survey  = c("Temperature", "Wind_Speed", "Survey"),
+#         obs     = c("Abundance")),
+#     hierarchy    = "site > survey > obs; species > obs",
+#     link_vars    = list(site = "Site", survey = "Survey", species = "Species"),
+#     latent       = "U_Resource",
+#     latent_method = "explicit",
+#     family       = c(Abundance = "poisson"),
+#     structure    = structures,
+#     dsep         = TRUE,     # Returns the Basis Set tests
+#     parallel     = TRUE,
+#     n.iter       = 2500
+# )
 
 # FIT FULL JOINT MODEL ---
 # Once validated, we fit the full DAG to retrieve path coefficients.
@@ -240,14 +242,15 @@ fit_jags <- because(
     structure    = structures,
     dsep         = FALSE,    # Returns the Path Coefficients
     parallel     = TRUE,
-    n.cores = 3
+    n.cores = 3,
+    n.iter = 5000
 )
 
 # RESULTS
 
 # M-SEPARATION BASIS TESTS
-summary(fit_val)
-plot_dsep(fit_val)
+# summary(fit_val)
+# plot_dsep(fit_val)
 
 # PARAMETER RECOVERY
 # Inspecting posterior samples for beta coefficients

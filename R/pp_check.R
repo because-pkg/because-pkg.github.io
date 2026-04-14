@@ -39,14 +39,40 @@ pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws 
   # 3. Generate Posterior Predictions
   yrep <- posterior_predict(object, resp = resp, ndraws = ndraws)
   
-  # Ensure dimensions match (in case data was filtered during fit)
+  # Ensure dimensions match
   if (ncol(yrep) != length(y)) {
-    # If using processed data, it might have been filtered for NAs
-    # We should match based on names if available
-    message("Note: y and yrep dimensions mismatch. Attempting to align...")
+    # If yrep belongs to a higher level (e.g. 50 species) but y is observation level (4500)
+    # we need to subset y to match.
     if (length(y) > ncol(yrep)) {
-        y <- y[seq_len(ncol(yrep))]
+        h_info <- object$hierarchical_info
+        target_lvl <- NULL
+        if (!is.null(h_info)) {
+            for (lvl in names(h_info$levels)) if (resp %in% h_info$levels[[lvl]]) target_lvl <- lvl
+        }
+        
+        # If we found a level, try to find the index to subset y
+        subset_done <- FALSE
+        if (!is.null(target_lvl)) {
+            idx_var <- h_info$link_vars[[target_lvl]]
+            if (!is.null(idx_var) && idx_var %in% names(object$original_data)) {
+                links <- object$original_data[[idx_var]]
+                # Take first observation per entity
+                first_obs_idx <- !duplicated(links)
+                y_subset <- y[first_obs_idx]
+                if (length(y_subset) == ncol(yrep)) {
+                    y <- y_subset
+                    subset_done <- TRUE
+                }
+            }
+        }
+        
+        if (!subset_done) {
+            # Fallback to simple truncation
+            message("Note: y and yrep dimensions mismatch. Attempting to align via truncation...")
+            y <- y[seq_len(ncol(yrep))]
+        }
     } else {
+        # yrep is larger? Should not happen with within-sample PPC
         yrep <- yrep[, seq_along(y), drop=FALSE]
     }
   }

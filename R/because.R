@@ -2891,11 +2891,7 @@ because <- function(
       NULL
     },
     priors = priors,
-    hierarchical_info = if (is_hierarchical) {
-      hierarchical_info
-    } else {
-      NULL
-    },
+    hierarchical_info = if (is_hierarchical) hierarchical_info else NULL,
     engine = engine
   )
 
@@ -4093,6 +4089,9 @@ because <- function(
     result$WAIC <- because_waic(result)
   }
 
+  # Preserve hierarchical metadata for diagnostics even if data was flat
+  result$hierarchical_info <- hierarchical_info
+  
   return(result)
 }
 
