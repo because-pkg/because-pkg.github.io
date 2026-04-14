@@ -243,7 +243,7 @@ fit_jags <- because(
     dsep         = FALSE,    # Returns the Path Coefficients
     parallel     = TRUE,
     n.cores = 3,
-    n.iter = 5000
+    n.iter = 500
 )
 
 # RESULTS

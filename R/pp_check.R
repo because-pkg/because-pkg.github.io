@@ -54,14 +54,37 @@ pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws 
         subset_done <- FALSE
         if (!is.null(target_lvl)) {
             idx_var <- h_info$link_vars[[target_lvl]]
-            if (!is.null(idx_var) && idx_var %in% names(object$original_data)) {
-                links <- object$original_data[[idx_var]]
-                # Take first observation per entity
-                first_obs_idx <- !duplicated(links)
-                y_subset <- y[first_obs_idx]
-                if (length(y_subset) == ncol(yrep)) {
-                    y <- y_subset
-                    subset_done <- TRUE
+            
+            # Find the linking column (search original_data list or flat data)
+            links <- NULL
+            if (!is.null(idx_var)) {
+                if (idx_var %in% names(object$original_data)) {
+                    links <- object$original_data[[idx_var]]
+                } else if (is.list(object$original_data)) {
+                    # Search inside sub-dataframes (usually 'obs' has the links)
+                    for (df_name in names(object$original_data)) {
+                        if (is.data.frame(object$original_data[[df_name]]) && idx_var %in% names(object$original_data[[df_name]])) {
+                            links <- object$original_data[[df_name]][[idx_var]]
+                            break
+                        }
+                    }
+                }
+                
+                if (is.null(links) && paste0(idx_var, "_idx") %in% names(object$data)) {
+                    links <- object$data[[paste0(idx_var, "_idx")]]
+                }
+            }
+            
+            if (!is.null(links)) {
+                # Ensure links and y have same length
+                if (length(links) == length(y)) {
+                    # Take first observation per entity
+                    first_obs_idx <- !duplicated(links)
+                    y_subset <- y[first_obs_idx]
+                    if (length(y_subset) == ncol(yrep)) {
+                        y <- y_subset
+                        subset_done <- TRUE
+                    }
                 }
             }
         }

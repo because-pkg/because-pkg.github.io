@@ -208,7 +208,7 @@ model {
     muU_Resource[i] <- 0
   }
   for (i in 1:N_site) {
-    U_Resource[i] ~ dnorm(0, 1)  # Standardized latent variable
+    U_Resource[i] ~ dnorm(muU_Resource[i], 1)  # Standardized latent variable with parents
   }
   # Latent variable: fully standardized with N(0,1) prior (no variance parameters)
 }
