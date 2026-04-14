@@ -39,7 +39,8 @@ extract_random_effects <- function(equations) {
                 random_terms[[length(random_terms) + 1]] <- list(
                     response = lhs,
                     group = term$group,
-                    type = term$type
+                    type = term$type,
+                    source = "manual"
                 )
             } else {
                 fixed_parts <- c(fixed_parts, part)
@@ -292,7 +293,8 @@ parse_global_random <- function(random_arg, equations, all_vars = NULL) {
                 final_terms[[length(final_terms) + 1]] <- list(
                     response = resp,
                     group = term$group,
-                    type = term$type
+                    type = term$type,
+                    source = "manual"
                 )
             }
         }

@@ -83,7 +83,8 @@ because_model <- function(
   fix_residual_variance = NULL,
   priors = NULL,
   hierarchical_info = NULL,
-  engine = "jags"
+  engine = "jags",
+  quiet = FALSE
 ) {
   # Standardize structures
   if (is.null(structures)) {
@@ -123,8 +124,10 @@ because_model <- function(
     if (is.null(h_info)) {
       return(NULL)
     }
-    for (lvl_name in names(h_info$levels)) {
-      if (var %in% h_info$levels[[lvl_name]]) {
+    # Case-insensitive level lookup
+    lvl_names <- names(h_info$levels)
+    for (lvl_name in lvl_names) {
+      if (any(tolower(var) == tolower(h_info$levels[[lvl_name]]))) {
         return(lvl_name)
       }
     }
@@ -1666,6 +1669,28 @@ because_model <- function(
             for (r_name in random_structure_names) {
               if (!is_valid_random_level(response, r_name, hierarchical_info)) next
               
+              # [PACKAGE FIX] Detect overlaps with structured covariances
+              r_lvl <- get_random_level(response, r_name, hierarchical_info)
+              is_already_structured <- FALSE
+              if (!is.null(r_lvl)) {
+                  is_already_structured <- any(vapply(structure_names, function(s) {
+                      tolower(get_struct_lvl(s, hierarchical_info)) == tolower(r_lvl)
+                  }, logical(1)))
+              }
+
+              # [SMART DEDUPLICATION] Strictly honor manual terms (nuggets)
+              # Only skip if it's NOT manual (i.e. default or auto-promoted)
+              relevant_term <- Filter(function(rt) rt$group == r_name && rt$response == response, random_terms)
+              source_tag <- if (length(relevant_term) > 0) relevant_term[[1]]$source else "auto"
+
+              if (is_already_structured) {
+                  if (source_tag != "manual") {
+                      next
+                  } else {
+                      message(sprintf("Note: Manual random effect '(1|%s)' for '%s' overlaps with structure. Preserving as nugget.", r_name, response))
+                  }
+              }
+              
               s_suffix <- paste0("_", r_name)
               u_std <- paste0("u_std_", response, suffix, s_suffix)
               u <- paste0("u_", response, suffix, s_suffix)
@@ -1686,7 +1711,11 @@ because_model <- function(
               group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
               additive_terms <- paste0(additive_terms, " + ", u, "[", group_idx, "]")
               
+              # [PACKAGE FIX] Deduplicate: Skip if this is already handled by a structured covariance
+              if (r_name %in% structure_names) next
+              
               param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
+              param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name), equation_index = NA, type = "structure")
             }
 
             # 3. Unified Observation Loop
@@ -1790,6 +1819,27 @@ because_model <- function(
           for (r_name in random_structure_names) {
             if (!is_valid_random_level(response, r_name, hierarchical_info)) next
             
+            # [PACKAGE FIX] Detect overlaps with structured covariances
+            r_lvl <- get_random_level(response, r_name, hierarchical_info)
+            is_already_structured <- FALSE
+            if (!is.null(r_lvl)) {
+                is_already_structured <- any(vapply(structure_names, function(s) {
+                    tolower(get_struct_lvl(s, hierarchical_info)) == tolower(r_lvl)
+                }, logical(1)))
+            }
+
+            # [SMART DEDUPLICATION] Strictly honor manual terms (nuggets)
+            relevant_term <- Filter(function(rt) rt$group == r_name && rt$response == response, random_terms)
+            source_tag <- if (length(relevant_term) > 0) relevant_term[[1]]$source else "auto"
+
+            if (is_already_structured) {
+                if (source_tag != "manual") {
+                    next
+                } else {
+                    if (!quiet) message(sprintf("Warning: Random effect '(1|%s)' for '%s' overlaps with structure.", r_name, response))
+                }
+            }
+            
             s_suffix <- paste0("_", r_name)
             u_std <- paste0("u_std_", response, suffix, s_suffix)
             u <- paste0("u_", response, suffix, s_suffix)
@@ -1810,7 +1860,11 @@ because_model <- function(
             group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
             total_u <- paste0(total_u, " + ", u, "[", group_idx, "]")
             
+            # Check if this random factor is actually a structure name
+            if (r_name %in% structure_names) next
+            
             param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
+            param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name), equation_index = NA, type = "structure")
           }
 
           # 3. Final Observation Loop for Binomial
@@ -1888,6 +1942,28 @@ because_model <- function(
               for (r_name in random_structure_names) {
                 if (!is_valid_random_level(response, r_name, hierarchical_info)) next
                 
+                # [PACKAGE FIX] Detect overlaps with structured covariances
+                r_lvl <- get_random_level(response, r_name, hierarchical_info)
+                is_already_structured <- FALSE
+                if (!is.null(r_lvl)) {
+                    is_already_structured <- any(vapply(structure_names, function(s) {
+                        tolower(get_struct_lvl(s, hierarchical_info)) == tolower(r_lvl)
+                    }, logical(1)))
+                }
+
+                # [SMART DEDUPLICATION] Strictly honor manual terms (nuggets)
+                relevant_term <- Filter(function(rt) rt$group == r_name && rt$response == response, random_terms)
+                source_tag <- if (length(relevant_term) > 0) relevant_term[[1]]$source else "auto"
+
+                if (is_already_structured) {
+                    if (source_tag != "manual") {
+                        next
+                    } else if (as.character(k) == "2") {
+                        # Only message once per response variable
+                        message(sprintf("Note: Manual random effect '(1|%s)' for '%s' overlaps with structure. Preserving as nugget.", r_name, response))
+                    }
+                }
+                
                 s_suffix <- paste0("_", r_name)
                 u_std <- paste0("u_std_", response, suffix, s_suffix)
                 u <- paste0("u_", response, suffix, s_suffix)
@@ -1908,7 +1984,11 @@ because_model <- function(
                 group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
                 total_u <- paste0(total_u, " + ", u, "[", group_idx, ", k]")
                 
+                # Check if this random factor is actually a structure name
+                if (r_name %in% structure_names) next
+                
                 param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0(tau_u, "[k]"), equation_index = NA, type = "structure")
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name, "[k]"), equation_index = NA, type = "structure")
               }
 
               # 3. Observation Loop for Multinomial (Inside category loop)
@@ -1974,6 +2054,27 @@ because_model <- function(
               for (r_name in random_structure_names) {
                 if (!is_valid_random_level(response, r_name, hierarchical_info)) next
                 
+                # [PACKAGE FIX] Detect overlaps with structured covariances
+                r_lvl <- get_random_level(response, r_name, hierarchical_info)
+                is_already_structured <- FALSE
+                if (!is.null(r_lvl)) {
+                    is_already_structured <- any(vapply(structure_names, function(s) {
+                        tolower(get_struct_lvl(s, hierarchical_info)) == tolower(r_lvl)
+                    }, logical(1)))
+                }
+
+                # [SMART DEDUPLICATION] Strictly honor manual terms (nuggets)
+                relevant_term <- Filter(function(rt) rt$group == r_name && rt$response == response, random_terms)
+                source_tag <- if (length(relevant_term) > 0) relevant_term[[1]]$source else "auto"
+
+                if (is_already_structured) {
+                    if (source_tag != "manual") {
+                        next
+                    } else {
+                        message(sprintf("Note: Manual random effect '(1|%s)' for '%s' overlaps with structure. Preserving as nugget.", r_name, response))
+                    }
+                }
+                
                 s_suffix <- paste0("_", r_name)
                 u_std <- paste0("u_std_", response, suffix, s_suffix)
                 u <- paste0("u_", response, suffix, s_suffix)
@@ -1994,7 +2095,11 @@ because_model <- function(
                 group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
                 total_u <- paste0(total_u, " + ", u, "[", group_idx, "]")
                 
-                param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
+               # Check if this random factor is actually a structure name
+              if (r_name %in% structure_names) next
+              
+              param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
+              param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name), equation_index = NA, type = "structure")
               }
 
               # 3. Observation Loop for Ordinal
@@ -4084,7 +4189,6 @@ because_model <- function(
 
   model_lines <- c(model_lines, "}")
   model_string <- paste(model_lines, collapse = "\n")
-  cat(model_string, file = "debug_model.jags") # DEBUG OUTPUT
 
   # Convert param_map to data frame robustly
   param_map_df <- do.call(

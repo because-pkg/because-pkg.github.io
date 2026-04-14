@@ -4,7 +4,14 @@
 \alias{pp_check.because}
 \title{Posterior Predictive Checks for Because Fits}
 \usage{
-\method{pp_check}{because}(object, resp = NULL, type = "dens_overlay", ndraws = 50, ...)
+\method{pp_check}{because}(
+  object,
+  resp = NULL,
+  type = "dens_overlay",
+  ndraws = 50,
+  trim = TRUE,
+  ...
+)
 }
 \arguments{
 \item{object}{A \code{because} fit object.}

@@ -1248,150 +1248,7 @@ because <- function(
      N_trees <- length(structures)
   }
 
-  structure_names <- names(structures)
-  if (is.null(structure_names) && length(structures) > 0) {
-    structure_names <- paste0("Struct", seq_along(structures))
-    names(structures) <- structure_names
-  }
-
-  # 2. Process Structures using S3 Generic
-  if (length(structures) == 0) {
-    # Independent Logic: Determine N from data
-    # Include matrices and arrays (useful for occupancy models)
-    potential_objects <- Filter(
-      function(x) is.vector(x) || is.factor(x) || is.matrix(x) || is.array(x),
-      data
-    )
-    if (length(potential_objects) > 0) {
-      obj <- potential_objects[[1]]
-      N <- if (is.matrix(obj) || is.array(obj)) nrow(obj) else length(obj)
-    } else {
-      stop(
-        "Could not determine N from data. Please provide structure or vector data."
-      )
-    }
-  } else {
-    structure_levels <- list()
-    structure_multi <- list()
-    # Use S3 Generic for Processing
-    for (s_name in structure_names) {
-      structure_obj <- structures[[s_name]]
-      # Prepare Data
-      prep_res <- prepare_structure_data(
-        structure_obj,
-        data = data,
-        optimize = TRUE,
-        quiet = quiet
-      )
-
-      # Merge data updates with prefix if generic
-      if (!is.null(prep_res$data_list)) {
-        for (d_name in names(prep_res$data_list)) {
-          # Only add prefix if it's a generic structural name
-          # Extension Hook: Specialized structure names (e.g. Prec_multiPhylo)
-          custom_s_name <- get_structure_name_hook(structure_obj)
-          if (d_name %in% c("Prec", "VCV", "multiVCV", custom_s_name)) {
-            prefixed_name <- paste0(d_name, "_", s_name)
-          } else {
-            prefixed_name <- d_name
-          }
-          data[[prefixed_name]] <- prep_res$data_list[[d_name]]
-        }
-      } else {
-        # Structure was incompatible or ignored (e.g. dimensions mismatch in d-sep test)
-        structures[[s_name]] <- NULL
-        structure_names <- setdiff(structure_names, s_name)
-        next
-      }
-
-      # Determine N and multi-status from the processed structure
-      # Look for any square matrix or 3D array in the data_list
-      current_N <- NULL
-      is_this_one_multi <- FALSE
-      for (obj in prep_res$data_list) {
-        if (is.matrix(obj) && nrow(obj) == ncol(obj)) {
-          current_N <- nrow(obj)
-          break
-        } else if (is.array(obj) && length(dim(obj)) == 3) {
-          # Support both (N, N, Slices) and (Slices, N, N)
-          dims <- dim(obj)
-          if (dims[1] == dims[2]) {
-             # (N, N, Slices)
-             current_N <- dims[1]
-             is_this_one_multi <- TRUE
-             if (is_multiple && !exists("N_trees")) N_trees <- dims[3]
-             break
-          } else if (dims[2] == dims[3]) {
-             # (Slices, N, N)
-             current_N <- dims[2]
-             is_this_one_multi <- TRUE
-             if (is_multiple && !exists("N_trees")) N_trees <- dims[1]
-             break
-          }
-        }
-      }
-
-      # If still NULL, check for 'n' attribute (safe way)
-      if (is.null(current_N)) {
-        n_attr <- attr(structure_obj, "n")
-        if (is.numeric(n_attr)) {
-          current_N <- n_attr
-        }
-      }
-
-      # [NEW] Determine level for this structure
-      s_level <- NULL
-      if (!is.null(hierarchical_info) && !is.null(current_N)) {
-        # Check which level matches this count
-        for (lvl in names(hierarchical_info$levels)) {
-          n_name <- paste0("N_", lvl)
-          if (!is.null(data[[n_name]]) && data[[n_name]] == current_N) {
-            s_level <- lvl
-            break
-          }
-        }
-      }
-      structure_levels[[s_name]] <- s_level
-      structure_multi[[s_name]]  <- is_this_one_multi
-
-      if (!is.null(current_N)) {
-        if (is.null(N)) {
-          N <- current_N
-        } else if (N != current_N && is.null(hierarchical_info)) {
-          # Only stop if NOT hierarchical (in hierarchical, multi-N is expected)
-          stop(paste("Dimension mismatch in structure:", s_name))
-        }
-      }
-
-      # Update structure object if validated/standardised
-      if (!is.null(prep_res$structure_object)) {
-        structures[[s_name]] <- prep_res$structure_object
-      }
-    }
-
-    if (!is.null(hierarchical_info)) {
-      hierarchical_info$structure_levels <- structure_levels
-      hierarchical_info$structure_multi  <- structure_multi
-    }
-
-    # Finalize is_multiple logic (if multiple structures were found during processing)
-    if (exists("N_trees") && N_trees > 1) {
-      is_multiple <- TRUE
-    }
-
-    # Ensure Ntree is in the JAGS data list if uncertainty is active
-    if (is_multiple && exists("N_trees")) {
-      data$Ntree <- N_trees
-    }
-
-    # Optimized formulation is always used
-    if (TRUE) {
-      if (is.null(N) && "N" %in% names(data)) {
-        N <- if (is.list(data)) data$N[1] else data[["N"]][1]
-      } # Last resort
-    }
-  }
-
+  # Discover total N (number of observations) early
   if (is.null(N) && "N" %in% names(data)) {
     N <- if (is.list(data)) data$N[1] else data[["N"]][1]
   }
@@ -1401,8 +1258,6 @@ because <- function(
       N <- nrow(data)
     } else if (is.list(data) && length(data) > 0) {
       # For hierarchical lists, N should be the row count of the FINEST grain level.
-      # If not specified, we take the row count of the first element in data.
-      # [FIX] Use nrow() instead of length() to avoid counting columns!
       first_obj <- data[[1]]
       if (is.data.frame(first_obj)) {
         N <- nrow(first_obj)
@@ -1415,8 +1270,8 @@ because <- function(
   }
   data$N <- N
 
-  # Ensure level-specific zeros and loop bounds are available to JAGS
-  # (Crucial for d-separation tests on flat data frames)
+  # [URGENT FIX] Pre-calculate level-specific counts so structure auto-detection works!
+  # If we don't do this here, we can't match e.g. a 50x50 matrix to the 50-species level.
   if (!is.null(hierarchical_info)) {
     for (lvl_name in names(hierarchical_info$levels)) {
       z_name <- paste0("zeros_", lvl_name)
@@ -1425,57 +1280,133 @@ because <- function(
       }
       n_name <- paste0("N_", lvl_name)
       if (is.null(data[[n_name]])) {
-        # [FIX 2026-04-13] Support both hierarchical lists and flattened data frames.
-        # This ensuring d-sep sub-models can find their level counts.
         if (is.data.frame(data) && !is.null(data[[lvl_name]])) {
-          # Flat data frame case: calculate number of unique IDs
           data[[n_name]] <- as.integer(length(unique(na.omit(data[[lvl_name]]))))[1]
         } else if (is.list(data) && !is.null(data[[lvl_name]])) {
-          # Hierarchical list case: use nrow of the level-specific table
           if (is.data.frame(data[[lvl_name]]) || is.matrix(data[[lvl_name]])) {
             data[[n_name]] <- as.integer(nrow(data[[lvl_name]]))[1]
           } else {
-            # Fallback for vectors/columns in hierarchical lists
             data[[n_name]] <- as.integer(length(data[[lvl_name]]))[1]
           }
         } else {
-          # Fallback to total N (for flat data frames or non-hierarchical models)
           data[[n_name]] <- as.integer(N)[1]
         }
       }
-
-      # Final safety: Ensure n_name is a scalar integer if it was set
       if (!is.null(data[[n_name]])) {
         data[[n_name]] <- as.integer(data[[n_name]])[1]
       }
-
-      # [ROBUSTNESS FIX] Generate synonymous N_var and zeros_var for ALL grouping variables
-      # that belong to this level. This ensures that random effects like (1 | SiteID) 
-      # find N_SiteID even if the level is named "site".
+      
+      # Populate synonymous names (ID column names)
       lvl_vars <- hierarchical_info$levels[[lvl_name]]
       for (v_nm in lvl_vars) {
-        # Check both the variable name and common random effect index names
-        # [ROBUSTNESS] Added case-insensitive variants (Title Case, UPPER CASE)
         v_title <- paste0(toupper(substring(v_nm, 1, 1)), substring(v_nm, 2))
-        
-        potential_names <- unique(c(
-            v_nm, v_title, toupper(v_nm), 
-            paste0(v_nm, "ID"), paste0(v_title, "ID"),
-            paste0(v_nm, "_id"), paste0(v_title, "_id")
-        ))
-        
+        potential_names <- unique(c(v_nm, v_title, toupper(v_nm), paste0(v_nm, "ID"), paste0(v_title, "ID"), paste0(v_nm, "_id"), paste0(v_title, "_id")))
         for (p_nm in potential_names) {
             nn_name <- paste0("N_", p_nm)
             zz_name <- paste0("zeros_", p_nm)
-            
-            if (is.null(data[[nn_name]])) {
-                 data[[nn_name]] <- data[[n_name]]
-            }
-            if (is.null(data[[zz_name]])) {
-                 data[[zz_name]] <- data[[z_name]]
-            }
+            if (is.null(data[[nn_name]])) data[[nn_name]] <- data[[n_name]]
+            if (is.null(data[[zz_name]])) data[[zz_name]] <- data[[z_name]]
         }
       }
+    }
+  }
+
+  structure_names <- names(structures)
+  if (is.null(structure_names) && length(structures) > 0) {
+    structure_names <- paste0("Struct", seq_along(structures))
+    names(structures) <- structure_names
+  }
+
+  # 2. Process Structures using S3 Generic
+  if (length(structures) == 0) {
+    # Independent Logic: Determine N from data
+    if (is.null(N) || N == 0) {
+      potential_objects <- Filter(
+        function(x) is.vector(x) || is.factor(x) || is.matrix(x) || is.array(x),
+        data
+      )
+      if (length(potential_objects) > 0) {
+        obj <- potential_objects[[1]]
+        N <- if (is.matrix(obj) || is.array(obj)) nrow(obj) else length(obj)
+      }
+    }
+  } else {
+    structure_levels <- list()
+    structure_multi <- list()
+    # Use S3 Generic for Processing
+    for (s_name in structure_names) {
+      structure_obj <- structures[[s_name]]
+      prep_res <- prepare_structure_data(structure_obj, data = data, optimize = TRUE, quiet = quiet)
+
+      if (!is.null(prep_res$data_list)) {
+        for (d_name in names(prep_res$data_list)) {
+          custom_s_name <- get_structure_name_hook(structure_obj)
+          prefixed_name <- if (d_name %in% c("Prec", "VCV", "multiVCV", custom_s_name)) paste0(d_name, "_", s_name) else d_name
+          data[[prefixed_name]] <- prep_res$data_list[[d_name]]
+        }
+      } else {
+        structures[[s_name]] <- NULL
+        structure_names <- setdiff(structure_names, s_name)
+        next
+      }
+
+      current_N <- NULL
+      is_this_one_multi <- FALSE
+      for (obj in prep_res$data_list) {
+        if (is.matrix(obj) && nrow(obj) == ncol(obj)) {
+          current_N <- nrow(obj)
+          break
+        } else if (is.array(obj) && length(dim(obj)) == 3) {
+          dims <- dim(obj)
+          if (dims[1] == dims[2]) {
+             current_N <- dims[1]
+             is_this_one_multi <- TRUE
+             if (is_multiple && !exists("N_trees")) N_trees <- dims[3]
+             break
+          } else if (dims[2] == dims[3]) {
+             current_N <- dims[2]
+             is_this_one_multi <- TRUE
+             if (is_multiple && !exists("N_trees")) N_trees <- dims[1]
+             break
+          }
+        }
+      }
+
+      if (is.null(current_N)) {
+        n_attr <- attr(structure_obj, "n")
+        if (is.numeric(n_attr)) current_N <- n_attr
+      }
+
+      # [NEW] Determine level for this structure
+      s_level <- NULL
+      if (!is.null(hierarchical_info) && !is.null(current_N)) {
+        for (lvl in names(hierarchical_info$levels)) {
+          n_name <- paste0("N_", lvl)
+          if (!is.null(data[[n_name]]) && data[[n_name]] == current_N) {
+            s_level <- lvl
+            break
+          }
+        }
+      }
+      structure_levels[[s_name]] <- s_level
+      structure_multi[[s_name]]  <- is_this_one_multi
+
+      if (!is.null(current_N)) {
+        if (is.null(N) || N == 0) {
+          N <- current_N
+        } else if (N != current_N && is.null(hierarchical_info)) {
+          stop(paste("Dimension mismatch in structure:", s_name))
+        }
+      }
+
+      if (!is.null(prep_res$structure_object)) {
+        structures[[s_name]] <- prep_res$structure_object
+      }
+    }
+
+    if (!is.null(hierarchical_info)) {
+      hierarchical_info$structure_levels <- structure_levels
+      hierarchical_info$structure_multi  <- structure_multi
     }
   }
 
@@ -2892,7 +2823,8 @@ because <- function(
     },
     priors = priors,
     hierarchical_info = if (is_hierarchical) hierarchical_info else NULL,
-    engine = engine
+    engine = engine,
+    quiet = quiet
   )
 
   model_string <- model_output$model

@@ -4,12 +4,14 @@
 \alias{infer_variable_level}
 \title{Infer Variable Level}
 \usage{
-infer_variable_level(var, levels)
+infer_variable_level(var, levels, data = NULL)
 }
 \arguments{
 \item{var}{Character, variable name}
 
 \item{levels}{List mapping variable names to level names}
+
+\item{data}{Optional list of data.frames for fallback searching}
 }
 \value{
 Character, level name

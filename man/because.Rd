@@ -40,7 +40,9 @@ because(
   fix_residual_variance = NULL,
   priors = NULL,
   reuse_models = NULL,
-  expand_ordered = FALSE
+  expand_ordered = FALSE,
+  structure_multi = NULL,
+  structure_levels = NULL
 )
 }
 \arguments{
