@@ -52,10 +52,11 @@ result <- because(
     log_mass  = mass_struct_sub,
     log_range = range_struct_sub
   ),
-  n.iter = 5000,
-  n.burnin = 2000,
-  quiet = FALSE,
-  verbose = TRUE
+  n.iter = 12500, # Updated to user-requested iterations
+  n.burnin = 2500,
+  n.chains = 3,
+  parallel = TRUE, # Enabled for server run
+  quiet = TRUE
 )
 
 # 5. Extract Selection Strength (BMA Posterior Probabilities)
