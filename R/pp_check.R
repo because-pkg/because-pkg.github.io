@@ -17,7 +17,7 @@
 #' @importFrom bayesplot ppc_dens_overlay ppc_hist ppc_stat
 #' @importFrom ggplot2 ggplot
 #' @export
-pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws = 50, ...) {
+pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws = 50, trim = TRUE, ...) {
   # 1. Identify Response
   if (is.null(resp)) {
     resp <- as.character(all.vars(object$equations[[1]][[2]])[1])
@@ -75,6 +75,17 @@ pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws 
       y = y_lab
     ) +
     ggplot2::theme_minimal()
+
+  # 6. Smart Zoom: Focus on observed data range
+  if (trim) {
+    y_range <- range(y, na.rm = TRUE)
+    # Expand slightly
+    pad <- 0.05 * diff(y_range)
+    if (pad == 0) pad <- 0.1 # Constant if no variance
+    
+    plot_out <- plot_out + 
+      ggplot2::coord_cartesian(xlim = c(y_range[1] - pad, y_range[2] + pad))
+  }
   
   return(plot_out)
 }
