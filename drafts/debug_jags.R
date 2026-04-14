@@ -1,5 +1,0 @@
-devtools::load_all(".")
-devtools::load_all("../because.phybase")
-source("drafts/test_hierarchical.R")
-fit <- because(eqs, data = data_list, hierarchical = hierarchical_format, structures = structures, run = FALSE)
-cat(fit$model)
