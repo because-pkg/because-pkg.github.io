@@ -218,10 +218,7 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
   for (resp in responses) {
     resp_paths <- raw_paths[raw_paths$response == resp, ]
     
-    dist <- "gaussian"
-    if (!is.null(fit$family) && resp %in% names(fit$family)) {
-       dist <- fit$family[[resp]]
-    }
+    dist <- if (!is.null(fit$family) && resp %in% names(fit$family)) fit$family[[resp]] else "gaussian"
     
     all_pm_resp <- pm[pm$response == resp, ]
     

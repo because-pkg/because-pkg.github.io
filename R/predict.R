@@ -167,7 +167,7 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, ...) {
   }
   
   # 5. Inverse Link & Stochastic Draw
-  fam <- object$family[[resp]] %||% "gaussian"
+  fam <- if (!is.null(object$family) && resp %in% names(object$family)) object$family[[resp]] else "gaussian"
   y_rep <- matrix(0, nrow = n_s, ncol = n_obs)
   
   # Identify dispersion/variance parameter
