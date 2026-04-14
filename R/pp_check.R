@@ -59,6 +59,23 @@ pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws 
     stop(paste("Unknown PPC type:", type))
   )
   
+  # 5. Prettify with informative labels
+  y_lab <- switch(type,
+    "dens_overlay" = "Density",
+    "hist"         = "Count",
+    "stat"         = "Frequency",
+    "Value"
+  )
+  
+  plot_out <- plot_out + 
+    ggplot2::labs(
+      title = paste("Posterior Predictive Check:", resp),
+      subtitle = paste("Type:", type, "| draws:", nrow(yrep)),
+      x = resp,
+      y = y_lab
+    ) +
+    ggplot2::theme_minimal()
+  
   return(plot_out)
 }
 

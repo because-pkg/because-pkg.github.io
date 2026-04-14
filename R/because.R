@@ -217,6 +217,17 @@ because <- function(
   structure_multi = NULL,
   structure_levels = NULL
 ) {
+  # Allow string input (e.g., multiline equations)
+  if (is.character(equations) && length(equations) == 1) {
+    # Split by newline or semicolon
+    eq_lines <- unlist(strsplit(equations, "[\n;]"))
+    eq_lines <- trimws(eq_lines)
+    eq_lines <- eq_lines[eq_lines != ""]
+    
+    # Convert to formulas
+    equations <- lapply(eq_lines, stats::as.formula)
+  }
+
   # Allow single formula input
   if (inherits(equations, "formula")) {
     equations <- list(equations)
@@ -1301,11 +1312,22 @@ because <- function(
         if (is.matrix(obj) && nrow(obj) == ncol(obj)) {
           current_N <- nrow(obj)
           break
-        } else if (is.array(obj) && length(dim(obj)) == 3 && dim(obj)[1] == dim(obj)[2]) {
-          current_N <- dim(obj)[1]
-          is_this_one_multi <- TRUE
-          if (is_multiple && !exists("N_trees")) N_trees <- dim(obj)[3]
-          break
+        } else if (is.array(obj) && length(dim(obj)) == 3) {
+          # Support both (N, N, Slices) and (Slices, N, N)
+          dims <- dim(obj)
+          if (dims[1] == dims[2]) {
+             # (N, N, Slices)
+             current_N <- dims[1]
+             is_this_one_multi <- TRUE
+             if (is_multiple && !exists("N_trees")) N_trees <- dims[3]
+             break
+          } else if (dims[2] == dims[3]) {
+             # (Slices, N, N)
+             current_N <- dims[2]
+             is_this_one_multi <- TRUE
+             if (is_multiple && !exists("N_trees")) N_trees <- dims[1]
+             break
+          }
         }
       }
 
@@ -2828,6 +2850,27 @@ because <- function(
     }
   }
 
+  # --- Normalize Family Map for Metadata ---
+  # Ensure family is a named character vector containing ALL response variables.
+  # This prevents "subscript out of bounds" in downstream S3 methods (pp_check, predict).
+  temp_responses <- vapply(equations, function(eq) as.character(formula(eq)[2]), character(1))
+  
+  if (is.null(family)) {
+    family <- setNames(rep("gaussian", length(temp_responses)), temp_responses)
+  } else {
+    # If family is a single string or was partially named, expand it
+    if (is.null(names(family)) && length(family) == 1) {
+       family <- setNames(rep(family, length(temp_responses)), temp_responses)
+    } else {
+       # Ensure every variable is present
+       for (r in temp_responses) {
+         if (!(r %in% names(family))) {
+           family[[r]] <- "gaussian"
+         }
+       }
+    }
+  }
+
   # JAGS model code
   model_output <- because_model(
     equations = equations,
@@ -2990,6 +3033,7 @@ because <- function(
           grepl("^z_", all_params) | # Latent state
           grepl("^r_", all_params) | # Negative Binomial size
           grepl("^cutpoint", all_params) | # Ordinal cutpoints
+          grepl("^K_", all_params) | # BMA selection indices
           (grepl("^lambda", all_params) &
             gsub("^lambda_?", "", all_params) %in% response_vars &
             !gsub("^lambda_?", "", all_params) %in% mag_exogenous_vars) # Response lambdas, excluding MAG exogenous

@@ -572,6 +572,7 @@ because_model <- function(
       # Dispatch to S3 generic
       def <- jags_structure_definition(
         structures[[s_name]],
+        variable_name = s_name,
         optimize = TRUE
       )
       if (!is.null(def$setup_code)) {
@@ -1650,9 +1651,6 @@ because_model <- function(
                 i_index = s_idx_var
               )
 
-              if (!is.null(s_def$setup_code)) {
-                model_lines <- c(model_lines, s_def$setup_code)
-              }
               model_lines <- c(model_lines, s_def$model_lines)
               
               if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
@@ -1774,9 +1772,7 @@ because_model <- function(
               i_index = s_idx_var
             )
             if (!is.null(s_def)) {
-              if (!is.null(s_def$setup_code)) model_lines <- c(model_lines, s_def$setup_code)
-              
-              # Map structural parameters
+               # Map structural parameters
               param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_", s_name, "_", response), equation_index = NA, type = "structure")
               param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", s_name, "_", response), equation_index = NA, type = "structure")
 
@@ -1876,7 +1872,6 @@ because_model <- function(
 
                   s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, category_index = "k", is_multi = is_struct_multi(s_name), i_index = s_idx_var)
                   if (!is.null(s_def)) {
-                    if (!is.null(s_def$setup_code)) model_lines <- c(model_lines, s_def$setup_code)
                     model_lines <- c(model_lines, s_def$model_lines)
                     
                     if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
@@ -1963,7 +1958,6 @@ because_model <- function(
 
                   s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, is_multi = is_struct_multi(s_name), i_index = s_idx_var)
                   if (!is.null(s_def)) {
-                    if (!is.null(s_def$setup_code)) model_lines <- c(model_lines, s_def$setup_code)
                     model_lines <- c(model_lines, s_def$model_lines)
                     
                     if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {

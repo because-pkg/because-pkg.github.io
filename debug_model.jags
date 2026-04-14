@@ -1,25 +1,31 @@
 model {
   # Common structures and priors
-  # Induced Correlations (Latent Variables) - Pair Processing
   # Structural equations
 
-  for (i in 1:N_survey) {
-    mu_Wind_Speed[i] <- alpha_Wind_Speed + beta_Wind_Speed_Elevation_s*Elevation_s[site_idx_survey[i]]
+  for (i in 1:N) {
+    mu_Y_gauss[i] <- alpha_Y_gauss + beta_Y_gauss_X*X[i]
+  }
+  for (i in 1:N) {
+    # Poisson log link for Y_poisson
+    mu_Y_poisson[i] <- exp(max(-20, min(10, alpha_Y_poisson + beta_Y_poisson_X*X[i] + err_Y_poisson[i])))
+    Y_poisson[i] ~ dpois(mu_Y_poisson[i])
+    log_lik_Y_poisson[i] <- logdensity.pois(Y_poisson[i], mu_Y_poisson[i])
   }
   # Multivariate normal likelihoods
-  u_std_Wind_Speed_Site[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_Site[1:N_site, 1:N_site])
-  for (g in 1:N_site) { u_Wind_Speed_Site[g] <- u_std_Wind_Speed_Site[g] / sqrt(tau_u_Wind_Speed_Site) }
-  for (i in 1:N_survey) {
-    Wind_Speed[i] ~ dnorm(mu_Wind_Speed[i] + u_Wind_Speed_Site[group_Site[site_idx_survey[i]]], tau_e_Wind_Speed)
-    log_lik_Wind_Speed[i] <- logdensity.norm(Wind_Speed[i], mu_Wind_Speed[i] + u_Wind_Speed_Site[group_Site[site_idx_survey[i]]], tau_e_Wind_Speed)
+  for (i in 1:N) {
+    Y_gauss[i] ~ dnorm(mu_Y_gauss[i], tau_e_Y_gauss)
+    log_lik_Y_gauss[i] <- logdensity.norm(Y_gauss[i], mu_Y_gauss[i], tau_e_Y_gauss)
+  }
+  # Independent (Standard GLM) for Poisson: Y_poisson
+  for (i in 1:N) {
+    err_Y_poisson[i] <- 0
   }
   # Priors for structural parameters
-  alpha_Wind_Speed ~ dnorm(0, 1.0E-6)
-  sigma_e_Wind_Speed ~ dunif(0, 100)
-  tau_e_Wind_Speed <- 1 / (sigma_e_Wind_Speed * sigma_e_Wind_Speed)
-  tau_u_Wind_Speed_Site ~ dgamma(1, 1)
-  sigma_Wind_Speed_Site <- 1/sqrt(tau_u_Wind_Speed_Site)
-  sigma_Wind_Speed_res <- 1/sqrt(tau_e_Wind_Speed)
-  beta_Wind_Speed_Elevation_s ~ dnorm(0, 1.0E-6)
-  # Predictor priors for imputation
+  alpha_Y_gauss ~ dnorm(0, 1.0E-6)
+  sigma_e_Y_gauss ~ dunif(0, 100)
+  tau_e_Y_gauss <- 1 / (sigma_e_Y_gauss * sigma_e_Y_gauss)
+  sigmaY_gauss <- 1/sqrt(tau_e_Y_gauss)
+  alpha_Y_poisson ~ dnorm(0, 1.0E-6)
+  beta_Y_gauss_X ~ dnorm(0, 1.0E-6)
+  beta_Y_poisson_X ~ dnorm(0, 1.0E-6)
 }

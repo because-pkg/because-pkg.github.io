@@ -67,7 +67,7 @@ because_structure <- function(name, precision_fn, description = NULL) {
         result <- precision_fn(...)
 
         # Normalize result
-        if (is.matrix(result)) {
+        if (is.matrix(result) || is.array(result)) {
             prec_matrix <- result
             extra_data <- list()
         } else if (is.list(result)) {
@@ -80,16 +80,24 @@ because_structure <- function(name, precision_fn, description = NULL) {
             }
         } else {
             stop(
-                "precision_fn must return a matrix or a list containing a matrix"
+                "precision_fn must return a matrix, array, or a list containing one"
             )
         }
 
-        # Validate precision matrix
-        if (!is.matrix(prec_matrix) || nrow(prec_matrix) != ncol(prec_matrix)) {
-            stop("Precision matrix must be square")
+        # Validate precision matrix (supporting 2D matrix or 3D array for BMA)
+        dims <- dim(prec_matrix)
+        if (is.null(dims) || (length(dims) != 2 && length(dims) != 3)) {
+            stop("Precision must be a square matrix or a 3D array of square matrices")
         }
-
-        n <- nrow(prec_matrix)
+        
+        # Check squareness of the spatial dimensions
+        if (length(dims) == 2) {
+            if (dims[1] != dims[2]) stop("Precision matrix must be square")
+            n <- dims[1]
+        } else {
+            if (dims[2] != dims[3]) stop("Slices in 3D precision array must be square matrices")
+            n <- dims[2]
+        }
 
         # Create structure object
         structure(
@@ -122,16 +130,44 @@ because_structure <- function(name, precision_fn, description = NULL) {
             if (!is.null(description)) paste0("    # ", description) else NULL
         )
 
-        # Standard multivariate normal with precision matrix
-        error_prior <- paste0(
-            "    ",
-            variable_name,
-            "[1:N] ~ dmnorm(zeros[1:N], tau_",
-            clean_name,
-            " * ",
-            prec_data_name,
-            "[1:N, 1:N])"
-        )
+        # Detect BMA (3D precision array)
+        is_bma <- !is.null(dim(structure$Prec)) && length(dim(structure$Prec)) == 3
+        
+        if (is_bma) {
+            n_slices <- dim(structure$Prec)[1]
+            # Use variable_name (e.g. log_mass) instead of clean_name (ou_kernel)
+            # to allow trait-specific K indices in the same model
+            k_name <- paste0("K_", variable_name)
+            p_name <- paste0("p_", variable_name)
+            
+            setup_code <- c(
+                setup_code,
+                paste0("    ", k_name, " ~ dcat(", p_name, "[1:", n_slices, "])"),
+                paste0("    for (k in 1:", n_slices, ") { ", p_name, "[k] <- 1/", n_slices, " }")
+            )
+            
+            # 3D Indexing for BMA using the unique K name
+            error_prior <- paste0(
+                "    ",
+                variable_name,
+                "[1:N] ~ dmnorm(zeros[1:N], tau_",
+                clean_name,
+                " * ",
+                prec_data_name,
+                "[", k_name, ", 1:N, 1:N])"
+            )
+        } else {
+            # Standard multivariate normal with 2D precision matrix
+            error_prior <- paste0(
+                "    ",
+                variable_name,
+                "[1:N] ~ dmnorm(zeros[1:N], tau_",
+                clean_name,
+                " * ",
+                prec_data_name,
+                "[1:N, 1:N])"
+            )
+        }
 
         list(
             setup_code = setup_code,
@@ -165,17 +201,21 @@ because_structure <- function(name, precision_fn, description = NULL) {
     assign(method_name_prep, prepare_method, envir = .because_env)
 
     # Register as S3 methods
+    # We find the generic in the 'because' namespace (where they are defined)
+    # This ensures that even in non-interactive sessions (Rscript), 
+    # the lookup doesn't fail.
+    ns <- asNamespace("because")
     registerS3method(
         "jags_structure_definition",
         class_name,
         jags_method,
-        envir = .because_env
+        envir = ns
     )
     registerS3method(
         "prepare_structure_data",
         class_name,
         prepare_method,
-        envir = .because_env
+        envir = ns
     )
 
     message(
@@ -295,11 +335,11 @@ because_family <- function(
     # Register the S3 method
     method_name <- paste0("jags_family_likelihood.", class_name)
     assign(method_name, likelihood_method, envir = .because_env)
+
     registerS3method(
         "jags_family_likelihood",
         class_name,
-        likelihood_method,
-        envir = .because_env
+        likelihood_method
     )
 
     # Create a constructor function that returns a family object

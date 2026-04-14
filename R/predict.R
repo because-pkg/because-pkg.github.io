@@ -123,7 +123,10 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, ...) {
   }
   
   # 5. Inverse Link & Stochastic Draw
-  fam <- object$family[[resp]] %||% "gaussian"
+  fam <- "gaussian"
+  if (!is.null(object$family) && resp %in% names(object$family)) {
+    fam <- object$family[[resp]]
+  }
   
   y_rep <- matrix(0, nrow = n_s, ncol = n_obs)
   
