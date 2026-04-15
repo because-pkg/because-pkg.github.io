@@ -56,16 +56,14 @@ identifiers (e.g., species names).
 
 \strong{Important Alignment Rules:}
 \enumerate{
-\item If \code{id_col} is provided, the engine uses this column to match data
-rows to external structure labels (e.g., \code{tree$tip.label}).
+\item If \code{id_col} is provided, the engine uses this specific column to match
+data rows to external structure labels (e.g., \code{tree$tip.label}).
+\strong{Use this if your ID column has a custom name (e.g., "Butterfly_ID").}
 \item If \code{id_col} is \code{NULL} (default), the engine attempts to use
 \strong{row names} from the data frame.
 \item If your IDs are in a column (e.g. "Species") but your row names
 are standard numbers (1, 2, 3...), you \strong{MUST} specify \code{id_col}.
-}
-
-\emph{Note: In future releases, this argument may be deprecated in favor of
-autonomous ID discovery.}}
+}}
 
 \item{structure}{The covariance structure for the model. Accepts:
 \itemize{

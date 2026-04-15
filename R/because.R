@@ -1381,15 +1381,22 @@ because <- function(
         if (is.numeric(n_attr)) current_N <- n_attr
       }
 
-      # [NEW] Determine level for this structure
+      # [FIX] Robust Level Matching
+      # Prioritize name-based matching (e.g. if the structure in the tree list is named "Species")
       s_level <- NULL
       if (!is.null(hierarchical_info) && !is.null(current_N)) {
-        for (lvl in names(hierarchical_info$levels)) {
-          n_name <- paste0("N_", lvl)
-          if (!is.null(data[[n_name]]) && data[[n_name]] == current_N) {
-            s_level <- lvl
-            break
-          }
+        # 1. Try Name Matching first
+        if (s_name %in% names(hierarchical_info$levels)) {
+            s_level <- s_name
+        } else {
+            # 2. Fallback to Dimension Matching
+            for (lvl in names(hierarchical_info$levels)) {
+              n_name <- paste0("N_", lvl)
+              if (!is.null(data[[n_name]]) && data[[n_name]] == current_N) {
+                s_level <- lvl
+                break
+              }
+            }
         }
       }
       structure_levels[[s_name]] <- s_level
@@ -2126,7 +2133,7 @@ because <- function(
         resp     <- as.character(eq)[2]
         test_var <- attr(eq, "test_var")
         if (!is.null(test_var)) {
-          sprintf("  %s _||_ %s (orthogonal hierarchy branches — trivially satisfied)",
+          sprintf("  %s _||_ %s (orthogonal hierarchy branches - trivially satisfied)",
                   resp, test_var)
         } else {
           paste(deparse(eq), collapse = " ")

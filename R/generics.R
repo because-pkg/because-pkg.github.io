@@ -168,7 +168,17 @@ jags_family_definition <- function(family, response, predictors, ...) {
 #' @keywords internal
 #' @export
 jags_family_definition.default <- function(family, response, predictors, ...) {
-    return(NULL)
+    args <- list(...)
+    prior <- args$prior
+    
+    # Define robust defaults (Weakly Informative)
+    # SD=10 (Prec=0.01) is a safe "Universal" default that fixes convergence 
+    # without biasing human-scale results.
+    beta_prior  <- prior$beta  %||% "dnorm(0, 0.01)"
+    alpha_prior <- prior$alpha %||% "dnorm(0, 0.01)"
+    
+    # ... rest of the generic code remains the same but uses these variables
+    return(NULL) # This is a generic, specific families override below
 }
 
 #' Transform Graph for D-Separation

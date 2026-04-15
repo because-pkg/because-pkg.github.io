@@ -51,7 +51,9 @@ df <- data.frame(Temp_Centered, Growth_g_day)
 
 ### Default Model
 
-Let's fit a standard model first. By default, `because` assigns wide Gaussian priors (`dnorm(0, 1.0E-6)`) to intercepts (`alpha`) and slopes (`beta`). For Gaussian response variables, the **residual standard deviation** gets a half-uniform prior: `sigma_e ~ dunif(0, 100)`, from which the precision is derived as `tau_e <- 1 / (sigma_e * sigma_e)`. This is scale-invariant and works safely whether data are standardised or on their original (raw) scale.
+Let's fit a standard model first. By default, `because` assigns **weakly informative** Gaussian priors (`dnorm(0, 0.01)`) to intercepts (`alpha`) and slopes (`beta`). This corresponds to a Standard Deviation of 10. These anchors are broad enough to be uninformative for scientific data while preventing the numerical instability and convergence failure ($Rhat > 1.1$) often seen with extremely "flat" priors in complex hierarchical models. 
+
+For Gaussian response variables, the **residual standard deviation** gets a half-uniform prior: `sigma_e ~ dunif(0, 100)`, from which the precision is derived as `tau_e <- 1 / (sigma_e * sigma_e)`. This is scale-invariant and works safely whether data are standardised or on their original (raw) scale.
 
 ```{r default_model}
 fit_default <- because(
@@ -224,17 +226,17 @@ It is important to know what you are overriding. `because` aims to use **weakly 
 
 | Parameter Type | Parameter Name | Default Prior | Description |
 |:---|:---|:---|:---|
-| **Intercepts** | `alpha_*` | `dnorm(0, 1.0E-6)` | Wide Normal (Precision 1e-6 = Variance 1,000,000) |
-| **Coefficients** | `beta_*` | `dnorm(0, 1.0E-6)` | Wide Normal |
+| **Intercepts** | `alpha_*` | `dnorm(0, 0.01)` | Weakly Informative SD = 10 |
+| **Coefficients** | `beta_*` | `dnorm(0, 0.01)` | Weakly Informative SD = 10 |
 | **Residual SD (Gaussian)** | `sigma_e_*` | `dunif(0, 100)` | Half-uniform on σ; scale-invariant, robust to raw or standardised data. Override with `sigma_e_*` in `priors`. |
 | **Residual Precision (Gaussian)** | `tau_e_*` | *derived* | Set deterministically as `1/(sigma_e * sigma_e)`. Not assigned a prior directly. |
-| **Precision (other families)** | `tau_*` | `dgamma(1, 1)` | Gamma(1,1) for non-Gaussian precision/variance components (random effects, structural). |
+| **Precision (other families)** | `tau_*` | `dgamma(1, 1)` | Gamma(1,1) for non-Gaussian precision components (random effects). |
 | **Phylo Signal** | `lambda_*` | `dunif(0, 1)` | Uniform on [0,1] |
 | **Zero-Inflation** | `psi_*` | `dbeta(1, 1)` | Beta(1,1) (Uniform on [0,1]) |
-| **Ordinal Cutpoints** | `cutpoint_*` | `dnorm(0, 1e-6)` | First cutpoint fixed, others relative or specifically ordered |
+| **Ordinal Cutpoints** | `cutpoint_*` | `dnorm(0, 0.01)` | SD = 10 |
 | **NegBinomial Size** | `r_*` | `dgamma(0.01, 0.01)` | Wide Gamma for dispersion parameter |
 
-> **Precision vs Variance**: JAGS uses precision $\tau = 1/\sigma^2$. A prior of `dnorm(0, 1.0E-6)` means a normal distribution with mean 0 and precision $0.000001$, which corresponds to a variance of $1,000,000$ (SD = 1000). This is very flat.
+> **Precision vs Variance**: JAGS uses precision $\tau = 1/\sigma^2$. A prior of `dnorm(0, 0.01)` means a normal distribution with mean 0 and precision $0.01$, which corresponds to a variance of $100$ (SD = 10). This is uninformative for most standardized biological effects but remains numerically stable during adaptation.
 
 ## Parameter Names Reference
 
