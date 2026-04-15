@@ -91,7 +91,50 @@ because_model <- function(
     structures <- list()
   }
   structure_names <- names(structures)
-
+  
+  # --- INTERNAL HELPERS (Toolbox) ---
+  
+  # Global JAGS node tracker to prevent redefinition errors
+  # Used to de-duplicate priors/derivations across different logical blocks
+  declared_nodes <- character(0)
+  
+  # Helper: Add lines to JAGS model while preventing node redefinition
+  safe_add_lines <- function(current_lines, new_lines) {
+    if (length(new_lines) == 0) return(current_lines)
+    
+    clean_lines <- c()
+    for (line in new_lines) {
+      trimmed <- trimws(line)
+      if (trimmed == "" || startsWith(trimmed, "#")) {
+        clean_lines <- c(clean_lines, line)
+        next
+      }
+      
+      # Identify the target node (left side of ~ or <-)
+      # 1. Clean up line for splitting
+      # 2. Split by JAGS operators ~ or <-
+      # 3. Take the left part, trim whitespace, and strip indexing [...]
+      if (grepl("[~]|<-", trimmed)) {
+        # Split by the first occurrence of ~ or <-
+        parts <- strsplit(trimmed, "(\\~|<-)")[[1]]
+        if (length(parts) > 1) {
+          # The node is the first part (strip indexing brackets)
+          target <- trimws(parts[1])
+          target <- sub("\\[.*\\]", "", target)
+          
+          if (target %in% declared_nodes) {
+            # SILENT FILTER: Skip redundant declarations to ensure a clean model string.
+            # This allows structural hooks and prior loops to share unified names.
+            next
+          }
+          declared_nodes <<- c(declared_nodes, target)
+        }
+      }
+      clean_lines <- c(clean_lines, line)
+    }
+    return(c(current_lines, clean_lines))
+  }
+  
   # Helper: returns b if a is NULL or if a is a list element that doesn't exist
   `%||%` <- function(a, b) {
     tryCatch(if (!is.null(a)) a else b, error = function(e) b)
@@ -127,6 +170,11 @@ because_model <- function(
     # Case-insensitive level lookup
     lvl_names <- names(h_info$levels)
     for (lvl_name in lvl_names) {
+      # IDENTITY CHECK: Is the 'var' the level name itself?
+      if (tolower(var) == tolower(lvl_name)) {
+        return(lvl_name)
+      }
+      # MEMBERSHIP CHECK: Is the 'var' a variable within this level?
       if (any(tolower(var) == tolower(h_info$levels[[lvl_name]]))) {
         return(lvl_name)
       }
@@ -149,159 +197,12 @@ because_model <- function(
     return(NULL) # Variable not found in any level
   }
 
-  # Helper: Get loop bound (N or N_<Level>) for a response variable
-  get_loop_bound <- function(response, h_info) {
-    if (is.null(h_info)) {
-      return("N")
-    }
-    lvl <- get_var_level(response, h_info)
-    if (is.null(lvl)) {
-      return("N")
-    } # Fallback to N
-    return(paste0("N_", lvl))
-  }
-
-  get_group_idx_string <- function(response, r_name, hierarchical_info) {
-    # Default behavior: group_var[i]
-    group_idx <- paste0("group_", r_name, "[i]")
-
-    if (!is.null(hierarchical_info)) {
-      resp_bound <- get_loop_bound(response, hierarchical_info)
-      grp_bound <- get_loop_bound(r_name, hierarchical_info)
-
-      # Strip N_ prefix
-      resp_lvl <- sub("^N_", "", resp_bound)
-      grp_lvl <- sub("^N_", "", grp_bound)
-
-      # Resolve "N" to finest level name
-      finest_lvl <- trimws(strsplit(
-        hierarchical_info$hierarchy,
-        ">"
-      )[[1]])
-      finest_lvl <- finest_lvl[length(finest_lvl)]
-
-      if (resp_lvl == "N") {
-        resp_lvl <- finest_lvl
-      }
-      if (grp_lvl == "N") {
-        grp_lvl <- finest_lvl
-      }
-
-      # If levels differ, use nested transitive index (bridge)
-      if (resp_lvl != grp_lvl) {
-        group_idx <- paste0(
-          "group_",
-          r_name,
-          "[",
-          grp_lvl,
-          "_idx_",
-          resp_lvl,
-          "[i]]"
-        )
-      }
-    }
-    return(group_idx)
-  }
-
-  # Helper: Get zeros vector name (zeros or zeros_<Level>)
-  get_zeros_name <- function(response, h_info) {
-    if (is.null(h_info)) {
-      return("zeros")
-    }
-    lvl <- get_var_level(response, h_info)
-    if (is.null(lvl)) {
-      return("zeros")
-    }
-    return(paste0("zeros_", lvl))
-  }
-
   # Helper: Get hierarchical level name for a random effect grouping variable
   get_random_level <- function(response, group_var, h_info) {
     if (is.null(h_info)) {
       return(NULL)
     }
     return(get_var_level(group_var, h_info))
-  }
-
-  # Helper: Get level for a structure
-  get_struct_lvl <- function(s_name, h_info) {
-    if (is.null(h_info) || is.null(h_info$structure_levels)) {
-      return(NULL)
-    }
-    return(h_info$structure_levels[[s_name]])
-  }
-
-  # Helper: Get index for mapping structure levels to response levels
-  get_struct_index <- function(s_name, response, h_info) {
-    s_lvl <- get_struct_lvl(s_name, h_info)
-    r_lvl <- get_var_level(response, h_info)
-    if (is.null(s_lvl) || is.null(r_lvl) || s_lvl == r_lvl) {
-      return("i")
-    }
-    # Level mismatch: use the indicator mapping e.g. site_idx_obs[i]
-    return(paste0(s_lvl, "_idx_", r_lvl, "[i]"))
-  }
-
-  # Helper: Validate if a structure's level can map to a response's level
-  is_valid_structure_mapping <- function(s_lvl, r_lvl, h_info) {
-    if (is.null(s_lvl) || is.null(r_lvl) || s_lvl == r_lvl) {
-      return(TRUE)
-    }
-    if (is.null(h_info) || is.null(h_info$hierarchy)) {
-      return(TRUE)
-    }
-
-    paths <- strsplit(h_info$hierarchy, "\\s*;\\s*")[[1]]
-    for (path in paths) {
-      levels <- trimws(strsplit(path, "\\s*>\\s*")[[1]])
-      s_idx <- match(s_lvl, levels)
-      r_idx <- match(r_lvl, levels)
-      # Structure must be at or above response in the hierarchy
-      if (!is.na(s_idx) && !is.na(r_idx) && s_idx <= r_idx) {
-        return(TRUE)
-      }
-    }
-    return(FALSE)
-  }
-
-  # Helper: Get index expression for accessing a predictor from a coarser level
-  # Returns "pred[Coarser_idx_Finer[i]]" or "pred[i]" if same level
-  get_pred_index <- function(pred, response_level, h_info) {
-    if (is.null(h_info)) {
-      return(paste0(pred, "[i]"))
-    }
-
-    pred_lvl <- get_var_level(pred, h_info)
-    if (is.null(pred_lvl)) {
-      return(paste0(pred, "[i]"))
-    } # Unknown, use default
-
-    if (is.null(response_level) || pred_lvl == response_level) {
-      return(paste0(pred, "[i]"))
-    }
-
-    # Predictor is from a coarser level
-    # We need the index vector: <PredLevel>_idx_<RespLevel>
-    idx_name <- paste0(pred_lvl, "_idx_", response_level)
-    return(paste0(pred, "[", idx_name, "[i]]"))
-  }
-
-  # Helper: Check if random effect grouping level is compatible with response level
-  # Valid if: Rank(Group) <= Rank(Response) (Coarser or Equal to Response)
-  is_valid_random_level <- function(response, group_var, h_info) {
-    if (is.null(h_info)) {
-      return(TRUE)
-    }
-
-    resp_lvl <- get_var_level(response, h_info)
-    grp_lvl <- get_var_level(group_var, h_info)
-
-    if (is.null(resp_lvl) || is.null(grp_lvl)) {
-      return(TRUE)
-    } # Assume true if unknown
-
-    # Use the robust checker
-    return(is_valid_structure_mapping(grp_lvl, resp_lvl, h_info))
   }
 
   # Helper: Get the finest level that is a descendant of all given variables' levels
@@ -357,7 +258,160 @@ because_model <- function(
     return(finest)
   }
 
-  # Compute main loop N once for use throughout
+  # Helper: Get level for a structure
+  get_struct_lvl <- function(s_name, h_info) {
+    if (is.null(h_info) || is.null(h_info$structure_levels)) {
+      return(NULL)
+    }
+    return(h_info$structure_levels[[s_name]])
+  }
+
+  # Helper: Get loop bound (N or N_<Level>) for a response variable
+  get_loop_bound <- function(response, h_info) {
+    if (is.null(h_info)) {
+      return("N")
+    }
+    lvl <- get_var_level(response, h_info)
+    if (is.null(lvl)) {
+      return("N")
+    } # Fallback to N
+    return(paste0("N_", lvl))
+  }
+
+  # Helper: Get zeros vector name (zeros or zeros_<Level>)
+  get_zeros_name <- function(response, h_info) {
+    if (is.null(h_info)) {
+      return("zeros")
+    }
+    lvl <- get_var_level(response, h_info)
+    if (is.null(lvl)) {
+      return("zeros")
+    }
+    return(paste0("zeros_", lvl))
+  }
+
+  # Helper: Get index expression for accessing a predictor from a coarser level
+  get_pred_index <- function(pred, response_level, h_info) {
+    if (is.null(h_info)) {
+      return(paste0(pred, "[i]"))
+    }
+
+    pred_lvl <- get_var_level(pred, h_info)
+    if (is.null(pred_lvl)) {
+      return(paste0(pred, "[i]"))
+    } # Unknown, use default
+
+    if (is.null(response_level) || pred_lvl == response_level) {
+      return(paste0(pred, "[i]"))
+    }
+
+    # Predictor is from a coarser level
+    # We need the index vector: <PredLevel>_idx_<RespLevel>
+    idx_name <- paste0(pred_lvl, "_idx_", response_level)
+    return(paste0(pred, "[", idx_name, "[i]]"))
+  }
+
+  # Helper: Validate if a structure's level can map to a response's level
+  is_valid_structure_mapping <- function(s_lvl, r_lvl, h_info, allow_identity = FALSE) {
+    # [HIERARCHY FIX] Block random effects at the SAME level as response (Identifiability)
+    # UNLESS they are structured covariance components (Phylo/Spatial) where partitioning is valid.
+    if (is.null(s_lvl) || is.null(r_lvl)) {
+      return(TRUE)
+    }
+    if (s_lvl == r_lvl && !allow_identity) {
+      return(FALSE)
+    }
+    if (is.null(h_info) || is.null(h_info$hierarchy)) {
+      return(TRUE)
+    }
+
+    paths <- strsplit(h_info$hierarchy, "\\s*;\\s*")[[1]]
+    for (path in paths) {
+      levels <- trimws(strsplit(path, "\\s*>\\s*")[[1]])
+      s_idx <- match(s_lvl, levels)
+      r_idx <- match(r_lvl, levels)
+      # Structure must be at or above response in the hierarchy
+      if (!is.na(s_idx) && !is.na(r_idx) && s_idx <= r_idx) {
+        return(TRUE)
+      }
+    }
+    return(FALSE)
+  }
+
+  # Helper: Get index for mapping structure levels to response levels
+  get_struct_index <- function(s_name, response, h_info) {
+    s_lvl <- get_struct_lvl(s_name, h_info)
+    r_lvl <- get_var_level(response, h_info)
+    if (is.null(s_lvl) || is.null(r_lvl) || s_lvl == r_lvl) {
+      return("i")
+    }
+    # Level mismatch: use the indicator mapping e.g. site_idx_obs[i]
+    return(paste0(s_lvl, "_idx_", r_lvl, "[i]"))
+  }
+
+  # Helper: Check if random effect grouping level is compatible with response level
+  is_valid_random_level <- function(response, group_var, h_info) {
+    if (is.null(h_info)) {
+      return(TRUE)
+    }
+
+    resp_lvl <- get_var_level(response, h_info)
+    grp_lvl <- get_var_level(group_var, h_info)
+
+    if (is.null(resp_lvl) || is.null(grp_lvl)) {
+      # If hierarchy exists, but levels are unknown, assume invalid (blocked) for safety
+      if (!is.null(h_info$hierarchy)) { return(FALSE) }
+      return(TRUE) 
+    }
+
+    # Use the robust checker
+    return(is_valid_structure_mapping(grp_lvl, resp_lvl, h_info))
+  }
+
+  # Helper: Resolve group indexing for hierarchical random effects
+  get_group_idx_string <- function(response, r_name, hierarchical_info) {
+    # Default behavior: group_var[i]
+    group_idx <- paste0("group_", r_name, "[i]")
+
+    if (!is.null(hierarchical_info)) {
+      resp_bound <- get_loop_bound(response, hierarchical_info)
+      grp_bound <- get_loop_bound(r_name, hierarchical_info)
+
+      # Strip N_ prefix
+      resp_lvl <- sub("^N_", "", resp_bound)
+      grp_lvl <- sub("^N_", "", grp_bound)
+
+      # Resolve "N" to finest level name
+      finest_lvl <- trimws(strsplit(
+        hierarchical_info$hierarchy,
+        ">"
+      )[[1]])
+      finest_lvl <- finest_lvl[length(finest_lvl)]
+
+      if (resp_lvl == "N") {
+        resp_lvl <- finest_lvl
+      }
+      if (grp_lvl == "N") {
+        grp_lvl <- finest_lvl
+      }
+
+      # If levels differ, use nested transitive index (bridge)
+      if (resp_lvl != grp_lvl) {
+        group_idx <- paste0(
+          "group_",
+          r_name,
+          "[",
+          grp_lvl,
+          "_idx_",
+          resp_lvl,
+          "[i]]"
+        )
+      }
+    }
+    return(group_idx)
+  }
+
+  # Helper: Get finest level for main loop N
   main_loop_N <- "N"
   if (!is.null(hierarchical_info)) {
     h_levels <- trimws(strsplit(hierarchical_info$hierarchy, ">")[[1]])
@@ -385,6 +439,26 @@ because_model <- function(
 
     # 3. Default to FALSE for spatial, custom matrices unless explicitly flagged
     return(FALSE)
+  }
+
+  # [HARD GATE] Uncompromising Deduplication: Purge random effects handled by structures
+  if (!is.null(random_structure_names) && length(structure_names) > 0) {
+    # 1. Block by Name (Immediate collision)
+    random_structure_names <- setdiff(random_structure_names, structure_names)
+    
+    # 2. Block by Hierarchical Level (Deep collision)
+    if (!is.null(hierarchical_info)) {
+      struct_lvls <- tolower(unique(na.omit(sapply(structure_names, function(s) get_struct_lvl(s, hierarchical_info)))))
+      if (length(struct_lvls) > 0) {
+        keep_r <- vapply(random_structure_names, function(r) {
+          # [NUGGET FIX] Allow random intercepts to co-exist with structured covariance 
+          # at the same level (e.g. spatial Site + random Site). 
+          # We only filter if the NAMES are identical (handled by setdiff above).
+          return(TRUE) 
+        }, logical(1))
+        random_structure_names <- random_structure_names[keep_r]
+      }
+    }
   }
 
   has_structure <- !is.null(structure_names) && length(structure_names) > 0
@@ -567,7 +641,7 @@ because_model <- function(
     }
   }
 
-  model_lines <- c(model_lines, "  # Structural equations")
+  model_lines <- safe_add_lines(model_lines, "  # Structural equations")
 
   # --- Generic Structure Setup ---
   if (!is.null(structures)) {
@@ -579,7 +653,7 @@ because_model <- function(
         optimize = TRUE
       )
       if (!is.null(def$setup_code)) {
-        model_lines <- c(model_lines, def$setup_code)
+        model_lines <- safe_add_lines(model_lines, def$setup_code)
       }
     }
   }
@@ -742,7 +816,7 @@ because_model <- function(
   }
 
   # Continue with structural equations
-  model_lines <- c(model_lines, "")
+  model_lines <- safe_add_lines(model_lines, "")
 
   for (j in seq_along(eq_list)) {
     eq <- eq_list[[j]]
@@ -752,7 +826,7 @@ because_model <- function(
 
     # Hierarchical Loop Wrapper
     eq_loop_N <- get_loop_bound(response, hierarchical_info)
-    model_lines <- c(model_lines, paste0("  for (i in 1:", eq_loop_N, ") {"))
+    model_lines <- safe_add_lines(model_lines, paste0("  for (i in 1:", eq_loop_N, ") {"))
 
     # Check if this is a deterministic identity equation (e.g., dummy ~ I(parent == k))
     is_identity <- FALSE
@@ -830,7 +904,7 @@ because_model <- function(
 
     if (dist == "gaussian" || dist == "occupancy" || grepl("^p_", response)) {
       mu <- paste0("mu_", response, suffix)
-      model_lines <- c(model_lines, paste0("    ", mu, "[i] <- ", linpred))
+      model_lines <- safe_add_lines(model_lines, paste0("    ", mu, "[i] <- ", linpred))
     } else if (dist == "binomial") {
       # Binomial: logit(p) = linpred + error
       # error ~ dmnorm(0, TAU)
@@ -1539,10 +1613,10 @@ because_model <- function(
     model_lines <- c(model_lines, "  }")
   }
 
-  model_lines <- c(model_lines, "  # Multivariate normal likelihoods")
+  model_lines <- safe_add_lines(model_lines, "  # Multivariate normal likelihoods")
 
   # Likelihoods for responses
-  for (response in names(response_counter)) {
+  for (response in unique(names(response_counter))) {
     # Skip if involved in induced correlations (handled separately for Gaussian)
     dist <- dist_list[[response]] %||% "gaussian"
     if (response %in% correlated_vars && dist == "gaussian") {
@@ -1585,9 +1659,8 @@ because_model <- function(
           if (independent) {
             # Independent Model (No random effects)
             # Y[i] ~ dnorm(mu[i], tau)
-            # Note: We use tau_e for consistency with optimized model naming if desired,
-            # but tau is standard for simple normal. Let's use tau_e to distinguish from matrix TAU
-            tau_e <- paste0("tau_e_", response, suffix)
+            # Note: We use tau_res for consistency across all model types.
+            tau_res <- paste0("tau_res_", response, suffix)
 
             model_lines <- c(
               model_lines,
@@ -1598,7 +1671,7 @@ because_model <- function(
                 "[i] ~ dnorm(",
                 mu,
                 "[i], ",
-                tau_e,
+                tau_res,
                 ")"
               )
             )
@@ -1614,12 +1687,12 @@ because_model <- function(
                   "[i], ",
                   mu,
                   "[i], ",
-                  tau_e,
+                  tau_res,
                   ")"
                 )
               )
             }
-            model_lines <- c(model_lines, paste0("  }"))
+            model_lines <- safe_add_lines(model_lines, paste0("  }"))
           } else {
             # Optimized Random Effects Formulation (Additive)
             additive_terms <- ""
@@ -1629,7 +1702,8 @@ because_model <- function(
                 !is_valid_structure_mapping(
                   get_struct_lvl(s_name, hierarchical_info),
                   get_var_level(response, hierarchical_info),
-                  hierarchical_info
+                  hierarchical_info,
+                  allow_identity = TRUE
                 )
               ) {
                 next
@@ -1654,49 +1728,26 @@ because_model <- function(
                 i_index = s_idx_var
               )
 
-              model_lines <- c(model_lines, s_def$model_lines)
+              model_lines <- safe_add_lines(model_lines, s_def$model_lines)
               
               if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
                  additive_terms <- paste0(additive_terms, " + ", s_def$term)
               }
 
               # Map structural parameters
-              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_", s_name, "_", response), equation_index = NA, type = "structure")
-              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", s_name, "_", response), equation_index = NA, type = "structure")
+              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name), equation_index = NA, type = "structure")
+              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
             }
 
             # 2. Random Effects (Grouped)
             for (r_name in random_structure_names) {
               if (!is_valid_random_level(response, r_name, hierarchical_info)) next
               
-              # [PACKAGE FIX] Detect overlaps with structured covariances
-              r_lvl <- get_random_level(response, r_name, hierarchical_info)
-              is_already_structured <- FALSE
-              if (!is.null(r_lvl)) {
-                  is_already_structured <- any(vapply(structure_names, function(s) {
-                      tolower(get_struct_lvl(s, hierarchical_info)) == tolower(r_lvl)
-                  }, logical(1)))
-              }
-
-              # [SMART DEDUPLICATION] Strictly honor manual terms (nuggets)
-              # Only skip if it's NOT manual (i.e. default or auto-promoted)
-              relevant_term <- Filter(function(rt) rt$group == r_name && rt$response == response, random_terms)
-              source_tag <- if (length(relevant_term) > 0) relevant_term[[1]]$source else "auto"
-
-              if (is_already_structured) {
-                  if (source_tag != "manual") {
-                      next
-                  } else {
-                      message(sprintf("Note: Manual random effect '(1|%s)' for '%s' overlaps with structure. Preserving as nugget.", r_name, response))
-                  }
-              }
-              
               s_suffix <- paste0("_", r_name)
               u_std <- paste0("u_std_", response, suffix, s_suffix)
               u <- paste0("u_", response, suffix, s_suffix)
               tau_u <- paste0("tau_u_", response, suffix, s_suffix)
               
-              # Determine hierarchical level if available
               r_lvl <- get_random_level(response, r_name, hierarchical_info)
               n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
               zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
@@ -1711,15 +1762,12 @@ because_model <- function(
               group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
               additive_terms <- paste0(additive_terms, " + ", u, "[", group_idx, "]")
               
-              # [PACKAGE FIX] Deduplicate: Skip if this is already handled by a structured covariance
-              if (r_name %in% structure_names) next
-              
               param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
               param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name), equation_index = NA, type = "structure")
             }
 
             # 3. Unified Observation Loop
-            tau_e <- paste0("tau_e_", response, suffix)
+            tau_res <- paste0("tau_res_", response, suffix)
             model_lines <- c(
               model_lines,
               paste0("  for (i in 1:", loop_bound, ") {"),
@@ -1731,7 +1779,7 @@ because_model <- function(
                 "[i]",
                 additive_terms, # Sum all structural / random effects
                 ", ",
-                tau_e,
+                tau_res,
                 ")"
               )
             )
@@ -1749,12 +1797,12 @@ because_model <- function(
                   "[i]",
                   additive_terms,
                   ", ",
-                  tau_e,
+                  tau_res,
                   ")"
                 )
               )
             }
-            model_lines <- c(model_lines, "  }")
+            model_lines <- safe_add_lines(model_lines, "  }")
           }
         }
       } else if (dist == "binomial") {
@@ -1773,7 +1821,7 @@ because_model <- function(
         } else {
           # Optimized Random Effects Formulation
           epsilon <- paste0("epsilon_", response, suffix)
-          tau_e <- paste0("tau_e_", response, suffix)
+          tau_res <- paste0("tau_res_", response, suffix)
           
           # Initialize accumulators
           total_u <- ""
@@ -1781,7 +1829,7 @@ because_model <- function(
 
           # 1. Structures (Phylo, Spatial, etc.)
           for (s_name in structure_names) {
-            if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(response, hierarchical_info), hierarchical_info)) next
+            if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(response, hierarchical_info), hierarchical_info, allow_identity = TRUE)) next
             
             s_lvl <- get_struct_lvl(s_name, hierarchical_info)
             s_bound <- if (is.null(s_lvl)) loop_bound else paste0("N_", s_lvl)
@@ -1802,11 +1850,11 @@ because_model <- function(
             )
             if (!is.null(s_def)) {
                # Map structural parameters
-              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_", s_name, "_", response), equation_index = NA, type = "structure")
-              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", s_name, "_", response), equation_index = NA, type = "structure")
+              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name), equation_index = NA, type = "structure")
+              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
 
               # Add Vector Prior
-              model_lines <- c(model_lines, s_def$model_lines)
+              model_lines <- safe_add_lines(model_lines, s_def$model_lines)
               
               # Add to observation math
               if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
@@ -1827,25 +1875,20 @@ because_model <- function(
                     tolower(get_struct_lvl(s, hierarchical_info)) == tolower(r_lvl)
                 }, logical(1)))
             }
+            # Hard name-block
+            if (!is_already_structured) {
+                is_already_structured <- r_name %in% structure_names
+            }
 
             # [SMART DEDUPLICATION] Strictly honor manual terms (nuggets)
             relevant_term <- Filter(function(rt) rt$group == r_name && rt$response == response, random_terms)
             source_tag <- if (length(relevant_term) > 0) relevant_term[[1]]$source else "auto"
 
-            if (is_already_structured) {
-                if (source_tag != "manual") {
-                    next
-                } else {
-                    if (!quiet) message(sprintf("Warning: Random effect '(1|%s)' for '%s' overlaps with structure.", r_name, response))
-                }
-            }
-            
             s_suffix <- paste0("_", r_name)
             u_std <- paste0("u_std_", response, suffix, s_suffix)
             u <- paste0("u_", response, suffix, s_suffix)
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
             
-            # Determine hierarchical level if available
             r_lvl <- get_random_level(response, r_name, hierarchical_info)
             n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
             zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
@@ -1860,9 +1903,6 @@ because_model <- function(
             group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
             total_u <- paste0(total_u, " + ", u, "[", group_idx, "]")
             
-            # Check if this random factor is actually a structure name
-            if (r_name %in% structure_names) next
-            
             param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
             param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name), equation_index = NA, type = "structure")
           }
@@ -1875,7 +1915,7 @@ because_model <- function(
             model_lines,
             paste0("  # Binomial error term summation: ", response),
             paste0("  for (i in 1:", loop_bound, ") {"),
-            paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_e, ")"),
+            paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_res, ")"),
             paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
             paste0("  }")
           )
@@ -1899,7 +1939,7 @@ because_model <- function(
             } else {
               # Optimized Random Effects Formulation for Multinomial
               epsilon <- paste0("epsilon_", response, suffix)
-              tau_e <- paste0("tau_e_", response, suffix)
+              tau_res <- paste0("tau_res_", response, suffix)
 
               model_lines <- c(
                 model_lines,
@@ -1917,6 +1957,9 @@ because_model <- function(
                   if (is.null(s_name) || s_name == "") s_name <- paste0("Struct", s_idx)
                   s_obj <- structures[[s_idx]]
 
+                  # [LINEAGE GUARD] Only process valid hierarchical branches
+                  if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(response, hierarchical_info), hierarchical_info, allow_identity = TRUE)) next
+
                   s_lvl <- get_struct_lvl(s_name, hierarchical_info)
                   s_bound <- if (is.null(s_lvl)) get_loop_bound(response, hierarchical_info) else paste0("N_", s_lvl)
                   s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
@@ -1926,14 +1969,14 @@ because_model <- function(
 
                   s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, category_index = "k", is_multi = is_struct_multi(s_name), i_index = s_idx_var)
                   if (!is.null(s_def)) {
-                    model_lines <- c(model_lines, s_def$model_lines)
+                    model_lines <- safe_add_lines(model_lines, s_def$model_lines)
                     
                     if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
                        total_u <- paste0(total_u, " + ", s_def$term)
                     }
 
-                    param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_", s_name, "_", response, "[k]"), equation_index = NA, type = "structure")
-                    param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", s_name, "_", response, "[k]"), equation_index = NA, type = "structure")
+                    param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name, "[k]"), equation_index = NA, type = "structure")
+                    param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name, "[k]"), equation_index = NA, type = "structure")
                   }
                 }
               }
@@ -1942,34 +1985,11 @@ because_model <- function(
               for (r_name in random_structure_names) {
                 if (!is_valid_random_level(response, r_name, hierarchical_info)) next
                 
-                # [PACKAGE FIX] Detect overlaps with structured covariances
-                r_lvl <- get_random_level(response, r_name, hierarchical_info)
-                is_already_structured <- FALSE
-                if (!is.null(r_lvl)) {
-                    is_already_structured <- any(vapply(structure_names, function(s) {
-                        tolower(get_struct_lvl(s, hierarchical_info)) == tolower(r_lvl)
-                    }, logical(1)))
-                }
-
-                # [SMART DEDUPLICATION] Strictly honor manual terms (nuggets)
-                relevant_term <- Filter(function(rt) rt$group == r_name && rt$response == response, random_terms)
-                source_tag <- if (length(relevant_term) > 0) relevant_term[[1]]$source else "auto"
-
-                if (is_already_structured) {
-                    if (source_tag != "manual") {
-                        next
-                    } else if (as.character(k) == "2") {
-                        # Only message once per response variable
-                        message(sprintf("Note: Manual random effect '(1|%s)' for '%s' overlaps with structure. Preserving as nugget.", r_name, response))
-                    }
-                }
-                
                 s_suffix <- paste0("_", r_name)
                 u_std <- paste0("u_std_", response, suffix, s_suffix)
                 u <- paste0("u_", response, suffix, s_suffix)
                 tau_u <- paste0("tau_u_", response, suffix, s_suffix)
                 
-                # Determine hierarchical level if available
                 r_lvl <- get_random_level(response, r_name, hierarchical_info)
                 n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
                 zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
@@ -1977,15 +1997,12 @@ because_model <- function(
 
                 model_lines <- c(
                   model_lines,
-                  paste0("    ", u_std, "[1:", n_groups, ", k] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
-                  paste0("    for (g in 1:", n_groups, ") { ", u, "[g, k] <- ", u_std, "[g, k] / sqrt(", tau_u, "[k]) }")
+                  paste0("  ", u_std, "[1:", n_groups, ", k] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
+                  paste0("  for (g in 1:", n_groups, ") { ", u, "[g, k] <- ", u_std, "[g, k] / sqrt(", tau_u, "[k]) }")
                 )
                 
                 group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
                 total_u <- paste0(total_u, " + ", u, "[", group_idx, ", k]")
-                
-                # Check if this random factor is actually a structure name
-                if (r_name %in% structure_names) next
                 
                 param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0(tau_u, "[k]"), equation_index = NA, type = "structure")
                 param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name, "[k]"), equation_index = NA, type = "structure")
@@ -1995,7 +2012,7 @@ because_model <- function(
               model_lines <- c(
                 model_lines,
                 paste0("    for (i in 1:", loop_bound, ") {"),
-                paste0("      ", epsilon, "[i, k] ~ dnorm(0, ", tau_e, "[k])"),
+                paste0("      ", epsilon, "[i, k] ~ dnorm(0, ", tau_res, "[k])"),
                 paste0("      ", err, "[i, k] <- ", epsilon, "[i, k]", total_u),
                 paste0("    }"),
                 paste0("  }")
@@ -2017,7 +2034,7 @@ because_model <- function(
             } else {
               # Random Effects Formulation (Default/Optimised)
               epsilon <- paste0("epsilon_", response, suffix)
-              tau_e <- paste0("tau_e_", response, suffix)
+              tau_res <- paste0("tau_res_", response, suffix)
               
               # Initialize accumulators
               total_u <- ""
@@ -2029,6 +2046,9 @@ because_model <- function(
                   if (is.null(s_name) || s_name == "") s_name <- paste0("Struct", s_idx)
                   s_obj <- structures[[s_idx]]
 
+                  # [LINEAGE GUARD] Only process valid hierarchical branches
+                  if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(response, hierarchical_info), hierarchical_info, allow_identity = TRUE)) next
+
                   s_lvl <- get_struct_lvl(s_name, hierarchical_info)
                   s_bound <- if (is.null(s_lvl)) get_loop_bound(response, hierarchical_info) else paste0("N_", s_lvl)
                   s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
@@ -2038,14 +2058,14 @@ because_model <- function(
 
                   s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, is_multi = is_struct_multi(s_name), i_index = s_idx_var)
                   if (!is.null(s_def)) {
-                    model_lines <- c(model_lines, s_def$model_lines)
+                    model_lines <- safe_add_lines(model_lines, s_def$model_lines)
                     
                     if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
                        total_u <- paste0(total_u, " + ", s_def$term)
                     }
 
-                    param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_", s_name, "_", response), equation_index = NA, type = "structure")
-                    param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", s_name, "_", response), equation_index = NA, type = "structure")
+                    param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name), equation_index = NA, type = "structure")
+                    param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
                   }
                 }
               }
@@ -2053,27 +2073,6 @@ because_model <- function(
               # 2. Random Groups for Ordinal
               for (r_name in random_structure_names) {
                 if (!is_valid_random_level(response, r_name, hierarchical_info)) next
-                
-                # [PACKAGE FIX] Detect overlaps with structured covariances
-                r_lvl <- get_random_level(response, r_name, hierarchical_info)
-                is_already_structured <- FALSE
-                if (!is.null(r_lvl)) {
-                    is_already_structured <- any(vapply(structure_names, function(s) {
-                        tolower(get_struct_lvl(s, hierarchical_info)) == tolower(r_lvl)
-                    }, logical(1)))
-                }
-
-                # [SMART DEDUPLICATION] Strictly honor manual terms (nuggets)
-                relevant_term <- Filter(function(rt) rt$group == r_name && rt$response == response, random_terms)
-                source_tag <- if (length(relevant_term) > 0) relevant_term[[1]]$source else "auto"
-
-                if (is_already_structured) {
-                    if (source_tag != "manual") {
-                        next
-                    } else {
-                        message(sprintf("Note: Manual random effect '(1|%s)' for '%s' overlaps with structure. Preserving as nugget.", r_name, response))
-                    }
-                }
                 
                 s_suffix <- paste0("_", r_name)
                 u_std <- paste0("u_std_", response, suffix, s_suffix)
@@ -2095,11 +2094,8 @@ because_model <- function(
                 group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
                 total_u <- paste0(total_u, " + ", u, "[", group_idx, "]")
                 
-               # Check if this random factor is actually a structure name
-              if (r_name %in% structure_names) next
-              
-              param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
-              param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name), equation_index = NA, type = "structure")
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name), equation_index = NA, type = "structure")
               }
 
               # 3. Observation Loop for Ordinal
@@ -2109,7 +2105,7 @@ because_model <- function(
               model_lines <- c(
                 model_lines,
                 paste0("  for (i in 1:", loop_bound, ") {"),
-                paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_e, ")"),
+                paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_res, ")"),
                 paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
                 paste0("  }")
               )
@@ -2133,7 +2129,7 @@ because_model <- function(
         } else {
           # Optimized Random Effects
           epsilon <- paste0("epsilon_", response, suffix)
-          tau_e <- paste0("tau_e_", response, suffix)
+          tau_res <- paste0("tau_res_", response, suffix)
           
           # Initialize accumulators
           total_u <- ""
@@ -2146,7 +2142,8 @@ because_model <- function(
               if (is.null(s_name) || s_name == "") s_name <- paste0("Struct", s_idx)
               s_obj <- structures[[s_idx]]
 
-              if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(response, hierarchical_info), hierarchical_info)) next
+              # [LINEAGE GUARD] Only process valid hierarchical branches
+              if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(response, hierarchical_info), hierarchical_info, allow_identity = TRUE)) next
 
               s_lvl <- get_struct_lvl(s_name, hierarchical_info)
               s_bound <- if (is.null(s_lvl)) get_loop_bound(response, hierarchical_info) else paste0("N_", s_lvl)
@@ -2157,10 +2154,10 @@ because_model <- function(
 
               s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, is_multi = is_struct_multi(s_name), i_index = s_idx_var)
               if (!is.null(s_def)) {
-                if (!is.null(s_def$setup_code)) model_lines <- c(model_lines, s_def$setup_code)
+                if (!is.null(s_def$setup_code)) model_lines <- safe_add_lines(model_lines, s_def$setup_code)
                 
                 # Global Prior Math
-                model_lines <- c(model_lines, s_def$model_lines)
+                model_lines <- safe_add_lines(model_lines, s_def$model_lines)
                 
                 # Observation Math Guard
                 if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
@@ -2168,14 +2165,15 @@ because_model <- function(
                 }
 
                 # Map structural parameters
-                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_", s_name, "_", response), equation_index = NA, type = "structure")
-                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", s_name, "_", response), equation_index = NA, type = "structure")
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name), equation_index = NA, type = "structure")
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
               }
             }
           }
 
           # 2. Random Group Structures
           for (r_name in random_structure_names) {
+            # [LINEAGE GUARD] Only process valid hierarchical branches
             if (!is_valid_random_level(response, r_name, hierarchical_info)) next
             
             s_suffix <- paste0("_", r_name)
@@ -2199,6 +2197,7 @@ because_model <- function(
             total_u <- paste0(total_u, " + ", u, "[", group_idx, "]")
             
             param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
+            param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name), equation_index = NA, type = "structure")
           }
 
           # 3. Final Observation Loop for Poisson
@@ -2209,7 +2208,7 @@ because_model <- function(
             model_lines,
             paste0("  # Random effects for Poisson: ", response),
             paste0("  for (i in 1:", loop_bound, ") {"),
-            paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_e, ")"),
+            paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_res, ")"),
             paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
             paste0("  }")
           )
@@ -2250,21 +2249,21 @@ because_model <- function(
             )
 
             if (!is.null(s_def)) {
-              model_lines <- c(model_lines, s_def$model_lines)
+              model_lines <- safe_add_lines(model_lines, s_def$model_lines)
               total_u <- paste0(total_u, " + ", s_def$term)
 
               # Map structural parameters for post-processing/lambda
               param_map[[length(param_map) + 1]] <- list(
                 response = response,
                 predictor = s_name,
-                parameter = paste0("tau_", s_name, "_", response),
+                parameter = paste0("tau_u_", response, "_", s_name),
                 equation_index = NA,
                 type = "structure"
               )
               param_map[[length(param_map) + 1]] <- list(
                 response = response,
                 predictor = s_name,
-                parameter = paste0("sigma_", s_name, "_", response),
+                parameter = paste0("sigma_", response, "_", s_name),
                 equation_index = NA,
                 type = "structure"
               )
@@ -2303,7 +2302,7 @@ because_model <- function(
 
         def <- jags_family_definition(fam_obj, response, curr_pred)
         if (!is.null(def$model_code)) {
-          model_lines <- c(model_lines, def$model_code)
+          model_lines <- safe_add_lines(model_lines, def$model_code)
         } else {
           stop(paste("Unknown distribution or missing module for:", dist))
         }
@@ -2317,7 +2316,7 @@ because_model <- function(
         if (TRUE) {
           # Optimized Random Effects
           epsilon <- paste0("epsilon_", response, suffix)
-          tau_e <- paste0("tau_e_", response, suffix)
+          tau_res <- paste0("tau_res_", response, suffix)
 
           total_u <- ""
 
@@ -2334,7 +2333,8 @@ because_model <- function(
                 !is_valid_structure_mapping(
                   get_struct_lvl(s_name, hierarchical_info),
                   get_var_level(response, hierarchical_info),
-                  hierarchical_info
+                  hierarchical_info,
+                  allow_identity = TRUE
                 )
               ) {
                 next
@@ -2350,21 +2350,21 @@ because_model <- function(
               )
 
               if (!is.null(s_def)) {
-                model_lines <- c(model_lines, s_def$model_lines)
+                model_lines <- safe_add_lines(model_lines, s_def$model_lines)
                 total_u <- paste0(total_u, " + ", s_def$term)
 
                 # Map structural parameters for post-processing/lambda
                 param_map[[length(param_map) + 1]] <- list(
                   response = response,
                   predictor = s_name,
-                  parameter = paste0("tau_", s_name, "_", response),
+                  parameter = paste0("tau_u_", response, "_", s_name),
                   equation_index = NA,
                   type = "structure"
                 )
                 param_map[[length(param_map) + 1]] <- list(
                   response = response,
                   predictor = s_name,
-                  parameter = paste0("sigma_", s_name, "_", response),
+                  parameter = paste0("sigma_", response, "_", s_name),
                   equation_index = NA,
                   type = "structure"
                 )
@@ -2374,73 +2374,30 @@ because_model <- function(
 
           # Random Group Structures
           for (r_name in random_structure_names) {
+            # [LINEAGE GUARD] Only process valid hierarchical branches
+            if (!is_valid_random_level(response, r_name, hierarchical_info)) next
+            
             s_suffix <- paste0("_", r_name)
             u_std <- paste0("u_std_", response, suffix, s_suffix)
             u <- paste0("u_", response, suffix, s_suffix)
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
-
-            n_groups <- paste0("N_", r_name)
-
-            # Smart Group Index Logic for Hierarchy
-            group_idx <- paste0("group_", r_name, "[i]")
-            if (!is.null(hierarchical_info)) {
-              resp_bound <- get_loop_bound(response, hierarchical_info)
-              grp_bound <- get_loop_bound(r_name, hierarchical_info)
-
-              # Strip N_ prefix
-              resp_lvl <- sub("^N_", "", resp_bound)
-              grp_lvl <- sub("^N_", "", grp_bound)
-
-              # Resolve "N" to finest level name
-              finest_lvl <- trimws(strsplit(hierarchical_info$hierarchy, ">")[[
-                1
-              ]])
-              finest_lvl <- finest_lvl[length(finest_lvl)]
-
-              if (resp_lvl == "N") {
-                resp_lvl <- finest_lvl
-              }
-              if (grp_lvl == "N") {
-                grp_lvl <- finest_lvl
-              }
-
-              # If levels differ, use nested transitive index
-              # This creates u[ group_var[ bridge_idx[i] ] ]
-              if (resp_lvl != grp_lvl) {
-                group_idx <- paste0(
-                  "group_",
-                  r_name,
-                  "[",
-                  grp_lvl,
-                  "_idx_",
-                  resp_lvl,
-                  "[i]]"
-                )
-              }
-            }
-            prec_name <- paste0("Prec_", r_name)
-            this_is_multi <- is_struct_multi(r_name)
             
-            if (multi.tree && this_is_multi) {
-              model_lines <- c(
-                model_lines,
-                paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, ", K])")
-              )
-            } else {
-              model_lines <- c(
-                model_lines,
-                paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])")
-              )
-            }
-            zeros_name <- paste0("zeros_", r_name)
+            r_lvl <- get_random_level(response, r_name, hierarchical_info)
+            n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
+            zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
+            prec_name <- paste0("Prec_", r_name)
 
             model_lines <- c(
               model_lines,
-              paste0("  for (g in 1:", n_groups, ") {"),
-              paste0("    ", u, "[g] <- ", u_std, "[g] / sqrt(", tau_u, ")"),
-              paste0("  }")
+              paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
+              paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- ", u_std, "[g] / sqrt(", tau_u, ") }")
             )
+            
+            group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
             total_u <- paste0(total_u, " + ", u, "[", group_idx, "]")
+            
+            param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = tau_u, equation_index = NA, type = "structure")
+            param_map[[length(param_map) + 1]] <- list(response = response, predictor = r_name, parameter = paste0("sigma_", response, "_", r_name), equation_index = NA, type = "structure")
           }
 
           # For Negative Binomial / ZINB, we do NOT add an independent residual error (epsilon)
@@ -2462,7 +2419,7 @@ because_model <- function(
           }
 
           if (total_u == "" && total_mag == "") {
-            model_lines <- c(model_lines, paste0("    ", err, "[i] <- 0"))
+            model_lines <- safe_add_lines(model_lines, paste0("    ", err, "[i] <- 0"))
           } else {
             # total_u starts with " + ...", so we prepend "0"
             model_lines <- c(
@@ -2504,7 +2461,8 @@ because_model <- function(
           !is_valid_structure_mapping(
             get_struct_lvl(s_name, hierarchical_info),
             get_var_level(var, hierarchical_info),
-            hierarchical_info
+            hierarchical_info,
+            allow_identity = TRUE
           )
         ) {
           next
@@ -2520,20 +2478,20 @@ because_model <- function(
         )
 
         if (!is.null(s_def)) {
-          model_lines <- c(model_lines, s_def$model_lines)
+          model_lines <- safe_add_lines(model_lines, s_def$model_lines)
           structure_terms <- c(structure_terms, s_def$term)
 
           # Map structural parameters
           param_map[[length(param_map) + 1]] <- list(
             response = var,
             predictor = s_name,
-            parameter = paste0("tau_", s_name, "_", var),
+            parameter = paste0("tau_u_", var, "_", s_name),
             type = "structure"
           )
           param_map[[length(param_map) + 1]] <- list(
             response = var,
             predictor = s_name,
-            parameter = paste0("sigma_", s_name, "_", var),
+            parameter = paste0("sigma_", var, "_", s_name),
             type = "structure"
           )
         }
@@ -2605,7 +2563,7 @@ because_model <- function(
 
   # Measurement error / Variability
   if (length(variability_list) > 0) {
-    model_lines <- c(model_lines, "  # Measurement error / Variability")
+    model_lines <- safe_add_lines(model_lines, "  # Measurement error / Variability")
 
     for (var in names(variability_list)) {
       type <- variability_list[[var]]
@@ -2738,10 +2696,10 @@ because_model <- function(
     }
   }
 
-  model_lines <- c(model_lines, "  # Priors for structural parameters")
+  model_lines <- safe_add_lines(model_lines, "  # Priors for structural parameters")
 
   # Priors for alpha, lambda, tau, sigma
-  for (response in names(response_counter)) {
+  for (response in unique(names(response_counter))) {
     # Skip correlated vars (handled separately for Gaussian)
     dist <- dist_list[[response]] %||% "gaussian"
     if (response %in% correlated_vars && dist == "gaussian") {
@@ -2834,7 +2792,7 @@ because_model <- function(
             model_lines <- c(
               model_lines,
               paste0(
-                "  tau_e_",
+                "  tau_res_",
                 response,
                 suffix,
                 " <- ",
@@ -2848,24 +2806,12 @@ because_model <- function(
               paste0(
                 "  ",
                 get_precision_prior(
-                  paste0("tau_e_", response, suffix),
+                  paste0("tau_res_", response, suffix),
                   response
                 )
               )
             )
           }
-          model_lines <- c(
-            model_lines,
-            paste0(
-              "  sigma",
-              response,
-              suffix,
-              " <- 1/sqrt(tau_e_",
-              response,
-              suffix,
-              ")"
-            )
-          )
         } else {
           # Component-wise: Estimate independent variance components
           # Note: We now use this even for single structure to match the restored model logic
@@ -2884,7 +2830,7 @@ because_model <- function(
             model_lines <- c(
               model_lines,
               paste0(
-                "  tau_e_",
+                "  tau_res_",
                 response,
                 suffix,
                 " <- ",
@@ -2901,7 +2847,7 @@ because_model <- function(
                 paste0(
                   "  ",
                   get_precision_prior(
-                    paste0("tau_e_", response, suffix),
+                    paste0("tau_res_", response, suffix),
                     response
                   )
                 )
@@ -2915,7 +2861,8 @@ because_model <- function(
               !is_valid_structure_mapping(
                 get_struct_lvl(s_name, hierarchical_info),
                 get_var_level(response, hierarchical_info),
-                hierarchical_info
+                hierarchical_info,
+                allow_identity = TRUE
               )
             ) {
               next
@@ -2929,17 +2876,19 @@ because_model <- function(
 
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
 
-            model_lines <- c(
+            model_lines <- safe_add_lines(
               model_lines,
-              paste0("  ", get_precision_prior(tau_u, response)),
-              paste0(
-                "  sigma_",
-                response,
-                suffix,
-                s_suffix,
-                " <- 1/sqrt(",
-                tau_u,
-                ")"
+              c(
+                paste0("  ", get_precision_prior(tau_u, response)),
+                paste0(
+                  "  sigma_",
+                  response,
+                  suffix,
+                  s_suffix,
+                  " <- 1/sqrt(",
+                  tau_u,
+                  ")"
+                )
               )
             )
           }
@@ -2955,7 +2904,7 @@ because_model <- function(
             s_suffix <- paste0("_", s_name)
 
             tau_u_name <- paste0("tau_u_", response, suffix, s_suffix)
-            model_lines <- c(
+            model_lines <- safe_add_lines(
               model_lines,
               paste0(
                 "  lambda",
@@ -2965,7 +2914,7 @@ because_model <- function(
                 tau_u_name,
                 ") / ((1/",
                 tau_u_name,
-                ") + (1/tau_e_",
+                ") + (1/tau_res_",
                 response,
                 suffix,
                 "))"
@@ -2975,45 +2924,37 @@ because_model <- function(
 
           # Random Effects Priors
           for (r_name in random_structure_names) {
+            # [LINEAGE GUARD] Only generate priors for valid hierarchical branches
+            if (!is_valid_random_level(response, r_name, hierarchical_info)) next
+            
             s_suffix <- paste0("_", r_name)
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
 
-            model_lines <- c(
+            model_lines <- safe_add_lines(
               model_lines,
-              paste0("  ", get_precision_prior(tau_u, response)),
-              paste0(
-                "  sigma_",
-                response,
-                suffix,
-                s_suffix,
-                " <- 1/sqrt(",
-                tau_u,
-                ")"
+              c(
+                paste0("  ", get_precision_prior(tau_u, response)),
+                paste0(
+                  "  sigma_",
+                  response,
+                  suffix,
+                  "_",
+                  r_name,
+                  " <- 1/sqrt(",
+                  tau_u,
+                  ")"
+                )
               )
             )
           }
 
-          # Residual Sigma (only if tau_e exists)
-          if (!dist %in% c("negbinomial", "zinb")) {
-            model_lines <- c(
-              model_lines,
-              paste0(
-                "  sigma_",
-                response,
-                "_res <- 1/sqrt(tau_e_",
-                response,
-                suffix,
-                ")"
-              )
-            )
-          }
         }
       }
     }
   }
 
   # Priors for multinomial parameters (arrays)
-  for (response in names(response_counter)) {
+  for (response in unique(names(response_counter))) {
     dist <- dist_list[[response]] %||% "gaussian"
     if (dist == "multinomial") {
       K_var <- paste0("K_", response)
@@ -3031,14 +2972,14 @@ because_model <- function(
           }
           prec <- 1 / val
           tau_line <- paste0(
-            "    tau_e_",
+            "    tau_res_",
             response,
             "[k] <- ",
             prec,
             " # Fixed"
           )
         } else {
-          tau_line <- paste0("    ", get_precision_prior(paste0("tau_e_", response, "[k]"), response))
+          tau_line <- paste0("    ", get_precision_prior(paste0("tau_res_", response, "[k]"), response))
         }
 
         model_lines <- c(
@@ -3064,14 +3005,14 @@ because_model <- function(
           }
           prec <- 1 / val
           tau_line <- paste0(
-            "    tau_e_",
+            "    tau_res_",
             response,
             "[k] <- ",
             prec,
             " # Fixed"
           )
         } else {
-          tau_line <- paste0("    ", get_precision_prior(paste0("tau_e_", response, "[k]"), response))
+          tau_line <- paste0("    ", get_precision_prior(paste0("tau_res_", response, "[k]"), response))
         }
 
         model_lines <- c(
@@ -3093,7 +3034,8 @@ because_model <- function(
                 !is_valid_structure_mapping(
                   get_struct_lvl(s_name, hierarchical_info),
                   get_var_level(response, hierarchical_info),
-                  hierarchical_info
+                  hierarchical_info,
+                  allow_identity = TRUE
                 )
               ) {
                 next
@@ -3107,11 +3049,7 @@ because_model <- function(
                 paste0("zeros_", s_lvl)
               }
               s_suffix <- paste0("_", s_name)
-              tau_u <- paste0("tau_u_", response, s_suffix) # Suffix handled outside loop
-              # Wait, suffix is from k=1..response_counter. But here we are in k=2..K_var (categories).
-              # The external loop is 'response', but 'response' is unique per equation group.
-              # Multinomial doesn't support repeats in this logic currently (response_counter[[response]] is likely 1).
-              # We use [k] for category index.
+              tau_u <- paste0("tau_u_", response, s_suffix)
 
               prior_lines <- c(
                 prior_lines,
@@ -3168,7 +3106,7 @@ because_model <- function(
               tau_u_name,
               "[k]) / ((1/",
               tau_u_name,
-              "[k]) + (1/tau_e_",
+              "[k]) + (1/tau_res_",
               response,
               "[k]))"
             )
@@ -3208,7 +3146,7 @@ because_model <- function(
   }
 
   # Priors for ordinal parameters (cutpoints + variance components)
-  for (response in names(response_counter)) {
+  for (response in unique(names(response_counter))) {
     dist <- dist_list[[response]] %||% "gaussian"
     if (dist == "ordinal") {
       K_var <- paste0("K_", response)
@@ -3253,7 +3191,7 @@ because_model <- function(
               paste0(
                 "  ",
                 get_precision_prior(
-                  paste0("tau_e_", response, suffix),
+                  paste0("tau_res_", response, suffix),
                   response
                 )
               ),
@@ -3272,7 +3210,7 @@ because_model <- function(
               paste0(
                 "  ",
                 get_precision_prior(
-                  paste0("tau_e_", response, suffix),
+                  paste0("tau_res_", response, suffix),
                   response
                 )
               ),
@@ -3287,7 +3225,7 @@ because_model <- function(
                 ") / ((1/tau_u_",
                 response,
                 suffix,
-                ") + (1/tau_e_",
+                ") + (1/tau_res_",
                 response,
                 suffix,
                 "))"
@@ -3313,7 +3251,7 @@ because_model <- function(
   }
 
   # Priors for Negative Binomial parameters (size only - others handled in main loop)
-  for (response in names(response_counter)) {
+  for (response in unique(names(response_counter))) {
     dist <- dist_list[[response]] %||% "gaussian"
     if (dist == "negbinomial" || dist == "zinb") {
       # Loop over response instances
@@ -3355,7 +3293,7 @@ because_model <- function(
   }
 
   # Priors for Zero-Inflation parameters (psi)
-  for (response in names(response_counter)) {
+  for (response in unique(names(response_counter))) {
     dist <- dist_list[[response]] %||% "gaussian"
     if (dist %in% c("zip", "zinb")) {
       for (k in 1:response_counter[[response]]) {
@@ -3380,7 +3318,7 @@ because_model <- function(
   # (multinomial, ordinal, poisson, negbinomial all define their own betas)
   excluded_betas <- c()
 
-  for (response in names(response_counter)) {
+  for (response in unique(names(response_counter))) {
     dist <- dist_list[[response]] %||% "gaussian"
 
     # Skip likelihood generation for detection probability equations (p_Response)
@@ -3497,7 +3435,7 @@ because_model <- function(
         "  # Community hyperparameter declarations (from extension package)"
       )
       for (line in unlist(community_extras)) {
-        model_lines <- c(model_lines, paste0("  ", line))
+        model_lines <- safe_add_lines(model_lines, paste0("  ", line))
       }
     }
   }
@@ -3605,19 +3543,23 @@ because_model <- function(
 
         err <- paste0("err_", response, suffix)
         mu_err <- paste0("mu_err_", response, suffix)
-        tau_struct <- paste0("tau_", s_name, "_", response, suffix)
+        # UNIFIED Variable_Structure naming: tau_u_Variable_Structure
+        tau_struct <- paste0("tau_u_", response, suffix, "_", s_name)
         tau_res <- paste0("tau_res_", response, suffix)
 
         # Priors
         model_lines <- c(
           model_lines,
-          paste0("  ", get_precision_prior(tau_res, var)),
-          paste0("  ", get_precision_prior(tau_struct, var)),
+          paste0("  ", get_precision_prior(tau_res, response)),
+          # Enforce Regularizing Prior for structural precision in GLMM
+          paste0("  ", tau_struct, " ~ dgamma(10, 10)"),
           # Calculate lambda for reporting
           paste0(
-            "  lambda",
+            "  lambda_",
             response,
             suffix,
+            "_",
+            s_name,
             " <- (1/",
             tau_struct,
             ") / ((1/",
@@ -3633,10 +3575,10 @@ because_model <- function(
             model_lines,
             paste0(
               "  TAU_",
-              s_name,
-              "_",
               response,
               suffix,
+              "_",
+              s_name,
               " <- ",
               tau_struct,
               " * inverse(multiVCV[,,K])"
@@ -3647,10 +3589,10 @@ because_model <- function(
               "[1:loop_bound] ~ dmnorm(",
               mu_err,
               "[], TAU_",
-              s_name,
-              "_",
               response,
               suffix,
+              "_",
+              s_name,
               ")"
             )
           )
@@ -3659,10 +3601,10 @@ because_model <- function(
             model_lines,
             paste0(
               "  TAU_",
-              s_name,
-              "_",
               response,
               suffix,
+              "_",
+              s_name,
               " <- ",
               tau_struct,
               " * inverse(VCV)"
@@ -3673,10 +3615,10 @@ because_model <- function(
               "[1:loop_bound] ~ dmnorm(",
               mu_err,
               "[], TAU_",
-              s_name,
-              "_",
               response,
               suffix,
+              "_",
+              s_name,
               ")"
             )
           )
@@ -3864,10 +3806,10 @@ because_model <- function(
       (length(latent) > 0 ||
         (!is.null(vars_with_na) && length(vars_with_na) > 0))
   ) {
-    model_lines <- c(model_lines, "  # Predictor priors for imputation")
+    model_lines <- safe_add_lines(model_lines, "  # Predictor priors for imputation")
   }
   non_response_vars <- setdiff(all_vars, names(response_counter))
-  for (var in non_response_vars) {
+  for (var in unique(non_response_vars)) {
     # Check if this is a latent variable
     is_latent <- !is.null(latent) && var %in% latent
 
@@ -3877,41 +3819,47 @@ because_model <- function(
       next # Skip this predictor - it's fully observed data
     }
 
-    model_lines <- c(
+    model_lines <- safe_add_lines(
       model_lines,
-      paste0("  for (i in 1:", get_loop_bound(var, hierarchical_info), ") {"),
-      paste0("    mu", var, "[i] <- 0"),
-      paste0("  }")
+      c(
+        paste0("  for (i in 1:", get_loop_bound(var, hierarchical_info), ") {"),
+        paste0("    mu", var, "[i] <- 0"),
+        paste0("  }")
+      )
     )
 
     if (independent) {
       # Independent imputation (i.i.d normal)
       if (is_latent && standardize_latent) {
         # Use N(0,1) prior for standardized latent variable
-        model_lines <- c(
+        model_lines <- safe_add_lines(
           model_lines,
-          paste0(
-            "  for (i in 1:",
-            get_loop_bound(var, hierarchical_info),
-            ") {"
-          ),
-          paste0(
-            "    ",
-            var,
-            "[i] ~ dnorm(mu", var, "[i], 1)  # Standardized latent variable with parents"
-          ),
-          paste0("  }")
+          c(
+            paste0(
+              "  for (i in 1:",
+              get_loop_bound(var, hierarchical_info),
+              ") {"
+            ),
+            paste0(
+              "    ",
+              var,
+              "[i] ~ dnorm(mu", var, "[i], 1)  # Standardized latent variable with parents"
+            ),
+            paste0("  }")
+          )
         )
       } else {
-        model_lines <- c(
+        model_lines <- safe_add_lines(
           model_lines,
-          paste0(
-            "  for (i in 1:",
-            get_loop_bound(var, hierarchical_info),
-            ") {"
-          ),
-          paste0("    ", var, "[i] ~ dnorm(mu", var, "[i], tau_e_", var, ")"),
-          paste0("  }")
+          c(
+            paste0(
+              "  for (i in 1:",
+              get_loop_bound(var, hierarchical_info),
+              ") {"
+            ),
+            paste0("    ", var, "[i] ~ dnorm(mu", var, "[i], tau_res_", var, ")"),
+            paste0("  }")
+          )
         )
       }
     } else {
@@ -3964,7 +3912,7 @@ because_model <- function(
             )
 
             if (!is.null(s_def$model_lines)) {
-              model_lines <- c(model_lines, s_def$model_lines)
+              model_lines <- safe_add_lines(model_lines, s_def$model_lines)
             }
 
             if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
@@ -3973,7 +3921,7 @@ because_model <- function(
           }
         }
 
-        tau_e <- paste0("tau_e_", var)
+        tau_e <- paste0("tau_res_", var)
 
         model_lines <- c(
           model_lines,
@@ -4007,7 +3955,7 @@ because_model <- function(
         paste0("  # Latent variable: standardized (var = 1)"),
         paste0("  lambda", var, " ~ dunif(0, 1)"),
         paste0("  tau_u_", var, " <- 1/lambda", var),
-        paste0("  tau_e_", var, " <- 1/(1-lambda", var, ")"),
+        paste0("  tau_res_", var, " <- 1/(1-lambda", var, ")"),
         paste0("  sigma", var, " <- 1") # Fixed to 1
       )
     } else if (is_latent && standardize_latent) {
@@ -4033,21 +3981,20 @@ because_model <- function(
           }
           prec <- 1 / val # Inverse variance
           tau_line <- paste0(
-            "  tau_e_",
+            "  tau_res_",
             var,
             " <- ",
             prec,
             " # Fixed residual variance"
           )
         } else {
-          tau_line <- paste0("  ", get_precision_prior(paste0("tau_e_", var), var))
+          tau_line <- paste0("  ", get_precision_prior(paste0("tau_res_", var), var))
         }
 
         # Independent Predictor Prior
-        model_lines <- c(
+        model_lines <- safe_add_lines(
           model_lines,
-          tau_line,
-          paste0("  sigma", var, " <- 1/sqrt(tau_e_", var, ")")
+          c(tau_line)
         )
       } else {
         if (TRUE) {
@@ -4064,19 +4011,19 @@ because_model <- function(
             }
             prec <- 1 / val # Inverse variance
             tau_line <- paste0(
-              "  tau_e_",
+              "  tau_res_",
               var,
               " <- ",
               prec,
               " # Fixed residual variance"
             )
           } else {
-            tau_line <- paste0("  ", get_precision_prior(paste0("tau_e_", var), var))
+            tau_line <- paste0("  ", get_precision_prior(paste0("tau_res_", var), var))
           }
 
           # Multiple Structures: Estimate independent variance components
           if (needs_residual_variance) {
-            model_lines <- c(
+            model_lines <- safe_add_lines(
               model_lines,
               tau_line
             )
@@ -4087,7 +4034,8 @@ because_model <- function(
               !is_valid_structure_mapping(
                 get_struct_lvl(s_name, hierarchical_info),
                 get_var_level(response, hierarchical_info),
-                hierarchical_info
+                hierarchical_info,
+                allow_identity = TRUE
               )
             ) {
               next
@@ -4098,27 +4046,30 @@ because_model <- function(
             s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
             s_suffix <- paste0("_", s_name)
             tau_u <- paste0("tau_u_", var, s_suffix)
-            model_lines <- c(
+            model_lines <- safe_add_lines(
               model_lines,
-              paste0("  ", get_precision_prior(tau_u, var)),
-              paste0("  sigma_", var, s_suffix, " <- 1/sqrt(", tau_u, ")")
+              c(
+                paste0("  ", get_precision_prior(tau_u, var)),
+                paste0("  sigma_", var, s_suffix, " <- 1/sqrt(", tau_u, ")")
+              )
             )
           }
 
           if (needs_residual_variance) {
-            model_lines <- c(
+            model_lines <- safe_add_lines(
               model_lines,
-              paste0("  sigma_", var, "_res <- 1/sqrt(tau_e_", var, ")")
+              # Removed redundant sigma derivation (handled by family_definitions.R)
+              character(0)
             )
           }
         } else {
           # Single Structure (Legacy behavior with lambda partitioning)
           if (!needs_residual_variance) {
             # No residual variance (e.g. occupancy), so just estimate tau_u directly
-            model_lines <- c(
+            model_lines <- safe_add_lines(
               model_lines,
-              paste0("  ", get_precision_prior(paste0("tau_u_", var), var)),
-              paste0("  sigma", var, " <- 1/sqrt(tau_u_", var, ")")
+              c(paste0("  ", get_precision_prior(paste0("tau_u_", var), var)))
+              # Removed redundant sigma derivation
             )
           } else {
             # Normal Gaussian case: Partition total variance tau with lambda
@@ -4127,7 +4078,7 @@ because_model <- function(
               paste0("  lambda", var, " ~ dunif(0, 1)"),
               paste0("  ", get_precision_prior(paste0("tau", var), var)),
               paste0("  tau_u_", var, " <- tau", var, "/lambda", var),
-              paste0("  tau_e_", var, " <- tau", var, "/(1-lambda", var, ")"),
+              paste0("  tau_res_", var, " <- tau", var, "/(1-lambda", var, ")"),
             )
           }
         }
@@ -4187,7 +4138,7 @@ because_model <- function(
   # Verify if "ID" is actually used in the model (e.g. for residuals or GLMMs)
   # (Removed dummy usage of ID)
 
-  model_lines <- c(model_lines, "}")
+  model_lines <- safe_add_lines(model_lines, "}")
   model_string <- paste(model_lines, collapse = "\n")
 
   # Convert param_map to data frame robustly

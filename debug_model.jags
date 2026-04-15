@@ -1,87 +1,134 @@
 model {
   # Common structures and priors
-  # Induced Correlations (Latent Variables) - Pair Processing
-  # Correlated residuals between NDVI and Flower_Cover (Wishart Prior)
-  TAU_res_NDVI_Flower_Cover[1:2, 1:2] ~ dwish(ID2[1:2, 1:2], 3)
-  cov_NDVI_Flower_Cover[1:2, 1:2] <- inverse(TAU_res_NDVI_Flower_Cover[1:2, 1:2])
-  sigma_res_NDVI_Flower_Cover <- sqrt(cov_NDVI_Flower_Cover[1, 1])
-  sigma_res_Flower_Cover_NDVI <- sqrt(cov_NDVI_Flower_Cover[2, 2])
-  rho_NDVI_Flower_Cover <- cov_NDVI_Flower_Cover[1, 2] / (sigma_res_NDVI_Flower_Cover * sigma_res_Flower_Cover_NDVI)
-  for (i in 1:N) {
-    err_res_NDVI_Flower_Cover[i, 1:2] ~ dmnorm(zero_vec[1:2], TAU_res_NDVI_Flower_Cover[1:2, 1:2])
-  }
   # Structural equations
+    # Phylogenetic precision matrix (pre-calculated)
     # Deterministic nodes (Interactions / Logic)
-  for (i in 1:N) {
-    Temperature_minus_Thermal_Tol[i] <- Temperature[i] - Thermal_Tol[i]
+  for (i in 1:N_obs) {
+    Temperature_minus_Thermal_Tol[i] <- Temperature[survey_idx_obs[i]] - Thermal_Tol[species_idx_obs[i]]
   }
 
-  for (i in 1:N) {
-    mu_NDVI[i] <- alpha_NDVI
+  for (i in 1:N_site) {
+    mu_NDVI[i] <- alpha_NDVI + beta_NDVI_U_Resource*U_Resource[i]
   }
-  for (i in 1:N) {
-    mu_Flower_Cover[i] <- alpha_Flower_Cover + beta_Flower_Cover_Elevation_s*Elevation_s[i]
+  for (i in 1:N_site) {
+    mu_Flower_Cover[i] <- alpha_Flower_Cover + beta_Flower_Cover_U_Resource*U_Resource[i] + beta_Flower_Cover_Elevation_s*Elevation_s[i]
   }
-  for (i in 1:N) {
+  for (i in 1:N_species) {
     mu_Metabolic_Rate[i] <- alpha_Metabolic_Rate + beta_Metabolic_Rate_Body_Mass_s*Body_Mass_s[i]
   }
-  for (i in 1:N) {
+  for (i in 1:N_species) {
     mu_Thermal_Tol[i] <- alpha_Thermal_Tol + beta_Thermal_Tol_Body_Mass_s*Body_Mass_s[i]
   }
-  for (i in 1:N) {
-    mu_Temperature[i] <- alpha_Temperature + beta_Temperature_Elevation_s*Elevation_s[i]
+  for (i in 1:N_survey) {
+    mu_Temperature[i] <- alpha_Temperature + beta_Temperature_Elevation_s*Elevation_s[site_idx_survey[i]]
   }
-  for (i in 1:N) {
+  for (i in 1:N_obs) {
     # Poisson log link for Abundance
-    mu_Abundance[i] <- exp(max(-20, min(10, alpha_Abundance + beta_Abundance_Flower_Cover*Flower_Cover[i] + beta_Abundance_Wind_Speed*Wind_Speed[i] + beta_Abundance_Temperature_minus_Thermal_Tol*Temperature_minus_Thermal_Tol[i] + err_Abundance[i])))
+    mu_Abundance[i] <- exp(max(-20, min(10, alpha_Abundance + beta_Abundance_Flower_Cover*Flower_Cover[site_idx_obs[i]] + beta_Abundance_Wind_Speed*Wind_Speed[survey_idx_obs[i]] + beta_Abundance_Temperature_minus_Thermal_Tol*Temperature_minus_Thermal_Tol[i] + err_Abundance[i])))
     Abundance[i] ~ dpois(mu_Abundance[i])
     log_lik_Abundance[i] <- logdensity.pois(Abundance[i], mu_Abundance[i])
   }
   # Multivariate normal likelihoods
-  for (i in 1:N) {
-    Metabolic_Rate[i] ~ dnorm(mu_Metabolic_Rate[i], tau_e_Metabolic_Rate)
-    log_lik_Metabolic_Rate[i] <- logdensity.norm(Metabolic_Rate[i], mu_Metabolic_Rate[i], tau_e_Metabolic_Rate)
+  u_std_NDVI_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (g_NDVI_spatial in 1:N_site) {
+    u_NDVI_spatial[g_NDVI_spatial] <- u_std_NDVI_spatial[g_NDVI_spatial] * sigma_NDVI_spatial
   }
-  for (i in 1:N) {
-    Thermal_Tol[i] ~ dnorm(mu_Thermal_Tol[i], tau_e_Thermal_Tol)
-    log_lik_Thermal_Tol[i] <- logdensity.norm(Thermal_Tol[i], mu_Thermal_Tol[i], tau_e_Thermal_Tol)
+  for (i in 1:N_site) {
+    NDVI[i] ~ dnorm(mu_NDVI[i] + u_NDVI_spatial[i], tau_res_NDVI)
+    log_lik_NDVI[i] <- logdensity.norm(NDVI[i], mu_NDVI[i] + u_NDVI_spatial[i], tau_res_NDVI)
   }
-  for (i in 1:N) {
-    Temperature[i] ~ dnorm(mu_Temperature[i], tau_e_Temperature)
-    log_lik_Temperature[i] <- logdensity.norm(Temperature[i], mu_Temperature[i], tau_e_Temperature)
+  u_std_Flower_Cover_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (g_Flower_Cover_spatial in 1:N_site) {
+    u_Flower_Cover_spatial[g_Flower_Cover_spatial] <- u_std_Flower_Cover_spatial[g_Flower_Cover_spatial] * sigma_Flower_Cover_spatial
   }
-  # Independent (Standard GLM) for Poisson: Abundance
-  for (i in 1:N) {
-    err_Abundance[i] <- 0
+  for (i in 1:N_site) {
+    Flower_Cover[i] ~ dnorm(mu_Flower_Cover[i] + u_Flower_Cover_spatial[i], tau_res_Flower_Cover)
+    log_lik_Flower_Cover[i] <- logdensity.norm(Flower_Cover[i], mu_Flower_Cover[i] + u_Flower_Cover_spatial[i], tau_res_Flower_Cover)
   }
-tau_obs_NDVI ~ dgamma(1, 1)
-  sigma_obs_NDVI <- 1/sqrt(tau_obs_NDVI)
-  for (i in 1:N) {
-    NDVI[i] ~ dnorm(mu_NDVI[i] + err_res_NDVI_Flower_Cover[i, 1], tau_obs_NDVI)
-    log_lik_NDVI[i] <- logdensity.norm(NDVI[i], mu_NDVI[i] + err_res_NDVI_Flower_Cover[i, 1], tau_obs_NDVI)
+    err_raw_Metabolic_Rate_phylo[1:N_species] ~ dmnorm(zeros_species[1:N_species], Prec_phylo[1:N_species, 1:N_species])
+    for(j_Metabolic_Rate_phylo in 1:N_species) {
+        err_Metabolic_Rate_phylo[j_Metabolic_Rate_phylo] <- err_raw_Metabolic_Rate_phylo[j_Metabolic_Rate_phylo] * sigma_Metabolic_Rate_phylo
+    }
+  for (i in 1:N_species) {
+    Metabolic_Rate[i] ~ dnorm(mu_Metabolic_Rate[i] + err_Metabolic_Rate_phylo[i], tau_res_Metabolic_Rate)
+    log_lik_Metabolic_Rate[i] <- logdensity.norm(Metabolic_Rate[i], mu_Metabolic_Rate[i] + err_Metabolic_Rate_phylo[i], tau_res_Metabolic_Rate)
   }
-tau_obs_Flower_Cover ~ dgamma(1, 1)
-  sigma_obs_Flower_Cover <- 1/sqrt(tau_obs_Flower_Cover)
-  for (i in 1:N) {
-    Flower_Cover[i] ~ dnorm(mu_Flower_Cover[i] + err_res_NDVI_Flower_Cover[i, 2], tau_obs_Flower_Cover)
-    log_lik_Flower_Cover[i] <- logdensity.norm(Flower_Cover[i], mu_Flower_Cover[i] + err_res_NDVI_Flower_Cover[i, 2], tau_obs_Flower_Cover)
+    err_raw_Thermal_Tol_phylo[1:N_species] ~ dmnorm(zeros_species[1:N_species], Prec_phylo[1:N_species, 1:N_species])
+    for(j_Thermal_Tol_phylo in 1:N_species) {
+        err_Thermal_Tol_phylo[j_Thermal_Tol_phylo] <- err_raw_Thermal_Tol_phylo[j_Thermal_Tol_phylo] * sigma_Thermal_Tol_phylo
+    }
+  for (i in 1:N_species) {
+    Thermal_Tol[i] ~ dnorm(mu_Thermal_Tol[i] + err_Thermal_Tol_phylo[i], tau_res_Thermal_Tol)
+    log_lik_Thermal_Tol[i] <- logdensity.norm(Thermal_Tol[i], mu_Thermal_Tol[i] + err_Thermal_Tol_phylo[i], tau_res_Thermal_Tol)
+  }
+  u_std_Temperature_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (g_Temperature_spatial in 1:N_site) {
+    u_Temperature_spatial[g_Temperature_spatial] <- u_std_Temperature_spatial[g_Temperature_spatial] * sigma_Temperature_spatial
+  }
+  u_std_Temperature_Site[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_Site[1:N_site, 1:N_site])
+  for (g in 1:N_site) { u_Temperature_Site[g] <- u_std_Temperature_Site[g] / sqrt(tau_u_Temperature_Site) }
+  for (i in 1:N_survey) {
+    Temperature[i] ~ dnorm(mu_Temperature[i] + u_Temperature_spatial[site_idx_survey[i]] + u_Temperature_Site[group_Site[site_idx_survey[i]]], tau_res_Temperature)
+    log_lik_Temperature[i] <- logdensity.norm(Temperature[i], mu_Temperature[i] + u_Temperature_spatial[site_idx_survey[i]] + u_Temperature_Site[group_Site[site_idx_survey[i]]], tau_res_Temperature)
+  }
+    # Phylogenetic precision matrix (pre-calculated)
+    err_raw_Abundance_phylo[1:N_species] ~ dmnorm(zeros_species[1:N_species], Prec_phylo[1:N_species, 1:N_species])
+    for(j_Abundance_phylo in 1:N_species) {
+        err_Abundance_phylo[j_Abundance_phylo] <- err_raw_Abundance_phylo[j_Abundance_phylo] * sigma_Abundance_phylo
+    }
+  u_std_Abundance_spatial[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_spatial[1:N_site, 1:N_site])
+  for (g_Abundance_spatial in 1:N_site) {
+    u_Abundance_spatial[g_Abundance_spatial] <- u_std_Abundance_spatial[g_Abundance_spatial] * sigma_Abundance_spatial
+  }
+  u_std_Abundance_Site[1:N_site] ~ dmnorm(zeros_site[1:N_site], Prec_Site[1:N_site, 1:N_site])
+  for (g in 1:N_site) { u_Abundance_Site[g] <- u_std_Abundance_Site[g] / sqrt(tau_u_Abundance_Site) }
+  u_std_Abundance_Survey[1:N_survey] ~ dmnorm(zeros_survey[1:N_survey], Prec_Survey[1:N_survey, 1:N_survey])
+  for (g in 1:N_survey) { u_Abundance_Survey[g] <- u_std_Abundance_Survey[g] / sqrt(tau_u_Abundance_Survey) }
+  # Random effects for Poisson: Abundance
+  for (i in 1:N_obs) {
+    epsilon_Abundance[i] ~ dnorm(0, tau_res_Abundance)
+    err_Abundance[i] <- epsilon_Abundance[i] + err_Abundance_phylo[species_idx_obs[i]] + u_Abundance_spatial[site_idx_obs[i]] + u_Abundance_Site[group_Site[site_idx_obs[i]]] + u_Abundance_Survey[group_Survey[survey_idx_obs[i]]]
   }
   # Priors for structural parameters
-  alpha_Metabolic_Rate ~ dnorm(0, 1.0E-6)
-  sigma_e_Metabolic_Rate ~ dunif(0, 100)
-  tau_e_Metabolic_Rate <- 1 / (sigma_e_Metabolic_Rate * sigma_e_Metabolic_Rate)
-  sigmaMetabolic_Rate <- 1/sqrt(tau_e_Metabolic_Rate)
-  alpha_Thermal_Tol ~ dnorm(0, 1.0E-6)
-  sigma_e_Thermal_Tol ~ dunif(0, 100)
-  tau_e_Thermal_Tol <- 1 / (sigma_e_Thermal_Tol * sigma_e_Thermal_Tol)
-  sigmaThermal_Tol <- 1/sqrt(tau_e_Thermal_Tol)
-  alpha_Temperature ~ dnorm(0, 1.0E-6)
-  sigma_e_Temperature ~ dunif(0, 100)
-  tau_e_Temperature <- 1 / (sigma_e_Temperature * sigma_e_Temperature)
-  sigmaTemperature <- 1/sqrt(tau_e_Temperature)
-  alpha_Abundance ~ dnorm(0, 1.0E-6)
   alpha_NDVI ~ dnorm(0, 1.0E-6)
+  sigma_NDVI_res ~ dunif(0, 100)
+  tau_res_NDVI <- 1 / (sigma_NDVI_res * sigma_NDVI_res)
+  tau_u_NDVI_spatial ~ dgamma(1, 1)
+  sigma_NDVI_spatial <- 1/sqrt(tau_u_NDVI_spatial)
   alpha_Flower_Cover ~ dnorm(0, 1.0E-6)
+  sigma_Flower_Cover_res ~ dunif(0, 100)
+  tau_res_Flower_Cover <- 1 / (sigma_Flower_Cover_res * sigma_Flower_Cover_res)
+  tau_u_Flower_Cover_spatial ~ dgamma(1, 1)
+  sigma_Flower_Cover_spatial <- 1/sqrt(tau_u_Flower_Cover_spatial)
+  alpha_Metabolic_Rate ~ dnorm(0, 1.0E-6)
+  sigma_Metabolic_Rate_res ~ dunif(0, 100)
+  tau_res_Metabolic_Rate <- 1 / (sigma_Metabolic_Rate_res * sigma_Metabolic_Rate_res)
+  tau_u_Metabolic_Rate_phylo ~ dgamma(1, 1)
+  sigma_Metabolic_Rate_phylo <- 1/sqrt(tau_u_Metabolic_Rate_phylo)
+  alpha_Thermal_Tol ~ dnorm(0, 1.0E-6)
+  sigma_Thermal_Tol_res ~ dunif(0, 100)
+  tau_res_Thermal_Tol <- 1 / (sigma_Thermal_Tol_res * sigma_Thermal_Tol_res)
+  tau_u_Thermal_Tol_phylo ~ dgamma(1, 1)
+  sigma_Thermal_Tol_phylo <- 1/sqrt(tau_u_Thermal_Tol_phylo)
+  alpha_Temperature ~ dnorm(0, 1.0E-6)
+  sigma_Temperature_res ~ dunif(0, 100)
+  tau_res_Temperature <- 1 / (sigma_Temperature_res * sigma_Temperature_res)
+  tau_u_Temperature_spatial ~ dgamma(1, 1)
+  sigma_Temperature_spatial <- 1/sqrt(tau_u_Temperature_spatial)
+  tau_u_Temperature_Site ~ dgamma(1, 1)
+  sigma_Temperature_Site <- 1/sqrt(tau_u_Temperature_Site)
+  alpha_Abundance ~ dnorm(0, 1.0E-6)
+  tau_res_Abundance ~ dgamma(10, 10)
+  tau_u_Abundance_phylo ~ dgamma(10, 10)
+  sigma_Abundance_phylo <- 1/sqrt(tau_u_Abundance_phylo)
+  tau_u_Abundance_spatial ~ dgamma(10, 10)
+  sigma_Abundance_spatial <- 1/sqrt(tau_u_Abundance_spatial)
+  tau_u_Abundance_Site ~ dgamma(10, 10)
+  sigma_Abundance_Site <- 1/sqrt(tau_u_Abundance_Site)
+  tau_u_Abundance_Survey ~ dgamma(10, 10)
+  sigma_Abundance_Survey <- 1/sqrt(tau_u_Abundance_Survey)
+  beta_NDVI_U_Resource ~ dnorm(0, 1.0E-6) T(0,)
+  beta_Flower_Cover_U_Resource ~ dnorm(0, 1.0E-6)
   beta_Flower_Cover_Elevation_s ~ dnorm(0, 1.0E-6)
   beta_Metabolic_Rate_Body_Mass_s ~ dnorm(0, 1.0E-6)
   beta_Thermal_Tol_Body_Mass_s ~ dnorm(0, 1.0E-6)
@@ -90,4 +137,11 @@ tau_obs_Flower_Cover ~ dgamma(1, 1)
   beta_Abundance_Wind_Speed ~ dnorm(0, 1.0E-6)
   beta_Abundance_Temperature_minus_Thermal_Tol ~ dnorm(0, 1.0E-6)
   # Predictor priors for imputation
+  for (i in 1:N_site) {
+    muU_Resource[i] <- 0
+  }
+  for (i in 1:N_site) {
+    U_Resource[i] ~ dnorm(muU_Resource[i], 1)  # Standardized latent variable with parents
+  }
+  # Latent variable: fully standardized with N(0,1) prior (no variance parameters)
 }

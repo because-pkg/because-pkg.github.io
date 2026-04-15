@@ -30,16 +30,16 @@ jags_structure_definition.default <- function(
     i_index <- args$i_index %||% "i"
 
     prec_name <- paste0("Prec_", s_name)
-    err_var <- paste0("err_", s_name, "_", variable_name)
-    tau_var <- paste0("tau_", s_name, "_", variable_name)
-    raw_var <- paste0("err_raw_", s_name, "_", variable_name)
-    sig_var <- sub("tau_", "sigma_", tau_var)
+    err_var <- paste0("u_", variable_name, "_", s_name)
+    tau_var <- paste0("tau_u_", variable_name, "_", s_name)
+    raw_var <- paste0("u_std_", variable_name, "_", s_name)
+    sig_var <- paste0("sigma_", variable_name, "_", s_name)
 
     # Category suffix for parameter names if needed
     k_suffix <- if (!is.null(k_idx)) paste0("_", k_idx) else ""
 
     # Unique loop variable for this structure and response
-    j_idx <- paste0("j_", s_name, "_", variable_name)
+    j_idx <- paste0("g_", variable_name, "_", s_name)
 
     # Indexing for the error variable definition
     raw_index <- if (!is.null(k_idx)) {
@@ -66,16 +66,6 @@ jags_structure_definition.default <- function(
 
     # Standard priors & dmnorm definition
     model_lines <- c(
-        paste0("  ", tau_var, k_suffix, " ~ dgamma(0.01, 0.01)"),
-        paste0(
-            "  ",
-            sig_var,
-            k_suffix,
-            " <- 1/sqrt(",
-            tau_var,
-            k_suffix,
-            ")"
-        ),
         paste0(
             "  ",
             # Standardized Multivariate Normal with FIXED precision matrix

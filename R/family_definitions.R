@@ -139,7 +139,7 @@ jags_family_precision_prior.because_family_gaussian <- function(
     param_name,
     ...
 ) {
-    # Half-uniform prior on sigma: ONLY for residual error parameters (tau_e_*).
+    # Half-uniform prior on sigma: ONLY for residual error parameters (tau_res_*).
     # This is scale-invariant and robust to raw or standardised data.
     # Gelman (2006) advises against priors directly on precision for residual variance.
     #
@@ -147,8 +147,9 @@ jags_family_precision_prior.because_family_gaussian <- function(
     # tau_obs_* measurement error, tau_struct_* structural terms, etc.),
     # fall back to dgamma(1, 1) — appropriate weakly-informative regularisation
     # for variance components where the scale is already model-defined.
-    if (grepl("^tau_e_", param_name)) {
-        sigma_name <- sub("^tau_e_", "sigma_e_", param_name)
+    if (grepl("^tau_res_", param_name)) {
+        sigma_name <- sub("^tau_res_", "sigma_", param_name)
+        sigma_name <- paste0(sigma_name, "_res")
         return(c(
             paste0(sigma_name, " ~ dunif(0, 100)"),
             paste0(param_name, " <- 1 / (", sigma_name, " * ", sigma_name, ")")
@@ -250,7 +251,7 @@ jags_family_likelihood.because_family_gaussian <- function(
 ) {
     # Standard normal likelihood
     mu_var <- paste0("mu_", response, suffix)
-    tau_var <- paste0("tau_e_", response, suffix)
+    tau_var <- paste0("tau_res_", response, suffix)
 
     likelihood_code <- paste0(
         "    ",

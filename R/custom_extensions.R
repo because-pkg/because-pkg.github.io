@@ -301,7 +301,7 @@ because_family <- function(
         # Process likelihood template
         likelihood <- jags_likelihood
         mu_var <- paste0("mu_", response, suffix)
-        tau_var <- paste0("tau_e_", response, suffix)
+        tau_var <- paste0("tau_res_", response, suffix)
 
         likelihood <- gsub("\\{response\\}", response, likelihood)
         likelihood <- gsub("\\{mu\\}", mu_var, likelihood)

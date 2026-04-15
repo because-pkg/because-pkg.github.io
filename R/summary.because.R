@@ -407,8 +407,15 @@ print.summary.because <- function(x, ...) {
         cat("d-separation Tests\n")
         cat("==================\n\n")
         
-        # [FIX] Graceful handling of empty/NULL results
-        if (is.null(results) || nrow(results) == 0) {
+        # [FIX] Robust guard for empty/NULL/invalid results
+        has_results <- FALSE
+        if (!is.null(results) && is.data.frame(results)) {
+            if (nrow(results) > 0) {
+                has_results <- TRUE
+            }
+        }
+
+        if (!has_results) {
             cat("No test results found. Check if tests were skipped or all d-sep sub-models failed.\n\n")
             return(invisible(x))
         }

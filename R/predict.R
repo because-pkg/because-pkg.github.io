@@ -172,18 +172,21 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, ...) {
   
   # Identify dispersion/variance parameter
   sigma_val <- rep(1, n_s)
-  sigma_name <- paste0("sigma_e_", resp)
-  tau_name <- paste0("tau_e_", resp)
+  sigma_name <- paste0("sigma_", resp, "_res")
+  tau_name <- paste0("tau_res_", resp)
   
   if (sigma_name %in% colnames(samples_mat)) {
       sigma_val <- samples_mat[, sigma_name]
   } else if (tau_name %in% colnames(samples_mat)) {
       sigma_val <- 1/sqrt(samples_mat[, tau_name])
-  } else if (fam == "gaussian") {
-      # Look for sigma_resp_res (hierarchical)
-      res_name <- paste0("sigma_", resp, "_res")
-      if (res_name %in% colnames(samples_mat)) {
-          sigma_val <- samples_mat[, res_name]
+  } else {
+      # Fallback to legacy naming for backward compatibility
+      sigma_legacy <- paste0("sigma_e_", resp)
+      tau_legacy <- paste0("tau_e_", resp)
+      if (sigma_legacy %in% colnames(samples_mat)) {
+          sigma_val <- samples_mat[, sigma_legacy]
+      } else if (tau_legacy %in% colnames(samples_mat)) {
+          sigma_val <- 1/sqrt(samples_mat[, tau_legacy])
       }
   }
   

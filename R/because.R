@@ -140,7 +140,7 @@
 #'           with exponential or logit link functions by constraining the sampler away from astronomically
 #'           large variances during adaptation.
 #'   }
-#'   Example: \code{list(alpha_Response = "dnorm(0, 0.001)", sigma_e_Response = "dunif(0, 50)")}.
+#'   Example: \code{list(alpha_Response = "dnorm(0, 0.001)", sigma_Response_res = "dunif(0, 50)")}.
 
 #' @param reuse_models List of previously fitted 'because' models to scan for reusable d-separation test results.
 #'   If a test in the current run matches a test in a reused model (same formula), the result is copied
@@ -2802,6 +2802,16 @@ because <- function(
     }
   }
 
+  # Deduplicate random structures: prevent names in 'structure' from being 
+  # treated as generic random intercepts by 'because_model'
+  r_names <- names(random_structures)
+  if (!is.null(structures)) {
+    # Case-insensitive setdiff
+    struct_names_lower <- tolower(names(structures))
+    keep_idx <- !tolower(r_names) %in% struct_names_lower
+    r_names <- r_names[keep_idx]
+  }
+
   # JAGS model code
   model_output <- because_model(
     equations = equations,
@@ -2813,7 +2823,7 @@ because <- function(
     latent = latent,
     standardize_latent = standardize_latent,
     structures = structures,
-    random_structure_names = names(random_structures),
+    random_structure_names = r_names,
     random_terms = random_terms,
     poly_terms = all_poly_terms,
     categorical_vars = if (!is.null(attr(data, "categorical_vars"))) {
@@ -3714,6 +3724,9 @@ because <- function(
           )
         )
       })
+
+      # DIAGNOSTIC DUMP: Copy the model file to a known location for debugging
+      file.copy(model_file, "debug_model.jags", overwrite = TRUE)
 
       model <- tryCatch(
         {
