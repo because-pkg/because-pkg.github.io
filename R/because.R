@@ -3742,8 +3742,7 @@ because <- function(
         )
       })
 
-      # DIAGNOSTIC DUMP: Copy the model file to a known location for debugging
-      file.copy(model_file, "debug_model.jags", overwrite = TRUE)
+      # Model file is managed by tryCatch below (diagostic dump on failure)
 
       model <- tryCatch(
         {
@@ -3756,11 +3755,14 @@ because <- function(
             quiet = quiet
           )
         },
-        error = function(e) {
           if (!quiet) {
             message("\nCRITICAL JAGS ERROR during compilation:")
             message(e$message)
             message("Check your model code syntax or data dimensions.\n")
+            
+            # DIAGNOSTIC DUMP: Copy the failing model to a known location for analysis
+            file.copy(model_file, "debug_model.jags", overwrite = TRUE)
+            message("Failing model dumped to: debug_model.jags")
           }
           stop(e)
         }
