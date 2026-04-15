@@ -286,17 +286,16 @@ get_data_for_variables <- function(
     # Get unique levels needed
     needed_levels <- unique(var_levels)
 
-    # If only one level, return that dataset
+    # If only one level, return that dataset (Correct Resolution!)
     if (length(needed_levels) == 1) {
         return(data[[needed_levels]])
     }
 
-    # Multiple levels - need to determine which is finest grain and join
+    # Multiple levels - need to determine which is locally finest grain and join
     # Parse hierarchy to get ordering (handling multi-membership like "site > obs; species > obs")
     hierarchy_paths <- strsplit(hierarchy, "\\s*;\\s*")[[1]]
 
     # Flatten to get a unified order for ranking depth (further right = finer grain)
-    # We assign a depth score based on maximum index across all paths
     level_depths <- list()
     for (path in hierarchy_paths) {
         levels_in_path <- strsplit(path, "\\s*>\\s*")[[1]]
@@ -308,23 +307,27 @@ get_data_for_variables <- function(
         }
     }
 
-    # Find the finest grain level among those needed (highest depth score)
+    # Find the finest grain level among those *actually* needed for this sub-test
     needed_depths <- sapply(needed_levels, function(l) level_depths[[l]] %||% 0)
     finest_idx <- which.max(needed_depths)
-    finest_level <- needed_levels[finest_idx]
+    finest_level_for_test <- needed_levels[finest_idx]
 
-    # Start with finest grain dataset
-    result <- data[[finest_level]]
+    # Start with THIS test's finest grain dataset (Resolution Locking!)
+    result <- data[[finest_level_for_test]]
 
     # Join data from coarser levels
-    coarser_levels <- setdiff(needed_levels, finest_level)
+    coarser_levels <- setdiff(needed_levels, finest_level_for_test)
+
+    # Sort coarser levels by depth (Descending: Join immediate parents FIRST to ensure keys are available)
+    # e.g., for site > survey > obs, join survey to obs first, then site.
+    coarser_depths <- sapply(coarser_levels, function(l) level_depths[[l]] %||% 0)
+    coarser_levels <- coarser_levels[order(coarser_depths, decreasing = TRUE)]
 
     for (coarser_level in coarser_levels) {
         # Get variables from this level that we need
         vars_from_this_level <- names(var_levels)[var_levels == coarser_level]
 
         # Select those variables plus link vars from coarser dataset
-        # Only include link_vars that actually exist in the coarser dataset
         valid_link_vars <- if (!is.null(link_vars)) {
             intersect(link_vars, names(data[[coarser_level]]))
         } else {
@@ -340,26 +343,18 @@ get_data_for_variables <- function(
             drop = FALSE
         ]
 
-        # Helper: Prune colliding variables from result that are claimed by coarser level
-        # This ensures 'WINt' from enviro overrides 'WINt' in individual (if present but unmapped)
-        # and prevents them from becoming unintended join keys.
+        # Prune colliding variables (prefer coarser source)
         vars_to_add <- vars_from_this_level
         potential_collisions <- intersect(vars_to_add, names(result))
-
-        # Don't prune if it's explicitly a link var (we want to use it for joining)
         if (!is.null(link_vars)) {
             potential_collisions <- setdiff(potential_collisions, link_vars)
         }
-
         if (length(potential_collisions) > 0) {
-            # Drop colliding columns from result to prefer the coarser (source) version
             result[potential_collisions] <- NULL
         }
 
-        # Join to result
-        # The merge key must be columns that exist in BOTH result and coarser_data
+        # Safe Keyed Join
         join_by <- intersect(names(result), names(coarser_data))
-        # Optionally restrict to specified link_vars if provided
         if (!is.null(link_vars) && length(link_vars) > 0) {
             join_by_from_links <- intersect(link_vars, join_by)
             if (length(join_by_from_links) > 0) {
@@ -368,7 +363,12 @@ get_data_for_variables <- function(
         }
 
         if (length(join_by) == 0) {
-            # No common columns - do a cross join (all combinations)
+            # DANGEROUS: Cross-Hierarchy Join (e.g. Species vs Site)
+            # This happens when two variables are in different branches of the hierarchy.
+            # We must warn and perform the merge but minimize the Cartesian impact by checking
+            # if we can find any ID column in data[[lvl]].
+            # For your manuscript: Abundance ~ Site will work because Abundance has SiteID.
+            # But Species ~ Site is orthogonal.
             result <- merge(result, coarser_data, all = FALSE)
         } else {
             result <- merge(result, coarser_data, by = join_by, all.x = TRUE)

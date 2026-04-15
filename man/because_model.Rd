@@ -23,7 +23,8 @@ because_model(
   fix_residual_variance = NULL,
   priors = NULL,
   hierarchical_info = NULL,
-  engine = "jags"
+  engine = "jags",
+  quiet = FALSE
 )
 }
 \arguments{

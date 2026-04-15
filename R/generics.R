@@ -269,7 +269,14 @@ dsep_tree_hook.default <- function(
     levels,
     ...
 ) {
-    return(NULL)
+    # If no hierarchical info, we return NULL for safety (standard models)
+    if (is.null(hierarchical_info)) return(NULL)
+    
+    # In hierarchical models, we MUST return the full structure list/object
+    # so that the sub-model can correctly attach structured covariance 
+    # (like phylogeny) to ALL relevant levels (Response or Random Groups).
+    # e.g., Metabolic_Rate (Species response) AND Abundance (via Species random effect).
+    return(tree)
 }
 
 #' D-Sep Potential Latent Hook

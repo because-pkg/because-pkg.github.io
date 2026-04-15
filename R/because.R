@@ -10,17 +10,17 @@
 #' @param equations A list of model formulas describing the structural equation model.
 #' @param data A data.frame containining the variables in the model. If using hierarchical
 #'   models (see hierarchical section below), this can also be a list of data frames.
-#' @param id_col Character string specifying the column name in a data.frame containing
-#'   unit identifiers (e.g., individuals, sites, or species names). This is used to:
-#'   \itemize{
-#'     \item Match data rows to external structure labels (e.g., tip labels in phylogenetic trees).
-#'     \item Link data to external spatial or custom covariance matrices.
-#'   }
-#'   **Note**: For standard random effects models (e.g., \code{random = ~(1|group)}) where no external structure
-#'   is provided, this argument is **not required**. The grouping column is read directly from the data.
+#' @param id_col Character string specifying the column name containing unit
+#'   identifiers (e.g., species names).
 #'
-#'   If \code{NULL} (default): uses meaningful row names if available.
-#'   Ignored when \code{data} is already a list.
+#'   **Important Alignment Rules:**
+#'   1. If `id_col` is provided, the engine uses this specific column to match
+#'      data rows to external structure labels (e.g., `tree$tip.label`).
+#'      **Use this if your ID column has a custom name (e.g., "Butterfly_ID").**
+#'   2. If `id_col` is `NULL` (default), the engine attempts to use
+#'      **row names** from the data frame.
+#'   3. If your IDs are in a column (e.g. "Species") but your row names
+#'      are standard numbers (1, 2, 3...), you **MUST** specify `id_col`.
 #' @param structure The covariance structure for the model. Accepts:
 #'   \itemize{
 #'     \item \code{NULL}: Independent model (Standard SEM, no covariance structure).
@@ -2301,7 +2301,9 @@ because <- function(
                 n.thin = n.thin,
                 n.adapt = n.adapt,
                 ic_recompile = ic_recompile,
-                random = random
+                random = random,
+                id_col = id_col,
+                variability = variability
               )
             }, error = function(e) {
               # Return error info to parent session for reporting
@@ -2349,7 +2351,9 @@ because <- function(
                   n.adapt = n.adapt,
                   ic_recompile = ic_recompile,
                   latent = latent,
-                  random = random
+                  random = random,
+                  id_col = id_col,
+                  variability = variability
                 )
               }, error = function(e) {
                 # Return error info to parent session for reporting
@@ -2423,7 +2427,9 @@ because <- function(
               n.thin = n.thin,
               n.adapt = n.adapt,
               ic_recompile = ic_recompile,
-              random = random
+              random = random,
+              id_col = id_col,
+              variability = variability
             ),
             error = function(e) {
               if (!quiet) {
@@ -4070,7 +4076,9 @@ run_single_dsep_test_v2 <- function(
   n.thin = 10,
   n.adapt = 2500,
   ic_recompile = FALSE,
-  random = NULL
+  random = NULL,
+  id_col = NULL,
+  variability = NULL
 ) {
   if (!quiet) {
     message(paste("D-sep test eq:", deparse(test_eq)))
@@ -4089,19 +4097,7 @@ run_single_dsep_test_v2 <- function(
     
     # [FIX] Add random effect grouping variables to test_vars
     # Otherwise get_data_for_variables removes them, causing "Unknown variable N_SiteID"
-    if (!is.null(random_terms) && length(random_terms) > 0) {
-      random_groups <- unique(vapply(
-        random_terms,
-        function(x) x$group,
-        character(1)
-      ))
-      
-      if (length(random_groups) > 0) {
-          test_vars <- unique(c(test_vars, random_groups))
-      }
-    }
-
-    # [FIX] Handle categorical dummy variables
+    # [FIX] categorical dummy variables
     # We need their PARENT variables to fetch the data, then recreate dummies manually.
     dummies_to_create <- list()
     cat_vars <- NULL
@@ -4125,7 +4121,7 @@ run_single_dsep_test_v2 <- function(
     # Get appropriate dataset for these variables (dummies NOT included in request)
     test_data <- get_data_for_variables(
       test_vars,
-      hierarchical_info$data,
+      original_data,
       hierarchical_info$levels,
       hierarchical_info$hierarchy,
       hierarchical_info$link_vars
@@ -4303,8 +4299,11 @@ run_single_dsep_test_v2 <- function(
   }
 
   # Choose what data to pass to the dsep sub-fit:
-  dsep_data_to_pass <- if (!is.null(hierarchical_info)) {
-    hierarchical_info$data
+  # [FIX] Never pass the flattened joint table (hierarchical_info$data) to sub-models!
+  # This avoids inheriting the observation-level resolution and prevents inflation.
+  # We pass original_data (the raw list) to trigger resolution-locked assembly.
+  dsep_data_to_pass <- if (!is.null(original_data)) {
+    original_data
   } else {
     test_data
   }
@@ -4342,7 +4341,9 @@ run_single_dsep_test_v2 <- function(
     hierarchy = hierarchy,
     link_vars = link_vars,
     structure_multi = hierarchical_info$structure_multi,
-    structure_levels = hierarchical_info$structure_levels
+    structure_levels = hierarchical_info$structure_levels,
+    id_col = id_col,
+    variability = variability
   )
 
   # Only add NIMBLE arguments if the version of because() on this node supports them

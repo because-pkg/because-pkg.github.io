@@ -51,17 +51,21 @@ because(
 \item{data}{A data.frame containining the variables in the model. If using hierarchical
 models (see hierarchical section below), this can also be a list of data frames.}
 
-\item{id_col}{Character string specifying the column name in a data.frame containing
-unit identifiers (e.g., individuals, sites, or species names). This is used to:
-\itemize{
-\item Match data rows to external structure labels (e.g., tip labels in phylogenetic trees).
-\item Link data to external spatial or custom covariance matrices.
-}
-\strong{Note}: For standard random effects models (e.g., \code{random = ~(1|group)}) where no external structure
-is provided, this argument is \strong{not required}. The grouping column is read directly from the data.
+\item{id_col}{Character string specifying the column name containing unit
+identifiers (e.g., species names).
 
-If \code{NULL} (default): uses meaningful row names if available.
-Ignored when \code{data} is already a list.}
+\strong{Important Alignment Rules:}
+\enumerate{
+\item If \code{id_col} is provided, the engine uses this column to match data
+rows to external structure labels (e.g., \code{tree$tip.label}).
+\item If \code{id_col} is \code{NULL} (default), the engine attempts to use
+\strong{row names} from the data frame.
+\item If your IDs are in a column (e.g. "Species") but your row names
+are standard numbers (1, 2, 3...), you \strong{MUST} specify \code{id_col}.
+}
+
+\emph{Note: In future releases, this argument may be deprecated in favor of
+autonomous ID discovery.}}
 
 \item{structure}{The covariance structure for the model. Accepts:
 \itemize{
@@ -212,7 +216,7 @@ This regularizing prior (Gelman 2006, McElreath 2020) prevents numerical overflo
 with exponential or logit link functions by constraining the sampler away from astronomically
 large variances during adaptation.
 }
-Example: \code{list(alpha_Response = "dnorm(0, 0.001)", sigma_e_Response = "dunif(0, 50)")}.}
+Example: \code{list(alpha_Response = "dnorm(0, 0.001)", sigma_Response_res = "dunif(0, 50)")}.}
 
 \item{reuse_models}{List of previously fitted 'because' models to scan for reusable d-separation test results.
 If a test in the current run matches a test in a reused model (same formula), the result is copied
