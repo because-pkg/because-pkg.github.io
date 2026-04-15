@@ -1268,7 +1268,11 @@ because <- function(
       }
     }
   }
-  data$N <- N
+  # [CLEANUP] Only include N if we are not in a complex hierarchical context where level-specific Ns take priority.
+  # This silences the "Unused variable 'N' in data" warning in JAGS.
+  if (is.null(hierarchical_info) && !"N" %in% names(data)) {
+    data$N <- N
+  }
 
   # [URGENT FIX] Pre-calculate level-specific counts so structure auto-detection works!
   # If we don't do this here, we can't match e.g. a 50x50 matrix to the 50-species level.
