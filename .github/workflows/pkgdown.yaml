@@ -28,9 +28,9 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y jags pkg-config libnlopt-dev libglpk-dev libxml2-dev \
+          sudo apt-get install -y jags libjags-dev pkg-config libnlopt-dev libglpk-dev libxml2-dev \
           libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev libfontconfig1-dev \
-          libarchive-dev
+          libarchive-dev libgit2-dev libssh2-1-dev
 
       - uses: r-lib/actions/setup-r@v2
         with:
@@ -41,8 +41,9 @@ jobs:
           extra-packages: any::pkgdown, any::ggm, any::remotes, any::nimble, any::ape, any::MASS, local::.
           needs: website
 
+# Build site
       - name: Build site
-        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        run: pkgdown::build_site(install = TRUE, new_process = TRUE)
         shell: Rscript {0}
 
       - name: Deploy to GitHub pages 🚀

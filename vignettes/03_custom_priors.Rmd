@@ -10,7 +10,8 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
     collapse = TRUE,
-    comment = "#>"
+    comment = "#>",
+    eval = TRUE
 )
 ```
 
@@ -82,7 +83,7 @@ The parameter names usually follow this convention:
 # Define our custom priors
 my_priors <- list(
     # Strong prior on intercept: Mean 10, Precision 100 (SD = 0.1)
-    alphaGrowth_g_day = "dnorm(10, 100)",
+    alpha_Growth_g_day = "dnorm(10, 100)",
 
     # Informative prior on slope: Mean 0.5, Precision 400 (SD = 0.05)
     beta_Growth_g_day_Temp_Centered = "dnorm(0.5, 400)"

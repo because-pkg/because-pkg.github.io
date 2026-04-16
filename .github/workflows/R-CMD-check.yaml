@@ -37,7 +37,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y jags pkg-config
+          sudo apt-get install -y jags libjags-dev pkg-config libnlopt-dev libglpk-dev libxml2-dev
 
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
