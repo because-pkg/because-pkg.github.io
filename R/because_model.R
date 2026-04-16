@@ -1779,6 +1779,22 @@ because_model <- function(
               # Hierarchical bridge index (e.g. site_idx_obs[i])
               s_idx_var <- get_struct_index(s_name, response, hierarchical_info)
 
+              # Determine if we should use partitioning (Lambda logic)
+              # Condition: Gaussian variable + exactly one structure mapping to its level
+              r_lvl <- get_var_level(response, hierarchical_info)
+              
+              # Count how many structures are valid for this specific response level
+              local_struct_count <- 0
+              for (sn in structure_names) {
+                if (is_valid_structure_mapping(get_struct_lvl(sn, hierarchical_info), r_lvl, hierarchical_info, allow_identity = TRUE)) {
+                  local_struct_count <- local_struct_count + 1
+                }
+              }
+              
+              use_partitioning <- (local_struct_count == 1) && 
+                                 (get_family_object(dist_list[[response]] %||% "gaussian")$family == "gaussian") &&
+                                 (s_lvl == r_lvl)
+
               # Call Generic to define the error vector u ~ dmnorm(...)
               s_def <- jags_structure_definition(
                 structures[[s_name]],
@@ -1787,7 +1803,8 @@ because_model <- function(
                 loop_bound = s_bound,
                 zeros_name = s_zeros,
                 is_multi = is_struct_multi(s_name),
-                i_index = s_idx_var
+                i_index = s_idx_var,
+                use_partitioning = use_partitioning
               )
 
               model_lines <- safe_add_lines(model_lines, s_def$model_lines)
@@ -1818,6 +1835,16 @@ because_model <- function(
                 unified_sigma <- paste0("sigma_", s_name, "_", response)
                 param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
                 param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
+                
+                # If partitioning was used, register lambda too
+                if (isTRUE(s_def$partition_handled)) {
+                    param_map[[length(param_map) + 1]] <- list(
+                        response = response, 
+                        predictor = s_name, 
+                        parameter = paste0("lambda_", response), 
+                        type = "structure"
+                    )
+                }
             } else {
               if (length(existing_idx) > 0) {
                 # [PRIORITY FIX] If existing is legacy and current is hierarchical, overwrite
@@ -1870,6 +1897,22 @@ because_model <- function(
 
             # 3. Unified Observation Loop
             tau_res <- paste0("tau_res_", response, suffix)
+            
+            # [PARTITIONING GUARD] If the variance was already partitioned, 
+            # the extension has already generated the tau_res prior.
+            partition_already_handled <- FALSE
+            if (!is.null(structures)) {
+                if (exists("s_def") && isTRUE(s_def$partition_handled) && s_def$variable_name == response) {
+                    partition_already_handled <- TRUE
+                }
+            }
+            
+            if (!partition_already_handled) {
+                # [CORE FIX] Generate prior here if not handled by extension
+                p_obj <- get_family_object(dist_list[[response]] %||% "gaussian")
+                model_lines <- safe_add_lines(model_lines, jags_family_precision_prior(p_obj, tau_res))
+            }
+
             model_lines <- c(
               model_lines,
               paste0("  for (i in 1:", loop_bound, ") {"),
@@ -1885,6 +1928,7 @@ because_model <- function(
                 ")"
               )
             )
+
             if (engine == "jags") {
               model_lines <- c(
                 model_lines,
@@ -4114,6 +4158,18 @@ because_model <- function(
             # Hierarchical bridge index (e.g. site_idx_obs[i])
             s_idx_var <- get_struct_index(s_name, var, hierarchical_info)
 
+            # Determine if we should use partitioning (Lambda logic)
+            r_lvl <- get_var_level(var, hierarchical_info)
+            local_struct_count <- 0
+            for (sn in names(structures)) {
+              if (is_valid_structure_mapping(get_struct_lvl(sn, hierarchical_info), r_lvl, hierarchical_info, allow_identity = TRUE)) {
+                local_struct_count <- local_struct_count + 1
+              }
+            }
+            use_partitioning <- (local_struct_count == 1) && 
+                               (get_family_object(dist_list[[var]] %||% "gaussian")$family == "gaussian") &&
+                               (s_lvl == r_lvl)
+
             # Call Generic to define the error vector u ~ dmnorm(...)
             s_def <- jags_structure_definition(
               structures[[s_name]],
@@ -4122,7 +4178,8 @@ because_model <- function(
               loop_bound = s_bound,
               zeros_name = s_zeros,
               is_multi = is_struct_multi(s_name),
-              i_index = s_idx_var
+              i_index = s_idx_var,
+              use_partitioning = use_partitioning
             )
 
             if (!is.null(s_def$model_lines)) {
@@ -4211,7 +4268,37 @@ because_model <- function(
           c(tau_line)
         )
       } else {
-        if (TRUE) {
+        # [MODULAR PARTITIONING]
+        # Check if partitioning was handled by a structure extension
+        partition_already_handled <- FALSE
+        s_name_handled <- NULL
+        if (!is.null(structures)) {
+          # The s_def in context is the last one from the loop (which would be the ONLY one if partitioning was used)
+          if (exists("s_def") && isTRUE(s_def$partition_handled) && s_def$variable_name == var) {
+            partition_already_handled <- TRUE
+            # Heuristic: find which structure name was being used. 
+            # Since partitioning only triggers if local_struct_count == 1, 
+            # any structure sn that satisfies the mapping is the one.
+            for (sn in names(structures)) {
+                if (is_valid_structure_mapping(get_struct_lvl(sn, hierarchical_info), get_var_level(var, hierarchical_info), hierarchical_info, allow_identity = TRUE)) {
+                    s_name_handled <- sn
+                    break
+                }
+            }
+          }
+        }
+        
+        if (partition_already_handled) {
+          # Register lambda in param_map
+          param_map[[length(param_map) + 1]] <- list(
+            response = var, 
+            predictor = s_name_handled %||% "structure", 
+            parameter = paste0("lambda_", var), 
+            type = "structure"
+          )
+        } else {
+
+          # FALLBACK: Multiple Structures or No Structure (Additive)
           if (
             !is.null(fix_residual_variance) &&
               (var %in%
@@ -4235,73 +4322,14 @@ because_model <- function(
             tau_line <- paste0("  ", get_precision_prior(paste0("tau_res_", var), var))
           }
 
-          # Multiple Structures: Estimate independent variance components
-          if (needs_residual_variance) {
-            model_lines <- safe_add_lines(
-              model_lines,
-              tau_line
-            )
-          }
+          # Add residual variance if needed
+          model_lines <- safe_add_lines(model_lines, tau_line)
 
           processed_ex_signals <- character(0)
-          for (s_name in structure_names) {
-            # [SINGULARITY GUARD]
-            if (s_name %in% processed_ex_signals) next
-            processed_ex_signals <- c(processed_ex_signals, s_name)
-            
-            if (
-              !is_valid_structure_mapping(
-                get_struct_lvl(s_name, hierarchical_info),
-                get_var_level(var, hierarchical_info),
-                hierarchical_info,
-                allow_identity = TRUE
-              )
-            ) {
-              next
-            }
-            # Structure properties
-            s_lvl <- get_struct_lvl(s_name, hierarchical_info)
-            s_bound <- if (is.null(s_lvl)) "N" else paste0("N_", s_lvl)
-            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
-            s_suffix <- paste0("_", s_name)
-            tau_u <- paste0("tau_u_", var, s_suffix)
-            model_lines <- safe_add_lines(
-              model_lines,
-              c(
-                paste0("  ", get_precision_prior(tau_u, var)),
-                paste0("  sigma_", var, s_suffix, " <- 1/sqrt(", tau_u, ")")
-              )
-            )
-          }
-
-          if (needs_residual_variance) {
-            model_lines <- safe_add_lines(
-              model_lines,
-              # Removed redundant sigma derivation (handled by family_definitions.R)
-              character(0)
-            )
-          }
-        } else {
-          # Single Structure (Legacy behavior with lambda partitioning)
-          if (!needs_residual_variance) {
-            # No residual variance (e.g. occupancy), so just estimate tau_u directly
-            model_lines <- safe_add_lines(
-              model_lines,
-              c(paste0("  ", get_precision_prior(paste0("tau_u_", var), var)))
-              # Removed redundant sigma derivation
-            )
-          } else {
-            # Normal Gaussian case: Partition total variance tau with lambda
-            model_lines <- c(
-              model_lines,
-              paste0("  lambda", var, " ~ dunif(0, 1)"),
-              paste0("  ", get_precision_prior(paste0("tau", var), var)),
-              paste0("  tau_u_", var, " <- tau", var, "/lambda", var),
-              paste0("  tau_res_", var, " <- tau", var, "/(1-lambda", var, ")")
-            )
-          }
+          # [NOTE] Individual structures were already processed above in the loop (4148)
         }
       }
+
     }
 
     # Only generate TAU matrix with VCV when there is a structure defined
