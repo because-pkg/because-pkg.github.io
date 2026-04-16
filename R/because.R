@@ -528,46 +528,47 @@ because <- function(
           )
         }
       }
-    # Store hierarchical info for later use
-    hierarchical_info <- list(
-      data = data,
-      levels = levels,
-      hierarchy = hierarchy,
-      link_vars = link_vars
-    )
 
-    # Internal: Inject structural metadata if provided in sub-calls (e.g. from d-sep tests)
-    if (!is.null(structure_multi)) {
-      hierarchical_info$structure_multi <- structure_multi
-    }
-    if (!is.null(structure_levels)) {
-      hierarchical_info$structure_levels <- structure_levels
-    }
+      # Store hierarchical info for later use
+      hierarchical_info <- list(
+        data = data,
+        levels = levels,
+        hierarchy = hierarchy,
+        link_vars = link_vars
+      )
 
-    if (!quiet) {
-      message("Hierarchical data structure detected: ", hierarchy)
+      # Internal: Inject structural metadata if provided in sub-calls (e.g. from d-sep tests)
+      if (!is.null(structure_multi)) {
+        hierarchical_info$structure_multi <- structure_multi
+      }
+      if (!is.null(structure_levels)) {
+        hierarchical_info$structure_levels <- structure_levels
+      }
+
+      if (!quiet) {
+        message("Hierarchical data structure detected: ", hierarchy)
+      }
+    }
+  } else {
+    # Single-level data - check if hierarchical metadata was provided anyway (e.g. for d-sep tests)
+    if (!is.null(levels) && !is.null(hierarchy)) {
+      is_hierarchical <- FALSE # Data is flat, so NOT hierarchical for prep purposes
+      hierarchical_info <- list(
+        data = data,
+        levels = levels,
+        hierarchy = hierarchy,
+        link_vars = link_vars
+      )
+      
+      # Internal: Inject structural metadata if provided in sub-calls
+      if (!is.null(structure_multi)) {
+        hierarchical_info$structure_multi <- structure_multi
+      }
+      if (!is.null(structure_levels)) {
+        hierarchical_info$structure_levels <- structure_levels
+      }
     }
   }
-} else {
-  # Single-level data - check if hierarchical metadata was provided anyway (e.g. for d-sep tests)
-  if (!is.null(levels) && !is.null(hierarchy)) {
-    is_hierarchical <- FALSE # Data is flat, so NOT hierarchical for prep purposes
-    hierarchical_info <- list(
-      data = data,
-      levels = levels,
-      hierarchy = hierarchy,
-      link_vars = link_vars
-    )
-    
-    # Internal: Inject structural metadata if provided in sub-calls
-    if (!is.null(structure_multi)) {
-      hierarchical_info$structure_multi <- structure_multi
-    }
-    if (!is.null(structure_levels)) {
-      hierarchical_info$structure_levels <- structure_levels
-    }
-  }
-}
 
   # --- Random Effects Parsing ---
   # Extract (1|Group) and update equations to be fixed-effects only
@@ -908,9 +909,9 @@ because <- function(
           "Variability 'reps' specified but no structure provided. Automatic formatting requires a structure to order species rows. Assuming data is already aggregated or user handles index mapping."
         )
         return(data)
-      }
-      # Extension Hook: Extract appropriate tree from structure object
-      use_tree <- get_tree_hook(structure)
+      } else if (!is.null(id_col) && id_col %in% names(data)) {
+        # Extension Hook: Extract appropriate tree from structure object
+        use_tree <- get_tree_hook(structure)
 
         formatted_list <- because_format_data(
           data,
@@ -1206,16 +1207,7 @@ because <- function(
 
   # 1. Normalize Input to List
   if (is.null(structure)) {
-    # Independent or structure via "structure" argument
-    if (!is.null(structure)) {
-      if (is.matrix(structure)) {
-        structures[["custom"]] <- structure
-      } else {
-        # Generic S3 structure object - use its class name as key
-        class_name <- class(structure)[1]
-        structures[[class_name]] <- structure
-      }
-    }
+    # Independent model - no structures to process
   } else if (is.matrix(structure)) {
     structures[["custom"]] <- structure
   } else if (is.list(structure) && !inherits(structure, "list")) {
@@ -2836,7 +2828,7 @@ because <- function(
   # JAGS model code
   model_output <- because_model(
     equations = equations,
-    multi.tree = is_multiple,
+    is_multi_structure = is_multiple,
     variability = variability_list,
     family = family,
     vars_with_na = response_vars_with_na,
