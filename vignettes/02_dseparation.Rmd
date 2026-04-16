@@ -46,9 +46,10 @@ plot(storks$Storks, storks$Birth,
 )
 ```
 
-```{r, echo=FALSE, eval=TRUE, out.width="100%"}
-knitr::include_graphics("figures/storks_vs_babies.png")
+```{r, echo=FALSE, eval=FALSE}
+# knitr::include_graphics("figures/storks_vs_babies.png")
 ```
+![](figures/storks_vs_babies.png)
 
 We can see that there appears to be a positive correlation between the number of stork pairs and the number of babies born and we can confirm this with a simple linear regression:
 
@@ -124,9 +125,10 @@ dag_storks <- list(
 plot_dag(dag_storks)
 ```
 
-```{r, echo=FALSE, eval=TRUE, out.width="100%"}
-knitr::include_graphics("figures/dag_storks.png")
+```{r, echo=FALSE, eval=FALSE}
+# knitr::include_graphics("figures/dag_storks.png")
 ```
+![](figures/dag_storks.png)
 
 Directed Acyclic Graphs (DAGs) explicitly state your causal assumptions, and with the multiple regression above we have effectively tested the conditional independence implied by this DAG: Storks *\|\|* Birth \| {Area} (Storks and Births are independent conditional on Area) which translates statistically in the d-separation test we just performed by including Area as a covariate in the regression of Births on Storks. Our causal model is therefore consistent with the data. "Consistent" here means that the conditional independencies implied by the DAG hold in the
 data, but it does not prove that this causal model is actually correct. Other models may also be consistent with the data and with only three variables it is impossible to distinguish between different causal models. We direct the reader to Gonzalez-Voyer & von Hardenberg (2014) for a more detailed discussion of this example and to Shipley (2000, 2003, 2016) for the theoretical foundations of d-separation. In Gonzalez-Voyer & von Hardenberg (2014) we also explored the causal relationships of these three variables with the fourth variable present in the dataset: Humans (Human population size in millions) and we proposed the causal model below which we tested using classic piecewise Path Analysis (follow the [online
@@ -141,9 +143,10 @@ plot_dag(dag_storks2)
 
 ```
 
-```{r, echo=FALSE, eval=TRUE, out.width="100%"}
-knitr::include_graphics("figures/dag_storks2.png")
+```{r, echo=FALSE, eval=FALSE}
+# knitr::include_graphics("figures/dag_storks2.png")
 ```
+![](figures/dag_storks2.png)
 
 Let's now see how to test this causal model with `because`. First, we have to specify the structural equations implied by this DAG:
 

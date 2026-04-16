@@ -159,9 +159,10 @@ trace plots of the MCMC samples:
 plot(fit$samples)
 ```
 
-```{r, echo=FALSE, eval=TRUE, out.width="100%"}
-knitr::include_graphics("figures/traceplot_1.png")
+```{r, echo=FALSE, eval=FALSE}
+# knitr::include_graphics("figures/traceplot_1.png")
 ```
+![](figures/traceplot_1.png)
 
 
 `fit$samples` is an MCMC object, so you can use all coda functions to

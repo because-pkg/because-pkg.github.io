@@ -42,9 +42,20 @@ jobs:
         with:
           needs: website
 
+      - name: Debug workspace
+        run: |
+          ls -R
+          env
+        shell: bash
+
       - name: Build site
-        run: pkgdown::build_site()
+        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
         shell: Rscript {0}
+
+      - name: Verify build output
+        run: |
+          ls -R docs
+        shell: bash
 
       - name: Deploy to GitHub pages 🚀
         if: github.event_name != 'pull_request'
