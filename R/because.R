@@ -3201,22 +3201,35 @@ because <- function(
     if (is.null(nimble_inits)) nimble_inits <- list()
     for (p in monitor) {
       if (!p %in% names(nimble_inits)) {
-        if (grepl("^(tau_|sigmay_|sigmap_|sigmar_)", p)) {
-          nimble_inits[[p]] <- 1
+        if (grepl("^(tau_|sigmay_|sigmap_|sigmar_|sigma_)", p)) {
+          nimble_inits[[p]] <- 1.0 # Standard unit variance start
         } else if (grepl("^alpha_", p)) {
-          # [STABILITY] Initialize intercepts to response mean to avoid -Inf LogProb
+          # [STABILITY] Initialize intercepts closer to data mean if available
           resp_name <- sub("^alpha_", "", p)
           if (resp_name %in% names(data)) {
-            nimble_inits[[p]] <- mean(as.numeric(data[[resp_name]]), na.rm = TRUE)
+              m_val <- mean(as.numeric(data[[resp_name]]), na.rm = TRUE)
+              # If it looks like a count or binary, use link Scale
+              if (all(as.numeric(data[[resp_name]]) >= 0, na.rm = TRUE)) {
+                  nimble_inits[[p]] <- log(max(0.1, m_val))
+              } else {
+                  nimble_inits[[p]] <- m_val
+              }
           } else {
-            nimble_inits[[p]] <- 0
+            nimble_inits[[p]] <- 0.0
           }
-        } else if (grepl("^(beta_|err_|rho_|cutpoint_|lambda_)", p)) {
-          nimble_inits[[p]] <- 0
+        } else if (grepl("^beta_", p)) {
+          # [STABILITY] Start slopes at 0 but ensure they will be jittered
+          nimble_inits[[p]] <- 0.0
         } else if (grepl("^psi_", p)) {
           nimble_inits[[p]] <- 0.5
         } else if (grepl("^r_", p)) {
-          nimble_inits[[p]] <- 1
+          nimble_inits[[p]] <- 1.0
+        } else if (grepl("^lambda_", p)) {
+          nimble_inits[[p]] <- 0.5
+        } else if (grepl("^cutpoint", p)) {
+          # Ordinal cutpoints need to be ordered; leaving as 0 can crash
+          # better to use extension_inits or stay conservative
+          nimble_inits[[p]] <- 0.0
         }
       }
     }
@@ -3453,9 +3466,24 @@ because <- function(
         nimble_string <- sub("^\\s*model\\s*\\{", "{", nimble_string)
         nimble_code <- parse(text = nimble_string)[[1]]
 
-        # Jitter seed for this chain
+        # [STABILITY] Jitter inits for this specific chain
         curr_inits <- extension_inits
-        # Add RNG seed if possible or just rely on global seed if set
+        if (is.null(curr_inits)) curr_inits <- list()
+        
+        # Add a stochastic jitter to all continuous parameters
+        # This is critical for NIMBLE to escape locally flat regions
+        # We use the chain_id to ensure reproducibility if seed is set
+        set.seed(12345 + chain_id)
+        for (p_name in names(curr_inits)) {
+            val <- curr_inits[[p_name]]
+            if (is.numeric(val) && length(val) == 1) {
+                if (grepl("^(beta_|alpha_)", p_name)) {
+                    curr_inits[[p_name]] <- val + rnorm(1, 0, 0.05)
+                } else if (grepl("^(tau_|sigma_)", p_name)) {
+                    curr_inits[[p_name]] <- max(0.1, val * exp(rnorm(1, 0, 0.1)))
+                }
+            }
+        }
 
         # Ensure NIMBLE is attached on the worker
         if (!("package:nimble" %in% search())) {
@@ -3473,6 +3501,28 @@ because <- function(
           monitors = monitor,
           enableWAIC = WAIC
         )
+        
+        # [SAMPLER HARDENING] Apply robust samplers for fixed effects in non-Gaussian models
+        # Slice samplers are significantly more stable for the extreme curvature 
+        # of log/logit links in hierarchical contexts.
+        sampler_targets <- sapply(worker_conf$getSamplers(), function(x) {
+          x$target
+        })
+        
+        # Identify fixed effects for hardened sampling
+        fixed_effects <- unique(grep("^(beta_|alpha_)", sampler_targets, value = TRUE))
+        for (fe_var in fixed_effects) {
+            # Check if this FE is associated with a non-Gaussian response
+            # Heuristic: find the response name from the parameter name
+            parts <- strsplit(fe_var, "_")[[1]]
+            res_name <- parts[2]
+            
+            # If the response is Poisson or Binomial (determined by family), use Slice
+            if (!is.null(family[[res_name]]) && family[[res_name]] %in% c("poisson", "binomial", "negbinomial", "zip", "zinb")) {
+                worker_conf$removeSamplers(fe_var)
+                worker_conf$addSampler(target = fe_var, type = "slice")
+            }
+        }
 
         # Apply user-specified samplers on worker
         if (!is.null(nimble_samplers)) {
@@ -3483,10 +3533,7 @@ because <- function(
           }
         }
 
-        # Apply same sampler overrides as on main thread
-        sampler_targets <- sapply(worker_conf$getSamplers(), function(x) {
-          x$target
-        })
+        # Apply random effect block samplers
         struct_re_vars <- unique(grep(
           "^u_std_.*",
           sampler_targets,
