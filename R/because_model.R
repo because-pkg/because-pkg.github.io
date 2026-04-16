@@ -3098,17 +3098,21 @@ because_model <- function(
             # Always use structure name suffix to match model generation
             s_suffix <- paste0("_", s_name)
 
-            tau_u <- paste0("tau_u_", response, suffix, s_suffix)
+            is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
+            if (is_unified) {
+                tau_u <- paste0("tau_u_", s_name, "_", response)
+                sigma_name <- paste0("sigma_", s_name, "_", response)
+            } else {
+                tau_u <- paste0("tau_u_", response, suffix, s_suffix)
+                sigma_name <- paste0("sigma_", response, suffix, s_suffix)
+            }
 
             model_lines <- safe_add_lines(
               model_lines,
               c(
                 paste0("  ", get_precision_prior(tau_u, response)),
                 paste0(
-                  "  sigma_",
-                  response,
-                  suffix,
-                  s_suffix,
+                  "  ", sigma_name,
                   " <- 1/sqrt(",
                   tau_u,
                   ")"
@@ -4146,6 +4150,11 @@ because_model <- function(
 
         if (!is.null(structures)) {
           for (s_name in names(structures)) {
+            # [LINEAGE GUARD] Skip structures that do not apply to this variable's level
+            if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(var, hierarchical_info), hierarchical_info, allow_identity = TRUE)) {
+              next
+            }
+            
             s_suffix <- paste0("_", s_name)
             u_var <- paste0("u_", var, s_suffix)
             tau_u <- paste0("tau_u_", var, s_suffix)
