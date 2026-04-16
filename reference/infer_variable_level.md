@@ -5,7 +5,7 @@ Determine which hierarchical level a variable belongs to
 ## Usage
 
 ``` r
-infer_variable_level(var, levels)
+infer_variable_level(var, levels, data = NULL)
 ```
 
 ## Arguments
@@ -17,6 +17,10 @@ infer_variable_level(var, levels)
 - levels:
 
   List mapping variable names to level names
+
+- data:
+
+  Optional list of data.frames for fallback searching
 
 ## Value
 

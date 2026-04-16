@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -70,7 +70,7 @@
                         <h4 data-toc-skip class="author">Achaz von
 Hardenberg</h4>
             
-            <h4 data-toc-skip class="date">2026-04-13</h4>
+            <h4 data-toc-skip class="date">2026-04-16</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/master/vignettes/01_getting_started.Rmd" class="external-link"><code>vignettes/01_getting_started.Rmd</code></a></small>
       <div class="d-none name"><code>01_getting_started.Rmd</code></div>
@@ -164,9 +164,9 @@ from <a href="http://mcmc-jags.sourceforge.net" class="external-link">SourceForg
 <p>After installing JAGS, you can install <code>because</code> from
 GitHub.</p>
 <p>To install the <strong>stable release</strong>
-(<code>v1.2.4</code>):</p>
+(<code>v1.2.6</code>):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"because-pkg/because@v1.2.4"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"because-pkg/because@v1.2.6"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>To install the <strong>latest development version</strong>:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"because-pkg/because"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
@@ -193,10 +193,12 @@ X:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">67</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Simulate predictor</span></span>
-<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">100</span>, mean <span class="op">=</span> <span class="fl">50</span>, sd <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">100</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="va">n</span>, mean <span class="op">=</span> <span class="fl">50</span>, sd <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Generate response with the chosen intercept (alpha) and slope (beta)</span></span>
 <span><span class="va">alpha</span> <span class="op">&lt;-</span> <span class="fl">20</span></span>
+<span><span class="va">beta</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">alpha</span> <span class="op">+</span> <span class="va">beta</span> <span class="op">*</span> <span class="va">X</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Combine into data frame</span></span>
@@ -226,7 +228,7 @@ trace plots of the MCMC samples:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Plot trace plots</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">samples</span><span class="op">)</span></span></code></pre></div>
-<p><img src="figures/traceplot_1.png" class="r-plt" alt="" width="100%"></p>
+<p><img src="figures/traceplot_1.png"></p>
 <p><code>fit$samples</code> is an MCMC object, so you can use all coda
 functions to analyze and plot the MCMC samples.</p>
 <p>You can see how <code><a href="../reference/because.html">because()</a></code> translates your model into

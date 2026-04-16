@@ -11,7 +11,7 @@ Missing values are handled both in the response and predictor variables treating
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,10 +56,9 @@ Missing values are handled both in the response and predictor variables treating
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">because_model</span><span class="op">(</span></span>
 <span>  <span class="va">equations</span>,</span>
-<span>  multi.tree <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  is_multi_structure <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  latent_method <span class="op">=</span> <span class="st">"correlations"</span>,</span>
 <span>  structures <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  is_multi_structure <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  random_structure_names <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  random_terms <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  vars_with_na <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -70,10 +69,12 @@ Missing values are handled both in the response and predictor variables treating
 <span>  poly_terms <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  latent <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  categorical_vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  fix_latent <span class="op">=</span> <span class="st">"loading"</span>,</span>
 <span>  fix_residual_variance <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  priors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  hierarchical_info <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  engine <span class="op">=</span> <span class="st">"jags"</span></span>
+<span>  engine <span class="op">=</span> <span class="st">"jags"</span>,</span>
+<span>  quiet <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -85,8 +86,8 @@ Missing values are handled both in the response and predictor variables treating
 <dd><p>A list of model formulas.</p></dd>
 
 
-<dt id="arg-multi-tree">multi.tree<a class="anchor" aria-label="anchor" href="#arg-multi-tree"></a></dt>
-<dd><p>Logical; if <code>TRUE</code>, incorporates phylogenetic uncertainty by sampling across a set of trees.</p></dd>
+<dt id="arg-is-multi-structure">is_multi_structure<a class="anchor" aria-label="anchor" href="#arg-is-multi-structure"></a></dt>
+<dd><p>Logical (Internal). If TRUE, handles 3D Precision arrays.</p></dd>
 
 
 <dt id="arg-latent-method">latent_method<a class="anchor" aria-label="anchor" href="#arg-latent-method"></a></dt>
@@ -95,10 +96,6 @@ Missing values are handled both in the response and predictor variables treating
 
 <dt id="arg-structures">structures<a class="anchor" aria-label="anchor" href="#arg-structures"></a></dt>
 <dd><p>A named list of structural objects (e.g. matrices, trees) to include as correlations.</p></dd>
-
-
-<dt id="arg-is-multi-structure">is_multi_structure<a class="anchor" aria-label="anchor" href="#arg-is-multi-structure"></a></dt>
-<dd><p>Logical (Internal). If TRUE, handles 3D Precision arrays.</p></dd>
 
 
 <dt id="arg-random-structure-names">random_structure_names<a class="anchor" aria-label="anchor" href="#arg-random-structure-names"></a></dt>
@@ -186,7 +183,7 @@ For "binomial" variables, the model uses a logit link and a Bernoulli likelihood
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">eqs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">BR</span> <span class="op">~</span> <span class="va">BM</span>, <span class="va">S</span> <span class="op">~</span> <span class="va">BR</span>, <span class="va">G</span> <span class="op">~</span> <span class="va">BR</span>, <span class="va">L</span> <span class="op">~</span> <span class="va">BR</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu">because_model</span><span class="op">(</span><span class="va">eqs</span>, multi.tree <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">model</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu">because_model</span><span class="op">(</span><span class="va">eqs</span>, is_multi_structure <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">model</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> model {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   # Common structures and priors</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   # Structural equations</span>
@@ -205,38 +202,34 @@ For "binomial" variables, the model uses a logit link and a Bernoulli likelihood
 <span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   # Multivariate normal likelihoods</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   for (i in 1:N) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     BR[i] ~ dnorm(mu_BR[i], tau_e_BR)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     log_lik_BR[i] &lt;- logdensity.norm(BR[i], mu_BR[i], tau_e_BR)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     BR[i] ~ dnorm(mu_BR[i], tau_res_BR)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     log_lik_BR[i] &lt;- logdensity.norm(BR[i], mu_BR[i], tau_res_BR)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   for (i in 1:N) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     S[i] ~ dnorm(mu_S[i], tau_e_S)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     log_lik_S[i] &lt;- logdensity.norm(S[i], mu_S[i], tau_e_S)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     S[i] ~ dnorm(mu_S[i], tau_res_S)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     log_lik_S[i] &lt;- logdensity.norm(S[i], mu_S[i], tau_res_S)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   for (i in 1:N) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     G[i] ~ dnorm(mu_G[i], tau_e_G)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     log_lik_G[i] &lt;- logdensity.norm(G[i], mu_G[i], tau_e_G)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     G[i] ~ dnorm(mu_G[i], tau_res_G)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     log_lik_G[i] &lt;- logdensity.norm(G[i], mu_G[i], tau_res_G)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   for (i in 1:N) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     L[i] ~ dnorm(mu_L[i], tau_e_L)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     log_lik_L[i] &lt;- logdensity.norm(L[i], mu_L[i], tau_e_L)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     L[i] ~ dnorm(mu_L[i], tau_res_L)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     log_lik_L[i] &lt;- logdensity.norm(L[i], mu_L[i], tau_res_L)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   # Priors for structural parameters</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_BR ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_e_BR ~ dunif(0, 100)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_BR &lt;- 1 / (sigma_e_BR * sigma_e_BR)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   sigmaBR &lt;- 1/sqrt(tau_e_BR)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_S ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_e_S ~ dunif(0, 100)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_S &lt;- 1 / (sigma_e_S * sigma_e_S)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   sigmaS &lt;- 1/sqrt(tau_e_S)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_G ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_e_G ~ dunif(0, 100)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_G &lt;- 1 / (sigma_e_G * sigma_e_G)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   sigmaG &lt;- 1/sqrt(tau_e_G)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_L ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_e_L ~ dunif(0, 100)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_e_L &lt;- 1 / (sigma_e_L * sigma_e_L)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   sigmaL &lt;- 1/sqrt(tau_e_L)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_BR ~ dnorm(0, 0.01)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_BR_res ~ dunif(0, 100)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_res_BR &lt;- 1 / (sigma_BR_res * sigma_BR_res)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_S ~ dnorm(0, 0.01)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_S_res ~ dunif(0, 100)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_res_S &lt;- 1 / (sigma_S_res * sigma_S_res)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_G ~ dnorm(0, 0.01)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_G_res ~ dunif(0, 100)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_res_G &lt;- 1 / (sigma_G_res * sigma_G_res)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_L ~ dnorm(0, 0.01)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_L_res ~ dunif(0, 100)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   tau_res_L &lt;- 1 / (sigma_L_res * sigma_L_res)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   beta_BR_BM ~ dnorm(0, 1.0E-6)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   beta_S_BR ~ dnorm(0, 1.0E-6)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   beta_G_BR ~ dnorm(0, 1.0E-6)</span>

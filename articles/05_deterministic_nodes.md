@@ -72,33 +72,6 @@ fit_int <- because(
 
 # Notice the parameter name "beta_Growth_Rain_x_Temp"
 summary(fit_int)
-#>                          Mean    SD Naive SE Time-series SE   2.5%   50% 97.5%
-#> alpha_Growth            0.015 0.011    0.001          0.001 -0.007 0.014 0.039
-#> beta_Growth_Rain        0.001 0.014    0.001          0.001 -0.023 0.002 0.025
-#> beta_Growth_Rain_x_Temp 0.508 0.013    0.001          0.001  0.480 0.509 0.531
-#> beta_Growth_Temp        0.009 0.010    0.001          0.001 -0.011 0.009 0.030
-#> sigmaGrowth             0.096 0.008    0.001          0.001  0.083 0.096 0.113
-#> sigmaRain               0.945 0.066    0.004          0.004  0.820 0.944 1.084
-#> sigmaTemp               0.977 0.073    0.005          0.004  0.853 0.974 1.151
-#> sigma_e_Growth          0.096 0.008    0.001          0.001  0.083 0.096 0.113
-#> sigma_e_Rain            0.945 0.066    0.004          0.004  0.820 0.944 1.084
-#> sigma_e_Temp            0.977 0.073    0.005          0.004  0.853 0.974 1.151
-#>                          Rhat n.eff
-#> alpha_Growth            1.001   237
-#> beta_Growth_Rain        1.006   240
-#> beta_Growth_Rain_x_Temp 1.006   187
-#> beta_Growth_Temp        0.997   467
-#> sigmaGrowth             0.995   246
-#> sigmaRain               0.998   240
-#> sigmaTemp               1.005   359
-#> sigma_e_Growth          0.995   246
-#> sigma_e_Rain            0.998   240
-#> sigma_e_Temp            1.005   359
-#> 
-#> DIC:
-#> Mean deviance:  300.1 
-#> penalty 29.02 
-#> Penalized deviance: 329.2
 ```
 
 ## Example 2: Logic and Thresholds (`Age > 2`)
@@ -132,21 +105,6 @@ fit_logic <- because(
 # The model recovers the effect of the threshold
 # Parameter: "beta_Mating_Age_gt_2" where "gt" means "greater than"
 summary(fit_logic)
-#>                       Mean    SD Naive SE Time-series SE  2.5%   50% 97.5%
-#> alpha_Mating         0.356 0.129    0.008          0.009 0.111 0.352 0.618
-#> beta_Mating_Age_gt_3 1.667 0.157    0.010          0.010 1.401 1.656 1.975
-#> sigmaMating          0.710 0.053    0.003          0.003 0.619 0.706 0.813
-#> sigma_e_Mating       0.710 0.053    0.003          0.003 0.619 0.706 0.813
-#>                       Rhat n.eff
-#> alpha_Mating         1.005   209
-#> beta_Mating_Age_gt_3 1.004   240
-#> sigmaMating          0.998   272
-#> sigma_e_Mating       0.998   272
-#> 
-#> DIC:
-#> Mean deviance:  212.1 
-#> penalty 3.252 
-#> Penalized deviance: 215.3
 ```
 
 ## Example 3: Multi-Class Definitions
@@ -184,21 +142,6 @@ fit_multi <- because(
 
 # Check effect of AgeClass on Rank
 summary(fit_multi)
-#>                     Mean    SD Naive SE Time-series SE   2.5%   50% 97.5%  Rhat
-#> alpha_Rank         0.126 0.200    0.013          0.035 -0.257 0.136 0.497 0.997
-#> beta_Rank_AgeClass 1.457 0.057    0.004          0.010  1.354 1.456 1.570 0.998
-#> sigmaRank          0.473 0.037    0.002          0.002  0.413 0.470 0.566 0.996
-#> sigma_e_Rank       0.473 0.037    0.002          0.002  0.413 0.470 0.566 0.996
-#>                    n.eff
-#> alpha_Rank            38
-#> beta_Rank_AgeClass    43
-#> sigmaRank            226
-#> sigma_e_Rank         226
-#> 
-#> DIC:
-#> Mean deviance:  134.6 
-#> penalty 2.941 
-#> Penalized deviance: 137.5
 ```
 
 ## Example 4: Mathematical transformations (`log(A)`)
@@ -222,21 +165,6 @@ fit_math <- because(
 
 # Parameter: "beta_Metabolism_log_Mass"
 summary(fit_math)
-#>                            Mean    SD Naive SE Time-series SE   2.5%    50%
-#> alpha_Metabolism         -0.050 0.041    0.003          0.005 -0.126 -0.049
-#> beta_Metabolism_log_Mass  0.764 0.011    0.001          0.001  0.744  0.764
-#> sigmaMetabolism           0.105 0.008    0.000          0.000  0.093  0.104
-#> sigma_e_Metabolism        0.105 0.008    0.000          0.000  0.093  0.104
-#>                          97.5%  Rhat n.eff
-#> alpha_Metabolism         0.027 1.018    75
-#> beta_Metabolism_log_Mass 0.786 1.022    83
-#> sigmaMetabolism          0.121 0.998   240
-#> sigma_e_Metabolism       0.121 0.998   240
-#> 
-#> DIC:
-#> Mean deviance:  -166.7 
-#> penalty 3.077 
-#> Penalized deviance: -163.6
 ```
 
 ## When do I need `I()`?
@@ -364,13 +292,6 @@ fit_multi_dsep <- because(
     dsep = TRUE,
     quiet = TRUE
 )
-#>   (Safety) Dropping cyclic d-sep test: AgeClass ~ Age | I(1 * (Age < 1) + 2 * (Age >= 1 & Age < 2) + 3 * (Age >= 2 & Age < 5) + 4 * (Age >= 5)) (conditioned on own component)
 
 summary(fit_multi_dsep)
-#> d-separation Tests
-#> ==================
-#> 
-#> Test: Rank _||_ Age | {AgeClass} 
-#>      Parameter Estimate LowerCI UpperCI  Rhat n.eff
-#>  beta_Rank_Age   -0.005  -0.072   0.067 1.093    49
 ```

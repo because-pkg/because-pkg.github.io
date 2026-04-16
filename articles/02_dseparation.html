@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -70,7 +70,7 @@
                         <h4 data-toc-skip class="author">Achaz von
 Hardenberg</h4>
             
-            <h4 data-toc-skip class="date">2026-04-13</h4>
+            <h4 data-toc-skip class="date">2026-04-16</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/master/vignettes/02_dseparation.Rmd" class="external-link"><code>vignettes/02_dseparation.Rmd</code></a></small>
       <div class="d-none name"><code>02_dseparation.Rmd</code></div>
@@ -121,7 +121,7 @@ year):</p>
 <span>  xlab <span class="op">=</span> <span class="st">"Number of Stork Pairs"</span>,</span>
 <span>  ylab <span class="op">=</span> <span class="st">"Number of Babies Born (thousands)"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><img src="figures/storks_vs_babies.png" class="r-plt" alt="" width="100%"></p>
+<p><img src="figures/storks_vs_babies.png"></p>
 <p>We can see that there appears to be a positive correlation between
 the number of stork pairs and the number of babies born and we can
 confirm this with a simple linear regression:</p>
@@ -193,7 +193,7 @@ variables and their causal relationships using a Directed Acyclic Graph
 <span>  <span class="va">Birth</span> <span class="op">~</span> <span class="va">Area</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/plot_dag.html">plot_dag</a></span><span class="op">(</span><span class="va">dag_storks</span><span class="op">)</span></span></code></pre></div>
-<p><img src="figures/dag_storks.png" class="r-plt" alt="" width="100%"></p>
+<p><img src="figures/dag_storks.png"></p>
 <p>Directed Acyclic Graphs (DAGs) explicitly state your causal
 assumptions, and with the multiple regression above we have effectively
 tested the conditional independence implied by this DAG: Storks
@@ -221,7 +221,7 @@ tutorial</a> if you want to replicate that analysis).</p>
 <span>                    <span class="va">Humans</span> <span class="op">~</span> <span class="va">Birth</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/plot_dag.html">plot_dag</a></span><span class="op">(</span><span class="va">dag_storks2</span><span class="op">)</span></span></code></pre></div>
-<p><img src="figures/dag_storks2.png" class="r-plt" alt="" width="100%"></p>
+<p><img src="figures/dag_storks2.png"></p>
 <p>Let’s now see how to test this causal model with
 <code>because</code>. First, we have to specify the structural equations
 implied by this DAG:</p>

@@ -8,7 +8,14 @@ and other PPC functions for `because` model objects.
 
 ``` r
 # S3 method for class 'because'
-pp_check(object, resp = NULL, type = "dens_overlay", ndraws = 50, ...)
+pp_check(
+  object,
+  resp = NULL,
+  type = "dens_overlay",
+  ndraws = 50,
+  trim = TRUE,
+  ...
+)
 ```
 
 ## Arguments

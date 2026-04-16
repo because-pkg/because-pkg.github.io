@@ -49,46 +49,27 @@ df <- data.frame(Temp_Centered, Growth_g_day)
 
 ### Default Model
 
-Let’s fit a standard model first. By default, `because` assigns wide
-Gaussian priors (`dnorm(0, 1.0E-6)`) to intercepts (`alpha`) and slopes
-(`beta`). For Gaussian response variables, the **residual standard
-deviation** gets a half-uniform prior: `sigma_e ~ dunif(0, 100)`, from
-which the precision is derived as `tau_e <- 1 / (sigma_e * sigma_e)`.
-This is scale-invariant and works safely whether data are standardised
-or on their original (raw) scale.
+Let’s fit a standard model first. By default, `because` assigns **weakly
+informative** Gaussian priors (`dnorm(0, 0.01)`) to intercepts (`alpha`)
+and slopes (`beta`). This corresponds to a Standard Deviation of 10.
+These anchors are broad enough to be uninformative for scientific data
+while preventing the numerical instability and convergence failure
+($Rhat > 1.1$) often seen with extremely “flat” priors in complex
+hierarchical models.
+
+For Gaussian response variables, the **residual standard deviation**
+gets a half-uniform prior: `sigma_e ~ dunif(0, 100)`, from which the
+precision is derived as `tau_e <- 1 / (sigma_e * sigma_e)`. This is
+scale-invariant and works safely whether data are standardised or on
+their original (raw) scale.
 
 ``` r
 fit_default <- because(
     equations = list(Growth_g_day ~ Temp_Centered),
     data = df
 )
-#> Converted data.frame to list with 2 variables: Growth_g_day, Temp_Centered
-#> Compiling model graph
-#>    Resolving undeclared variables
-#>    Allocating nodes
-#> Graph information:
-#>    Observed stochastic nodes: 30
-#>    Unobserved stochastic nodes: 3
-#>    Total graph size: 162
-#> 
-#> Initializing model
 
 summary(fit_default)
-#>                                  Mean    SD Naive SE Time-series SE  2.5%   50%
-#> alpha_Growth_g_day              9.773 0.403    0.007          0.007 8.969 9.761
-#> beta_Growth_g_day_Temp_Centered 0.432 0.065    0.001          0.001 0.309 0.432
-#> sigmaGrowth_g_day               2.193 0.309    0.006          0.005 1.696 2.157
-#> sigma_e_Growth_g_day            2.193 0.309    0.006          0.005 1.696 2.157
-#>                                  97.5% Rhat n.eff
-#> alpha_Growth_g_day              10.560    1  2995
-#> beta_Growth_g_day_Temp_Centered  0.558    1  3000
-#> sigmaGrowth_g_day                2.909    1  3261
-#> sigma_e_Growth_g_day             2.909    1  3261
-#> 
-#> DIC:
-#> Mean deviance:  130.6 
-#> penalty 3.252 
-#> Penalized deviance: 133.9
 ```
 
 ### Custom Prior Model
@@ -118,7 +99,7 @@ override.
 # Define our custom priors
 my_priors <- list(
     # Strong prior on intercept: Mean 10, Precision 100 (SD = 0.1)
-    alphaGrowth_g_day = "dnorm(10, 100)",
+    alpha_Growth_g_day = "dnorm(10, 100)",
 
     # Informative prior on slope: Mean 0.5, Precision 400 (SD = 0.05)
     beta_Growth_g_day_Temp_Centered = "dnorm(0.5, 400)"
@@ -129,33 +110,8 @@ fit_custom <- because(
     data = df,
     priors = my_priors
 )
-#> Converted data.frame to list with 2 variables: Growth_g_day, Temp_Centered
-#> Compiling model graph
-#>    Resolving undeclared variables
-#>    Allocating nodes
-#> Graph information:
-#>    Observed stochastic nodes: 30
-#>    Unobserved stochastic nodes: 3
-#>    Total graph size: 164
-#> 
-#> Initializing model
 
 summary(fit_custom)
-#>                                  Mean    SD Naive SE Time-series SE  2.5%   50%
-#> alpha_Growth_g_day              9.765 0.386    0.007          0.007 9.021 9.759
-#> beta_Growth_g_day_Temp_Centered 0.475 0.039    0.001          0.001 0.398 0.475
-#> sigmaGrowth_g_day               2.183 0.301    0.005          0.005 1.686 2.152
-#> sigma_e_Growth_g_day            2.183 0.301    0.005          0.005 1.686 2.152
-#>                                  97.5% Rhat n.eff
-#> alpha_Growth_g_day              10.556    1  3100
-#> beta_Growth_g_day_Temp_Centered  0.551    1  2723
-#> sigmaGrowth_g_day                2.863    1  3000
-#> sigma_e_Growth_g_day             2.863    1  3000
-#> 
-#> DIC:
-#> Mean deviance:  130.4 
-#> penalty 2.571 
-#> Penalized deviance: 133
 ```
 
 Notice how the credible intervals for the custom model will be tighter
@@ -178,8 +134,6 @@ plot_posterior(
     parameter = "Growth_g_day"
 )
 ```
-
-![](03_custom_priors_files/figure-html/plot_compare-1.png)
 
 ## Example 2: Mechanistic Constraints
 
@@ -218,16 +172,6 @@ fit_default_kleiber <- because(
     equations = list(Log_MR ~ Log_Mass),
     data = df_kleiber
 )
-#> Converted data.frame to list with 2 variables: Log_MR, Log_Mass
-#> Compiling model graph
-#>    Resolving undeclared variables
-#>    Allocating nodes
-#> Graph information:
-#>    Observed stochastic nodes: 30
-#>    Unobserved stochastic nodes: 3
-#>    Total graph size: 162
-#> 
-#> Initializing model
 
 # 2. Fit Mechanistic Model (Constrained)
 fit_mech_kleiber <- because(
@@ -235,50 +179,10 @@ fit_mech_kleiber <- because(
     data = df_kleiber,
     priors = positive_prior
 )
-#> Converted data.frame to list with 2 variables: Log_MR, Log_Mass
-#> Compiling model graph
-#>    Resolving undeclared variables
-#>    Allocating nodes
-#> Graph information:
-#>    Observed stochastic nodes: 30
-#>    Unobserved stochastic nodes: 3
-#>    Total graph size: 162
-#> 
-#> Initializing model
 
 # Compare Estimates
 summary(fit_default_kleiber)
-#>                       Mean    SD Naive SE Time-series SE   2.5%   50%  97.5%
-#> alpha_Log_MR         3.547 4.250    0.078          0.258 -5.205 3.612 11.693
-#> beta_Log_MR_Log_Mass 0.037 1.037    0.019          0.063 -1.979 0.025  2.127
-#> sigmaLog_MR          3.095 0.437    0.008          0.008  2.385 3.040  4.087
-#> sigma_e_Log_MR       3.095 0.437    0.008          0.008  2.385 3.040  4.087
-#>                       Rhat n.eff
-#> alpha_Log_MR         1.001   274
-#> beta_Log_MR_Log_Mass 1.001   275
-#> sigmaLog_MR          1.000  2836
-#> sigma_e_Log_MR       1.000  2836
-#> 
-#> DIC:
-#> Mean deviance:  151.4 
-#> penalty 3.205 
-#> Penalized deviance: 154.6
 summary(fit_mech_kleiber)
-#>                       Mean    SD Naive SE Time-series SE   2.5%   50% 97.5%
-#> alpha_Log_MR         1.235 1.896    0.035          0.062 -3.111 1.614 3.954
-#> beta_Log_MR_Log_Mass 0.604 0.450    0.008          0.015  0.026 0.519 1.636
-#> sigmaLog_MR          3.060 0.432    0.008          0.008  2.355 3.015 4.055
-#> sigma_e_Log_MR       3.060 0.432    0.008          0.008  2.355 3.015 4.055
-#>                       Rhat n.eff
-#> alpha_Log_MR         1.000  1053
-#> beta_Log_MR_Log_Mass 1.000  1043
-#> sigmaLog_MR          1.001  3000
-#> sigma_e_Log_MR       1.001  3000
-#> 
-#> DIC:
-#> Mean deviance:  150.7 
-#> penalty 2.354 
-#> Penalized deviance: 153
 
 # Visualize: Unconstrained vs. Truncated
 plot_posterior(
@@ -287,8 +191,6 @@ plot_posterior(
     density_args = list(Mechanistic = list(from = 0))
 )
 ```
-
-![](03_custom_priors_files/figure-html/mechanistic_constraint-1.png)
 
 ## Example 3: Informing Residual Variance Components
 
@@ -360,8 +262,6 @@ plot_posterior(
 )
 ```
 
-![](03_custom_priors_files/figure-html/variance_prior-1.png)
-
 > \[!NOTE\] **Legacy `tau_e_*` overrides**: If you previously used
 > `priors = list(tau_e_Response = "dgamma(...)")`, this still works —
 > `because` checks for a `tau_e_*` entry in `priors` first and uses it
@@ -376,20 +276,21 @@ while allowing the data to dominate the posterior.
 
 | Parameter Type                    | Parameter Name | Default Prior        | Description                                                                                                    |
 |:----------------------------------|:---------------|:---------------------|:---------------------------------------------------------------------------------------------------------------|
-| **Intercepts**                    | `alpha_*`      | `dnorm(0, 1.0E-6)`   | Wide Normal (Precision 1e-6 = Variance 1,000,000)                                                              |
-| **Coefficients**                  | `beta_*`       | `dnorm(0, 1.0E-6)`   | Wide Normal                                                                                                    |
+| **Intercepts**                    | `alpha_*`      | `dnorm(0, 0.01)`     | Weakly Informative SD = 10                                                                                     |
+| **Coefficients**                  | `beta_*`       | `dnorm(0, 0.01)`     | Weakly Informative SD = 10                                                                                     |
 | **Residual SD (Gaussian)**        | `sigma_e_*`    | `dunif(0, 100)`      | Half-uniform on σ; scale-invariant, robust to raw or standardised data. Override with `sigma_e_*` in `priors`. |
 | **Residual Precision (Gaussian)** | `tau_e_*`      | *derived*            | Set deterministically as `1/(sigma_e * sigma_e)`. Not assigned a prior directly.                               |
-| **Precision (other families)**    | `tau_*`        | `dgamma(1, 1)`       | Gamma(1,1) for non-Gaussian precision/variance components (random effects, structural).                        |
+| **Precision (other families)**    | `tau_*`        | `dgamma(1, 1)`       | Gamma(1,1) for non-Gaussian precision components (random effects).                                             |
 | **Phylo Signal**                  | `lambda_*`     | `dunif(0, 1)`        | Uniform on \[0,1\]                                                                                             |
 | **Zero-Inflation**                | `psi_*`        | `dbeta(1, 1)`        | Beta(1,1) (Uniform on \[0,1\])                                                                                 |
-| **Ordinal Cutpoints**             | `cutpoint_*`   | `dnorm(0, 1e-6)`     | First cutpoint fixed, others relative or specifically ordered                                                  |
+| **Ordinal Cutpoints**             | `cutpoint_*`   | `dnorm(0, 0.01)`     | SD = 10                                                                                                        |
 | **NegBinomial Size**              | `r_*`          | `dgamma(0.01, 0.01)` | Wide Gamma for dispersion parameter                                                                            |
 
 > **Precision vs Variance**: JAGS uses precision $\tau = 1/\sigma^{2}$.
-> A prior of `dnorm(0, 1.0E-6)` means a normal distribution with mean 0
-> and precision $0.000001$, which corresponds to a variance of
-> $1,000,000$ (SD = 1000). This is very flat.
+> A prior of `dnorm(0, 0.01)` means a normal distribution with mean 0
+> and precision $0.01$, which corresponds to a variance of $100$ (SD =
+> 10). This is uninformative for most standardized biological effects
+> but remains numerically stable during adaptation.
 
 ## Parameter Names Reference
 
@@ -420,7 +321,6 @@ fit_check <- because(
 
 # Print the JAGS model
 fit_check$model
-#> [1] "model {\n  # Common structures and priors\n  # Structural equations\n\n  for (i in 1:N) {\n    mu_Growth_g_day[i] <- alpha_Growth_g_day + beta_Growth_g_day_Temp_Centered*Temp_Centered[i]\n  }\n  # Multivariate normal likelihoods\n  for (i in 1:N) {\n    Growth_g_day[i] ~ dnorm(mu_Growth_g_day[i], tau_e_Growth_g_day)\n    log_lik_Growth_g_day[i] <- logdensity.norm(Growth_g_day[i], mu_Growth_g_day[i], tau_e_Growth_g_day)\n  }\n  # Priors for structural parameters\n  alpha_Growth_g_day ~ dnorm(0, 1.0E-6)\n  sigma_e_Growth_g_day ~ dunif(0, 100)\n  tau_e_Growth_g_day <- 1 / (sigma_e_Growth_g_day * sigma_e_Growth_g_day)\n  sigmaGrowth_g_day <- 1/sqrt(tau_e_Growth_g_day)\n  beta_Growth_g_day_Temp_Centered ~ dnorm(0, 1.0E-6)\n}"
 ```
 
 \`\`\`

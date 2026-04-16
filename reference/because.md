@@ -10,7 +10,6 @@ because(
   data,
   id_col = NULL,
   structure = NULL,
-  tree = NULL,
   engine = "jags",
   monitor = "interpretable",
   nimble_samplers = NULL,
@@ -30,6 +29,7 @@ because(
   latent = NULL,
   latent_method = "correlations",
   standardize_latent = TRUE,
+  fix_latent = "loading",
   parallel = FALSE,
   n.cores = parallel::detectCores() - 1,
   cl = NULL,
@@ -41,7 +41,10 @@ because(
   fix_residual_variance = NULL,
   priors = NULL,
   reuse_models = NULL,
-  expand_ordered = FALSE
+  expand_ordered = FALSE,
+  structure_multi = NULL,
+  structure_levels = NULL,
+  ...
 )
 ```
 
@@ -59,22 +62,21 @@ because(
 
 - id_col:
 
-  Character string specifying the column name in a data.frame containing
-  unit identifiers (e.g., individuals, sites, or species names). This is
-  used to:
+  Character string specifying the column name containing unit
+  identifiers (e.g., species names).
 
-  - Match data rows to external structure labels (e.g., tip labels in
-    phylogenetic trees).
+  **Important Alignment Rules:**
 
-  - Link data to external spatial or custom covariance matrices.
+  1.  If `id_col` is provided, the engine uses this specific column to
+      match data rows to external structure labels (e.g.,
+      `tree$tip.label`). **Use this if your ID column has a custom name
+      (e.g., "Butterfly_ID").**
 
-  **Note**: For standard random effects models (e.g.,
-  `random = ~(1|group)`) where no external structure is provided, this
-  argument is **not required**. The grouping column is read directly
-  from the data.
+  2.  If `id_col` is `NULL` (default), the engine attempts to use **row
+      names** from the data frame.
 
-  If `NULL` (default): uses meaningful row names if available. Ignored
-  when `data` is already a list.
+  3.  If your IDs are in a column (e.g. "Species") but your row names
+      are standard numbers (1, 2, 3...), you **MUST** specify `id_col`.
 
 - structure:
 
@@ -87,11 +89,6 @@ because(
 
   - Custom objects: Supported via extension packages (e.g., phylogenetic
     trees from because.phybase or spatial structures).
-
-- tree:
-
-  (Deprecated alias for `structure`). Use `structure` instead for new
-  code.
 
 - engine:
 
@@ -243,13 +240,6 @@ because(
 
   Method for handling latent variables (default = "correlations").
 
-  - `"correlations"`: MAG approach - marginalize latent variables and
-    estimate induced correlations (`rho`) between observed variables
-    that share latent parents.
-
-  - `"explicit"`: Model latent variables as JAGS nodes and estimate
-    structural paths from latents to observed variables.
-
 - standardize_latent:
 
   Logical; if `TRUE` and `latent_method = "explicit"`, adds standardized
@@ -257,6 +247,27 @@ because(
   This improves convergence and makes regression coefficients
   interpretable as standardized effects. Only applicable when using
   explicit latent variable modeling (default = TRUE).
+
+- fix_latent:
+
+  Identification strategy for latent variables. Choices:
+
+  - `"loading"` (default): Unit Loading Identification (ULI). Fixes the
+    first indicator's loading to 1.0. Most stable for non-linear GLVMs
+    (Poisson/Binomial).
+
+  - `"sign"`: Sign Identification. Estimates all loadings with a sign
+    constraint (positive) on the first indicator. Can be unstable due to
+    scale-drift.
+
+  &nbsp;
+
+  - `"correlations"`: MAG approach - marginalize latent variables and
+    estimate induced correlations (`rho`) between observed variables
+    that share latent parents.
+
+  - `"explicit"`: Model latent variables as JAGS nodes and estimate
+    structural paths from latents to observed variables.
 
 - parallel:
 
@@ -327,7 +338,7 @@ because(
     away from astronomically large variances during adaptation.
 
   Example:
-  `list(alpha_Response = "dnorm(0, 0.001)", sigma_e_Response = "dunif(0, 50)")`.
+  `list(alpha_Response = "dnorm(0, 0.001)", sigma_Response_res = "dunif(0, 50)")`.
 
 - reuse_models:
 
@@ -336,6 +347,11 @@ because(
   in a reused model (same formula), the result is copied instead of
   re-running JAGS. **Note**: Ensuring that the data is consistent is the
   user's responsibility.
+
+- tree:
+
+  (Deprecated alias for `structure`). Use `structure` instead for new
+  code.
 
 ## Value
 

@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -155,14 +155,7 @@ plots along an elevation gradient.</p>
 <span><span class="va">Abundance</span> <span class="op">&lt;-</span> <span class="fl">10</span> <span class="op">+</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="va">Moisture</span> <span class="op">+</span> <span class="fl">1.5</span> <span class="op">*</span> <span class="va">Temp</span> <span class="op">-</span> <span class="fl">0.005</span> <span class="op">*</span> <span class="va">Elevation</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N</span>, sd <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">eco_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="va">Elevation</span>, <span class="va">Temp</span>, <span class="va">Moisture</span>, <span class="va">Abundance</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">eco_data</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   Elevation      Temp   Moisture Abundance</span></span>
-<span><span class="co">#&gt; 1 1274.1917  8.256225  10.162114  18.60961</span></span>
-<span><span class="co">#&gt; 2  887.0604 16.796951 -17.940260  26.01320</span></span>
-<span><span class="co">#&gt; 3 1072.6257 16.616393 -12.955352  32.96032</span></span>
-<span><span class="co">#&gt; 4 1126.5725 17.853353 -15.461372  31.77216</span></span>
-<span><span class="co">#&gt; 5 1080.8537 11.437740  -5.767259  12.26349</span></span>
-<span><span class="co">#&gt; 6  978.7751 12.910538 -10.814769  34.70524</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">eco_data</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="standardize-data">2. Standardize Data<a class="anchor" aria-label="anchor" href="#standardize-data"></a>
@@ -180,14 +173,7 @@ standardized scales.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Standardize all variables</span></span>
 <span><span class="va">eco_data_std</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">eco_data</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">eco_data_std</span><span class="op">)</span></span>
-<span><span class="co">#&gt;        Elevation       Temp    Moisture  Abundance</span></span>
-<span><span class="co">#&gt; [1,]  1.43491089 -2.4146372  2.79684187 -0.2519564</span></span>
-<span><span class="co">#&gt; [2,] -0.55122296  0.6086453 -1.01750576  0.4847317</span></span>
-<span><span class="co">#&gt; [3,]  0.40079909  0.5447309 -0.34090197  1.1759989</span></span>
-<span><span class="co">#&gt; [4,]  0.67756730  0.9825952 -0.68104515  1.0577725</span></span>
-<span><span class="co">#&gt; [5,]  0.44301183 -1.2884308  0.63474109 -0.8834208</span></span>
-<span><span class="co">#&gt; [6,] -0.08069081 -0.7670836 -0.05035969  1.3496260</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">eco_data_std</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="fit-the-structural-equation-model">3. Fit the Structural Equation Model<a class="anchor" aria-label="anchor" href="#fit-the-structural-equation-model"></a>
@@ -210,57 +196,11 @@ the chain:
 <span>  data <span class="op">=</span> <span class="va">eco_data_std</span>,</span>
 <span>  n.iter <span class="op">=</span> <span class="fl">2000</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt; Converted data.frame to list with 4 variables: Temp, Elevation, Moisture, Abundance</span></span>
-<span><span class="co">#&gt; Compiling model graph</span></span>
-<span><span class="co">#&gt;    Resolving undeclared variables</span></span>
-<span><span class="co">#&gt;    Allocating nodes</span></span>
-<span><span class="co">#&gt; Graph information:</span></span>
-<span><span class="co">#&gt;    Observed stochastic nodes: 600</span></span>
-<span><span class="co">#&gt;    Unobserved stochastic nodes: 11</span></span>
-<span><span class="co">#&gt;    Total graph size: 3028</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Initializing model</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
-<span><span class="co">#&gt;                            Mean    SD Naive SE Time-series SE   2.5%    50%</span></span>
-<span><span class="co">#&gt; alpha_Abundance          -0.002 0.064    0.003          0.003 -0.129 -0.004</span></span>
-<span><span class="co">#&gt; alpha_Moisture           -0.005 0.051    0.002          0.002 -0.106 -0.006</span></span>
-<span><span class="co">#&gt; alpha_Temp               -0.001 0.048    0.002          0.002 -0.092 -0.002</span></span>
-<span><span class="co">#&gt; beta_Abundance_Elevation -0.156 0.095    0.004          0.004 -0.352 -0.160</span></span>
-<span><span class="co">#&gt; beta_Abundance_Moisture   0.358 0.090    0.004          0.004  0.189  0.359</span></span>
-<span><span class="co">#&gt; beta_Abundance_Temp       0.416 0.115    0.005          0.005  0.201  0.415</span></span>
-<span><span class="co">#&gt; beta_Moisture_Temp       -0.710 0.051    0.002          0.002 -0.813 -0.709</span></span>
-<span><span class="co">#&gt; beta_Temp_Elevation      -0.741 0.048    0.002          0.002 -0.828 -0.742</span></span>
-<span><span class="co">#&gt; sigmaAbundance            0.934 0.049    0.002          0.002  0.843  0.932</span></span>
-<span><span class="co">#&gt; sigmaMoisture             0.711 0.037    0.002          0.002  0.645  0.709</span></span>
-<span><span class="co">#&gt; sigmaTemp                 0.674 0.034    0.002          0.002  0.610  0.672</span></span>
-<span><span class="co">#&gt; sigma_e_Abundance         0.934 0.049    0.002          0.002  0.843  0.932</span></span>
-<span><span class="co">#&gt; sigma_e_Moisture          0.711 0.037    0.002          0.002  0.645  0.709</span></span>
-<span><span class="co">#&gt; sigma_e_Temp              0.674 0.034    0.002          0.002  0.610  0.672</span></span>
-<span><span class="co">#&gt;                           97.5%  Rhat n.eff</span></span>
-<span><span class="co">#&gt; alpha_Abundance           0.125 1.004   583</span></span>
-<span><span class="co">#&gt; alpha_Moisture            0.099 0.999   434</span></span>
-<span><span class="co">#&gt; alpha_Temp                0.091 1.002   499</span></span>
-<span><span class="co">#&gt; beta_Abundance_Elevation  0.032 1.000   487</span></span>
-<span><span class="co">#&gt; beta_Abundance_Moisture   0.530 0.999   508</span></span>
-<span><span class="co">#&gt; beta_Abundance_Temp       0.642 1.003   565</span></span>
-<span><span class="co">#&gt; beta_Moisture_Temp       -0.615 0.999   465</span></span>
-<span><span class="co">#&gt; beta_Temp_Elevation      -0.647 1.001   480</span></span>
-<span><span class="co">#&gt; sigmaAbundance            1.030 0.998   480</span></span>
-<span><span class="co">#&gt; sigmaMoisture             0.780 1.001   480</span></span>
-<span><span class="co">#&gt; sigmaTemp                 0.746 1.005   480</span></span>
-<span><span class="co">#&gt; sigma_e_Abundance         1.030 0.998   480</span></span>
-<span><span class="co">#&gt; sigma_e_Moisture          0.780 1.001   480</span></span>
-<span><span class="co">#&gt; sigma_e_Temp              0.746 1.005   480</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; DIC:</span></span>
-<span><span class="co">#&gt; Mean deviance:  1377 </span></span>
-<span><span class="co">#&gt; penalty 11.23 </span></span>
-<span><span class="co">#&gt; Penalized deviance: 1389</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
 <p>We can also plot the fitted causal model with its standardised
 paths:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_dag.html">plot_dag</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-<p><img src="04_mediation_files/figure-html/plot_dag-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 <div class="section level3">
 <h3 id="perform-mediation-analysis">4. Perform Mediation Analysis<a class="anchor" aria-label="anchor" href="#perform-mediation-analysis"></a>
@@ -275,11 +215,7 @@ indirect components.</p>
 <h4 id="inspect-the-summary">Inspect the Summary<a class="anchor" aria-label="anchor" href="#inspect-the-summary"></a>
 </h4>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">med_results</span><span class="op">$</span><span class="va">summary</span></span>
-<span><span class="co">#&gt;                    Type       Mean         SD      Lower       Upper</span></span>
-<span><span class="co">#&gt; 1          Total Effect -0.2757059 0.06687637 -0.4093048 -0.15266327</span></span>
-<span><span class="co">#&gt; 2         Direct Effect -0.1563994 0.09541511 -0.3515907  0.03157144</span></span>
-<span><span class="co">#&gt; 3 Total Indirect Effect -0.1193065 0.07344900 -0.2604293  0.02290439</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">med_results</span><span class="op">$</span><span class="va">summary</span></span></code></pre></div>
 <p><strong>Interpretation (Standardized Units):</strong> * <strong>Total
 Effect</strong>: The net impact of Elevation on Abundance in SD units. *
 <strong>Direct Effect</strong>: The path
@@ -294,15 +230,7 @@ increases Abundance.</p>
 <p>The <code>because_mediation</code> function automatically traces all
 valid paths from exposure to outcome in the DAG.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">med_results</span><span class="op">$</span><span class="va">paths</span></span>
-<span><span class="co">#&gt;                                         Path     Type       Mean         SD</span></span>
-<span><span class="co">#&gt; 1 Elevation -&gt; Temp -&gt; Moisture -&gt; Abundance Indirect  0.1887720 0.05302702</span></span>
-<span><span class="co">#&gt; 2             Elevation -&gt; Temp -&gt; Abundance Indirect -0.3080785 0.08725969</span></span>
-<span><span class="co">#&gt; 3                     Elevation -&gt; Abundance   Direct -0.1563994 0.09541511</span></span>
-<span><span class="co">#&gt;         Lower       Upper</span></span>
-<span><span class="co">#&gt; 1  0.09457531  0.29462758</span></span>
-<span><span class="co">#&gt; 2 -0.48333762 -0.14229962</span></span>
-<span><span class="co">#&gt; 3 -0.35159070  0.03157144</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">med_results</span><span class="op">$</span><span class="va">paths</span></span></code></pre></div>
 <p>We expect to see three distinct paths:</p>
 <ol style="list-style-type: decimal">
 <li>

@@ -11,10 +11,9 @@ nodes.
 ``` r
 because_model(
   equations,
-  multi.tree = FALSE,
+  is_multi_structure = FALSE,
   latent_method = "correlations",
   structures = list(),
-  is_multi_structure = FALSE,
   random_structure_names = NULL,
   random_terms = list(),
   vars_with_na = NULL,
@@ -25,10 +24,12 @@ because_model(
   poly_terms = NULL,
   latent = NULL,
   categorical_vars = NULL,
+  fix_latent = "loading",
   fix_residual_variance = NULL,
   priors = NULL,
   hierarchical_info = NULL,
-  engine = "jags"
+  engine = "jags",
+  quiet = FALSE
 )
 ```
 
@@ -38,10 +39,9 @@ because_model(
 
   A list of model formulas.
 
-- multi.tree:
+- is_multi_structure:
 
-  Logical; if `TRUE`, incorporates phylogenetic uncertainty by sampling
-  across a set of trees.
+  Logical (Internal). If TRUE, handles 3D Precision arrays.
 
 - latent_method:
 
@@ -51,10 +51,6 @@ because_model(
 
   A named list of structural objects (e.g. matrices, trees) to include
   as correlations.
-
-- is_multi_structure:
-
-  Logical (Internal). If TRUE, handles 3D Precision arrays.
 
 - random_structure_names:
 
@@ -172,7 +168,7 @@ The generated model includes:
 
 ``` r
 eqs <- list(BR ~ BM, S ~ BR, G ~ BR, L ~ BR)
-cat(because_model(eqs, multi.tree = TRUE)$model)
+cat(because_model(eqs, is_multi_structure = TRUE)$model)
 #> model {
 #>   # Common structures and priors
 #>   # Structural equations
@@ -191,38 +187,34 @@ cat(because_model(eqs, multi.tree = TRUE)$model)
 #>   }
 #>   # Multivariate normal likelihoods
 #>   for (i in 1:N) {
-#>     BR[i] ~ dnorm(mu_BR[i], tau_e_BR)
-#>     log_lik_BR[i] <- logdensity.norm(BR[i], mu_BR[i], tau_e_BR)
+#>     BR[i] ~ dnorm(mu_BR[i], tau_res_BR)
+#>     log_lik_BR[i] <- logdensity.norm(BR[i], mu_BR[i], tau_res_BR)
 #>   }
 #>   for (i in 1:N) {
-#>     S[i] ~ dnorm(mu_S[i], tau_e_S)
-#>     log_lik_S[i] <- logdensity.norm(S[i], mu_S[i], tau_e_S)
+#>     S[i] ~ dnorm(mu_S[i], tau_res_S)
+#>     log_lik_S[i] <- logdensity.norm(S[i], mu_S[i], tau_res_S)
 #>   }
 #>   for (i in 1:N) {
-#>     G[i] ~ dnorm(mu_G[i], tau_e_G)
-#>     log_lik_G[i] <- logdensity.norm(G[i], mu_G[i], tau_e_G)
+#>     G[i] ~ dnorm(mu_G[i], tau_res_G)
+#>     log_lik_G[i] <- logdensity.norm(G[i], mu_G[i], tau_res_G)
 #>   }
 #>   for (i in 1:N) {
-#>     L[i] ~ dnorm(mu_L[i], tau_e_L)
-#>     log_lik_L[i] <- logdensity.norm(L[i], mu_L[i], tau_e_L)
+#>     L[i] ~ dnorm(mu_L[i], tau_res_L)
+#>     log_lik_L[i] <- logdensity.norm(L[i], mu_L[i], tau_res_L)
 #>   }
 #>   # Priors for structural parameters
-#>   alpha_BR ~ dnorm(0, 1.0E-6)
-#>   sigma_e_BR ~ dunif(0, 100)
-#>   tau_e_BR <- 1 / (sigma_e_BR * sigma_e_BR)
-#>   sigmaBR <- 1/sqrt(tau_e_BR)
-#>   alpha_S ~ dnorm(0, 1.0E-6)
-#>   sigma_e_S ~ dunif(0, 100)
-#>   tau_e_S <- 1 / (sigma_e_S * sigma_e_S)
-#>   sigmaS <- 1/sqrt(tau_e_S)
-#>   alpha_G ~ dnorm(0, 1.0E-6)
-#>   sigma_e_G ~ dunif(0, 100)
-#>   tau_e_G <- 1 / (sigma_e_G * sigma_e_G)
-#>   sigmaG <- 1/sqrt(tau_e_G)
-#>   alpha_L ~ dnorm(0, 1.0E-6)
-#>   sigma_e_L ~ dunif(0, 100)
-#>   tau_e_L <- 1 / (sigma_e_L * sigma_e_L)
-#>   sigmaL <- 1/sqrt(tau_e_L)
+#>   alpha_BR ~ dnorm(0, 0.01)
+#>   sigma_BR_res ~ dunif(0, 100)
+#>   tau_res_BR <- 1 / (sigma_BR_res * sigma_BR_res)
+#>   alpha_S ~ dnorm(0, 0.01)
+#>   sigma_S_res ~ dunif(0, 100)
+#>   tau_res_S <- 1 / (sigma_S_res * sigma_S_res)
+#>   alpha_G ~ dnorm(0, 0.01)
+#>   sigma_G_res ~ dunif(0, 100)
+#>   tau_res_G <- 1 / (sigma_G_res * sigma_G_res)
+#>   alpha_L ~ dnorm(0, 0.01)
+#>   sigma_L_res ~ dunif(0, 100)
+#>   tau_res_L <- 1 / (sigma_L_res * sigma_L_res)
 #>   beta_BR_BM ~ dnorm(0, 1.0E-6)
 #>   beta_S_BR ~ dnorm(0, 1.0E-6)
 #>   beta_G_BR ~ dnorm(0, 1.0E-6)

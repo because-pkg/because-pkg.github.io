@@ -64,10 +64,10 @@ Sampler) installed on your machine.
 
 After installing JAGS, you can install `because` from GitHub.
 
-To install the **stable release** (`v1.2.4`):
+To install the **stable release** (`v1.2.6`):
 
 ``` r
-remotes::install_github("because-pkg/because@v1.2.4", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.2.6", build_vignettes = TRUE)
 ```
 
 To install the **latest development version**:
@@ -102,10 +102,12 @@ Let’s start simulating two variables X and Y where Y is correlated to X:
 set.seed(67)
 
 # Simulate predictor
-X <- rnorm(n = 100, mean = 50, sd = 10)
+n <- 100
+X <- rnorm(n = n, mean = 50, sd = 10)
 
 # Generate response with the chosen intercept (alpha) and slope (beta)
 alpha <- 20
+beta <- 0.5
 Y <- alpha + beta * X + rnorm(n, mean = 0, sd = 10)
 
 # Combine into data frame

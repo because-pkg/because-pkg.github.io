@@ -1,6 +1,5 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://because-pkg.github.io/because/404.html</loc></url>
-<url><loc>https://because-pkg.github.io/because/ROADMAP.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/01_getting_started.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/02_dseparation.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/03_custom_priors.html</loc></url>
@@ -49,8 +48,10 @@
 <url><loc>https://because-pkg.github.io/because/reference/get_dsep_support_equations.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_family.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_family_object.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/get_inherited_random_terms.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_inits_hook.default.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_inits_hook.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/get_level_depth.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_monitor_vars_hook.default.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_monitor_vars_hook.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_order_labels_hook.default.html</loc></url>
@@ -63,6 +64,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/get_variability_type_hook.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/index.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/infer_variable_level.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/is_cross_hierarchy_test.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/is_latent_child_hook.default.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/is_latent_child_hook.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/jags_family_definition.default.html</loc></url>
@@ -86,9 +88,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/plot_dsep.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/plot_posterior.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/posterior_predict.because.html</loc></url>
-<url><loc>https://because-pkg.github.io/because/reference/posterior_predict.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/pp_check.because.html</loc></url>
-<url><loc>https://because-pkg.github.io/because/reference/pp_check.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/prepare_hierarchical_jags_data.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/prepare_structure_data.default.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/prepare_structure_data.html</loc></url>
