@@ -2729,10 +2729,12 @@ because_model <- function(
     # - Structural effects (beta coefficients)
     # - Correlation structure (err_res from Wishart)
     # - Observation noise (tau_obs)
-    model_lines <- c(
+    model_lines <- safe_add_lines(
       model_lines,
-      get_precision_prior(paste0("tau_obs_", var), var),
-      paste0("  sigma_obs_", var, " <- 1/sqrt(tau_obs_", var, ")")
+      c(
+        get_precision_prior(paste0("tau_obs_", var), var),
+        paste0("  sigma_obs_", var, " <- 1/sqrt(tau_obs_", var, ")")
+      )
     )
 
     # Build sum string
@@ -2906,9 +2908,14 @@ because_model <- function(
         }
         model_lines <- c(
           model_lines,
-          paste0("  }"),
-          get_precision_prior(paste0(var, "_tau"), var),
-          paste0("  ", var, "_sigma <- 1/sqrt(", var, "_tau)")
+          paste0("  }")
+        )
+        model_lines <- safe_add_lines(
+          model_lines,
+          c(
+            get_precision_prior(paste0(var, "_tau"), var),
+            paste0("  ", var, "_sigma <- 1/sqrt(", var, "_tau)")
+          )
         )
       } else {
         warning(paste("Unknown variability type:", type, "for variable", var))
@@ -3021,7 +3028,7 @@ because_model <- function(
               )
             )
           } else {
-            model_lines <- c(
+            model_lines <- safe_add_lines(
               model_lines,
               paste0(
                 "  ",
@@ -3062,7 +3069,7 @@ because_model <- function(
             # Only define tau_e if NOT Negative Binomial or ZINB
             # (since those use 'r' size parameter for dispersion)
             if (!dist %in% c("negbinomial", "zinb")) {
-              model_lines <- c(
+              model_lines <- safe_add_lines(
                 model_lines,
                 paste0(
                   "  ",
@@ -3795,7 +3802,7 @@ because_model <- function(
         is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(u, s_name), logical(1)))
         
         # Priors
-        model_lines <- c(
+        model_lines <- safe_add_lines(
           model_lines,
           paste0("  ", get_precision_prior(tau_res, response))
         )
