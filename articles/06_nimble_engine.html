@@ -266,20 +266,14 @@ following table documents how samplers are assigned when using
 <td align="left">
 <strong>Linear coefficients</strong>
 (<code>alpha_*</code>, <code>beta_*</code>)</td>
-<td align="left"><strong>Gibbs (conjugate)</strong></td>
-<td align="left"><strong>Gibbs</strong></td>
-<td align="left">Identical. Both use closed-form conjugate updates. Fast
-and exact.</td>
+<td align="left">
+<strong>Slice</strong> (if non-Gaussian)</td>
+<td align="left"><strong>Slice</strong></td>
+<td align="left">Swapped from default <code>RW</code> to
+<strong>Slice</strong> for Poisson/Binomial to handle steep link
+curvature.</td>
 </tr>
 <tr class="even">
-<td align="left">
-<strong>Residual precision</strong>
-(<code>tau_e_*</code>)</td>
-<td align="left"><strong>Gibbs (conjugate)</strong></td>
-<td align="left"><strong>Gibbs</strong></td>
-<td align="left">Gamma prior + Normal likelihood = conjugate.</td>
-</tr>
-<tr class="odd">
 <td align="left">
 <strong>Structured REs</strong>
 (<code>u_std_.*[1:N]</code>)</td>
@@ -290,7 +284,7 @@ and exact.</td>
 <td align="left">Swapped from default <code>RW_block</code> to match
 JAGS’s robust mixing for correlated vectors.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">
 <strong>Precision parameters</strong>
 (<code>tau_u_.*</code>)</td>
@@ -300,7 +294,7 @@ JAGS’s robust mixing for correlated vectors.</td>
 <td align="left">Swapped from default <code>RW</code> to ensure stable
 convergence for variance components.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">
 <strong>Dispersion / Inflation</strong>
 (<code>r_*</code>, <code>psi_*</code>)</td>
@@ -310,7 +304,7 @@ convergence for variance components.</td>
 <td align="left">Swapped from default <code>RW</code> to match JAGS’s
 robust mixing and handle boundary constraints.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><strong>Multinomial / Ordinal</strong></td>
 <td align="left">
 <strong>Categorical</strong>
@@ -319,17 +313,57 @@ robust mixing and handle boundary constraints.</td>
 <td align="left">Specialized discrete sampler. Extremely fast and
 efficient.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><strong>Binomial / Poisson</strong></td>
 <td align="left">
-<strong>RW-MH scalar</strong> (<code>RW</code>)</td>
+<strong>Slice</strong> (hardened)</td>
 <td align="left"><strong>Slice</strong></td>
-<td align="left">
-<code>RW</code> is faster per iteration;
-parallelization compensates for mixing differences.</td>
+<td align="left">Automatic hardening swaps the default <code>RW</code>
+for <code>slice</code> to prevent divergent transitions.</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
+<div class="section level2">
+<h2 id="automatic-initialization-and-stability">Automatic Initialization and Stability<a class="anchor" aria-label="anchor" href="#automatic-initialization-and-stability"></a>
+</h2>
+<p>NIMBLE models can be sensitive to starting values, especially when
+using non-linear link functions like <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp()</a></code> (Poisson) or
+<code>logit()</code> (Binomial). To ensure robust convergence,
+<strong>because</strong> implements several automatic stabilization
+features:</p>
+<div class="section level3">
+<h3 id="intelligent-intercept-starts">1. Intelligent Intercept Starts<a class="anchor" aria-label="anchor" href="#intelligent-intercept-starts"></a>
+</h3>
+<p>For count and binary responses, <strong>because</strong>
+automatically calculates the mean of the observed data and initializes
+the corresponding intercept (<code>alpha_Variable</code>) at the
+appropriate scale (e.g., <code>log(mean(y))</code>). This ensures that
+chains begin in an identifiable region of the likelihood rather than
+starting at <code>0.0</code>, which can lead to divergent
+transitions.</p>
+</div>
+<div class="section level3">
+<h3 id="stochastic-chain-jitter">2. Stochastic Chain Jitter<a class="anchor" aria-label="anchor" href="#stochastic-chain-jitter"></a>
+</h3>
+<p>To ensure that the <code>Rhat</code> statistic can accurately detect
+non-convergence, <strong>because</strong> applies a stochastic jitter to
+the initial values for every chain. Each chain starts at a slightly
+different point in the parameter space, allowing the MCMC algorithm to
+explore the posterior from multiple perspectives and escape locally flat
+regions.</p>
+</div>
+<div class="section level3">
+<h3 id="sampler-hardening">3. Sampler Hardening<a class="anchor" aria-label="anchor" href="#sampler-hardening"></a>
+</h3>
+<p>When <strong>because</strong> detects a non-Gaussian response, it
+automatically “hardens” the sampler for the associated regression
+coefficients. While NIMBLE defaults to a Random Walk (RW) sampler for
+most fixed effects, <code>because</code> swaps this for a <strong>Slice
+Sampler</strong> for Poisson, Binomial, and Negative Binomial models.
+This provides significantly more stability in the presence of the
+extreme curvature characteristic of these link functions.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
