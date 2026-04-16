@@ -2926,8 +2926,12 @@ because_model <- function(
       model_lines <- c(
         model_lines,
         paste0("  ", get_prior(alpha_name, type = "alpha")),
-        # [PX UPGRADE] Register the alpha_px prior node
-        if (grepl("^alpha_px_", alpha_name)) paste0("  ", alpha_name, " ~ dnorm(0, 1.0E-4)") else character(0)
+        # [PX UPGRADE] Register the alpha_px prior node for non-Gaussian models
+        if (dist %in% c("poisson", "negbinomial", "binomial", "zip") && !is_occupancy_aux) {
+          paste0("  alpha_px_", response, suffix, " ~ dnorm(0, 1.0E-4)")
+        } else {
+          character(0)
+        }
       )
 
       # Only generate lambda/tau priors if NOT using GLMM (missing data),
