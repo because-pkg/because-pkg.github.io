@@ -26,20 +26,13 @@ jobs:
 
       - uses: r-lib/actions/setup-pandoc@v2
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jags libjags-dev pkg-config libnlopt-dev libglpk-dev libxml2-dev \
-          libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev libfontconfig1-dev \
-          libarchive-dev libgit2-dev libssh2-1-dev libssl-dev libfreetype6-dev \
-          libv8-dev libpng-dev libudunits2-dev libgdal-dev
-
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          extra-packages: any::pkgdown, local::.
           needs: website
 
       - name: Debug workspace
@@ -49,7 +42,7 @@ jobs:
         shell: bash
 
       - name: Build site
-        run: pkgdown::build_site(install = FALSE, new_process = FALSE)
+        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
         shell: Rscript {0}
 
       - name: Verify build output
