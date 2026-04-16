@@ -2291,7 +2291,7 @@ because <- function(
                 random_terms = random_terms,
                 equations = equations,
                 family = family,
-                tree = tree,
+                structure = structure,
                 levels = levels,
                 hierarchy = hierarchy,
                 link_vars = link_vars,
@@ -2341,7 +2341,7 @@ because <- function(
                   random_terms = random_terms,
                   equations = equations,
                   family = family,
-                  tree = tree,
+                  structure = structure,
                   levels = levels,
                   hierarchy = hierarchy,
                   link_vars = link_vars,
@@ -2417,7 +2417,7 @@ because <- function(
               random_terms = random_terms,
               equations = equations,
               family = family,
-              tree = tree,
+              structure = structure,
               levels = levels,
               hierarchy = hierarchy,
               link_vars = link_vars,
@@ -3952,11 +3952,12 @@ because <- function(
   result$poly_terms <- all_poly_terms
   result$equations <- equations
 
-  # Extension Hook: Extract order labels (e.g. tip labels in phylogeny)
-  if (!is.null(tree)) {
-    result$species_order <- get_order_labels_hook(tree)
+  # --- Result Enrichment ---
+  # If we have a structure, try to extract labels for ordering
+  if (!is.null(structure)) {
+    result$species_order <- get_order_labels_hook(structure)
   } else if (!is.null(id_col) && is.data.frame(original_data)) {
-    # If no tree but ID col provided
+    # If no structure but ID col provided
     result$species_order <- as.character(original_data[[id_col]])
   }
 
@@ -4070,7 +4071,7 @@ run_single_dsep_test_v2 <- function(
   random_terms = list(),
   equations = list(),
   family = NULL,
-  tree = NULL,
+  structure = NULL,
   levels = NULL,
   hierarchy = NULL,
   link_vars = NULL,
@@ -4315,15 +4316,15 @@ run_single_dsep_test_v2 <- function(
     test_data
   }
 
-  # Extension Hook: Filter tree structure
-  sub_tree <- dsep_tree_hook(tree, test_eq, hierarchical_info, levels)
+  # Extension Hook: Filter structure
+  sub_structure <- dsep_tree_hook(structure, test_eq, hierarchical_info, levels)
 
   # Call because recursively
   # Use do.call and filtering to handle potential version conflicts on worker nodes
   bec_args <- names(formals(because))
   call_args <- list(
     data = dsep_data_to_pass,
-    tree = sub_tree,
+    structure = sub_structure,
     equations = dsep_equations,
     monitor = monitor_params,
     n.chains = n.chains,
