@@ -250,7 +250,7 @@ because_model <- function(
     for (lvl in all_lvls) {
       match_all <- TRUE
       for (v_lvl in v_lvls) {
-        if (!is_valid_structure_mapping(v_lvl, lvl, h_info)) {
+        if (!is_valid_structure_mapping(v_lvl, lvl, h_info, allow_identity = TRUE)) {
           match_all <- FALSE
           break
         }
@@ -268,7 +268,7 @@ because_model <- function(
     finest <- candidates[1]
     if (length(candidates) > 1) {
       for (i in 2:length(candidates)) {
-        if (is_valid_structure_mapping(finest, candidates[i], h_info)) {
+        if (is_valid_structure_mapping(finest, candidates[i], h_info, allow_identity = TRUE)) {
           finest <- candidates[i]
         }
       }

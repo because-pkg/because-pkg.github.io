@@ -1,93 +1,48 @@
 model {
   # Common structures and priors
-  # Induced Correlations (Latent Variables) - Pair Processing
-  # Correlated residuals between NDVI and Flower_Cover (Wishart Prior)
-  TAU_res_NDVI_Flower_Cover[1:2, 1:2] ~ dwish(ID2[1:2, 1:2], 3)
-  cov_NDVI_Flower_Cover[1:2, 1:2] <- inverse(TAU_res_NDVI_Flower_Cover[1:2, 1:2])
-  sigma_res_NDVI_Flower_Cover <- sqrt(cov_NDVI_Flower_Cover[1, 1])
-  sigma_res_Flower_Cover_NDVI <- sqrt(cov_NDVI_Flower_Cover[2, 2])
-  rho_NDVI_Flower_Cover <- cov_NDVI_Flower_Cover[1, 2] / (sigma_res_NDVI_Flower_Cover * sigma_res_Flower_Cover_NDVI)
-  for (i in 1:N) {
-    err_res_NDVI_Flower_Cover[i, 1:2] ~ dmnorm(zero_vec[1:2], TAU_res_NDVI_Flower_Cover[1:2, 1:2])
-  }
   # Structural equations
     # Deterministic nodes (Interactions / Logic)
-  for (i in 1:N) {
-    Temperature_minus_Thermal_Tol[i] <- Temperature[i] - Thermal_Tol[i]
+  for (i in 1:N_obs) {
+    times_x_pesos[i] <- times[i] * pesos[i]
   }
 
-  for (i in 1:N) {
-    mu_NDVI[i] <- alpha_NDVI
+  for (i in 1:N_obs) {
+    mu_ewls[i] <- alpha_ewls + beta_ewls_times*times[i] + beta_ewls_sqs*sqs[individual_idx_obs[i]] + beta_ewls_pesos*pesos[individual_idx_obs[i]] + beta_ewls_times_x_pesos*times_x_pesos[i]
   }
-  for (i in 1:N) {
-    mu_Flower_Cover[i] <- alpha_Flower_Cover + beta_Flower_Cover_Elevation_s*Elevation_s[i]
+  for (i in 1:N_individual) {
+    mu_sqs[i] <- alpha_sqs + beta_sqs_pesos*pesos[i] + beta_sqs_svls*svls[i]
   }
-  for (i in 1:N) {
-    mu_Metabolic_Rate[i] <- alpha_Metabolic_Rate + beta_Metabolic_Rate_Body_Mass_s*Body_Mass_s[i]
-  }
-  for (i in 1:N) {
-    mu_Thermal_Tol[i] <- alpha_Thermal_Tol + beta_Thermal_Tol_Body_Mass_s*Body_Mass_s[i]
-  }
-  for (i in 1:N) {
-    mu_Temperature[i] <- alpha_Temperature + beta_Temperature_Elevation_s*Elevation_s[i]
-  }
-  for (i in 1:N) {
-    # Poisson log link for Abundance
-    mu_Abundance[i] <- exp(max(-20, min(10, alpha_Abundance + beta_Abundance_Flower_Cover*Flower_Cover[i] + beta_Abundance_Wind_Speed*Wind_Speed[i] + beta_Abundance_Temperature_minus_Thermal_Tol*Temperature_minus_Thermal_Tol[i] + err_Abundance[i])))
-    Abundance[i] ~ dpois(mu_Abundance[i])
-    log_lik_Abundance[i] <- logdensity.pois(Abundance[i], mu_Abundance[i])
+  for (i in 1:N_individual) {
+    mu_pesos[i] <- alpha_pesos + beta_pesos_svls*svls[i]
   }
   # Multivariate normal likelihoods
-  for (i in 1:N) {
-    Metabolic_Rate[i] ~ dnorm(mu_Metabolic_Rate[i], tau_e_Metabolic_Rate)
-    log_lik_Metabolic_Rate[i] <- logdensity.norm(Metabolic_Rate[i], mu_Metabolic_Rate[i], tau_e_Metabolic_Rate)
+  for (i in 1:N_obs) {
+    ewls[i] ~ dnorm(mu_ewls[i], tau_res_ewls)
+    log_lik_ewls[i] <- logdensity.norm(ewls[i], mu_ewls[i], tau_res_ewls)
   }
-  for (i in 1:N) {
-    Thermal_Tol[i] ~ dnorm(mu_Thermal_Tol[i], tau_e_Thermal_Tol)
-    log_lik_Thermal_Tol[i] <- logdensity.norm(Thermal_Tol[i], mu_Thermal_Tol[i], tau_e_Thermal_Tol)
+  for (i in 1:N_individual) {
+    sqs[i] ~ dnorm(mu_sqs[i], tau_res_sqs)
+    log_lik_sqs[i] <- logdensity.norm(sqs[i], mu_sqs[i], tau_res_sqs)
   }
-  for (i in 1:N) {
-    Temperature[i] ~ dnorm(mu_Temperature[i], tau_e_Temperature)
-    log_lik_Temperature[i] <- logdensity.norm(Temperature[i], mu_Temperature[i], tau_e_Temperature)
-  }
-  # Independent (Standard GLM) for Poisson: Abundance
-  for (i in 1:N) {
-    err_Abundance[i] <- 0
-  }
-tau_obs_NDVI ~ dgamma(1, 1)
-  sigma_obs_NDVI <- 1/sqrt(tau_obs_NDVI)
-  for (i in 1:N) {
-    NDVI[i] ~ dnorm(mu_NDVI[i] + err_res_NDVI_Flower_Cover[i, 1], tau_obs_NDVI)
-    log_lik_NDVI[i] <- logdensity.norm(NDVI[i], mu_NDVI[i] + err_res_NDVI_Flower_Cover[i, 1], tau_obs_NDVI)
-  }
-tau_obs_Flower_Cover ~ dgamma(1, 1)
-  sigma_obs_Flower_Cover <- 1/sqrt(tau_obs_Flower_Cover)
-  for (i in 1:N) {
-    Flower_Cover[i] ~ dnorm(mu_Flower_Cover[i] + err_res_NDVI_Flower_Cover[i, 2], tau_obs_Flower_Cover)
-    log_lik_Flower_Cover[i] <- logdensity.norm(Flower_Cover[i], mu_Flower_Cover[i] + err_res_NDVI_Flower_Cover[i, 2], tau_obs_Flower_Cover)
+  for (i in 1:N_individual) {
+    pesos[i] ~ dnorm(mu_pesos[i], tau_res_pesos)
+    log_lik_pesos[i] <- logdensity.norm(pesos[i], mu_pesos[i], tau_res_pesos)
   }
   # Priors for structural parameters
-  alpha_Metabolic_Rate ~ dnorm(0, 1.0E-6)
-  sigma_e_Metabolic_Rate ~ dunif(0, 100)
-  tau_e_Metabolic_Rate <- 1 / (sigma_e_Metabolic_Rate * sigma_e_Metabolic_Rate)
-  sigmaMetabolic_Rate <- 1/sqrt(tau_e_Metabolic_Rate)
-  alpha_Thermal_Tol ~ dnorm(0, 1.0E-6)
-  sigma_e_Thermal_Tol ~ dunif(0, 100)
-  tau_e_Thermal_Tol <- 1 / (sigma_e_Thermal_Tol * sigma_e_Thermal_Tol)
-  sigmaThermal_Tol <- 1/sqrt(tau_e_Thermal_Tol)
-  alpha_Temperature ~ dnorm(0, 1.0E-6)
-  sigma_e_Temperature ~ dunif(0, 100)
-  tau_e_Temperature <- 1 / (sigma_e_Temperature * sigma_e_Temperature)
-  sigmaTemperature <- 1/sqrt(tau_e_Temperature)
-  alpha_Abundance ~ dnorm(0, 1.0E-6)
-  alpha_NDVI ~ dnorm(0, 1.0E-6)
-  alpha_Flower_Cover ~ dnorm(0, 1.0E-6)
-  beta_Flower_Cover_Elevation_s ~ dnorm(0, 1.0E-6)
-  beta_Metabolic_Rate_Body_Mass_s ~ dnorm(0, 1.0E-6)
-  beta_Thermal_Tol_Body_Mass_s ~ dnorm(0, 1.0E-6)
-  beta_Temperature_Elevation_s ~ dnorm(0, 1.0E-6)
-  beta_Abundance_Flower_Cover ~ dnorm(0, 1.0E-6)
-  beta_Abundance_Wind_Speed ~ dnorm(0, 1.0E-6)
-  beta_Abundance_Temperature_minus_Thermal_Tol ~ dnorm(0, 1.0E-6)
-  # Predictor priors for imputation
+  alpha_ewls ~ dnorm(0, 0.01)
+  sigma_ewls_res ~ dunif(0, 100)
+  tau_res_ewls <- 1 / (sigma_ewls_res * sigma_ewls_res)
+  alpha_sqs ~ dnorm(0, 0.01)
+  sigma_sqs_res ~ dunif(0, 100)
+  tau_res_sqs <- 1 / (sigma_sqs_res * sigma_sqs_res)
+  alpha_pesos ~ dnorm(0, 0.01)
+  sigma_pesos_res ~ dunif(0, 100)
+  tau_res_pesos <- 1 / (sigma_pesos_res * sigma_pesos_res)
+  beta_ewls_times ~ dnorm(0, 1.0E-6)
+  beta_ewls_sqs ~ dnorm(0, 1.0E-6)
+  beta_ewls_pesos ~ dnorm(0, 1.0E-6)
+  beta_ewls_times_x_pesos ~ dnorm(0, 1.0E-6)
+  beta_sqs_pesos ~ dnorm(0, 1.0E-6)
+  beta_sqs_svls ~ dnorm(0, 1.0E-6)
+  beta_pesos_svls ~ dnorm(0, 1.0E-6)
 }
