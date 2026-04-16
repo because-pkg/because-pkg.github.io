@@ -80,6 +80,7 @@ because_model <- function(
   poly_terms = NULL,
   latent = NULL,
   categorical_vars = NULL,
+  fix_latent = "loading",
   fix_residual_variance = NULL,
   priors = NULL,
   hierarchical_info = NULL,
@@ -141,7 +142,7 @@ because_model <- function(
   }
 
   # Helper: Get prior for a parameter (custom override or default)
-  get_prior <- function(param_name, type = "beta") {
+  get_prior <- function(param_name, type = "beta", default = NULL) {
     # 1. Check for manual override in the 'priors' argument
     if (!is.null(priors) && param_name %in% names(priors)) {
       return(paste0(param_name, " ~ ", priors[[param_name]]))
@@ -154,7 +155,14 @@ because_model <- function(
     
     # 3. Robust Defaults (Weakly Informative SD=10 / Prec=0.01)
     # This fixes Rhat=1.8 issues while staying uninformative for human-scale data.
-    default_prior <- "dnorm(0, 0.01)"
+    default_prior <- default %||% "dnorm(0, 0.01)"
+    
+    # Detect if the prior is actually a fixed constant (e.g. "1.0")
+    # Fixed constants use the <- operator in JAGS
+    if (grepl("^[0-9.]+$", trimws(default_prior))) {
+        return(paste0(param_name, " <- ", default_prior))
+    }
+    
     return(paste0(param_name, " ~ ", default_prior))
   }
 
@@ -1789,6 +1797,16 @@ because_model <- function(
                 p$response == response && p$predictor == s_name && p$type == "structure"
               }))
               
+            # [PACKAGE FIX] Detect overlaps with structured covariances
+            is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(u, s_name), logical(1)))
+            
+            if (is_unified) {
+                # [UNIFICATION] Register the unified name instead of legacy
+                unified_tau <- paste0("tau_u_", s_name, "_", response)
+                unified_sigma <- paste0("sigma_", s_name, "_", response)
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
+            } else {
               if (length(existing_idx) > 0) {
                 # [PRIORITY FIX] If existing is legacy and current is hierarchical, overwrite
                 existing_param <- param_map[[existing_idx[1]]]$parameter
@@ -1801,15 +1819,22 @@ because_model <- function(
                 param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = param_name, equation_index = NA, type = "structure")
               }
             }
+            }
 
             # 2. Random Effects (Grouped)
             for (r_name in random_structure_names) {
               if (!is_valid_random_level(response, r_name, hierarchical_info)) next
               
-              s_suffix <- paste0("_", r_name)
-              u_std <- paste0("u_std_", response, suffix, s_suffix)
-              u <- paste0("u_", response, suffix, s_suffix)
-              tau_u <- paste0("tau_u_", response, suffix, s_suffix)
+              # [UNIFICATION] Skip if handled as a unified structure
+              if (r_name %in% names(structures) || any(vapply(names(structures), function(s) grepl(s, r_name), logical(1)))) {
+                  is_unified_r <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(r_name)), logical(1)))
+                  if (is_unified_r) next
+              }
+              
+              s_suffix_r <- paste0("_", r_name)
+              u_std <- paste0("u_std_", response, suffix, s_suffix_r)
+              u <- paste0("u_", response, suffix, s_suffix_r)
+              tau_u <- paste0("tau_u_", response, suffix, s_suffix_r)
               
               # Determine hierarchical level if available
               r_lvl <- get_random_level(response, r_name, hierarchical_info)
@@ -1913,10 +1938,18 @@ because_model <- function(
               is_multi = is_struct_multi(s_name),
               i_index = s_idx_var
             )
+            is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(u, s_name), logical(1)))
             if (!is.null(s_def)) {
-               # Map structural parameters
-              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name), equation_index = NA, type = "structure")
-              param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
+              if (is_unified) {
+                 unified_tau <- paste0("tau_u_", s_name, "_", response)
+                 unified_sigma <- paste0("sigma_", s_name, "_", response)
+                 param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
+                 param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
+              } else {
+                 # Map legacy structural parameters
+                 param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name), equation_index = NA, type = "structure")
+                 param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
+              }
 
               # Add Vector Prior
               model_lines <- safe_add_lines(model_lines, s_def$model_lines)
@@ -1932,17 +1965,10 @@ because_model <- function(
           for (r_name in random_structure_names) {
             if (!is_valid_random_level(response, r_name, hierarchical_info)) next
             
-            # [PACKAGE FIX] Detect overlaps with structured covariances
-            r_lvl <- get_random_level(response, r_name, hierarchical_info)
-            is_already_structured <- FALSE
-            if (!is.null(r_lvl)) {
-                is_already_structured <- any(vapply(structure_names, function(s) {
-                    tolower(get_struct_lvl(s, hierarchical_info)) == tolower(r_lvl)
-                }, logical(1)))
-            }
-            # Hard name-block
-            if (!is_already_structured) {
-                is_already_structured <- r_name %in% structure_names
+            # [UNIFICATION] Skip if handled as a unified structure
+            if (r_name %in% names(structures) || any(vapply(names(structures), function(s) grepl(s, r_name), logical(1)))) {
+                is_unified_r <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(r_name)), logical(1)))
+                if (is_unified_r) next
             }
 
             # [SMART DEDUPLICATION] Strictly honor manual terms (nuggets)
@@ -2055,16 +2081,34 @@ because_model <- function(
                       p$response == response && p$predictor == s_name && p$type == "structure" && grepl("\\[k\\]$", p$parameter)
                     }))
                     
-                    if (length(existing_idx) > 0) {
-                      # [PRIORITY FIX] If existing is legacy and current is hierarchical, overwrite
-                      existing_param <- param_map[[existing_idx[1]]]$parameter
-                      if (grepl(paste0("_", s_name, "\\[k\\]$"), paste0(param_name, "[k]")) && !grepl(paste0("_", s_name, "\\[k\\]$"), existing_param)) {
-                         param_map[[existing_idx[1]]]$parameter <- tau_name
-                         param_map[[existing_idx[2]]]$parameter <- paste0(param_name, "[k]")
-                      }
+                    # [UNIFICATION] Register the unified name if detected
+                    is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(u, s_name), logical(1)))
+                    
+                    if (is_unified) {
+                        unified_tau <- paste0("tau_u_", s_name, "_", response, "[k]")
+                        unified_sigma <- paste0("sigma_", s_name, "_", response, "[k]")
+                        param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
+                        param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
                     } else {
-                      param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = tau_name, equation_index = NA, type = "structure")
-                      param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0(param_name, "[k]"), equation_index = NA, type = "structure")
+                        if (length(existing_idx) > 0) {
+                          # [PRIORITY FIX] If existing is legacy and current is hierarchical, overwrite
+                          existing_param <- param_map[[existing_idx[1]]]$parameter
+                          if (grepl(paste0("_", s_name, "\\[k\\]$"), paste0(param_name, "[k]")) && !grepl(paste0("_", s_name, "\\[k\\]$"), existing_param)) {
+                             param_map[[existing_idx[1]]]$parameter <- tau_name
+                             param_map[[existing_idx[2]]]$parameter <- paste0(param_name, "[k]")
+                          }
+                        } else {
+                          is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(u, s_name), logical(1)))
+                          if (is_unified) {
+                               unified_tau <- paste0("tau_u_", s_name, "_", response)
+                               unified_sigma <- paste0("sigma_", s_name, "_", response)
+                               param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
+                               param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0(unified_sigma, "[k]"), equation_index = NA, type = "structure")
+                          } else {
+                               param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = tau_name, equation_index = NA, type = "structure")
+                               param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0(param_name, "[k]"), equation_index = NA, type = "structure")
+                          }
+                        }
                     }
                   }
                 }
@@ -2167,16 +2211,26 @@ because_model <- function(
                       p$response == response && p$predictor == s_name && p$type == "structure" && !grepl("\\[k\\]$", p$parameter)
                     }))
 
-                    if (length(existing_idx) > 0) {
-                      # [PRIORITY FIX] If existing is legacy and current is hierarchical, overwrite
-                      existing_param <- param_map[[existing_idx[1]]]$parameter
-                      if (grepl(paste0("_", s_name, "$"), param_name) && !grepl(paste0("_", s_name, "$"), existing_param)) {
-                         param_map[[existing_idx[1]]]$parameter <- tau_name
-                         param_map[[existing_idx[2]]]$parameter <- param_name
-                      }
+                    # [UNIFICATION] Register unified name in ordinal block
+                    is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(u, s_name), logical(1)))
+                    
+                    if (is_unified) {
+                        unified_tau <- paste0("tau_u_", s_name, "_", response)
+                        unified_sigma <- paste0("sigma_", s_name, "_", response)
+                        param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
+                        param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
                     } else {
-                      param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = tau_name, equation_index = NA, type = "structure")
-                      param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = param_name, equation_index = NA, type = "structure")
+                        if (length(existing_idx) > 0) {
+                          # [PRIORITY FIX] If existing is legacy and current is hierarchical, overwrite
+                          existing_param <- param_map[[existing_idx[1]]]$parameter
+                          if (grepl(paste0("_", s_name, "$"), param_name) && !grepl(paste0("_", s_name, "$"), existing_param)) {
+                             param_map[[existing_idx[1]]]$parameter <- tau_name
+                             param_map[[existing_idx[2]]]$parameter <- param_name
+                          }
+                        } else {
+                          param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = tau_name, equation_index = NA, type = "structure")
+                          param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = param_name, equation_index = NA, type = "structure")
+                        }
                     }
                   }
                 }
@@ -2364,21 +2418,17 @@ because_model <- function(
               model_lines <- safe_add_lines(model_lines, s_def$model_lines)
               total_u <- paste0(total_u, " + ", s_def$term)
 
-              # Map structural parameters for post-processing/lambda
-              param_map[[length(param_map) + 1]] <- list(
-                response = response,
-                predictor = s_name,
-                parameter = paste0("tau_u_", response, "_", s_name),
-                equation_index = NA,
-                type = "structure"
-              )
-              param_map[[length(param_map) + 1]] <- list(
-                response = response,
-                predictor = s_name,
-                parameter = paste0("sigma_", response, "_", s_name),
-                equation_index = NA,
-                type = "structure"
-              )
+              is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
+              if (is_unified) {
+                  unified_tau <- paste0("tau_u_", s_name, "_", response)
+                  unified_sigma <- paste0("sigma_", s_name, "_", response)
+                  param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
+                  param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
+              } else {
+                  # Map structural parameters for post-processing/lambda
+                  param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name), equation_index = NA, type = "structure")
+                  param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
+              }
             }
           }
         }
@@ -2466,20 +2516,16 @@ because_model <- function(
                 total_u <- paste0(total_u, " + ", s_def$term)
 
                 # Map structural parameters for post-processing/lambda
-                param_map[[length(param_map) + 1]] <- list(
-                  response = response,
-                  predictor = s_name,
-                  parameter = paste0("tau_u_", response, "_", s_name),
-                  equation_index = NA,
-                  type = "structure"
-                )
-                param_map[[length(param_map) + 1]] <- list(
-                  response = response,
-                  predictor = s_name,
-                  parameter = paste0("sigma_", response, "_", s_name),
-                  equation_index = NA,
-                  type = "structure"
-                )
+                is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
+                if (is_unified) {
+                  unified_tau <- paste0("tau_u_", s_name, "_", response)
+                  unified_sigma <- paste0("sigma_", s_name, "_", response)
+                  param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
+                  param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
+                } else {
+                  param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name), equation_index = NA, type = "structure")
+                  param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
+                }
               }
             }
           }
@@ -3540,14 +3586,18 @@ because_model <- function(
       }
     }
 
-    # APPLY SIGN CONSTRAINT FOR LATENT IDENTIFIABILITY
-    # If the predictor is a latent variable AND it is the first indicator encountered,
-    # we truncate the prior to be positive to resolve sign-flip ambiguity.
+    # APPLY ANCHORING FOR LATENT IDENTIFIABILITY
+    # We use Unit Loading Identification (ULI) by default (fix first loading to 1.0).
+    # This provides the most stable identification for non-linear GLVMs (Poisson/Binomial).
     if (!is.null(latent) && length(latent) > 0) {
       for (lat in latent) {
         # Match beta_ANYTHING_LatentVariable
         if (!lat %in% pinned_latents && grepl(paste0("_", lat, "$"), beta)) {
-          default_beta <- paste0(default_beta, " T(0,)")
+          if (fix_latent == "loading") {
+            default_beta <- "1.0" # Unit Loading Identification (ULI)
+          } else if (fix_latent == "sign") {
+            default_beta <- paste0(default_beta, " T(0,)") # Sign Identification
+          }
           pinned_latents <- c(pinned_latents, lat)
           break
         }
@@ -3556,7 +3606,7 @@ because_model <- function(
 
     model_lines <- c(
       model_lines,
-      paste0("  ", get_prior(beta, type = "beta"))
+      paste0("  ", get_prior(beta, type = "beta", default = default_beta))
     )
   }
 
@@ -3680,32 +3730,50 @@ because_model <- function(
 
         err <- paste0("err_", response, suffix)
         mu_err <- paste0("mu_err_", response, suffix)
-        # UNIFIED Variable_Structure naming: tau_u_Variable_Structure
+        # [UNIFICATION] Silence legacy structural registration if dispatch already handled it
         tau_struct <- paste0("tau_u_", response, suffix, "_", s_name)
         tau_res <- paste0("tau_res_", response, suffix)
 
+        # Only add legacy prior if not a unified structure
+        is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(u, s_name), logical(1)))
+        
         # Priors
         model_lines <- c(
           model_lines,
-          paste0("  ", get_precision_prior(tau_res, response)),
-          # Enforce Regularizing Prior for structural precision in GLMM
-          paste0("  ", tau_struct, " ~ dgamma(10, 10)"),
-          # Calculate lambda for reporting
-          paste0(
-            "  lambda_",
-            response,
-            suffix,
-            "_",
-            s_name,
-            " <- (1/",
-            tau_struct,
-            ") / ((1/",
-            tau_struct,
-            ") + (1/",
-            tau_res,
-            "))"
-          )
+          paste0("  ", get_precision_prior(tau_res, response))
         )
+
+        if (is_unified) {
+            # [UNIFICATION] Map the unified name for summary reporting
+            unified_tau <- paste0("tau_u_", s_name, "_", response)
+            unified_sigma <- paste0("sigma_", s_name, "_", response)
+            param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
+            param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
+        } else {
+            model_lines <- c(
+                model_lines,
+                paste0("  ", tau_struct, " ~ dgamma(10, 10)"),
+                # Calculate lambda for reporting
+                paste0(
+                    "  lambda_",
+                    response,
+                    suffix,
+                    "_",
+                    s_name,
+                    " <- (1/",
+                    tau_struct,
+                    ") / ((1/",
+                    tau_struct,
+                    ") + (1/",
+                    tau_res,
+                    "))"
+                )
+            )
+            if (!is_unified) {
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = tau_struct, equation_index = NA, type = "structure")
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
+            }
+        }
 
         if (is_struct_multi(s_name)) {
           model_lines <- c(
@@ -4295,6 +4363,31 @@ because_model <- function(
       as.data.frame(x[fields], stringsAsFactors = FALSE)
     })
   )
+
+  # [UNIFICATION] Master Registry Filter: Deduplicate Unified vs Legacy structural parameters
+  # If both sigma_phylo_Var and sigma_Var_phylo exist, keep only sigma_phylo_Var
+  if (!is.null(param_map_df) && nrow(param_map_df) > 0) {
+      unified_names <- grep("^sigma_(phylo|spatial|group)_", param_map_df$parameter, value = TRUE)
+      if (length(unified_names) > 0) {
+          legacy_to_remove <- c()
+          for (un in unified_names) {
+              # Parse sigma_Structure_Variable -> Variable
+              parts <- strsplit(un, "_")[[1]]
+              if (length(parts) >= 3) {
+                  s_type <- parts[2]
+                  v_name <- paste(parts[3:length(parts)], collapse = "_")
+                  legacy_pat <- paste0("sigma_", v_name, "_", s_type)
+                  legacy_to_remove <- c(legacy_to_remove, legacy_pat)
+              }
+          }
+          # Also remove corresponding tau legacy names
+          legacy_tau_to_remove <- sub("sigma_", "tau_u_", legacy_to_remove)
+          all_legacy <- c(legacy_to_remove, legacy_tau_to_remove)
+          
+          # Force Removal
+          param_map_df <- param_map_df[!(param_map_df$parameter %in% all_legacy), ]
+      }
+  }
 
   return(list(model = model_string, parameter_map = param_map_df))
 }

@@ -98,6 +98,13 @@
 #'   If specified, the model will account for induced correlations among observed
 #'   variables that share these latent common causes.
 #' @param latent_method Method for handling latent variables (default = "correlations").
+#' @param fix_latent Identification strategy for latent variables. Choices:
+#'   \itemize{
+#'     \item \code{"loading"} (default): Unit Loading Identification (ULI). Fixes the first indicator's
+#'           loading to 1.0. Most stable for non-linear GLVMs (Poisson/Binomial).
+#'     \item \code{"sign"}: Sign Identification. Estimates all loadings with a sign constraint (positive)
+#'           on the first indicator. Can be unstable due to scale-drift.
+#'   }
 #'   \itemize{
 #'     \item \code{"correlations"}: MAG approach - marginalize latent variables and estimate
 #'           induced correlations (\code{rho}) between observed variables that share latent parents.
@@ -202,6 +209,7 @@ because <- function(
   latent = NULL,
   latent_method = "correlations",
   standardize_latent = TRUE,
+  fix_latent = "loading",
   parallel = FALSE,
   n.cores = parallel::detectCores() - 1,
   cl = NULL,
@@ -2839,6 +2847,7 @@ because <- function(
     induced_correlations = induced_cors,
     latent = latent,
     standardize_latent = standardize_latent,
+    fix_latent = fix_latent,
     structures = structures,
     random_structure_names = r_names,
     random_terms = random_terms,
@@ -3755,6 +3764,7 @@ because <- function(
             quiet = quiet
           )
         },
+        error = function(e) {
           if (!quiet) {
             message("\nCRITICAL JAGS ERROR during compilation:")
             message(e$message)
