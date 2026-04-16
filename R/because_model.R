@@ -5,7 +5,7 @@
 #' Missing values are handled both in the response and predictor variables treating all of them as stochastic nodes.
 #'
 #' @param equations A list of model formulas.
-#' @param multi.tree Logical; if \code{TRUE}, incorporates phylogenetic uncertainty by sampling across a set of trees.
+#' @param is_multi_structure Logical; if \code{TRUE}, handles 3D Precision arrays (e.g. multi-object sampling).
 #' @param variability Optional character vector or named character vector of variable names that have measurement error or within-species variability.
 #'   If named, the names should be the variable names and the values should be the type of variability: "se" (for mean and standard error) or "reps" (for repeated measures).
 #'   If unnamed, it defaults to "se" for all specified variables.
@@ -45,7 +45,7 @@
 #'
 #' @examples
 #' eqs <- list(BR ~ BM, S ~ BR, G ~ BR, L ~ BR)
-#' cat(because_model(eqs, multi.tree = TRUE)$model)
+#' cat(because_model(eqs, is_multi_structure = TRUE)$model)
 #'
 #' @param standardize_latent Logical (default TRUE). If TRUE, standardizes latent variables to unit variance.
 #' @param structures A named list of structural objects (e.g. matrices, trees) to include as correlations.
@@ -66,10 +66,9 @@
 #'
 because_model <- function(
   equations,
-  multi.tree = FALSE,
+  is_multi_structure = FALSE,
   latent_method = "correlations",
   structures = list(),
-  is_multi_structure = FALSE,
   random_structure_names = NULL,
   random_terms = list(),
   vars_with_na = NULL,
@@ -94,6 +93,11 @@ because_model <- function(
   structure_names <- names(structures)
   
   # --- INTERNAL HELPERS (Toolbox) ---
+  
+  # Forward-compatibility: multi.tree used to be a standalone flag
+  if (!is_multi_structure && "multi.tree" %in% names(match.call())) {
+     is_multi_structure <- TRUE
+  }
   
   # Global JAGS node tracker to prevent redefinition errors
   # Used to de-duplicate priors/derivations across different logical blocks
@@ -455,13 +459,7 @@ because_model <- function(
     }
 
     # 2. Case-specific fallback for common names
-    phylo_aliases <- c("phylo", "tree", "multiPhylo", "phylogeny", "custom")
-    if (s_name %in% phylo_aliases) {
-      if (!is.null(multi.tree)) return(as.logical(multi.tree))
-      return(FALSE)
-    }
-
-    # 3. Default to FALSE for spatial, custom matrices unless explicitly flagged
+    # 2. Case-specific fallback (extensions provide these via hierarchical_info or S3)
     return(FALSE)
   }
 
@@ -490,9 +488,8 @@ because_model <- function(
     length(random_structure_names) > 0
   independent <- !has_structure && !has_random
 
-  # Flag for multi-structure (e.g., multiPhylo with 3D precision arrays)
-  # This applies to ANY structure type when multi.tree is TRUE
-  is_multi_structure <- multi.tree
+  # Flag for multi-structure (e.g., 3D precision arrays)
+  # This applies to ANY structure type when is_multi_structure is TRUE
 
   beta_counter <- list()
   response_counter <- list()
@@ -702,14 +699,14 @@ because_model <- function(
     vars_with_variability <- names(variability_list)
     exogenous_vars <- setdiff(vars_with_variability, all_responses)
 
-    # Legacy Multi-tree Setup (Fallback if structures not provided)
-    if (multi.tree && is.null(structures)) {
+    # Legacy Multi-object Setup (Fallback if structures not provided)
+    if (is_multi_structure && is.null(structures)) {
       model_lines <- c(
         model_lines,
-        "  # Multi-tree sampling",
-        "  K ~ dcat(p_tree[])",
-        "  for (k in 1:Ntree) {",
-        "    p_tree[k] <- 1/Ntree",
+        "  # Multi-object sampling",
+        "  K ~ dcat(p_obj[])",
+        "  for (k in 1:Nobj) {",
+        "    p_obj[k] <- 1/Nobj",
         "  }"
       )
     }
@@ -3639,8 +3636,8 @@ because_model <- function(
     }
   }
 
-  # Phylogenetic tree selection (if multi.tree)
-  if (multi.tree) {
+  # Object selection (if is_multi_structure)
+  if (is_multi_structure) {
     model_lines <- c(
       model_lines,
       "  # Phylogenetic uncertainty weighting",
@@ -3672,7 +3669,7 @@ because_model <- function(
 
       if (dist == "gaussian" && !use_glmm) {
         if (FALSE) {
-          if (multi.tree) {
+          if (is_multi_structure) {
             model_lines <- c(
               model_lines,
               paste0(
@@ -3844,7 +3841,7 @@ because_model <- function(
         # GLMM covariance for binomial error term
         if (FALSE) {
           # Marginal Formulation
-          if (multi.tree) {
+          if (is_multi_structure) {
             model_lines <- c(
               model_lines,
               paste0(
@@ -3915,7 +3912,7 @@ because_model <- function(
         if (FALSE) {
           # k=1 is reference category (fixed to identity)
           # k>=2 have estimated phylogenetic signal
-          if (multi.tree) {
+          if (is_multi_structure) {
             model_lines <- c(
               model_lines,
               paste0("  # Covariance matrices for multinomial"),
@@ -4309,7 +4306,7 @@ because_model <- function(
 
     # Only generate TAU matrix with VCV when there is a structure defined
     if (FALSE && length(structure_names) > 0) {
-      if (multi.tree) {
+      if (is_multi_structure) {
         model_lines <- c(
           model_lines,
           paste0(
@@ -4379,7 +4376,8 @@ because_model <- function(
   # [UNIFICATION] Master Registry Filter: Deduplicate Unified vs Legacy structural parameters
   # If both sigma_phylo_Var and sigma_Var_phylo exist, keep only sigma_phylo_Var
   if (!is.null(param_map_df) && nrow(param_map_df) > 0) {
-      unified_names <- grep("^sigma_(phylo|spatial|group)_", param_map_df$parameter, value = TRUE)
+      # Catch any sigma_Type_Variable parameters that might have legacy sigma_Variable_Type equivalents
+      unified_names <- grep("^sigma_[a-zA-Z0-9]+_", param_map_df$parameter, value = TRUE)
       if (length(unified_names) > 0) {
           legacy_to_remove <- c()
           for (un in unified_names) {

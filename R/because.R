@@ -189,7 +189,6 @@ because <- function(
   data,
   id_col = NULL,
   structure = NULL,
-  tree = NULL,
   engine = "jags",
   monitor = "interpretable",
   nimble_samplers = NULL,
@@ -214,17 +213,33 @@ because <- function(
   n.cores = parallel::detectCores() - 1,
   cl = NULL,
   ic_recompile = FALSE,
-  random = NULL, # Global random effects applied to all equations
-  levels = NULL, # Hierarchical data: variable-to-level mapping
-  hierarchy = NULL, # Hierarchical data: level ordering (e.g., "site > individual")
-  link_vars = NULL, # Hierarchical data: variables linking levels
-  fix_residual_variance = NULL, # Optional: fix residual variance (tau_e) for specific variables
-  priors = NULL, # Optional: custom priors list
+  random = NULL,
+  levels = NULL,
+  hierarchy = NULL,
+  link_vars = NULL,
+  fix_residual_variance = NULL,
+  priors = NULL,
   reuse_models = NULL,
   expand_ordered = FALSE,
   structure_multi = NULL,
-  structure_levels = NULL
+  structure_levels = NULL,
+  ...
 ) {
+  args <- list(...)
+  
+  # --- Handle Deprecated Arguments ---
+  # tree -> structure
+  if (is.null(structure) && !is.null(args$tree)) {
+    warning("Argument 'tree' is deprecated. Please use 'structure' instead.")
+    structure <- args$tree
+  }
+  
+  # multi.tree -> is_multi (passed to because_model)
+  is_multi <- if (!is.null(args$is_multi)) args$is_multi else if (!is.null(args$multi.tree)) args$multi.tree else FALSE
+  if (!is.null(args$multi.tree)) {
+    warning("Argument 'multi.tree' is deprecated. Please use 'is_multi' instead.")
+  }
+
   # Allow string input (e.g., multiline equations)
   if (is.character(equations) && length(equations) == 1) {
     # Split by newline or semicolon
@@ -261,17 +276,9 @@ because <- function(
     is_list_debug <- is.list(data) && !is.data.frame(data)
   }
 
-  # Handle 'structure' alias
-  if (is.null(tree) && !is.null(structure)) {
-    tree <- structure
-  }
+  # [PURGE] Legacy tree-to-structure alias removed. All structures handled via 'structure' argument.
 
-  # Check if both are missing (tree is NULL, structure is NULL)
-  # This implies Independent Model (tree = NULL is valid for that)
-
-  # If both are NULL, we run as independent model.
-
-  # Tree check moved to line 165
+  # [PURGE] Legacy structure check moved to top-level argument handler.
 
   # Validate inputs
   # Input validation
@@ -332,9 +339,9 @@ because <- function(
   if (!is.null(family) && ("occupancy" %in% family || "cmr" %in% family)) {
     class(family_obj) <- c("because_family_occupancy", class(family_obj))
   }
-  tree_obj <- tree
-  if (!is.null(tree)) {
-    class(tree_obj) <- c("because_structure", class(tree_obj))
+  structure_obj <- structure
+  if (!is.null(structure)) {
+    class(structure_obj) <- c("because_structure", class(structure_obj))
   }
 
   # Extension Hook: Normalize specialized aliases (e.g. psi_Species -> Species)
@@ -895,26 +902,20 @@ because <- function(
     has_reps <- any(grepl("reps", variability))
 
     if (has_reps) {
-      if (missing(tree) || is.null(tree)) {
-        # Cannot auto-format without tree to determine species order
-
+      if (is.null(structure)) {
+        # Cannot auto-format without structure to determine species order
         warning(
-          "Variability 'reps' specified but no tree provided. Automatic formatting requires a tree to order species rows. Assuming data is already aggregated or user handles index mapping."
+          "Variability 'reps' specified but no structure provided. Automatic formatting requires a structure to order species rows. Assuming data is already aggregated or user handles index mapping."
         )
-      } else if (!is.null(id_col) && id_col %in% names(data)) {
-        if (!quiet) {
-          message(
-            "Detected 'reps' variability and long-format data. Auto-formatting matrices using because_format_data()..."
-          )
-        }
-
-        # Extension Hook: Extract appropriate tree from structure object
-        use_tree <- get_tree_hook(tree)
+        return(data)
+      }
+      # Extension Hook: Extract appropriate tree from structure object
+      use_tree <- get_tree_hook(structure)
 
         formatted_list <- because_format_data(
           data,
           species_col = id_col,
-          tree = use_tree
+          structure = use_tree
         )
 
         # Now rename the variables that are 'reps' to include '_obs' suffix
@@ -1204,7 +1205,7 @@ because <- function(
   N <- NULL
 
   # 1. Normalize Input to List
-  if (is.null(tree)) {
+  if (is.null(structure)) {
     # Independent or structure via "structure" argument
     if (!is.null(structure)) {
       if (is.matrix(structure)) {
@@ -1215,23 +1216,23 @@ because <- function(
         structures[[class_name]] <- structure
       }
     }
-  } else if (is.matrix(tree)) {
-    structures[["custom"]] <- tree
-  } else if (is.list(tree) && !inherits(tree, "list")) {
+  } else if (is.matrix(structure)) {
+    structures[["custom"]] <- structure
+  } else if (is.list(structure) && !inherits(structure, "list")) {
     # It's an S3 object with list base - use class name
-    class_name <- class(tree)[1]
+    class_name <- class(structure)[1]
     # Check if it's a multi-object type (contains multiple items)
-    # Defense: Ignore list-based S3 objects that represent a single entity (like 'phylo')
-    if (length(tree) > 1 && is.null(names(tree)) && !inherits(tree, "phylo") && !inherits(tree, "spatial_knn")) {
+    # Defense: Ignore list-based S3 objects that represent a single entity (like 'phylo' or 'spatial_knn')
+    if (length(structure) > 1 && is.null(names(structure))) {
       is_multiple <- TRUE
-      N_trees <- length(tree)
+      N_trees <- length(structure)
     }
-    structures[[class_name]] <- tree
+    structures[[class_name]] <- structure
   } else if (
-    is.list(tree) && (is.null(class(tree)) || identical(class(tree), "list"))
+    is.list(structure) && (is.null(class(structure)) || identical(class(structure), "list"))
   ) {
     # Plain list of structures
-    structures <- tree
+    structures <- structure
     # Check for multi-objects in the list
     for (s in structures) {
       if (is.list(s) && length(s) > 1 && !is.matrix(s) && !inherits(s, "phylo")) {
@@ -1242,13 +1243,8 @@ because <- function(
     }
   } else {
     # Any other S3 object (phylo, spatial_knn, etc.) - use class name
-    class_name <- class(tree)[1]
-    # Check for multiPhylo specifically
-    if (inherits(tree, "multiPhylo")) {
-      is_multiple <- TRUE
-      N_trees <- length(tree)
-    }
-    structures[[class_name]] <- tree
+    class_name <- class(structure)[1]
+    structures[[class_name]] <- structure
   }
 
   # Ensure N_trees is available if is_multiple is true

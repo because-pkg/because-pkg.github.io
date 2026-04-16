@@ -124,6 +124,10 @@ jags_structure_definition.default <- function(
         paste0(err_var, "[", i_index, "]")
     }
 
+    if (inherits(structure, "phylo") || inherits(structure, "multiPhylo")) {
+        stop("Object of class 'phylo' detected. Phylogenetic modeling requires the 'because.phybase' extension.\nPlease install it via: remotes::install_github('because-pkg/because.phybase')")
+    }
+
     return(list(
         model_lines = model_lines,
         term = term_str
@@ -147,6 +151,9 @@ prepare_structure_data <- function(structure, data, ...) {
 #' @keywords internal
 #' @export
 prepare_structure_data.default <- function(structure, data, ...) {
+    if (inherits(structure, "phylo") || inherits(structure, "multiPhylo")) {
+        stop("Object of class 'phylo' detected. Phylogenetic modeling requires the 'because.phybase' extension.\nPlease install it via: remotes::install_github('because-pkg/because.phybase')")
+    }
     return(list())
 }
 
