@@ -31,9 +31,14 @@ jags_structure_definition.default <- function(
 
     prec_name <- paste0("Prec_", s_name)
     err_var <- paste0("u_", variable_name, "_", s_name)
-    tau_var <- paste0("tau_u_", variable_name, "_", s_name)
     raw_var <- paste0("u_std_", variable_name, "_", s_name)
-    sig_var <- paste0("sigma_", variable_name, "_", s_name)
+    
+    is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
+    if (is_unified) {
+        sig_var <- paste0("sigma_", s_name, "_", variable_name)
+    } else {
+        sig_var <- paste0("sigma_", variable_name, "_", s_name)
+    }
 
     # Category suffix for parameter names if needed
     k_suffix <- if (!is.null(k_idx)) paste0("_", k_idx) else ""
