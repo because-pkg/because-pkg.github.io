@@ -6,10 +6,9 @@
 \usage{
 because_model(
   equations,
-  multi.tree = FALSE,
+  is_multi_structure = FALSE,
   latent_method = "correlations",
   structures = list(),
-  is_multi_structure = FALSE,
   random_structure_names = NULL,
   random_terms = list(),
   vars_with_na = NULL,
@@ -20,6 +19,7 @@ because_model(
   poly_terms = NULL,
   latent = NULL,
   categorical_vars = NULL,
+  fix_latent = "loading",
   fix_residual_variance = NULL,
   priors = NULL,
   hierarchical_info = NULL,
@@ -30,13 +30,11 @@ because_model(
 \arguments{
 \item{equations}{A list of model formulas.}
 
-\item{multi.tree}{Logical; if \code{TRUE}, incorporates phylogenetic uncertainty by sampling across a set of trees.}
+\item{is_multi_structure}{Logical (Internal). If TRUE, handles 3D Precision arrays.}
 
 \item{latent_method}{Method for handling latent variables ("correlations" or "explicit").}
 
 \item{structures}{A named list of structural objects (e.g. matrices, trees) to include as correlations.}
-
-\item{is_multi_structure}{Logical (Internal). If TRUE, handles 3D Precision arrays.}
 
 \item{random_structure_names}{Optional character vector of structural names applied to all variables.}
 
@@ -106,6 +104,6 @@ The generated model includes:
 }
 \examples{
 eqs <- list(BR ~ BM, S ~ BR, G ~ BR, L ~ BR)
-cat(because_model(eqs, multi.tree = TRUE)$model)
+cat(because_model(eqs, is_multi_structure = TRUE)$model)
 
 }

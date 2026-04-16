@@ -9,7 +9,6 @@ because(
   data,
   id_col = NULL,
   structure = NULL,
-  tree = NULL,
   engine = "jags",
   monitor = "interpretable",
   nimble_samplers = NULL,
@@ -29,6 +28,7 @@ because(
   latent = NULL,
   latent_method = "correlations",
   standardize_latent = TRUE,
+  fix_latent = "loading",
   parallel = FALSE,
   n.cores = parallel::detectCores() - 1,
   cl = NULL,
@@ -42,7 +42,8 @@ because(
   reuse_models = NULL,
   expand_ordered = FALSE,
   structure_multi = NULL,
-  structure_levels = NULL
+  structure_levels = NULL,
+  ...
 )
 }
 \arguments{
@@ -71,8 +72,6 @@ are standard numbers (1, 2, 3...), you \strong{MUST} specify \code{id_col}.
 \item \code{matrix}: Custom covariance or precision matrix (e.g., spatial connectivity, kinship).
 \item Custom objects: Supported via extension packages (e.g., phylogenetic trees from \pkg{because.phybase} or spatial structures).
 }}
-
-\item{tree}{(Deprecated alias for \code{structure}). Use \code{structure} instead for new code.}
 
 \item{engine}{Character string specifying the inference engine to use. Supported values:
 \itemize{
@@ -160,18 +159,26 @@ Example: \code{family = c(Gregarious = "binomial")}.}
 If specified, the model will account for induced correlations among observed
 variables that share these latent common causes.}
 
-\item{latent_method}{Method for handling latent variables (default = "correlations").
+\item{latent_method}{Method for handling latent variables (default = "correlations").}
+
+\item{standardize_latent}{Logical; if \code{TRUE} and \code{latent_method = "explicit"},
+adds standardized priors (\code{N(0,1)}) to latent variables to identify scale and location.
+This improves convergence and makes regression coefficients interpretable as standardized effects.
+Only applicable when using explicit latent variable modeling (default = TRUE).}
+
+\item{fix_latent}{Identification strategy for latent variables. Choices:
+\itemize{
+\item \code{"loading"} (default): Unit Loading Identification (ULI). Fixes the first indicator's
+loading to 1.0. Most stable for non-linear GLVMs (Poisson/Binomial).
+\item \code{"sign"}: Sign Identification. Estimates all loadings with a sign constraint (positive)
+on the first indicator. Can be unstable due to scale-drift.
+}
 \itemize{
 \item \code{"correlations"}: MAG approach - marginalize latent variables and estimate
 induced correlations (\code{rho}) between observed variables that share latent parents.
 \item \code{"explicit"}: Model latent variables as JAGS nodes and estimate structural
 paths from latents to observed variables.
 }}
-
-\item{standardize_latent}{Logical; if \code{TRUE} and \code{latent_method = "explicit"},
-adds standardized priors (\code{N(0,1)}) to latent variables to identify scale and location.
-This improves convergence and makes regression coefficients interpretable as standardized effects.
-Only applicable when using explicit latent variable modeling (default = TRUE).}
 
 \item{parallel}{Logical; if \code{TRUE}, run MCMC chains in parallel (default = FALSE).
 For standard SEM (\code{dsep = FALSE}), this runs the chains on different cores.
@@ -219,6 +226,8 @@ Example: \code{list(alpha_Response = "dnorm(0, 0.001)", sigma_Response_res = "du
 \item{reuse_models}{List of previously fitted 'because' models to scan for reusable d-separation test results.
 If a test in the current run matches a test in a reused model (same formula), the result is copied
 instead of re-running JAGS. \strong{Note}: Ensuring that the data is consistent is the user's responsibility.}
+
+\item{tree}{(Deprecated alias for \code{structure}). Use \code{structure} instead for new code.}
 }
 \value{
 An object of class \code{"because"} containing:
