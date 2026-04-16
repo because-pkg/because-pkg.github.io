@@ -940,13 +940,18 @@ because_model <- function(
       # error ~ dmnorm(0, TAU)
       # We define the error mean here as 0
       mu_err <- paste0("mu_err_", response, suffix)
-      err <- paste0("err_", response, suffix)
+      err_name <- paste0("err_", response, suffix)
       p <- paste0("p_", response, suffix)
+      
+      err_term <- ""
+      if (err_name %in% names(vars_error_terms)) {
+        err_term <- paste0(" + ", err_name, "[i]")
+      }
 
       model_lines <- c(
         model_lines,
         paste0("    ", mu_err, "[i] <- 0"),
-        paste0("    logit(", p, "[i]) <- ", linpred, " + ", err, "[i]"),
+        paste0("    logit(", p, "[i]) <- ", linpred, err_term),
         paste0("    ", response, "[i] ~ dbern(", p, "[i])")
       )
       if (engine == "jags") {
@@ -1122,8 +1127,13 @@ because_model <- function(
       # eta = linpred + error
 
       K_var <- paste0("K_", response)
-      err <- paste0("err_", response, suffix)
+      err_name <- paste0("err_", response, suffix)
       eta <- paste0("eta_", response, suffix)
+
+      err_term <- ""
+      if (err_name %in% names(vars_error_terms)) {
+        err_term <- paste0(" + ", err_name, "[i]")
+      }
 
       # Linear predictor (eta)
       # Note: No intercept in eta (intercept is absorbed into cutpoints)
@@ -1245,13 +1255,16 @@ because_model <- function(
       }
     } else if (dist == "poisson") {
       # Poisson: log(μ) = linpred + error
-      # Naturally handles overdispersion via epsilon
-
-      err <- paste0("err_", response, suffix)
+      # Only include err term if residuals are requested or present (handling overdispersion)
+      
       mu <- paste0("mu_", response, suffix)
-
-      # [SEMANTIC GUARD] Ensure err is not empty
-      if (is.null(err) || nchar(trimws(err)) == 0) err <- "0"
+      err_term <- ""
+      err_name <- paste0("err_", response, suffix)
+      
+      # [IDENTITY GUARD] Only include additive error if it's been registered
+      if (err_name %in% names(vars_error_terms)) {
+        err_term <- paste0(" + ", err_name, "[i]")
+      }
 
       model_lines <- c(
         model_lines,
@@ -1261,9 +1274,8 @@ because_model <- function(
           mu,
           "[i] <- exp(max(-20, min(10, ",
           linpred,
-          " + ",
-          err,
-          "[i])))"
+          err_term,
+          ")))"
         ),
         paste0("    ", response, "[i] ~ dpois(", mu, "[i])")
       )
@@ -1286,13 +1298,17 @@ because_model <- function(
       # Negative Binomial: log(μ) = linpred + error
       # Y ~ NegBin(p, r) where p = r/(r+μ) and r = size parameter
 
-      err <- paste0("err_", response, suffix)
       mu <- paste0("mu_", response, suffix)
       p <- paste0("p_", response, suffix)
       r <- paste0("r_", response, suffix)
-
-      # [SEMANTIC GUARD] Ensure err is not empty
-      if (is.null(err) || nchar(trimws(err)) == 0) err <- "0"
+      
+      err_term <- ""
+      err_name <- paste0("err_", response, suffix)
+      
+      # [IDENTITY GUARD] Only include additive error if it's been registered
+      if (err_name %in% names(vars_error_terms)) {
+        err_term <- paste0(" + ", err_name, "[i]")
+      }
 
       model_lines <- c(
         model_lines,
@@ -1302,9 +1318,8 @@ because_model <- function(
           mu,
           "[i] <- exp(max(-20, min(10, ",
           linpred,
-          " + ",
-          err,
-          "[i])))"
+          err_term,
+          ")))"
         )
       )
       if (engine == "jags") {
@@ -1903,10 +1918,7 @@ because_model <- function(
           # Independent Binomial: Standard GLM (no residual error)
           model_lines <- c(
             model_lines,
-            paste0("  # Independent (Standard GLM) for binomial: ", response),
-            paste0("  for (i in 1:", loop_bound, ") {"),
-            paste0("    ", err, "[i] <- 0"),
-            paste0("  }")
+            paste0("  # Independent (Standard GLM) for binomial: ", response)
           )
         } else {
           # Optimized Random Effects Formulation
