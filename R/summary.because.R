@@ -262,28 +262,9 @@ summary.because <- function(
         # Standard summary
         # Use stored summary if available, otherwise calculate it
         if (!is.null(object$summary)) {
-            # [PX UPGRADE] Re-center intercepts for Parameter Expansion (PX)
-            # If alpha_px exists, sum it with alpha to get the true intercept for reporting
-            sample_names <- coda::varnames(object$samples)
-            px_params <- grep("^alpha_px_", sample_names, value = TRUE)
-            
-            if (length(px_params) > 0) {
-                # Work on a local copy of samples to avoid mutating the original object
-                recentered_samples <- object$samples
-                for (px_p in px_params) {
-                    base_p <- sub("^alpha_px_", "alpha_", px_p)
-                    if (base_p %in% sample_names) {
-                        for (chain_idx in seq_along(recentered_samples)) {
-                            recentered_samples[[chain_idx]][, base_p] <- 
-                                recentered_samples[[chain_idx]][, base_p] + 
-                                recentered_samples[[chain_idx]][, px_p]
-                        }
-                    }
-                }
-                summ <- summary(recentered_samples, ...)
-            } else {
-                summ <- summary(object$samples, ...)
-            }
+            summ <- object$summary
+        } else {
+            summ <- summary(object$samples, ...)
         }
 
         # Calculate convergence diagnostics
@@ -291,22 +272,20 @@ summary.because <- function(
 
         # Effective sample size
         eff_size <- tryCatch(
-            coda::effectiveSize(if (length(px_params) > 0) recentered_samples else object$samples),
+            coda::effectiveSize(object$samples),
             error = function(e) return(NULL)
         )
 
         # Gelman-Rubin diagnostic (Rhat)
         # Use stored Rhat if available (calculated in because)
         rhat <- NULL
-        diagnostic_samples <- if (length(px_params) > 0) recentered_samples else object$samples
-
         if ("Rhat" %in% colnames(summ$statistics)) {
             rhat <- summ$statistics[, "Rhat"]
             names(rhat) <- rownames(summ$statistics)
         } else if (n_chains > 1) {
             # Calculate if not stored
             rhat <- tryCatch(
-                coda::gelman.diag(diagnostic_samples, multivariate = FALSE)$psrf[,
+                coda::gelman.diag(object$samples, multivariate = FALSE)$psrf[,
                     1
                 ],
                 error = function(e) return(NULL)
@@ -332,7 +311,7 @@ summary.because <- function(
 
             # Pattern: ^beta_.*_det_ OR ^beta_.*_1_times_ (for the pre-fix version)
             # Safe bet: contains "_det_" or "_1_times_" combined with beta
-            internal_idx <- grep("^beta_.*(_det_|_1_times_)|^alpha_px_", rownames(combined))
+            internal_idx <- grep("^beta_.*(_det_|_1_times_)", rownames(combined))
 
             if (length(internal_idx) > 0) {
                 combined <- combined[-internal_idx, , drop = FALSE]

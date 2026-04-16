@@ -889,23 +889,6 @@ because_model <- function(
     suffix <- if (response_count == 1) "" else as.character(response_count)
 
     alpha <- paste0("alpha_", response, suffix)
-    
-    # [PX UPGRADE] Define redundant intercept (alpha_px) for non-Gaussian models
-    # This allows the sampler to move the entire distribution mean independently of REs.
-    needs_px <- dist %in% c("poisson", "negbinomial", "binomial", "zip", "multinomial")
-    if (needs_px) {
-      alpha_px_name <- paste0("alpha_px_", response, suffix)
-      param_map[[length(param_map) + 1]] <- list(
-        response = response,
-        predictor = "(PX Offset)",
-        parameter = alpha_px_name,
-        equation_index = j,
-        type = "coefficient"
-      )
-    } else {
-      alpha_px_name <- "0"
-    }
-
     param_map[[length(param_map) + 1]] <- list(
       response = response,
       predictor = "(Intercept)",
@@ -1918,13 +1901,13 @@ because_model <- function(
 
         if (independent) {
           # Independent Binomial: Standard GLM (no residual error)
-            model_lines <- c(
-              model_lines,
-              paste0("  # Independent (Standard GLM) for binomial with PX: ", response),
-              paste0("  for (i in 1:", loop_bound, ") {"),
-              paste0("    ", err, "[i] <- ", alpha_px_name),
-              paste0("  }")
-            )
+          model_lines <- c(
+            model_lines,
+            paste0("  # Independent (Standard GLM) for binomial: ", response),
+            paste0("  for (i in 1:", loop_bound, ") {"),
+            paste0("    ", err, "[i] <- 0"),
+            paste0("  }")
+          )
         } else {
           # Optimized Random Effects Formulation
           epsilon <- paste0("epsilon_", response, suffix)
@@ -2019,14 +2002,14 @@ because_model <- function(
           mag_terms <- vars_error_terms[[response]]
           total_mag <- if (length(mag_terms) > 0) paste0(" + ", paste(mag_terms, collapse = " + ")) else ""
 
-            model_lines <- c(
-              model_lines,
-              paste0("  # Binomial error term summation (with PX Interweaving): ", response),
-              paste0("  for (i in 1:", loop_bound, ") {"),
-              paste0("    ", epsilon, "[i] ~ dnorm(", alpha_px_name, ", ", tau_res, ")"),
-              paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
-              paste0("  }")
-            )
+          model_lines <- c(
+            model_lines,
+            paste0("  # Binomial error term summation: ", response),
+            paste0("  for (i in 1:", loop_bound, ") {"),
+            paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_res, ")"),
+            paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
+            paste0("  }")
+          )
         }
       } else if (dist == "multinomial") {
             # Multinomial error terms: err[1:N, k]
@@ -2035,15 +2018,15 @@ because_model <- function(
 
             if (independent) {
               # Independent Multinomial: Standard GLM
-                model_lines <- c(
-                  model_lines,
-                  paste0("  # Independent (Standard GLM) for multinomial with PX: ", response),
-                  paste0("  for (k in 2:", K_var, ") {"),
-                  paste0("    for (i in 1:", loop_bound, ") {"),
-                  paste0("      ", err, "[i, k] <- ", alpha_px_name, "[k]"),
-                  paste0("    }"),
-                  paste0("  }")
-                )
+              model_lines <- c(
+                model_lines,
+                paste0("  # Independent (Standard GLM) for multinomial: ", response),
+                paste0("  for (k in 2:", K_var, ") {"),
+                paste0("    for (i in 1:", loop_bound, ") {"),
+                paste0("      ", err, "[i, k] <- 0"),
+                paste0("    }"),
+                paste0("  }")
+              )
             } else {
               # Optimized Random Effects Formulation for Multinomial
               epsilon <- paste0("epsilon_", response, suffix)
@@ -2302,13 +2285,13 @@ because_model <- function(
           mag_terms <- vars_error_terms[[response]]
           total_mag <- if (length(mag_terms) > 0) paste0(" + ", paste(mag_terms, collapse = " + ")) else ""
 
-            model_lines <- c(
-              model_lines,
-              paste0("  # Independent (Standard GLM) for Poisson with PX: ", response),
-              paste0("  for (i in 1:", loop_bound, ") {"),
-              paste0("    ", err, "[i] <- ", alpha_px_name, total_mag),
-              paste0("  }")
-            )
+          model_lines <- c(
+            model_lines,
+            paste0("  # Independent (Standard GLM) for Poisson: ", response),
+            paste0("  for (i in 1:", loop_bound, ") {"),
+            paste0("    ", err, "[i] <- 0", total_mag),
+            paste0("  }")
+          )
         } else {
           # Optimized Random Effects
           epsilon <- paste0("epsilon_", response, suffix)
@@ -2389,9 +2372,9 @@ because_model <- function(
 
           model_lines <- c(
             model_lines,
-            paste0("  # Random effects for Poisson (with PX Interweaving): ", response),
+            paste0("  # Random effects for Poisson: ", response),
             paste0("  for (i in 1:", loop_bound, ") {"),
-            paste0("    ", epsilon, "[i] ~ dnorm(", alpha_px_name, ", ", tau_res, ")"),
+            paste0("    ", epsilon, "[i] ~ dnorm(0, ", tau_res, ")"),
             paste0("    ", err, "[i] <- ", epsilon, "[i]", total_u, total_mag),
             paste0("  }")
           )
@@ -2925,13 +2908,7 @@ because_model <- function(
       }
       model_lines <- c(
         model_lines,
-        paste0("  ", get_prior(alpha_name, type = "alpha")),
-        # [PX UPGRADE] Register the alpha_px prior node for non-Gaussian models
-        if (dist %in% c("poisson", "negbinomial", "binomial", "zip") && !is_occupancy_aux) {
-          paste0("  alpha_px_", response, suffix, " ~ dnorm(0, 1.0E-4)")
-        } else {
-          character(0)
-        }
+        paste0("  ", get_prior(alpha_name, type = "alpha"))
       )
 
       # Only generate lambda/tau priors if NOT using GLMM (missing data),
@@ -3182,12 +3159,10 @@ because_model <- function(
 
         model_lines <- c(
           model_lines,
-          paste0("  # Independent Priors for ", response, " (Multinomial with PX)"),
+          paste0("  # Independent Priors for ", response, " (Multinomial)"),
           paste0("  alpha_", response, "[1] <- 0"),
-          paste0("  alpha_px_", response, "[1] <- 0"),
           paste0("  for (k in 2:", K_var, ") {"),
           paste0("    alpha_", response, "[k] ~ dnorm(0, 1.0E-6)"),
-          paste0("    alpha_px_", response, "[k] ~ dnorm(0, 1.0E-4)"),
           tau_line,
           "  }"
         )
@@ -3322,12 +3297,10 @@ because_model <- function(
         )
         model_lines <- c(
           model_lines,
-          paste0("  # Priors for ", response, " (Multinomial with PX)"),
+          paste0("  # Priors for ", response, " (Multinomial)"),
           paste0("  alpha_", response, "[1] <- 0"),
-          paste0("  alpha_px_", response, "[1] <- 0"),
           paste0("  for (k in 2:", K_var, ") {"),
           paste0("    alpha_", response, "[k] ~ dnorm(0, 1.0E-6)"),
-          paste0("    alpha_px_", response, "[k] ~ dnorm(0, 1.0E-4)"),
           paste0("    lambda_", response, "[k] ~ dunif(0, 1)"),
           paste0("    ", get_precision_prior(paste0("tau_", response, "[k]"), response)),
           "  }"
