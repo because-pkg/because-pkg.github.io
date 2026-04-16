@@ -123,12 +123,24 @@ By default, the NIMBLE engine in `because` applies several technical optimizatio
 
 | Parameter Type | NIMBLE Sampler (default) | JAGS Sampler | Why? |
 | :--- | :--- | :--- | :--- |
-| **Linear coefficients** (`alpha_*`, `beta_*`) | **Gibbs (conjugate)** | **Gibbs** | Identical. Both use closed-form conjugate updates. Fast and exact. |
-| **Residual precision** (`tau_e_*`) | **Gibbs (conjugate)** | **Gibbs** | Gamma prior + Normal likelihood = conjugate. |
+| **Linear coefficients** (`alpha_*`, `beta_*`) | **Slice** (if non-Gaussian) | **Slice** | Swapped from default `RW` to **Slice** for Poisson/Binomial to handle steep link curvature. |
 | **Structured REs** (`u_std_.*[1:N]`) | **Adaptive Slice** (`AF_slice`) | **Slice** | Swapped from default `RW_block` to match JAGS's robust mixing for correlated vectors. |
 | **Precision parameters** (`tau_u_.*`) | **Slice** (`slice`) | **Slice** | Swapped from default `RW` to ensure stable convergence for variance components. |
 | **Dispersion / Inflation** (`r_*`, `psi_*`) | **Slice** (`slice`) | **Slice** | Swapped from default `RW` to match JAGS's robust mixing and handle boundary constraints. |
 | **Multinomial / Ordinal** | **Categorical** (`categorical`) | **Gibbs / Slice** | Specialized discrete sampler. Extremely fast and efficient. |
-| **Binomial / Poisson** | **RW-MH scalar** (`RW`) | **Slice** | `RW` is faster per iteration; parallelization compensates for mixing differences. |
+| **Binomial / Poisson** | **Slice** (hardened) | **Slice** | Automatic hardening swaps the default `RW` for `slice` to prevent divergent transitions. |
+
+# Automatic Initialization and Stability
+
+NIMBLE models can be sensitive to starting values, especially when using non-linear link functions like `exp()` (Poisson) or `logit()` (Binomial). To ensure robust convergence, **because** implements several automatic stabilization features:
+
+## 1. Intelligent Intercept Starts
+For count and binary responses, **because** automatically calculates the mean of the observed data and initializes the corresponding intercept (`alpha_Variable`) at the appropriate scale (e.g., `log(mean(y))`). This ensures that chains begin in an identifiable region of the likelihood rather than starting at `0.0`, which can lead to divergent transitions.
+
+## 2. Stochastic Chain Jitter
+To ensure that the `Rhat` statistic can accurately detect non-convergence, **because** applies a stochastic jitter to the initial values for every chain. Each chain starts at a slightly different point in the parameter space, allowing the MCMC algorithm to explore the posterior from multiple perspectives and escape locally flat regions.
+
+## 3. Sampler Hardening
+When **because** detects a non-Gaussian response, it automatically "hardens" the sampler for the associated regression coefficients. While NIMBLE defaults to a Random Walk (RW) sampler for most fixed effects, `because` swaps this for a **Slice Sampler** for Poisson, Binomial, and Negative Binomial models. This provides significantly more stability in the presence of the extreme curvature characteristic of these link functions.
 
 

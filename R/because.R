@@ -3399,7 +3399,7 @@ because <- function(
         model_string,
         data,
         family,
-        extension_inits,
+        nimble_inits, # Corrected: Pass populated inits instead of extension_inits
         monitor,
         n.iter,
         n.burnin,
@@ -3467,18 +3467,18 @@ because <- function(
         nimble_code <- parse(text = nimble_string)[[1]]
 
         # [STABILITY] Jitter inits for this specific chain
-        curr_inits <- extension_inits
+        curr_inits <- nimble_inits # Corrected: Use populated inits
         if (is.null(curr_inits)) curr_inits <- list()
         
         # Add a stochastic jitter to all continuous parameters
         # This is critical for NIMBLE to escape locally flat regions
-        # We use the chain_id to ensure reproducibility if seed is set
+        # We increase the range to 0.1 for more robust exploration
         set.seed(12345 + chain_id)
         for (p_name in names(curr_inits)) {
             val <- curr_inits[[p_name]]
             if (is.numeric(val) && length(val) == 1) {
                 if (grepl("^(beta_|alpha_)", p_name)) {
-                    curr_inits[[p_name]] <- val + rnorm(1, 0, 0.05)
+                    curr_inits[[p_name]] <- val + rnorm(1, 0, 0.1)
                 } else if (grepl("^(tau_|sigma_)", p_name)) {
                     curr_inits[[p_name]] <- max(0.1, val * exp(rnorm(1, 0, 0.1)))
                 }
@@ -3515,12 +3515,19 @@ because <- function(
             # Check if this FE is associated with a non-Gaussian response
             # Heuristic: find the response name from the parameter name
             parts <- strsplit(fe_var, "_")[[1]]
-            res_name <- parts[2]
+            if (length(parts) < 2) next
+            
+            # Strip indices from response name (e.g., alpha_Y[1] -> Y)
+            res_name <- sub("\\[.*\\]", "", parts[2])
             
             # If the response is Poisson or Binomial (determined by family), use Slice
-            if (!is.null(family[[res_name]]) && family[[res_name]] %in% c("poisson", "binomial", "negbinomial", "zip", "zinb")) {
-                worker_conf$removeSamplers(fe_var)
-                worker_conf$addSampler(target = fe_var, type = "slice")
+            # We use [res_name] for safe lookups in named vectors
+            if (res_name %in% names(family)) {
+                if (family[[res_name]] %in% c("poisson", "binomial", "negbinomial", "zip", "zinb")) {
+                    if (!quiet) message(sprintf("  Hardening: applying slice sampler to %s", fe_var))
+                    worker_conf$removeSamplers(fe_var)
+                    worker_conf$addSampler(target = fe_var, type = "slice")
+                }
             }
         }
 
@@ -3588,7 +3595,7 @@ because <- function(
       parallel::clusterExport(
         cl,
         c(
-          "model_string", "data", "family", "extension_inits",
+          "model_string", "data", "family", "nimble_inits",
           "monitor", "n.iter", "n.burnin", "n.thin",
           "WAIC", "quiet", "run_nimble_chain", "nimble_samplers"
         ),
@@ -3610,7 +3617,7 @@ because <- function(
           model_string = model_string,
           data = data,
           family = family,
-          extension_inits = extension_inits,
+          nimble_inits = nimble_inits,
           monitor = monitor,
           n.iter = n.iter,
           n.burnin = n.burnin,

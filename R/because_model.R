@@ -2668,16 +2668,17 @@ because_model <- function(
         }
         s_obj <- structures[[s_idx]]
 
-        if (
-          !is_valid_structure_mapping(
-            get_struct_lvl(s_name, hierarchical_info),
-            get_var_level(var, hierarchical_info),
-            hierarchical_info,
-            allow_identity = TRUE
-          )
-        ) {
-          next
+        # [PARTITIONING] Check if this variable qualifies for variance partitioning
+        # (Exactly one structure + Gaussian + no other residual noise terms)
+        local_struct_count <- 0
+        for (sn in names(structures)) {
+          if (is_valid_structure_mapping(get_struct_lvl(sn, hierarchical_info), get_var_level(var, hierarchical_info), hierarchical_info, allow_identity = TRUE)) {
+            local_struct_count <- local_struct_count + 1
+          }
         }
+        
+        # Partitioning triggers if Gaussian and exactly one structure is mapping
+        use_partitioning_flag <- (dist == "gaussian" && local_struct_count == 1 && length(err_terms) == 0)
 
         # Use Hook to get JAGS code bits
         s_def <- jags_structure_definition(
@@ -2685,7 +2686,8 @@ because_model <- function(
           variable_name = var,
           s_name = s_name,
           loop_bound = loop_bound,
-          is_multi = is_struct_multi(s_name)
+          is_multi = is_struct_multi(s_name),
+          use_partitioning = use_partitioning_flag
         )
 
         if (!is.null(s_def)) {
@@ -2724,21 +2726,65 @@ because_model <- function(
       }
     }
 
-    # Define Observation Precision (Estimated)
-    # This allows proper variance decomposition between:
-    # - Structural effects (beta coefficients)
-    # - Correlation structure (err_res from Wishart)
-    # - Observation noise (tau_obs)
-    model_lines <- safe_add_lines(
-      model_lines,
-      c(
-        get_precision_prior(paste0("tau_obs_", var), var),
-        paste0("  sigma_obs_", var, " <- 1/sqrt(tau_obs_", var, ")")
-      )
-    )
+    # --- UNIVERSAL VARIANCE PARTITIONING (Pagel's Lambda style) ---
+    # Condition: Gaussian + Exactly one structure + No other noise terms (err_res)
+    # This significantly improves identification by partitioning a single sigma_Total
+    # instead of adding independent structural and residual variances.
+    use_partitioning <- FALSE
+    s_name_partition <- NULL
+    if (dist == "gaussian" && length(structure_terms) == 1 && length(err_terms) == 0 && engine %in% c("jags", "nimble")) {
+        # Identify the structure name (heuristic: find the first one in the loop)
+        for (sn in names(structures)) {
+            if (is_valid_structure_mapping(get_struct_lvl(sn, hierarchical_info), get_var_level(var, hierarchical_info), hierarchical_info, allow_identity = TRUE)) {
+                s_name_partition <- sn
+                use_partitioning <- TRUE
+                break
+            }
+        }
+    }
+
+    if (use_partitioning && !is.null(s_name_partition)) {
+        partition_param <- paste0("lambda_", var)
+        sigma_total_param <- paste0("sigma_total_", var)
+        tau_total_param <- paste0("tau_total_", var)
+        
+        # Override structural precision name to match partitioning logic
+        tau_struct_partition <- paste0("tau_u_", var, "_", s_name_partition)
+        tau_obs_partition <- paste0("tau_obs_", var)
+
+        model_lines <- safe_add_lines(
+            model_lines,
+            c(
+                paste0("  # Variance Partitioning (Pagel's Lambda style) for ", var),
+                paste0("  ", sigma_total_param, " ~ dgamma(1, 1)"),
+                paste0("  ", partition_param, " ~ dunif(0, 1)"),
+                paste0("  ", tau_total_param, " <- 1/(", sigma_total_param, " * ", sigma_total_param, ")"),
+                paste0("  ", tau_struct_partition, " <- ", tau_total_param, " / max(0.001, ", partition_param, ")"),
+                paste0("  ", tau_obs_partition, " <- ", tau_total_param, " / max(0.001, 1 - ", partition_param, ")")
+            )
+        )
+        
+        # Map partitioning parameters for post-processing
+        param_map[[length(param_map) + 1]] <- list(response = var, predictor = s_name_partition, parameter = partition_param, type = "structure")
+        param_map[[length(param_map) + 1]] <- list(response = var, predictor = s_name_partition, parameter = sigma_total_param, type = "structure")
+
+    } else {
+        # Define Observation Precision (Standard Additive Model)
+        model_lines <- safe_add_lines(
+            model_lines,
+            c(
+                get_precision_prior(paste0("tau_obs_", var), var),
+                paste0("  sigma_obs_", var, " <- 1/sqrt(tau_obs_", var, ")")
+            )
+        )
+    }
 
     # Build sum string
-    sum_res_errs <- paste(err_terms, collapse = " + ")
+    sum_res_errs <- if (length(err_terms) > 0) {
+        paste0(" + ", paste(err_terms, collapse = " + "))
+    } else {
+        ""
+    }
 
     model_lines <- c(
       model_lines,
@@ -2751,7 +2797,6 @@ because_model <- function(
         suffix,
         "[i]",
         structure_term_str,
-        " + ",
         sum_res_errs,
         ", tau_obs_",
         var,
@@ -4255,7 +4300,43 @@ because_model <- function(
       )
     } else {
       if (independent) {
-        if (
+        # --- UNIVERSAL VARIANCE PARTITIONING (Independent Variable) ---
+        # Check if we have exactly one structure active for this exogenous var
+        local_struct_count <- 0
+        s_name_partition <- NULL
+        if (!is.null(structures)) {
+            for (sn in names(structures)) {
+                if (is_valid_structure_mapping(get_struct_lvl(sn, hierarchical_info), get_var_level(var, hierarchical_info), hierarchical_info, allow_identity = TRUE)) {
+                    local_struct_count <- local_struct_count + 1
+                    s_name_partition <- sn
+                }
+            }
+        }
+
+        if (local_struct_count == 1 && !is.null(s_name_partition)) {
+            partition_param <- paste0("lambda_", var)
+            sigma_total_param <- paste0("sigma_total_", var)
+            tau_total_param <- paste0("tau_total_", var)
+            
+            tau_struct_partition <- paste0("tau_u_", var, "_", s_name_partition)
+            tau_res_partition <- paste0("tau_res_", var)
+
+            model_lines <- safe_add_lines(
+                model_lines,
+                c(
+                    paste0("  # Variance Partitioning for independent var: ", var),
+                    paste0("  ", sigma_total_param, " ~ dgamma(1, 1)"),
+                    paste0("  ", partition_param, " ~ dunif(0, 1)"),
+                    paste0("  ", tau_total_param, " <- 1/(", sigma_total_param, " * ", sigma_total_param, ")"),
+                    paste0("  ", tau_struct_partition, " <- ", tau_total_param, " / max(0.001, ", partition_param, ")"),
+                    paste0("  ", tau_res_partition, " <- ", tau_total_param, " / max(0.001, 1 - ", partition_param, ")")
+                )
+            )
+            # Map for post-processing
+            param_map[[length(param_map) + 1]] <- list(response = var, predictor = s_name_partition, parameter = partition_param, type = "structure")
+            param_map[[length(param_map) + 1]] <- list(response = var, predictor = s_name_partition, parameter = sigma_total_param, type = "structure")
+            
+        } else if (
           !is.null(fix_residual_variance) &&
             (var %in%
               names(fix_residual_variance) ||
@@ -4274,15 +4355,11 @@ because_model <- function(
             prec,
             " # Fixed residual variance"
           )
+          model_lines <- safe_add_lines(model_lines, tau_line)
         } else {
           tau_line <- paste0("  ", get_precision_prior(paste0("tau_res_", var), var))
+          model_lines <- safe_add_lines(model_lines, tau_line)
         }
-
-        # Independent Predictor Prior
-        model_lines <- safe_add_lines(
-          model_lines,
-          c(tau_line)
-        )
       } else {
         # [MODULAR PARTITIONING]
         # Check if partitioning was handled by a structure extension
