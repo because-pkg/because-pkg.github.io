@@ -676,7 +676,8 @@ because_model <- function(
         structures[[s_name]],
         variable_name = "err",
         s_name = s_name,
-        optimize = TRUE
+        optimize = TRUE,
+        engine = engine
       )
       if (!is.null(def$setup_code)) {
         # Only harvest setup_code (constants/priors) once here
@@ -1804,7 +1805,8 @@ because_model <- function(
                 zeros_name = s_zeros,
                 is_multi = is_struct_multi(s_name),
                 i_index = s_idx_var,
-                use_partitioning = use_partitioning
+                use_partitioning = use_partitioning,
+                engine = engine
               )
 
               model_lines <- safe_add_lines(model_lines, s_def$model_lines)
@@ -1989,7 +1991,8 @@ because_model <- function(
               zeros_name = s_zeros,
               category_index = NULL,
               is_multi = is_struct_multi(s_name),
-              i_index = s_idx_var
+              i_index = s_idx_var,
+              engine = engine
             )
             is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(u, s_name), logical(1)))
             if (!is.null(s_def)) {
@@ -2117,7 +2120,7 @@ because_model <- function(
                   # Hierarchical bridge index (e.g. site_idx_obs[i])
                   s_idx_var <- get_struct_index(s_name, response, hierarchical_info)
 
-                  s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, category_index = "k", is_multi = is_struct_multi(s_name), i_index = s_idx_var)
+                  s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, category_index = "k", is_multi = is_struct_multi(s_name), i_index = s_idx_var, engine = engine)
                   if (!is.null(s_def)) {
                     model_lines <- safe_add_lines(model_lines, s_def$model_lines)
                     
@@ -2248,7 +2251,7 @@ because_model <- function(
                   # Hierarchical bridge index (e.g. site_idx_obs[i])
                   s_idx_var <- get_struct_index(s_name, response, hierarchical_info)
 
-                  s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, is_multi = is_struct_multi(s_name), i_index = s_idx_var)
+                  s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, is_multi = is_struct_multi(s_name), i_index = s_idx_var, engine = engine)
                   if (!is.null(s_def)) {
                     model_lines <- safe_add_lines(model_lines, s_def$model_lines)
                     
@@ -2371,7 +2374,7 @@ because_model <- function(
               # Hierarchical bridge index (e.g. site_idx_obs[i])
               s_idx_var <- get_struct_index(s_name, response, hierarchical_info)
 
-              s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, is_multi = is_struct_multi(s_name), i_index = s_idx_var)
+              s_def <- jags_structure_definition(s_obj, variable_name = response, s_name = s_name, loop_bound = s_bound, zeros_name = s_zeros, is_multi = is_struct_multi(s_name), i_index = s_idx_var, engine = engine)
               if (!is.null(s_def)) {
                 if (!is.null(s_def$setup_code)) model_lines <- safe_add_lines(model_lines, s_def$setup_code)
                 
@@ -2464,7 +2467,8 @@ because_model <- function(
               variable_name = response,
               s_name = s_name,
               loop_bound = s_bound,
-              category_index = NULL
+              category_index = NULL,
+              engine = engine
             )
 
             if (!is.null(s_def)) {
@@ -2561,7 +2565,8 @@ because_model <- function(
                 variable_name = response,
                 s_name = s_name,
                 loop_bound = get_loop_bound(response, hierarchical_info),
-                is_multi = is_struct_multi(s_name)
+                is_multi = is_struct_multi(s_name),
+                engine = engine
               )
 
               if (!is.null(s_def)) {
@@ -2687,7 +2692,8 @@ because_model <- function(
           s_name = s_name,
           loop_bound = loop_bound,
           is_multi = is_struct_multi(s_name),
-          use_partitioning = use_partitioning_flag
+          use_partitioning = use_partitioning_flag,
+          engine = engine
         )
 
         if (!is.null(s_def)) {
@@ -2765,7 +2771,9 @@ because_model <- function(
         )
         
         # Map partitioning parameters for post-processing
-        param_map[[length(param_map) + 1]] <- list(response = var, predictor = s_name_partition, parameter = partition_param, type = "structure")
+        # Filter by precision parameter name
+        tau_struct_param <- paste0("tau_u_", var, "_", s_name_partition)
+        tau_obs_param <- paste0("tau_obs_", var)
         param_map[[length(param_map) + 1]] <- list(response = var, predictor = s_name_partition, parameter = sigma_total_param, type = "structure")
 
     } else {
@@ -4279,7 +4287,8 @@ because_model <- function(
               zeros_name = s_zeros,
               is_multi = is_struct_multi(s_name),
               i_index = s_idx_var,
-              use_partitioning = use_partitioning
+              use_partitioning = use_partitioning,
+              engine = engine
             )
 
             if (!is.null(s_def$model_lines)) {

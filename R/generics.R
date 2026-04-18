@@ -69,12 +69,17 @@ jags_structure_definition.default <- function(
         paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, "]")
     }
 
+    engine <- args$engine %||% "jags"
+    tau_var <- if (is_unified) {
+        paste0("tau_u_", s_name, "_", variable_name)
+    } else {
+        paste0("tau_u_", variable_name, "_", s_name)
+    }
+
     # Standard priors & dmnorm definition
     model_lines <- c(
         paste0(
             "  ",
-            # Standardized Multivariate Normal with FIXED precision matrix
-            # (NIMBLE loves fixed precision because it can pre-calculate Cholesky)
             raw_index,
             " ~ dmnorm(",
             zeros_name,
