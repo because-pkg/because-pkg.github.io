@@ -214,96 +214,97 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 
   sampler_targets <- sapply(mcmc_conf$getSamplers(), function(x) x$target)
 
-  # ── 1. Joint alpha + phylogenetic RE blocking ──────────────────────────────
-  # We identify 'err_raw' or 'u_std' nodes that end in '_phylo'.
-  phylo_re_vars <- unique(grep("^(err_raw_|u_std_).*_phylo(\\[|$)", sampler_targets, value = TRUE, perl = TRUE))
-  already_blocked_alphas <- character(0)
+  # ── 1. Joint alpha + random effect blocking ────────────────────────────────
+  # We identify 'err_raw' or 'u_std' nodes.
+  # We group them by their associated alpha_VAR node to avoid multiple competing blocks.
+  re_nodes <- unique(grep("^(err_raw_|u_std_).*", sampler_targets, value = TRUE, perl = TRUE))
+  
+  # Grouping dictionary
+  groups <- list()
 
-  if (length(phylo_re_vars) > 0) {
-    joint_blocks <- list()
-
-    for (re_var in phylo_re_vars) {
-      current_types <- sapply(mcmc_conf$getSamplers(re_var), function(s) s$name)
+  if (length(re_nodes) > 0) {
+    for (re_node in re_nodes) {
+      current_types <- sapply(mcmc_conf$getSamplers(re_node), function(s) s$name)
       if (any(grepl("posterior_predictive", current_types, ignore.case = TRUE))) next
 
-      info       <- parse_re_info(re_var)
+      info       <- parse_re_info(re_node)
       alpha_node <- paste0("alpha_", info$var)
 
       if (alpha_node %in% sampler_targets) {
-        joint_blocks[[re_var]] <- list(re = re_var, alpha = alpha_node)
-        already_blocked_alphas <- c(already_blocked_alphas, alpha_node)
+        if (is.null(groups[[alpha_node]])) groups[[alpha_node]] <- character(0)
+        groups[[alpha_node]] <- unique(c(groups[[alpha_node]], re_node))
       } else {
-        # Standalone RE block if no intercept found
-        mcmc_conf$removeSamplers(re_var)
-        mcmc_conf$addSampler(target = re_var, type = "RW_block")
+        # Standalone RE block if no intercept found (e.g. latent or derived trait)
+        mcmc_conf$removeSamplers(re_node)
+        mcmc_conf$addSampler(target = re_node, type = "RW_block")
       }
     }
 
-    if (length(joint_blocks) > 0) {
-      for (jb in joint_blocks) {
-        mcmc_conf$removeSamplers(jb$re)
-        mcmc_conf$removeSamplers(jb$alpha)
+    # Apply joint blocks
+    if (length(groups) > 0) {
+      for (alpha_node in names(groups)) {
+        re_node_vector <- groups[[alpha_node]]
+        
+        # Remove existing samplers for ALL nodes in the group
+        mcmc_conf$removeSamplers(alpha_node)
+        for (rn in re_node_vector) mcmc_conf$removeSamplers(rn)
+
+        # Add ONE single joint block
         mcmc_conf$addSampler(
-          target = c(jb$alpha, jb$re),
+          target = c(alpha_node, re_node_vector),
           type   = "RW_block"
         )
-      }
-      if (!quiet) {
-        message(sprintf(
-          "NIMBLE: Jointly blocked alpha + phylo RE for %d species-level trait(s): %s",
-          length(joint_blocks),
-          paste(sapply(joint_blocks, function(jb) jb$alpha), collapse = ", ")
-        ))
+        
+        if (!quiet) {
+          message(sprintf(
+            "NIMBLE: Jointly blocked %s + %d RE node(s) for trait '%s'.",
+            alpha_node, length(re_node_vector), sub("^alpha_", "", alpha_node)
+          ))
+        }
       }
     }
   }
 
-  # ── 2. Spatial / Survey RE: block without alpha (different hierarchy level) ─
-  other_re_vars <- unique(grep("^(u_std_|err_raw_).*", sampler_targets, value = TRUE))
-  other_re_vars <- setdiff(other_re_vars, phylo_re_vars)
-
-  for (re_var in other_re_vars) {
-    current_types <- sapply(mcmc_conf$getSamplers(re_var), function(s) s$name)
-    if (!any(grepl("posterior_predictive|conjugate", current_types, ignore.case = TRUE))) {
-      mcmc_conf$removeSamplers(re_var)
-      mcmc_conf$addSampler(target = re_var, type = "RW_block")
+  # ── 2. Remaining Standalone REs ────────────────────────────────────────────
+  # Any scalar RE nodes that weren't caught in any alpha group or standalone block
+  # (though most should be caught above)
+  new_sampler_targets <- sapply(mcmc_conf$getSamplers(), function(x) x$target)
+  re_scalar_targets <- unique(grep("^(u_std_|err_raw_).*", new_sampler_targets, value = TRUE))
+  
+  for (re_s in re_scalar_targets) {
+    current_types <- sapply(mcmc_conf$getSamplers(re_s), function(s) s$name)
+    # If it's still individual scalar samplers (not blocked yet)
+    if (length(current_types) > 1 || (!any(grepl("RW_block|posterior_predictive|conjugate", current_types, ignore.case = TRUE)))) {
+        mcmc_conf$removeSamplers(re_s)
+        mcmc_conf$addSampler(target = re_s, type = "RW_block")
     }
   }
 
-  if (!quiet && length(other_re_vars) > 0) {
-    message(sprintf(
-      "NIMBLE: Applied standalone RW_block to %d spatial/survey RE vector(s): %s",
-      length(other_re_vars),
-      paste(other_re_vars, collapse = ", ")
-    ))
+  # ── 3. Variance & Scale parameters: 'slice' is robust to the zero boundary ─
+  # We target all sigma_* and tau_* nodes
+  # [IMPROVED] We include lambda_, r_, psi_, etc. in a single robust variance-scale pass.
+  scale_nodes <- unique(grep("^(sigma_|tau_|lambda_|r_|psi_|sigma_total_).*", sampler_targets, value = TRUE))
+  for (sn in scale_nodes) {
+    current_types <- sapply(mcmc_conf$getSamplers(sn), function(s) s$name)
+    if (!any(grepl("posterior_predictive", current_types, ignore.case = TRUE))) {
+      mcmc_conf$removeSamplers(sn)
+      mcmc_conf$addSampler(target = sn, type = "slice")
+    }
   }
 
-  # ── 4. Variance partitioning: lambda_ in [0,1], sigma_total_ > 0 ──────────
-  partition_vars <- unique(grep("^(lambda_|sigma_total_)", sampler_targets, value = TRUE))
-  for (p_var in partition_vars) {
-    mcmc_conf$removeSamplers(p_var)
-    mcmc_conf$addSampler(target = p_var, type = "slice")
-  }
-  if (!quiet && length(partition_vars) > 0) {
-    message(sprintf(
-      "NIMBLE: Applied slice sampler to %d variance-partitioning node(s): %s",
-      length(partition_vars), paste(partition_vars, collapse = ", ")
-    ))
+  if (!quiet && length(scale_nodes) > 0) {
+      message(sprintf("NIMBLE: Using 'slice' samplers for %d variance/scale/shape node(s).", length(scale_nodes)))
   }
 
-  # ── 5. Dispersion / zero-inflation nodes ──────────────────────────────────
-  special_vars <- unique(grep("^(r_|psi_)", sampler_targets, value = TRUE))
-  for (spec_var in special_vars) {
-    mcmc_conf$removeSamplers(spec_var)
-    mcmc_conf$addSampler(target = spec_var, type = "slice")
-  }
-
-  # ── 6. Fixed effects for non-Gaussian responses: slice for curved links ───
+  # ── 4. Fixed effects for non-Gaussian responses: slice for curved links ───
   if (!is.null(family)) {
     non_gauss_fams <- c("poisson", "binomial", "negbinomial", "zip", "zinb")
     fixed_effects  <- unique(grep("^(beta_|alpha_)", sampler_targets, value = TRUE))
-    # Exclude alphas already folded into a joint phylo block
-    fixed_effects  <- setdiff(fixed_effects, already_blocked_alphas)
+    # Exclude nodes already blocked
+    current_blocks <- unlist(groups)
+    fixed_effects  <- setdiff(fixed_effects, names(groups))
+    fixed_effects  <- setdiff(fixed_effects, current_blocks)
+    
     for (fe_var in fixed_effects) {
       parts    <- strsplit(fe_var, "_")[[1]]
       if (length(parts) < 2) next
