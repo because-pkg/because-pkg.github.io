@@ -183,6 +183,115 @@
 #' @importFrom coda gelman.diag effectiveSize
 # @keywords internal
 
+#' Harden NIMBLE Sampler Configuration
+#'
+#' Applies robust sampler assignments to a NIMBLE MCMC configuration object.
+#' Exported as a standalone function so that parallel worker nodes — which
+#' load the package fresh — always use the current installed version of this
+#' logic, regardless of which version of `because()` was originally called.
+#'
+#' @param mcmc_conf A NIMBLE MCMC configuration object (from `configureMCMC()`).
+#' @param family Named character vector of response families (same as `because()`).
+#' @param nimble_samplers Optional named list of user-specified samplers.
+#' @param quiet Logical. If TRUE, suppress status messages.
+#' @return The modified `mcmc_conf` object (invisibly).
+#' @keywords internal
+#' @export
+nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = NULL, quiet = TRUE) {
+  sampler_targets <- sapply(mcmc_conf$getSamplers(), function(x) x$target)
+
+  # --- Structured Random Effects: replace element-wise RW with RW_block ---
+  # because.phybase uses 'err_raw_' prefix; core engine uses 'u_std_'.
+  # NIMBLE may already assign RW_block to dmnorm nodes; remove+re-add is harmless
+  # but ensures correct type even when defaults change between NIMBLE versions.
+  struct_re_vars <- unique(grep("^(u_std_|err_raw_).*", sampler_targets, value = TRUE))
+  if (length(struct_re_vars) > 0) {
+    for (re_var in struct_re_vars) {
+      # Only replace if NOT already handled by posterior_predictive or conjugate sampler
+      current_types <- sapply(mcmc_conf$getSamplers(re_var), function(s) s$name)
+      if (!any(grepl("posterior_predictive|conjugate", current_types, ignore.case = TRUE))) {
+        mcmc_conf$removeSamplers(re_var)
+        mcmc_conf$addSampler(target = re_var, type = "RW_block")
+      }
+    }
+    if (!quiet) {
+      message(sprintf(
+        "NIMBLE: Applied RW_block sampler to %d structured random effect vector(s): %s",
+        length(struct_re_vars),
+        paste(struct_re_vars, collapse = ", ")
+      ))
+    }
+  }
+
+  # --- Precision nodes: slice sampler handles positivity constraints better ---
+  tau_vars <- unique(grep("^tau_[ue]_", sampler_targets, value = TRUE))
+  if (length(tau_vars) > 0) {
+    for (tau_var in tau_vars) {
+      mcmc_conf$removeSamplers(tau_var)
+      mcmc_conf$addSampler(target = tau_var, type = "slice")
+    }
+    if (!quiet) {
+      message(sprintf(
+        "NIMBLE: Applied slice sampler to %d precision node(s): %s",
+        length(tau_vars),
+        paste(tau_vars, collapse = ", ")
+      ))
+    }
+  }
+
+  # --- Variance partitioning: lambda_ in [0,1] and sigma_total_ > 0 ---
+  partition_vars <- unique(grep("^(lambda_|sigma_total_)", sampler_targets, value = TRUE))
+  if (length(partition_vars) > 0) {
+    for (p_var in partition_vars) {
+      mcmc_conf$removeSamplers(p_var)
+      mcmc_conf$addSampler(target = p_var, type = "slice")
+    }
+    if (!quiet) {
+      message(sprintf(
+        "NIMBLE: Applied slice sampler to %d variance-partitioning node(s): %s",
+        length(partition_vars),
+        paste(partition_vars, collapse = ", ")
+      ))
+    }
+  }
+
+  # --- Dispersion / inflation / complex-family nodes ---
+  special_vars <- unique(grep("^(r_|psi_)", sampler_targets, value = TRUE))
+  if (length(special_vars) > 0) {
+    for (spec_var in special_vars) {
+      mcmc_conf$removeSamplers(spec_var)
+      mcmc_conf$addSampler(target = spec_var, type = "slice")
+    }
+  }
+
+  # --- Fixed effects for non-Gaussian responses ---
+  if (!is.null(family)) {
+    fixed_effects <- unique(grep("^(beta_|alpha_)", sampler_targets, value = TRUE))
+    for (fe_var in fixed_effects) {
+      parts <- strsplit(fe_var, "_")[[1]]
+      if (length(parts) < 2) next
+      res_name <- sub("\\[.*\\]", "", parts[2])
+      if (res_name %in% names(family)) {
+        if (family[[res_name]] %in% c("poisson", "binomial", "negbinomial", "zip", "zinb")) {
+          mcmc_conf$removeSamplers(fe_var)
+          mcmc_conf$addSampler(target = fe_var, type = "slice")
+        }
+      }
+    }
+  }
+
+  # --- User-specified overrides (applied last to take precedence) ---
+  if (!is.null(nimble_samplers)) {
+    for (node in names(nimble_samplers)) {
+      sampler_type <- nimble_samplers[[node]]
+      mcmc_conf$removeSamplers(node)
+      mcmc_conf$addSampler(target = node, type = sampler_type)
+    }
+  }
+
+  invisible(mcmc_conf)
+}
+
 #' @import coda
 because <- function(
   equations,
@@ -3294,97 +3403,15 @@ because <- function(
       enableWAIC = WAIC
     )
 
-    # --- Apply user-specified samplers ---
-    if (!is.null(nimble_samplers)) {
-      for (node in names(nimble_samplers)) {
-        sampler_type <- nimble_samplers[[node]]
-        mcmc_conf$removeSamplers(node)
-        mcmc_conf$addSampler(target = node, type = sampler_type)
-      }
-      if (!quiet) {
-        message(sprintf(
-          "NIMBLE: Applied %d user-specified sampler(s)",
-          length(nimble_samplers)
-        ))
-      }
-    }
-
-    # Find all samplers and check if any target structured random effect nodes.
-    # because.phybase uses 'err_raw_' prefix; core engine uses 'u_std_'.
-    sampler_targets <- sapply(mcmc_conf$getSamplers(), function(x) x$target)
-    struct_re_vars <- unique(grep(
-      "^(u_std_|err_raw_).*",
-      sampler_targets,
-      value = TRUE
-    ))
-
-    if (length(struct_re_vars) > 0) {
-      for (re_var in struct_re_vars) {
-        mcmc_conf$removeSamplers(re_var)
-        # [PERFORMANCE] RW_block handles the correlated high-dimensional phylogenetic RE.
-        mcmc_conf$addSampler(target = re_var, type = "RW_block")
-      }
-
-      if (!quiet) {
-        message(sprintf(
-          "NIMBLE: Replaced default sampler with RW_block for %d structured random effect vector(s): %s",
-          length(struct_re_vars),
-          paste(struct_re_vars, collapse = ", ")
-        ))
-      }
-    }
-
-    # Apply scalar 'slice' to precision nodes (tau_u, tau_e) for better mixing.
-    # Default NIMBLE RW struggles with positivity-constrained variance parameters.
-    tau_vars <- unique(grep("^tau_[ue]_", sampler_targets, value = TRUE))
-    if (length(tau_vars) > 0) {
-      for (tau_var in tau_vars) {
-        mcmc_conf$removeSamplers(tau_var)
-        mcmc_conf$addSampler(target = tau_var, type = "slice")
-      }
-      if (!quiet) {
-        message(sprintf(
-          "NIMBLE: Replaced default RW sampler with scalar 'slice' for %d precision node(s): %s",
-          length(tau_vars),
-          paste(tau_vars, collapse = ", ")
-        ))
-      }
-    }
-
-    # Apply 'slice' to variance-partitioning nodes (lambda_ and sigma_total_).
-    # lambda_ is bounded [0,1] and sigma_total_ is positive — both are problematic for RW.
-    partition_vars <- unique(grep("^(lambda_|sigma_total_)", sampler_targets, value = TRUE))
-    if (length(partition_vars) > 0) {
-      for (p_var in partition_vars) {
-        mcmc_conf$removeSamplers(p_var)
-        mcmc_conf$addSampler(target = p_var, type = "slice")
-      }
-      if (!quiet) {
-        message(sprintf(
-          "NIMBLE: Applied slice sampler to %d variance-partitioning node(s): %s",
-          length(partition_vars),
-          paste(partition_vars, collapse = ", ")
-        ))
-      }
-    }
-
-    # Apply 'slice' to dispersion (r_), inflation (psi_), 
-    # and all parameters for complex families (NegBin, ZIP, ZINB, Multinom, Ordinal)
-    # These often benefit from slice sampling over Random Walk
-    special_vars <- unique(grep("^(r_|psi_|_nb|_zip|_zinb|_multinom|_ordinal)", sampler_targets, value = TRUE))
-    if (length(special_vars) > 0) {
-      for (spec_var in special_vars) {
-        mcmc_conf$removeSamplers(spec_var)
-        mcmc_conf$addSampler(target = spec_var, type = "slice")
-      }
-      if (!quiet) {
-        message(sprintf(
-          "NIMBLE: Replaced default RW sampler with scalar 'slice' for %d complex family node(s): %s",
-          length(special_vars),
-          paste(special_vars, collapse = ", ")
-        ))
-      }
-    }
+    # Harden NIMBLE sampler assignments.
+    # Called via the top-level exported function so the code is always
+    # taken from the INSTALLED package, not from this closure.
+    because::nimble_harden_samplers(
+      mcmc_conf,
+      family          = family,
+      nimble_samplers = nimble_samplers,
+      quiet           = quiet
+    )
 
     if (!quiet) {
       message("Building and compiling NIMBLE MCMC (this may take a moment)...")
@@ -3526,75 +3553,16 @@ because <- function(
           enableWAIC = WAIC
         )
         
-        # [SAMPLER HARDENING] Apply robust samplers for fixed effects in non-Gaussian models
-        # Slice samplers are significantly more stable for the extreme curvature 
-        # of log/logit links in hierarchical contexts.
-        sampler_targets <- sapply(worker_conf$getSamplers(), function(x) {
-          x$target
-        })
-        
-        # Identify fixed effects for hardened sampling
-        fixed_effects <- unique(grep("^(beta_|alpha_)", sampler_targets, value = TRUE))
-        for (fe_var in fixed_effects) {
-            # Check if this FE is associated with a non-Gaussian response
-            # Heuristic: find the response name from the parameter name
-            parts <- strsplit(fe_var, "_")[[1]]
-            if (length(parts) < 2) next
-            
-            # Strip indices from response name (e.g., alpha_Y[1] -> Y)
-            res_name <- sub("\\[.*\\]", "", parts[2])
-            
-            # If the response is Poisson or Binomial (determined by family), use Slice
-            # We use [res_name] for safe lookups in named vectors
-            if (res_name %in% names(family)) {
-                if (family[[res_name]] %in% c("poisson", "binomial", "negbinomial", "zip", "zinb")) {
-                    if (!quiet) message(sprintf("  Hardening: applying slice sampler to %s", fe_var))
-                    worker_conf$removeSamplers(fe_var)
-                    worker_conf$addSampler(target = fe_var, type = "slice")
-                }
-            }
-        }
-
-        # Apply user-specified samplers on worker
-        if (!is.null(nimble_samplers)) {
-          for (node in names(nimble_samplers)) {
-            sampler_type <- nimble_samplers[[node]]
-            worker_conf$removeSamplers(node)
-            worker_conf$addSampler(target = node, type = sampler_type)
-          }
-        }
-
-        # Apply random effect block samplers.
-        # Because.phybase uses 'err_raw_'; core engine uses 'u_std_'.
-        struct_re_vars <- unique(grep(
-          "^(u_std_|err_raw_).*",
-          sampler_targets,
-          value = TRUE
-        ))
-        if (length(struct_re_vars) > 0) {
-          for (re_var in struct_re_vars) {
-            worker_conf$removeSamplers(re_var)
-            worker_conf$addSampler(target = re_var, type = "RW_block")
-          }
-        }
-
-        # Apply scalar 'slice' to precision nodes on worker
-        tau_vars <- unique(grep("^tau_[ue]_", sampler_targets, value = TRUE))
-        if (length(tau_vars) > 0) {
-          for (tau_var in tau_vars) {
-            worker_conf$removeSamplers(tau_var)
-            worker_conf$addSampler(target = tau_var, type = "slice")
-          }
-        }
-
-        # Apply 'slice' to variance-partitioning nodes on worker.
-        partition_vars <- unique(grep("^(lambda_|sigma_total_)", sampler_targets, value = TRUE))
-        if (length(partition_vars) > 0) {
-          for (p_var in partition_vars) {
-            worker_conf$removeSamplers(p_var)
-            worker_conf$addSampler(target = p_var, type = "slice")
-          }
-        }
+        # Harden worker MCMC samplers via the installed package function.
+        # CRITICAL: calling by package::function rather than using the closure
+        # ensures workers always run the CURRENT installed version of because,
+        # not the stale closure that was exported from the parent session.
+        because::nimble_harden_samplers(
+          worker_conf,
+          family          = family,
+          nimble_samplers = nimble_samplers,
+          quiet           = TRUE
+        )
 
         worker_mcmc <- nimble::buildMCMC(worker_conf)
         worker_c_model <- nimble::compileNimble(worker_model)
