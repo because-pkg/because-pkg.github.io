@@ -3007,7 +3007,7 @@ because_model <- function(
         "multinomial",
         "ordinal"
       )
-      default_alpha <- "dnorm(0, 1.0E-6)"
+      default_alpha <- "dnorm(0, 0.01)"
       if (dist %in% logit_dists || is_occupancy_aux) {
         default_alpha <- "dnorm(0, 1)"
       }
@@ -3271,7 +3271,7 @@ because_model <- function(
           paste0("  # Independent Priors for ", response, " (Multinomial)"),
           paste0("  alpha_", response, "[1] <- 0"),
           paste0("  for (k in 2:", K_var, ") {"),
-          paste0("    alpha_", response, "[k] ~ dnorm(0, 1.0E-6)"),
+          paste0("    alpha_", response, "[k] ~ dnorm(0, 0.01)"),
           tau_line,
           "  }"
         )
@@ -3303,7 +3303,7 @@ because_model <- function(
           model_lines,
           # Priors for ", response, " (Multinomial)"),
           paste0("  for (k in 2:", K_var, ") {"),
-          paste0("    alpha_", response, "[k] ~ dnorm(0, 1.0E-6)"),
+          paste0("    alpha_", response, "[k] ~ dnorm(0, 0.01)"),
 
           # Residual error
           tau_line,
@@ -3409,7 +3409,7 @@ because_model <- function(
           paste0("  # Priors for ", response, " (Multinomial)"),
           paste0("  alpha_", response, "[1] <- 0"),
           paste0("  for (k in 2:", K_var, ") {"),
-          paste0("    alpha_", response, "[k] ~ dnorm(0, 1.0E-6)"),
+          paste0("    alpha_", response, "[k] ~ dnorm(0, 0.01)"),
           paste0("    lambda_", response, "[k] ~ dunif(0, 1)"),
           paste0("    ", get_precision_prior(paste0("tau_", response, "[k]"), response)),
           "  }"
@@ -3580,7 +3580,7 @@ because_model <- function(
 
     model_lines <- c(
       model_lines,
-      paste0("  alpha_", var, " ~ dnorm(0, 1.0E-6)")
+      paste0("  alpha_", var, " ~ dnorm(0, 0.01)")
     )
   }
 
@@ -3655,7 +3655,7 @@ because_model <- function(
     # A safer way is using param_map, but we are in a simple loop here.
     # Let's try to match against names(dist_list).
 
-    default_beta <- "dnorm(0, 1.0E-6)"
+    default_beta <- "dnorm(0, 0.01)"
 
     # Simple heuristic to find response name in beta string
     found_resp <- NULL

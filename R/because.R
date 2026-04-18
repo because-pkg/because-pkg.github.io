@@ -3301,34 +3301,33 @@ because <- function(
       }
     }
 
-    # Find all samplers and check if any target u_std_.* nodes (structured random effects)
+    # Find all samplers and check if any target structured random effect nodes.
+    # because.phybase uses 'err_raw_' prefix; core engine uses 'u_std_'.
     sampler_targets <- sapply(mcmc_conf$getSamplers(), function(x) x$target)
     struct_re_vars <- unique(grep(
-      "^u_std_.*",
+      "^(u_std_|err_raw_).*",
       sampler_targets,
       value = TRUE
     ))
 
     if (length(struct_re_vars) > 0) {
       for (re_var in struct_re_vars) {
-        # removeSamplers can take the target name directly
         mcmc_conf$removeSamplers(re_var)
-        # [PERFORMANCE] Use RW_block for structured random effects
-        # AF_slice is robust but extremely slow to initialize for large vectors
+        # [PERFORMANCE] RW_block handles the correlated high-dimensional phylogenetic RE.
         mcmc_conf$addSampler(target = re_var, type = "RW_block")
       }
 
       if (!quiet) {
         message(sprintf(
-          "NIMBLE: Replaced default sampler with AF_slice for %d structured random effect vector(s): %s",
+          "NIMBLE: Replaced default sampler with RW_block for %d structured random effect vector(s): %s",
           length(struct_re_vars),
           paste(struct_re_vars, collapse = ", ")
         ))
       }
     }
 
-    # Also apply scalar 'slice' to precision nodes (tau_u and tau_e) for better mixing
-    # default in NIMBLE is RW which can struggle with small/large variance priors
+    # Apply scalar 'slice' to precision nodes (tau_u, tau_e) for better mixing.
+    # Default NIMBLE RW struggles with positivity-constrained variance parameters.
     tau_vars <- unique(grep("^tau_[ue]_", sampler_targets, value = TRUE))
     if (length(tau_vars) > 0) {
       for (tau_var in tau_vars) {
@@ -3344,7 +3343,24 @@ because <- function(
       }
     }
 
-    # Also apply 'slice' to dispersion (r_), inflation (psi_), 
+    # Apply 'slice' to variance-partitioning nodes (lambda_ and sigma_total_).
+    # lambda_ is bounded [0,1] and sigma_total_ is positive — both are problematic for RW.
+    partition_vars <- unique(grep("^(lambda_|sigma_total_)", sampler_targets, value = TRUE))
+    if (length(partition_vars) > 0) {
+      for (p_var in partition_vars) {
+        mcmc_conf$removeSamplers(p_var)
+        mcmc_conf$addSampler(target = p_var, type = "slice")
+      }
+      if (!quiet) {
+        message(sprintf(
+          "NIMBLE: Applied slice sampler to %d variance-partitioning node(s): %s",
+          length(partition_vars),
+          paste(partition_vars, collapse = ", ")
+        ))
+      }
+    }
+
+    # Apply 'slice' to dispersion (r_), inflation (psi_), 
     # and all parameters for complex families (NegBin, ZIP, ZINB, Multinom, Ordinal)
     # These often benefit from slice sampling over Random Walk
     special_vars <- unique(grep("^(r_|psi_|_nb|_zip|_zinb|_multinom|_ordinal)", sampler_targets, value = TRUE))
@@ -3540,26 +3556,35 @@ because <- function(
           }
         }
 
-        # Apply random effect block samplers
+        # Apply random effect block samplers.
+        # Because.phybase uses 'err_raw_'; core engine uses 'u_std_'.
         struct_re_vars <- unique(grep(
-          "^u_std_.*",
+          "^(u_std_|err_raw_).*",
           sampler_targets,
           value = TRUE
         ))
         if (length(struct_re_vars) > 0) {
           for (re_var in struct_re_vars) {
             worker_conf$removeSamplers(re_var)
-            # [PERFORMANCE] Use RW_block for workers to match main thread
             worker_conf$addSampler(target = re_var, type = "RW_block")
           }
         }
 
-        # Also apply scalar 'slice' to precision nodes on worker
+        # Apply scalar 'slice' to precision nodes on worker
         tau_vars <- unique(grep("^tau_[ue]_", sampler_targets, value = TRUE))
         if (length(tau_vars) > 0) {
           for (tau_var in tau_vars) {
             worker_conf$removeSamplers(tau_var)
             worker_conf$addSampler(target = tau_var, type = "slice")
+          }
+        }
+
+        # Apply 'slice' to variance-partitioning nodes on worker.
+        partition_vars <- unique(grep("^(lambda_|sigma_total_)", sampler_targets, value = TRUE))
+        if (length(partition_vars) > 0) {
+          for (p_var in partition_vars) {
+            worker_conf$removeSamplers(p_var)
+            worker_conf$addSampler(target = p_var, type = "slice")
           }
         }
 
