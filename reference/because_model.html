@@ -230,10 +230,10 @@ For "binomial" variables, the model uses a logit link and a Bernoulli likelihood
 <span class="r-out co"><span class="r-pr">#&gt;</span>   alpha_L ~ dnorm(0, 0.01)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   sigma_L_res ~ dunif(0, 100)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   tau_res_L &lt;- 1 / (sigma_L_res * sigma_L_res)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   beta_BR_BM ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   beta_S_BR ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   beta_G_BR ~ dnorm(0, 1.0E-6)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   beta_L_BR ~ dnorm(0, 1.0E-6)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta_BR_BM ~ dnorm(0, 0.01)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta_S_BR ~ dnorm(0, 0.01)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta_G_BR ~ dnorm(0, 0.01)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta_L_BR ~ dnorm(0, 0.01)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   # Phylogenetic uncertainty weighting</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   for (k in 1:Ntree) {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     p_tree[k] &lt;- 1/Ntree</span>

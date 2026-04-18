@@ -215,10 +215,10 @@ cat(because_model(eqs, is_multi_structure = TRUE)$model)
 #>   alpha_L ~ dnorm(0, 0.01)
 #>   sigma_L_res ~ dunif(0, 100)
 #>   tau_res_L <- 1 / (sigma_L_res * sigma_L_res)
-#>   beta_BR_BM ~ dnorm(0, 1.0E-6)
-#>   beta_S_BR ~ dnorm(0, 1.0E-6)
-#>   beta_G_BR ~ dnorm(0, 1.0E-6)
-#>   beta_L_BR ~ dnorm(0, 1.0E-6)
+#>   beta_BR_BM ~ dnorm(0, 0.01)
+#>   beta_S_BR ~ dnorm(0, 0.01)
+#>   beta_G_BR ~ dnorm(0, 0.01)
+#>   beta_L_BR ~ dnorm(0, 0.01)
 #>   # Phylogenetic uncertainty weighting
 #>   for (k in 1:Ntree) {
 #>     p_tree[k] <- 1/Ntree
