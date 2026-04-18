@@ -3224,6 +3224,10 @@ because <- function(
           nimble_inits[[p]] <- 0.5
         } else if (grepl("^r_", p)) {
           nimble_inits[[p]] <- 1.0
+        } else if (grepl("^sigma_total_", p)) {
+          # [PARTITIONING] sigma_total drives both tau_u and tau_res via lambda.
+          # Starting at 0 collapses the dmnorm prior to a point mass (tau -> Inf).
+          nimble_inits[[p]] <- 1.0
         } else if (grepl("^lambda_", p)) {
           nimble_inits[[p]] <- 0.5
         } else if (grepl("^cutpoint", p)) {
@@ -3259,6 +3263,10 @@ because <- function(
             val <- if (is_prec) 1 else 0
             if (grepl("^psi_", node)) val <- 0.5
             if (grepl("^r_", node)) val <- 1
+            # [PARTITIONING] sigma_total_ and lambda_ MUST NOT start at 0.
+            # sigma_total=0 -> tau=Inf -> dmnorm at point mass -> NA cascade.
+            if (grepl("^sigma_total_", node)) val <- 1.0
+            if (grepl("^lambda_", node)) val <- 0.5
             
             try({
               curr_val <- m_obj[[node]]

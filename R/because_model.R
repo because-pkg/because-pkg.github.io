@@ -2756,7 +2756,7 @@ because_model <- function(
             model_lines,
             c(
                 paste0("  # Variance Partitioning (Pagel's Lambda style) for ", var),
-                paste0("  ", sigma_total_param, " ~ dgamma(1, 1)"),
+                paste0("  ", sigma_total_param, " ~ dunif(0, 10)"),
                 paste0("  ", partition_param, " ~ dunif(0, 1)"),
                 paste0("  ", tau_total_param, " <- 1/(", sigma_total_param, " * ", sigma_total_param, ")"),
                 paste0("  ", tau_struct_partition, " <- ", tau_total_param, " / max(0.001, ", partition_param, ")"),
@@ -3870,7 +3870,7 @@ because_model <- function(
                 model_lines,
                 c(
                     paste0("  # GLMM Variance Partitioning for ", response),
-                    paste0("  ", sigma_total_param, " ~ dgamma(1, 1)"),
+                    paste0("  ", sigma_total_param, " ~ dunif(0, 10)"),
                     paste0("  ", partition_param, " ~ dunif(0, 1)"),
                     paste0("  ", tau_total_param, " <- 1/(", sigma_total_param, " * ", sigma_total_param, ")"),
                     # Precision for structured effect (tau_struct)
@@ -4364,7 +4364,7 @@ because_model <- function(
                 model_lines,
                 c(
                     paste0("  # Variance Partitioning for independent var: ", var),
-                    paste0("  ", sigma_total_param, " ~ dgamma(1, 1)"),
+                    paste0("  ", sigma_total_param, " ~ dunif(0, 10)"),
                     paste0("  ", partition_param, " ~ dunif(0, 1)"),
                     paste0("  ", tau_total_param, " <- 1/(", sigma_total_param, " * ", sigma_total_param, ")"),
                     paste0("  ", tau_struct_partition, " <- ", tau_total_param, " / max(0.001, ", partition_param, ")"),
