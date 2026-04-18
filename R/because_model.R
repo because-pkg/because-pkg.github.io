@@ -3846,41 +3846,80 @@ because_model <- function(
         # Only add legacy prior if not a unified structure
         is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(u, s_name), logical(1)))
         
-        # Priors
-        model_lines <- safe_add_lines(
-          model_lines,
-          paste0("  ", get_precision_prior(tau_res, response))
-        )
+        # [PARTITIONING] Check if this qualifies for variance partitioning
+        # Exactly one structure + Gaussian + no other residual noise terms
+        # (Heuristic: local_struct_count == 1)
+        local_struct_count <- 0
+        if (!is.null(structures)) {
+          for (sn in names(structures)) {
+            if (is_valid_structure_mapping(get_struct_lvl(sn, hierarchical_info), get_var_level(response, hierarchical_info), hierarchical_info, allow_identity = TRUE)) {
+              local_struct_count <- local_struct_count + 1
+            }
+          }
+        }
+        use_partitioning <- (local_struct_count == 1 && engine %in% c("jags", "nimble"))
 
-        if (is_unified) {
-            # [UNIFICATION] Map the unified name for summary reporting
-            unified_tau <- paste0("tau_u_", s_name, "_", response)
-            unified_sigma <- paste0("sigma_", s_name, "_", response)
-            param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
-            param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
-        } else {
-            model_lines <- c(
+        if (use_partitioning) {
+            partition_param <- paste0("lambda_", response)
+            sigma_total_param <- paste0("sigma_total_", response)
+            tau_total_param <- paste0("tau_total_", response)
+            
+            # Use the already defined prefix names for the partition components
+            # (Ensures compatibility with s_def term generation)
+            model_lines <- safe_add_lines(
                 model_lines,
-                paste0("  ", tau_struct, " ~ dgamma(10, 10)"),
-                # Calculate lambda for reporting
-                paste0(
-                    "  lambda_",
-                    response,
-                    suffix,
-                    "_",
-                    s_name,
-                    " <- (1/",
-                    tau_struct,
-                    ") / ((1/",
-                    tau_struct,
-                    ") + (1/",
-                    tau_res,
-                    "))"
+                c(
+                    paste0("  # GLMM Variance Partitioning for ", response),
+                    paste0("  ", sigma_total_param, " ~ dgamma(1, 1)"),
+                    paste0("  ", partition_param, " ~ dunif(0, 1)"),
+                    paste0("  ", tau_total_param, " <- 1/(", sigma_total_param, " * ", sigma_total_param, ")"),
+                    # Precision for structured effect (tau_struct)
+                    paste0("  ", tau_struct, " <- ", tau_total_param, " / max(0.001, ", partition_param, ")"),
+                    # Precision for residual error (tau_res)
+                    paste0("  ", tau_res, " <- ", tau_total_param, " / max(0.001, 1 - ", partition_param, ")")
                 )
             )
-            if (!is_unified) {
-                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = tau_struct, equation_index = NA, type = "structure")
-                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
+            # Map partitioning parameters
+            param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = partition_param, type = "structure")
+            param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = sigma_total_param, type = "structure")
+            
+        } else {
+            # Standard Additive Priors
+            model_lines <- safe_add_lines(
+              model_lines,
+              paste0("  ", get_precision_prior(tau_res, response))
+            )
+
+            if (is_unified) {
+                # [UNIFICATION] Map the unified name for summary reporting
+                unified_tau <- paste0("tau_u_", s_name, "_", response)
+                unified_sigma <- paste0("sigma_", s_name, "_", response)
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
+                param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
+            } else {
+                model_lines <- c(
+                    model_lines,
+                    paste0("  ", tau_struct, " ~ dgamma(10, 10)"),
+                    # Calculate lambda for reporting
+                    paste0(
+                        "  lambda_",
+                        response,
+                        suffix,
+                        "_",
+                        s_name,
+                        " <- (1/",
+                        tau_struct,
+                        ") / ((1/",
+                        tau_struct,
+                        ") + (1/",
+                        tau_res,
+                        "))"
+                    )
+                )
+                if (!is_unified) {
+                    param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = tau_struct, equation_index = NA, type = "structure")
+                    param_map[[length(param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
+                }
             }
         }
 
