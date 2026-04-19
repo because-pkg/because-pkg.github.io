@@ -10,6 +10,8 @@
 #' @param type Character string; the type of PPC plot to generate.
 #'   Supported: \code{"dens_overlay"}, \code{"hist"}, \code{"stat"}.
 #' @param ndraws Integer; number of posterior draws to use. Defaults to 50.
+#' @param re_formula Formula or \code{NA}; determines which random effects to include
+#'   in the posterior predictions. See \code{\link{posterior_predict}} for details.
 #' @param ... Additional arguments passed to \code{bayesplot} functions.
 #'
 #' @return A \code{ggplot} object produced by \code{bayesplot}.
@@ -17,7 +19,7 @@
 #' @importFrom bayesplot ppc_dens_overlay ppc_hist ppc_stat
 #' @importFrom ggplot2 ggplot
 #' @export
-pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws = 50, trim = TRUE, ...) {
+pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws = 50, trim = TRUE, re_formula = NULL, ...) {
   # 1. Identify Response
   if (is.null(resp)) {
     resp <- as.character(all.vars(object$equations[[1]][[2]])[1])
@@ -37,7 +39,7 @@ pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws 
   y <- na.omit(y)
   
   # 3. Generate Posterior Predictions
-  yrep <- posterior_predict(object, resp = resp, ndraws = ndraws)
+  yrep <- posterior_predict(object, resp = resp, ndraws = ndraws, re_formula = re_formula)
   
   # Ensure dimensions match
   if (ncol(yrep) != length(y)) {

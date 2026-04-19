@@ -8,11 +8,14 @@
 #' @param resp Character string; the name of the response variable to predict.
 #'   If \code{NULL}, takes the first response variable in the model.
 #' @param ndraws Integer; number of posterior draws to use. Defaults to all draws.
+#' @param re_formula Formula or \code{NA}; determines which random effects to include.
+#'   If \code{NULL} (default), all random effects are included (conditional prediction).
+#'   If \code{NA}, no random effects are included (marginal prediction).
 #' @param ... Additional arguments (currently ignored).
 #'
 #' @return A matrix of dimensions \code{[ndraws x N_obs]} containing simulated response values.
 #' @export
-posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, ...) {
+posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, re_formula = NULL, ...) {
   # 1. Selection & Identification
   if (is.null(resp)) {
     resp <- as.character(all.vars(object$equations[[1]][[2]])[1])
@@ -87,25 +90,50 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, ...) {
     
     if (p_name %in% colnames(samples_mat)) {
       b_samples <- samples_mat[, p_name]
-      # Predictor prioritizes the target level resolution
-      x_vals <- object$original_data[[v_name]]
       
-      # If x_vals is observation-level but we are predicting at higher level, subset it
-      if (!is.null(x_vals) && length(x_vals) > n_obs && target_level != "obs") {
-          idx_var <- h_info$link_vars[[target_level]]
-          if (!is.null(idx_var) && idx_var %in% names(object$original_data)) {
-              links <- object$original_data[[idx_var]]
-              # Take values for the unique entities only
-              x_vals <- x_vals[!duplicated(links)]
+      # [Smart Lookup] Search top-level or sub-lists for predictor
+      x_vals <- NULL
+      if (v_name %in% names(object$original_data)) {
+          x_vals <- object$original_data[[v_name]]
+      } else if (is.list(object$original_data) && !is.data.frame(object$original_data)) {
+          # Search inside site, survey, etc.
+          for (df_name in names(object$original_data)) {
+              if (is.data.frame(object$original_data[[df_name]]) && v_name %in% names(object$original_data[[df_name]])) {
+                  x_vals <- object$original_data[[df_name]][[v_name]]
+                  break
+              }
           }
       }
       
-      # Fallback to data_list if missing/wrong length
-      if (is.null(x_vals) || length(x_vals) != n_obs) {
-         if (v_name %in% names(data_list)) {
-             x_v <- data_list[[v_name]]
-             if (length(x_v) == n_obs) x_vals <- x_v
-         }
+      # If still not found, check standard data list
+      if (is.null(x_vals)) x_vals <- data_list[[v_name]]
+      
+      # [Hierarchical Resolution Alignment]
+      if (!is.null(x_vals)) {
+          # Case 1: x_vals is observation-level but we need higher level (e.g. species traits)
+          if (length(x_vals) > n_obs && target_level != "obs") {
+              idx_var <- h_info$link_vars[[target_level]]
+              # Search for links in original_data
+              links <- NULL
+              for (df_name in names(object$original_data)) {
+                  if (is.data.frame(object$original_data[[df_name]]) && idx_var %in% names(object$original_data[[df_name]])) {
+                      links <- object$original_data[[df_name]][[idx_var]]
+                      # Ensure links has same length as x_vals
+                      if (length(links) == length(x_vals)) break else links <- NULL
+                  }
+              }
+              if (!is.null(links)) x_vals <- x_vals[!duplicated(links)]
+          }
+          
+          # Case 2: x_vals is site-level but response is survey-level (Elevation_s -> Temperature)
+          if (length(x_vals) < n_obs && target_level != "obs") {
+              # Find the link between target_level and predictor level
+              # This usually is handled by indexing in BUGS, here we assume order if lengths match entities
+              # or we fallback to simpler truncation/replication.
+              if (n_obs %% length(x_vals) == 0) {
+                  x_vals <- rep(x_vals, each = n_obs / length(x_vals))
+              }
+          }
       }
       
       if (!is.null(x_vals) && length(x_vals) == n_obs) {
@@ -114,56 +142,70 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, ...) {
     }
   }
   
-  # C. Random Effects & Structures
+  # C. Random Effects & Structures (Conditional on re_formula)
+  # We track RE variances for marginal checks (re_formula = NA)
+  re_variances <- matrix(0, nrow = n_s, ncol = 1)
+
   u_prefix <- paste0("u_", resp, "_")
-  u_cols <- grep(paste0("^", u_prefix), colnames(samples_mat), value = TRUE)
-  
-  if (length(u_cols) > 0) {
-    u_base_names <- unique(gsub("\\[\\d+\\]$", "", u_cols))
+  # Determine all possible random effect variances for this response
+  sigma_re_names <- grep(paste0("^sigma_.*_", resp, "$"), colnames(samples_mat), value = TRUE)
+  # Also catch sigma_phylo_VAR, sigma_site_VAR etc.
+  sigma_re_names <- unique(c(sigma_re_names, grep(paste0("^sigma_[^res].*_", resp, "($|_)"), colnames(samples_mat), value = TRUE)))
+
+  if (is.null(re_formula) || !is.na(re_formula)) {
+    u_cols <- grep(paste0("^", u_prefix), colnames(samples_mat), value = TRUE)
     
-    for (ub in u_base_names) {
-        lvl_name <- sub(u_prefix, "", ub)
-        
-        # Mapping index
-        if (lvl_name == target_level || (lvl_name == "phylo" && target_level == "species")) {
-            indices <- 1:n_obs
-        } else {
-            idx_name <- NULL
-            if (!is.null(h_info) && !is.null(h_info$link_vars)) {
-                 if (lvl_name %in% names(h_info$link_vars)) {
-                     idx_var_name <- h_info$link_vars[[lvl_name]]
-                     idx_name <- paste0(idx_var_name, "_idx")
-                 } else if (lvl_name == "phylo" && "species" %in% names(h_info$link_vars)) {
-                     idx_var_name <- h_info$link_vars[["species"]]
-                     idx_name <- paste0(idx_var_name, "_idx")
-                 }
-            }
-            if (is.null(idx_name) || !idx_name %in% names(data_list)) {
-                idx_name <- paste0(lvl_name, "_idx")
-            }
-            indices <- if (idx_name %in% names(data_list)) data_list[[idx_name]] else NULL
-        }
-        
-        if (!is.null(indices)) {
-          # Extract and sort level samples
-          sub_u_cols <- grep(paste0("^", ub, "\\["), colnames(samples_mat), value = TRUE)
-          indices_numeric <- as.numeric(gsub(".*\\[(\\d+)\\].*", "\\1", sub_u_cols))
-          sub_u_cols <- sub_u_cols[order(indices_numeric)]
-          u_samples <- samples_mat[, sub_u_cols, drop = FALSE]
+    if (length(u_cols) > 0) {
+      u_base_names <- unique(gsub("\\[\\d+\\]$", "", u_cols))
+      
+      for (ub in u_base_names) {
+          lvl_name <- sub(u_prefix, "", ub)
           
-          valid_idx <- !is.na(indices)
-          safe_indices <- indices[valid_idx]
-          
-          if (length(safe_indices) > 0) {
-             if (length(indices) == ncol(eta)) {
-                eta[, valid_idx] <- eta[, valid_idx] + u_samples[, safe_indices, drop = FALSE]
-             } else if (length(indices) > ncol(eta) && target_level != "obs") {
-                 # Fallback: if we only have one-per-entity prediction but long indices, take first J
-                 eta <- eta + u_samples[, 1:n_obs, drop = FALSE]
-             }
+          # Mapping index
+          if (lvl_name == target_level || (lvl_name == "phylo" && target_level == "species")) {
+              indices <- 1:n_obs
+          } else {
+              idx_name <- NULL
+              if (!is.null(h_info) && !is.null(h_info$link_vars)) {
+                   if (lvl_name %in% names(h_info$link_vars)) {
+                       idx_var_name <- h_info$link_vars[[lvl_name]]
+                       idx_name <- paste0(idx_var_name, "_idx")
+                   } else if (lvl_name == "phylo" && "species" %in% names(h_info$link_vars)) {
+                       idx_var_name <- h_info$link_vars[["species"]]
+                       idx_name <- paste0(idx_var_name, "_idx")
+                   }
+              }
+              if (is.null(idx_name) || !idx_name %in% names(data_list)) {
+                  idx_name <- paste0(lvl_name, "_idx")
+              }
+              indices <- if (idx_name %in% names(data_list)) data_list[[idx_name]] else NULL
           }
-        }
+          
+          if (!is.null(indices)) {
+            # Extract and sort level samples
+            sub_u_cols <- grep(paste0("^", ub, "\\["), colnames(samples_mat), value = TRUE)
+            indices_numeric <- as.numeric(gsub(".*\\[(\\d+)\\].*", "\\1", sub_u_cols))
+            sub_u_cols <- sub_u_cols[order(indices_numeric)]
+            u_samples <- samples_mat[, sub_u_cols, drop = FALSE]
+            
+            valid_idx <- !is.na(indices)
+            safe_indices <- indices[valid_idx]
+            
+            if (length(safe_indices) > 0) {
+               if (length(indices) == ncol(eta)) {
+                  eta[, valid_idx] <- eta[, valid_idx] + u_samples[, safe_indices, drop = FALSE]
+               } else if (length(indices) > ncol(eta) && target_level != "obs") {
+                   eta <- eta + u_samples[, 1:n_obs, drop = FALSE]
+               }
+            }
+          }
+      }
     }
+  } else if (!is.null(re_formula) && is.na(re_formula)) {
+      # Marginal Prediction: Collect RE variances to add to the predictive noise
+      for (sn in sigma_re_names) {
+          re_variances <- re_variances + samples_mat[, sn, drop=FALSE]^2
+      }
   }
   
   # 5. Inverse Link & Stochastic Draw
@@ -179,22 +221,15 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, ...) {
       sigma_val <- samples_mat[, sigma_name]
   } else if (tau_name %in% colnames(samples_mat)) {
       sigma_val <- 1/sqrt(samples_mat[, tau_name])
-  } else {
-      # Fallback to legacy naming for backward compatibility
-      sigma_legacy <- paste0("sigma_e_", resp)
-      tau_legacy <- paste0("tau_e_", resp)
-      if (sigma_legacy %in% colnames(samples_mat)) {
-          sigma_val <- samples_mat[, sigma_legacy]
-      } else if (tau_legacy %in% colnames(samples_mat)) {
-          sigma_val <- 1/sqrt(samples_mat[, tau_legacy])
-      }
   }
   
   for (s in 1:n_s) {
     mu_s <- eta[s, ]
     
     if (fam == "gaussian") {
-      y_rep[s, ] <- stats::rnorm(n_obs, mu_s, sigma_val[s])
+      # If marginal, add the omitted RE variances to the simulation noise
+      total_sd <- sqrt(sigma_val[s]^2 + re_variances[s])
+      y_rep[s, ] <- stats::rnorm(n_obs, mu_s, total_sd)
     } else if (fam == "poisson") {
       y_rep[s, ] <- stats::rpois(n_obs, exp(mu_s))
     } else if (fam == "binomial") {

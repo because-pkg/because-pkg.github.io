@@ -203,117 +203,132 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
   # Strategy: strip prefix and index, then the last _-delimited token is the structure name.
   parse_re_info <- function(node) {
     base   <- sub("\\[.*\\]", "", node)                  # strip [1:N]
-    base   <- sub("^(err_raw_|u_std_)", "", base)        # strip prefix
+    base   <- sub("^(err_raw_|u_std_|sigma_|tau_|beta_|alpha_)", "", base) # strip prefixes
     parts  <- strsplit(base, "_")[[1]]
     if (length(parts) < 2) return(list(var = base, structure = ""))
-    list(
-      var       = paste(parts[-length(parts)], collapse = "_"),  # e.g. "Body_Mass_s"
-      structure = parts[length(parts)]                           # e.g. "phylo"
-    )
+    
+    # For betas: beta_RESPONSE_PREDICTOR
+    if (grepl("^beta_", node)) {
+       return(list(var = parts[1], structure = "beta"))
+    }
+
+    # For REs and scales: name_STRUCTURE
+    last   <- parts[length(parts)]
+    known_structs <- c("phylo", "spatial", "survey", "site", "obs", "res")
+    if (last %in% known_structs) {
+       return(list(
+         var       = paste(parts[-length(parts)], collapse = "_"), 
+         structure = last                                          
+       ))
+    }
+    list(var = base, structure = "")
   }
 
   sampler_targets <- sapply(mcmc_conf$getSamplers(), function(x) x$target)
 
-  # ── 1. Joint alpha + random effect blocking ────────────────────────────────
-  # We identify 'err_raw' or 'u_std' nodes.
-  # We group them by their associated alpha_VAR node to avoid multiple competing blocks.
-  re_nodes <- unique(grep("^(err_raw_|u_std_).*", sampler_targets, value = TRUE, perl = TRUE))
+  # ── 1. Hybrid Grouping Logic: Core Equation Blocks ────────────────────────
+  # The goal is a SMALL block (5-10 nodes) containing: (alpha, all betas, all scales)
+  trait_groups <- list()
+
+  # Identify possible intercepts
+  alpha_nodes <- unique(grep("^alpha_.*", sampler_targets, value = TRUE))
+  for (a_node in alpha_nodes) {
+    trait_name <- sub("^alpha_", "", a_node)
+    trait_groups[[trait_name]] <- list(targets = a_node)
+  }
+
+  # Identify all Fixed Effects (Slopes) and Variance nodes
+  hyper_nodes <- unique(grep("^(beta_|sigma_|tau_).*", sampler_targets, value = TRUE))
   
-  # Grouping dictionary
-  groups <- list()
+  for (node in hyper_nodes) {
+    # Skip if already handled by posterior_predictive logic
+    current_types <- sapply(mcmc_conf$getSamplers(node), function(s) s$name)
+    if (any(grepl("posterior_predictive", current_types, ignore.case = TRUE))) next
 
-  if (length(re_nodes) > 0) {
-    for (re_node in re_nodes) {
-      current_types <- sapply(mcmc_conf$getSamplers(re_node), function(s) s$name)
-      if (any(grepl("posterior_predictive", current_types, ignore.case = TRUE))) next
-
-      info       <- parse_re_info(re_node)
-      alpha_node <- paste0("alpha_", info$var)
-
-      if (alpha_node %in% sampler_targets) {
-        if (is.null(groups[[alpha_node]])) groups[[alpha_node]] <- character(0)
-        groups[[alpha_node]] <- unique(c(groups[[alpha_node]], re_node))
-      } else {
-        # Standalone RE block if no intercept found (e.g. latent or derived trait)
-        mcmc_conf$removeSamplers(re_node)
-        mcmc_conf$addSampler(target = re_node, type = "RW_block")
-      }
-    }
-
-    # Apply joint blocks
-    if (length(groups) > 0) {
-      for (alpha_node in names(groups)) {
-        re_node_vector <- groups[[alpha_node]]
-        
-        # Remove existing samplers for ALL nodes in the group
-        mcmc_conf$removeSamplers(alpha_node)
-        for (rn in re_node_vector) mcmc_conf$removeSamplers(rn)
-
-        # Add ONE single joint block
-        mcmc_conf$addSampler(
-          target = c(alpha_node, re_node_vector),
-          type   = "RW_block"
-        )
-        
-        if (!quiet) {
-          message(sprintf(
-            "NIMBLE: Jointly blocked %s + %d RE node(s) for trait '%s'.",
-            alpha_node, length(re_node_vector), sub("^alpha_", "", alpha_node)
-          ))
-        }
-      }
-    }
-  }
-
-  # ── 2. Remaining Standalone REs ────────────────────────────────────────────
-  # Any scalar RE nodes that weren't caught in any alpha group or standalone block
-  # (though most should be caught above)
-  new_sampler_targets <- sapply(mcmc_conf$getSamplers(), function(x) x$target)
-  re_scalar_targets <- unique(grep("^(u_std_|err_raw_).*", new_sampler_targets, value = TRUE))
-  
-  for (re_s in re_scalar_targets) {
-    current_types <- sapply(mcmc_conf$getSamplers(re_s), function(s) s$name)
-    # If it's still individual scalar samplers (not blocked yet)
-    if (length(current_types) > 1 || (!any(grepl("RW_block|posterior_predictive|conjugate", current_types, ignore.case = TRUE)))) {
-        mcmc_conf$removeSamplers(re_s)
-        mcmc_conf$addSampler(target = re_s, type = "RW_block")
-    }
-  }
-
-  # ── 3. Variance & Scale parameters: 'slice' is robust to the zero boundary ─
-  # We target all sigma_* and tau_* nodes
-  # [IMPROVED] We include lambda_, r_, psi_, etc. in a single robust variance-scale pass.
-  scale_nodes <- unique(grep("^(sigma_|tau_|lambda_|r_|psi_|sigma_total_).*", sampler_targets, value = TRUE))
-  for (sn in scale_nodes) {
-    current_types <- sapply(mcmc_conf$getSamplers(sn), function(s) s$name)
-    if (!any(grepl("posterior_predictive", current_types, ignore.case = TRUE))) {
-      mcmc_conf$removeSamplers(sn)
-      mcmc_conf$addSampler(target = sn, type = "slice")
-    }
-  }
-
-  if (!quiet && length(scale_nodes) > 0) {
-      message(sprintf("NIMBLE: Using 'slice' samplers for %d variance/scale/shape node(s).", length(scale_nodes)))
-  }
-
-  # ── 4. Fixed effects for non-Gaussian responses: slice for curved links ───
-  if (!is.null(family)) {
-    non_gauss_fams <- c("poisson", "binomial", "negbinomial", "zip", "zinb")
-    fixed_effects  <- unique(grep("^(beta_|alpha_)", sampler_targets, value = TRUE))
-    # Exclude nodes already blocked
-    current_blocks <- unlist(groups)
-    fixed_effects  <- setdiff(fixed_effects, names(groups))
-    fixed_effects  <- setdiff(fixed_effects, current_blocks)
+    info <- parse_re_info(node)
+    t_name <- info$var
     
-    for (fe_var in fixed_effects) {
-      parts    <- strsplit(fe_var, "_")[[1]]
-      if (length(parts) < 2) next
-      res_name <- sub("\\[.*\\]", "", parts[2])
-      if (res_name %in% names(family) && family[[res_name]] %in% non_gauss_fams) {
-        mcmc_conf$removeSamplers(fe_var)
-        mcmc_conf$addSampler(target = fe_var, type = "slice")
+    # Heuristic for beta_RESPONSE_PREDICTOR: find the matching trait name
+    if (grepl("^beta_", node)) {
+       # Find which trait_group it belongs to
+       matches <- names(trait_groups)[vapply(names(trait_groups), function(tn) grepl(paste0("^", tn, "_"), sub("^beta_", "", node)), logical(1))]
+       if (length(matches) > 0) t_name <- matches[which.max(nchar(matches))]
+    }
+
+    # Clean up standard trait name prefixing
+    if (t_name == "" || is.na(t_name)) next
+    if (grepl("^phylo_", t_name)) t_name <- sub("^phylo_", "", t_name)
+
+    # Add to group if a matching intercept (alpha) exists
+    if (!is.null(trait_groups[[t_name]])) {
+       trait_groups[[t_name]]$targets <- unique(c(trait_groups[[t_name]]$targets, node))
+    }
+  }
+
+  # ── 2. Apply Joint Core Blocks (AF_slice vs RW_block) ─────────────────────────
+  processed_nodes <- character(0)
+
+  for (t_name in names(trait_groups)) {
+    group_targets <- trait_groups[[t_name]]$targets
+    
+    # We block if there's an intercept AND at least one scale/slope component
+    if (length(group_targets) > 1) {
+      for (target in group_targets) {
+        mcmc_conf$removeSamplers(target)
+      }
+
+      # Root Node Detection: Traits with no slopes (betas) get AF_slice
+      has_slopes   <- any(grepl("^beta_", group_targets))
+      sampler_type <- if (has_slopes) "RW_block" else "AF_slice"
+
+      mcmc_conf$addSampler(
+        target = group_targets,
+        type   = sampler_type
+      )
+      
+      processed_nodes <- c(processed_nodes, group_targets)
+
+      if (!quiet) {
+        message(sprintf(
+          "NIMBLE: %s Core Block for '%s' (%d nodes: %s, etc.)",
+          sampler_type, t_name, length(group_targets), group_targets[1]
+        ))
       }
     }
+  }
+
+  # ── 3. Handle Remaining Nodes (ESS and Defaults) ──────────────────────────
+  remaining_targets <- setdiff(sampler_targets, processed_nodes)
+  
+  for (target in remaining_targets) {
+    current_types <- sapply(mcmc_conf$getSamplers(target), function(s) s$name)
+    if (any(grepl("posterior_predictive", current_types, ignore.case = TRUE))) next
+    
+    # [NEW] Phylogenetic ESS: Force Elliptical Slice Sampler for multivariate phylo nodes
+    if (grepl("^(err_raw_|u_std_).*(phylo|BM|OU|Pagel).*", target)) {
+        mcmc_conf$removeSamplers(target)
+        mcmc_conf$addSampler(target = target, type = "ess")
+        if (!quiet) message(sprintf("NIMBLE: Forced 'ess' (Elliptical Slice) for phylogenetic vector '%s'.", target))
+        next
+    }
+
+    # Other REs (Standalone / Default)
+    if (grepl("^(err_raw_|u_std_).*", target)) {
+        if (length(current_types) > 1 || (!any(grepl("RW_block|conjugate|ess", current_types, ignore.case = TRUE)))) {
+            mcmc_conf$removeSamplers(target)
+            mcmc_conf$addSampler(target = target, type = "RW_block")
+        }
+    }
+    
+    # Standalone Scales (Standalone Defaults)
+    if (grepl("^(sigma_|tau_|lambda_|r_|psi_|sigma_total_).*", target)) {
+      mcmc_conf$removeSamplers(target)
+      mcmc_conf$addSampler(target = target, type = "slice")
+    }
+  }
+
+  if (!quiet) {
+      message(sprintf("NIMBLE: Sampler hardening complete. ESS + AF_slice + Hybrid strategy applied."))
   }
 
   # ── 7. User-specified overrides (always applied last) ─────────────────────
@@ -2365,6 +2380,9 @@ because <- function(
           on.exit(parallel::stopCluster(cl), add = TRUE)
         }
 
+        # Identify because extensions loaded in the master session
+        parent_exts <- grep("^because\\.", loadedNamespaces(), value = TRUE)
+
         # Ensure workers have the library loaded
         parallel::clusterEvalQ(cl, {
           if (requireNamespace("because", quietly = TRUE)) {
@@ -2372,12 +2390,25 @@ because <- function(
           }
         })
 
+        # Load detected extensions on workers
+        if (length(parent_exts) > 0) {
+            # Pass the list of extensions to workers
+            parallel::clusterExport(cl, "parent_exts", envir = environment())
+            parallel::clusterEvalQ(cl, {
+                for (ext in parent_exts) {
+                    if (requireNamespace(ext, quietly = TRUE)) {
+                        library(ext, character.only = TRUE)
+                    }
+                }
+            })
+        }
+
         # Export necessary objects to cluster
         parallel::clusterExport(
           cl,
           c(
             "original_data",
-            "tree",
+            "structure",
             "monitor",
             "n.chains",
             "n.iter",
@@ -2404,7 +2435,12 @@ because <- function(
             "because",
             "quiet",
             "random",
-            "get_data_for_variables"
+            "get_data_for_variables",
+            "infer_variable_level",
+            "get_level_depth",
+            "sanitize_term_name",
+            "dsep_tree_hook",
+            "dsep_equations_hook"
           ),
           envir = environment()
         )
