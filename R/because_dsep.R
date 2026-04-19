@@ -852,8 +852,10 @@ plot_dsep.because <- function(object, ...) {
   }
 
   # Create Simplified labels for the plot: Response _||_ TestVar
-  # This strips the conditioning set for better readability on the Y axis
-  res$Label <- gsub("^I\\( ([^, ]+) , ([^, ]+).*", "\\1 _||_ \\2", res$Test)
+  # This strips the conditioning set (e.g. | {X,Y,Z}) for better readability.
+  # We match the specific formatting used in summary.because.
+  res$Label <- gsub(" \\| \\{.*?\\}", "", res$Test)
+  res$Label <- trimws(res$Label)
 
   # Create Plot
   p <- ggplot2::ggplot(

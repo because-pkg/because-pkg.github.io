@@ -27,7 +27,8 @@
 #' @param node_color Color of the node border (default "black").
 #' @param node_fill Color of the node interior (default "white").
 #' @param node_stroke Thickness of the node border (default 1.5).
-#' @param text_size Size of the labels (default 4).
+#' @param text_size Size of the node labels (default 3.5).
+#' @param edge_label_size Size of the edge coefficient labels (default 3). Reduce for crowded plots (e.g., 2 or 2.5).
 #' @param edge_width_range Vector of length 2 defining the range of arrow widths (min, max) based on effect size.
 #' @param edge_color_scheme Character; one of "directional" (default), "binary", or "monochrome".
 #' "directional" colors edges red/blue/grey based on effect direction and whether the 95\% CI excludes zero.
@@ -101,6 +102,7 @@ plot_dag <- function(
     node_fill = "white",
     node_stroke = 1.2,
     text_size = 3.5,
+    edge_label_size = 3,
     edge_width_range = c(0.5, 2),
     edge_color_scheme = c("directional", "binary", "monochrome"),
     show_coefficients = TRUE,
@@ -783,6 +785,7 @@ plot_dag <- function(
                     curvature   = cv,
                     angle_calc  = "along",
                     label_dodge = ggplot2::unit(3, "mm"),
+                    label_size  = edge_label_size,
                     start_cap   = cap_size,
                     end_cap     = cap_size
                 )
@@ -801,6 +804,7 @@ plot_dag <- function(
                     edge_colour = "grey60",
                     angle_calc  = "along",
                     label_dodge = ggplot2::unit(3, "mm"),
+                    label_size  = edge_label_size,
                     arrow       = ggplot2::arrow(
                         length = ggplot2::unit(2.5, "mm"),
                         type   = "closed",
