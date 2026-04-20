@@ -58,10 +58,10 @@ code from standard R formulas. Key features include:
 
 ## Installation
 
-To install the **stable release** (`v1.2.6`), run:
+To install the **stable release** (`v1.2.7`), run:
 
 ``` r
-remotes::install_github("because-pkg/because@v1.2.6", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.2.7", build_vignettes = TRUE)
 ```
 
 To install the **latest development version** (unstable), run:
