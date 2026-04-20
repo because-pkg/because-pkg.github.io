@@ -610,6 +610,37 @@ dsep_with_latents <- function(
     )
   }
 
+  # --- Shipley & Douma (2021): Remove untestable basis set elements ---
+  # Per the MAG approach, m-separation tests where a LATENT variable appears
+  # in the CONDITIONING SET are not directly testable from observed data.
+  # (You cannot condition on an unobserved variable in a regression.)
+  # The latent's effect is already captured via bidirected edges in the MAG.
+  # Filter these tests out so they are not run as JAGS sub-models.
+  if (!is.null(latent) && length(latent) > 0 && !is.null(basis)) {
+    n_before <- length(basis)
+    basis <- Filter(
+      function(test) {
+        # Conditioning set is test[3:length(test)] (if present)
+        if (length(test) > 2) {
+          cond_vars <- test[3:length(test)]
+          if (any(cond_vars %in% latent)) return(FALSE)
+        }
+        # Also skip if a latent is the focal pair variable (test[1] or test[2])
+        # — these are internal MAG nodes and should not appear as observed test pairs
+        if (test[1] %in% latent || test[2] %in% latent) return(FALSE)
+        return(TRUE)
+      },
+      basis
+    )
+    n_removed <- n_before - length(basis)
+    if (!quiet && n_removed > 0) {
+      message(sprintf(
+        "Removed %d untestable m-separation claim(s) where latent variable(s) appear in the conditioning set (Shipley & Douma 2021).",
+        n_removed
+      ))
+    }
+  }
+
   # Polynomial-term injection in conditioning sets
   if (!is.null(all_poly_terms) && length(basis) > 0) {
     basis <- lapply(basis, function(test) {
