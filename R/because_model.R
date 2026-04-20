@@ -186,20 +186,26 @@ because_model <- function(
 
   # Helper: Get hierarchical level for a variable
   get_var_level <- function(var, h_info) {
-    if (is.null(h_info)) {
-      return(NULL)
-    }
-    # Case-insensitive level lookup
+    if (is.null(h_info)) return(NULL)
+    
+    # Try using common centralized logic
+    lvl <- tryCatch(
+      infer_variable_level(
+        var, 
+        h_info$levels, 
+        data = h_info$data, 
+        equations = equations, 
+        latent = latent,
+        hierarchy = h_info$hierarchy
+      ),
+      error = function(e) NULL
+    )
+    if (!is.null(lvl)) return(lvl)
+
+    # Manual fallback for level names and dummies if not caught by infer_variable_level
     lvl_names <- names(h_info$levels)
     for (lvl_name in lvl_names) {
-      # IDENTITY CHECK: Is the 'var' the level name itself?
-      if (tolower(var) == tolower(lvl_name)) {
-        return(lvl_name)
-      }
-      # MEMBERSHIP CHECK: Is the 'var' a variable within this level?
-      if (any(tolower(var) == tolower(h_info$levels[[lvl_name]]))) {
-        return(lvl_name)
-      }
+      if (tolower(var) == tolower(lvl_name)) return(lvl_name)
     }
 
     # If not found directly, check if it's a dummy variable generated from a parent categorical variable
@@ -515,47 +521,6 @@ because_model <- function(
     list(response = response, predictors = predictors)
   })
 
-  # --- Auto-Infer Hierarchical Levels for Unassigned Response Variables ---
-  # If a response variable (including latent variables) has no assigned level,
-  # infer its level from the coarsest level among its predictors.
-  # E.g. Lat1 ~ svls + pesos (individual-level) => Lat1 assigned to 'individual'.
-  if (!is.null(hierarchical_info) && !is.null(hierarchical_info$levels)) {
-    all_assigned_vars <- unique(unlist(hierarchical_info$levels))
-    hierarchy_str <- hierarchical_info$hierarchy
-    h_lvls_ordered <- trimws(strsplit(hierarchy_str, "\\s*>\\s*")[[1]])
-
-    for (eq_entry in eq_list) {
-      resp <- eq_entry$response
-      if (resp %in% all_assigned_vars) next  # Already assigned, skip
-
-      # Collect levels of the predictors for this equation
-      pred_lvls <- unique(na.omit(vapply(eq_entry$predictors, function(p) {
-        # Strip sanitized interaction names back to base vars
-        base_vars <- tryCatch(all.vars(parse(text = gsub("_x_", ":", p))), error = function(e) p)
-        lvls <- vapply(base_vars, function(v) {
-          get_var_level(v, hierarchical_info) %||% NA_character_
-        }, character(1))
-        # Return the coarsest (first in hierarchy) non-NA level found
-        found <- intersect(h_lvls_ordered, na.omit(lvls))
-        if (length(found) > 0) found[1] else NA_character_
-      }, character(1))))
-      pred_lvls <- pred_lvls[!is.na(pred_lvls)]
-
-      if (length(pred_lvls) == 0) next  # Can't infer, leave as-is
-
-      # Pick the coarsest (parent-most) level among the predictor levels
-      coarsest_idx <- min(match(pred_lvls, h_lvls_ordered), na.rm = TRUE)
-      inferred_lvl <- h_lvls_ordered[coarsest_idx]
-
-      # Add the response to that level
-      if (!resp %in% hierarchical_info$levels[[inferred_lvl]]) {
-        hierarchical_info$levels[[inferred_lvl]] <- c(
-          hierarchical_info$levels[[inferred_lvl]], resp
-        )
-      }
-      all_assigned_vars <- c(all_assigned_vars, resp)
-    }
-  }
 
   # Track all variables (for imputation)
   all_vars <- unique(unlist(lapply(eq_list, function(eq) {

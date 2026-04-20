@@ -674,7 +674,8 @@ because <- function(
         levels,
         hierarchy,
         link_vars,
-        latent_vars = latent
+        latent_vars = latent,
+        equations = equations
       )
       # Try to infer hierarchy from random effects if still not set
       if (is.null(hierarchy)) {
@@ -4259,7 +4260,9 @@ run_single_dsep_test_v2 <- function(
       original_data,
       hierarchical_info$levels,
       hierarchical_info$hierarchy,
-      hierarchical_info$link_vars
+      hierarchical_info$link_vars,
+      equations = equations,
+      latent = latent
     )
     
     # [FIX] Preserve categorical metadata for K detection in sub-models

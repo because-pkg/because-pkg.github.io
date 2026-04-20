@@ -105,7 +105,8 @@ validate_hierarchical_data <- function(
     levels,
     hierarchy,
     link_vars,
-    latent_vars = NULL
+    latent_vars = NULL,
+    equations = NULL
 ) {
     # Check data is a named list of data.frames
     if (!is.list(data) || is.data.frame(data)) {
@@ -220,24 +221,66 @@ validate_hierarchical_data <- function(
 #'
 #' Determine which hierarchical level a variable belongs to
 #'
-#' @param var Character, variable name
-#' @param levels List mapping variable names to level names
-#' @param data Optional list of data.frames for fallback searching
+#' @param equations Optional list of model formulas for context
+#' @param latent Character vector of latent variables
+#' @param hierarchy Optional hierarchy string (e.g. "individual > obs") to determine ordering
 #' @return Character, level name
 #' @keywords internal
-infer_variable_level <- function(var, levels, data = NULL) {
+infer_variable_level <- function(var, levels, data = NULL, equations = NULL, latent = NULL, hierarchy = NULL) {
+    # 1. Check explicit levels mapping
     for (level_name in names(levels)) {
         if (var %in% levels[[level_name]]) {
             return(level_name)
         }
     }
 
-    # [FALLBACK] Search data columns if not in levels list
-    # This allows structural IDs (link_vars) to be used without explicit level declaration
+    # 2. Search data columns if not in levels list (fallback for structural IDs)
     if (!is.null(data)) {
         for (level_name in names(data)) {
             if (is.data.frame(data[[level_name]]) && var %in% colnames(data[[level_name]])) {
                 return(level_name)
+            }
+        }
+    }
+
+    # 3. [AUTO-INFERENCE] If variable is latent, infer level from predictors
+    if (!is.null(latent) && var %in% latent && !is.null(equations)) {
+        # Find which equation this variable is the response of
+        for (eq in equations) {
+            resp <- as.character(formula(eq))[2]
+            if (resp == var) {
+                # Success! Infer level from predictors
+                preds <- all.vars(formula(eq))[-1]
+                if (length(preds) > 0) {
+                    # Get levels of all predictors
+                    pred_lvls <- na.omit(vapply(preds, function(p) {
+                        # Recursive call WITHOUT passing equations/latent to avoid infinite loop
+                        # (We only infer one level deep for simplicity)
+                        tryCatch(infer_variable_level(p, levels, data), error = function(e) NA_character_)
+                    }, character(1)))
+                    
+                    if (length(pred_lvls) > 0) {
+                        if (!is.null(hierarchy)) {
+                            # Rank levels according to hierarchy (coarsest first)
+                            h_lvls <- trimws(strsplit(hierarchy, "\\s*>\\s*")[[1]])
+                            found <- intersect(h_lvls, pred_lvls)
+                            if (length(found) > 0) return(found[1])
+                        }
+                        # Fallback to the first found level
+                        return(pred_lvls[1])
+                    }
+                }
+            }
+        }
+        
+        # If it's a latent parent (not a response), find its children
+        for (eq in equations) {
+            preds <- all.vars(formula(eq))[-1]
+            if (var %in% preds) {
+                # Infer level from the response variable of this equation
+                resp <- as.character(formula(eq))[2]
+                resp_lvl <- tryCatch(infer_variable_level(resp, levels, data), error = function(e) NA_character_)
+                if (!is.na(resp_lvl)) return(resp_lvl)
             }
         }
     }
@@ -264,7 +307,9 @@ get_data_for_variables <- function(
     data,
     levels,
     hierarchy,
-    link_vars
+    link_vars,
+    equations = NULL,
+    latent = NULL
 ) {
     # If data is already a flat data.frame, just return the requested columns
     if (is.data.frame(data)) {
@@ -280,7 +325,7 @@ get_data_for_variables <- function(
 
     # Determine which level each variable belongs to
     var_levels <- sapply(variables, function(v) {
-        infer_variable_level(v, levels, data = data)
+        infer_variable_level(v, levels, data = data, equations = equations, latent = latent, hierarchy = hierarchy)
     })
 
     # Get unique levels needed
