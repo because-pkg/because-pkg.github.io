@@ -20,7 +20,7 @@ get_nimble_fn <- function(name) {
     
     fn <- switch(name,
         "dnb_because" = nimble::nimbleFunction(
-            run = function(x = double(0), v_mu = double(0), v_r = double(0), log = integer(0, default = 0)) {
+            run = function(x = double(0), v_mu = double(0), v_r = double(0), log = integer(0)) {
                 returnType(double(0))
                 s_mu <- max(1e-10, min(1000000, v_mu))
                 s_r <- max(1e-10, min(1000000, v_r))
@@ -38,7 +38,7 @@ get_nimble_fn <- function(name) {
             }
         ),
         "dzip_because" = nimble::nimbleFunction(
-            run = function(x = double(0), v_mu = double(0), v_psi = double(0), log = integer(0, default = 0)) {
+            run = function(x = double(0), v_mu = double(0), v_psi = double(0), log = integer(0)) {
                 returnType(double(0))
                 if (x == 0) {
                     val <- v_psi + (1 - v_psi) * exp(-v_mu)
@@ -59,7 +59,7 @@ get_nimble_fn <- function(name) {
             }
         ),
         "dzinb_because" = nimble::nimbleFunction(
-            run = function(x = double(0), v_mu = double(0), v_r = double(0), v_psi = double(0), log = integer(0, default = 0)) {
+            run = function(x = double(0), v_mu = double(0), v_r = double(0), v_psi = double(0), log = integer(0)) {
                 returnType(double(0))
                 s_mu <- max(1e-10, min(1000000, v_mu))
                 s_r <- max(1e-10, min(1000000, v_r))

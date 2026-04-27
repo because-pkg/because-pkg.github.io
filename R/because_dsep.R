@@ -146,7 +146,7 @@ are_levels_orthogonal <- function(lvl_a, lvl_b, hierarchy_str) {
 
 #' Check if a d-sep test is a cross-hierarchy test (trivially satisfied)
 #'
-#' A test Response _||_ FocalPredictor | \\{...\\} is "cross-hierarchy" when the
+#' A test Response _||_ FocalPredictor | \code{\{...\}} is "cross-hierarchy" when the
 #' response and the focal predictor live in orthogonal hierarchical branches
 #' (e.g., one is species-level, the other is site-level) AND the conditioning
 #' set does not contain a variable from a level that connects the two branches

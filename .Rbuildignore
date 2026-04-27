@@ -39,3 +39,7 @@
 
 ^Meta$
 ^doc$
+^because$
+^debug_model\.jags$
+^figure$
+^scratch$
