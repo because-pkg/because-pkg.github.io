@@ -4,7 +4,7 @@
 \alias{posterior_predict.because}
 \title{Generate Posterior Predictive Draws for Because Models}
 \usage{
-\method{posterior_predict}{because}(object, resp = NULL, ndraws = NULL, ...)
+\method{posterior_predict}{because}(object, resp = NULL, ndraws = NULL, re_formula = NULL, ...)
 }
 \arguments{
 \item{object}{A \code{because} fit object.}
@@ -13,6 +13,10 @@
 If \code{NULL}, takes the first response variable in the model.}
 
 \item{ndraws}{Integer; number of posterior draws to use. Defaults to all draws.}
+
+\item{re_formula}{Formula or \code{NA}; determines which random effects to include.
+If \code{NULL} (default), all random effects are included (conditional prediction).
+If \code{NA}, no random effects are included (marginal prediction).}
 
 \item{...}{Additional arguments (currently ignored).}
 }

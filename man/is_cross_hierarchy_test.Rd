@@ -15,7 +15,7 @@ is_cross_hierarchy_test(test_eq, hierarchical_info)
 TRUE if the test should be skipped; FALSE otherwise.
 }
 \description{
-A test Response \emph{||} FocalPredictor | {...} is "cross-hierarchy" when the
+A test Response \emph{||} FocalPredictor | \\{...\\} is "cross-hierarchy" when the
 response and the focal predictor live in orthogonal hierarchical branches
 (e.g., one is species-level, the other is site-level) AND the conditioning
 set does not contain a variable from a level that connects the two branches

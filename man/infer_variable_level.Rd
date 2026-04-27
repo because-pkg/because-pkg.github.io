@@ -4,14 +4,21 @@
 \alias{infer_variable_level}
 \title{Infer Variable Level}
 \usage{
-infer_variable_level(var, levels, data = NULL)
+infer_variable_level(
+  var,
+  levels,
+  data = NULL,
+  equations = NULL,
+  latent = NULL,
+  hierarchy = NULL
+)
 }
 \arguments{
-\item{var}{Character, variable name}
+\item{equations}{Optional list of model formulas for context}
 
-\item{levels}{List mapping variable names to level names}
+\item{latent}{Character vector of latent variables}
 
-\item{data}{Optional list of data.frames for fallback searching}
+\item{hierarchy}{Optional hierarchy string (e.g. "individual > obs") to determine ordering}
 }
 \value{
 Character, level name

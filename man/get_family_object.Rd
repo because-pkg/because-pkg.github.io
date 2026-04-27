@@ -14,7 +14,6 @@ An object of class \verb{because_family_<name>} and \code{because_family}.
 }
 \description{
 Converts a family name string into a family class object for S3 dispatch.
-This is the gatekeeper that ensures module packages are installed before
-allowing specialized families to be used.
+This provides a general mechanism for family extensions to be used.
 }
 \keyword{internal}

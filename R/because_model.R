@@ -1192,12 +1192,12 @@ because_model <- function(
       )
 
       # [SEMANTIC GUARD] Ensure err is not empty
-      if (is.null(err) || nchar(trimws(err)) == 0) err <- "0"
+      if (is.null(err_term) || nchar(trimws(err_term)) == 0) err_term <- ""
 
       model_lines <- c(
         model_lines,
         paste0("    # Ordinal linear predictor for ", response),
-        paste0("    ", eta, "[i] <- ", linpred_no_int, " + ", err, "[i]"),
+        paste0("    ", eta, "[i] <- ", linpred_no_int, err_term),
 
         # Cumulative probabilities
         paste0("    for (k in 1:(", K_var, "-1)) {"),
@@ -2678,8 +2678,8 @@ because_model <- function(
 
     # Define Structure Error (Hooks)
     structure_term_str <- ""
+    structure_terms <- character()
     if (length(structures) > 0) {
-      structure_terms <- character()
       for (s_idx in seq_along(structures)) {
         s_name <- names(structures)[s_idx]
         if (is.null(s_name) || s_name == "") {
@@ -3742,7 +3742,7 @@ because_model <- function(
   }
 
   # Emit any extra prior declarations from extension packages (e.g., community
-  # hyperparameters from because.occupancy's build_community_hyperpriors()).
+  # hyperparameters from the extension package's build_community_hyperpriors()).
   # Convention: entries in `priors` whose name starts with "__community__"
   # are emitted verbatim as JAGS lines (the value is a raw JAGS statement).
   if (!is.null(priors)) {

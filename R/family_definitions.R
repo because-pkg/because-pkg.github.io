@@ -2,7 +2,7 @@
 #' @description S3 generics and methods for distribution families in because.
 #' This enables custom distributions to be added by defining S3 methods.
 #' @name family_definitions
-#' @importFrom stats rpois rbinom runif
+#' @importFrom stats rpois rbinom runif rnbinom rnorm dpois
 # --- Global NIMBLE Distributions for because package ---
 
 # These are defined lazily to avoid a hard dependency on nimble during package installation.
@@ -234,7 +234,7 @@ jags_family_likelihood.default <- function(
         fam_name,
         "'.\n",
         "Use because_family() to create custom family methods, or check if ",
-        "a module is required (e.g., because.occupancy)."
+        "an extension module package is required."
     ))
 }
 

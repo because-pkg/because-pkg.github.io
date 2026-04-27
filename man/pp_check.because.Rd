@@ -10,6 +10,7 @@
   type = "dens_overlay",
   ndraws = 50,
   trim = TRUE,
+  re_formula = NULL,
   ...
 )
 }
@@ -23,6 +24,9 @@ If \code{NULL}, takes the first response.}
 Supported: \code{"dens_overlay"}, \code{"hist"}, \code{"stat"}.}
 
 \item{ndraws}{Integer; number of posterior draws to use. Defaults to 50.}
+
+\item{re_formula}{Formula or \code{NA}; determines which random effects to include
+in the posterior predictions. See \code{\link{posterior_predict}} for details.}
 
 \item{...}{Additional arguments passed to \code{bayesplot} functions.}
 }

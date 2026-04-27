@@ -4,7 +4,15 @@
 \alias{get_data_for_variables}
 \title{Get Data for Variables}
 \usage{
-get_data_for_variables(variables, data, levels, hierarchy, link_vars)
+get_data_for_variables(
+  variables,
+  data,
+  levels,
+  hierarchy,
+  link_vars,
+  equations = NULL,
+  latent = NULL
+)
 }
 \arguments{
 \item{variables}{Character vector of variable names}

@@ -150,7 +150,7 @@ If not specified, the package attempts to detect variability based on column nam
 }}
 
 \item{family}{Optional named character vector specifying the family/distribution for response variables.
-Additional families (e.g., \code{"occupancy"}) are provided by the \pkg{because.detection} extension package.
+Additional families (e.g., \code{"occupancy"}) can be provided by extension packages.
 Example: \code{family = c(Gregarious = "binomial")}.}
 
 \item{distribution}{Deprecated alias for \code{family}.}

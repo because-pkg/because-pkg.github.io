@@ -25,7 +25,17 @@ if (getRversion() >= "2.15.1") {
         "UpperCI", # repeated for clarity if needed
         "name",
         "name",
-        "type"
+        "type",
+        "Label",
+        "Lower",
+        "Path",
+        "Significant",
+        "Upper",
+        "curvature",
+        "dx",
+        "dy",
+        "to",
+        "returnType"
     ))
 }
 
