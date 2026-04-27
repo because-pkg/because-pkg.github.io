@@ -3,8 +3,8 @@ citHeader("To cite 'because' in publications use:")
 citEntry(entry = "Manual",
   title = "because: Bayesian Estimation of Causal Effects",
   author = person("Achaz", "von Hardenberg", email = "achaz.hardenberg@unipv.it", role = c("aut", "cre")),
-  year = "2025",
-  note = "R package version 0.9.5",
-  url = "https://github.com/achazhardenberg/because",
-  textVersion = "von Hardenberg, A. (2025). because: Bayesian Estimation of Causal Effects. R package version 0.9.5. https://github.com/achazhardenberg/because"
+  year = "2026",
+  note = "R package version 1.2.7",
+  url = "https://because-pkg.github.io",
+  textVersion = "von Hardenberg, A. (2026). because: Bayesian Estimation of Causal Effects. R package version 1.2.7 https://github.com/achazhardenberg/because"
 )
