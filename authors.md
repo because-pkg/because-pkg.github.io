@@ -9,14 +9,14 @@
 Source:
 [`inst/CITATION`](https://github.com/because-pkg/because/blob/master/inst/CITATION)
 
-von Hardenberg, A. (2025). because: Bayesian Estimation of Causal
-Effects. R package version 0.9.5.
+von Hardenberg, A. (2026). because: Bayesian Estimation of Causal
+Effects. R package version 1.2.7
 https://github.com/achazhardenberg/because
 
     @Manual{,
       title = {because: Bayesian Estimation of Causal Effects},
       author = {Achaz {von Hardenberg}},
-      year = {2025},
-      note = {R package version 0.9.5},
-      url = {https://github.com/achazhardenberg/because},
+      year = {2026},
+      note = {R package version 1.2.7},
+      url = {https://because-pkg.github.io},
     }
