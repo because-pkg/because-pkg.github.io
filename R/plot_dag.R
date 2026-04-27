@@ -41,6 +41,8 @@
 #' For deterministic nodes (interactions and powers), you can use the original formula string 
 #' as the key (e.g., \code{"I(age^2)" = c(x, y)} or \code{"X:Y" = c(x, y)}).
 #' @param family Optional named character vector of families for response variables.
+#' @param type Character; either "raw" (default) or "marginal" effects.
+#' @param multinomial_probabilities Logical; if TRUE, expands multinomial categories.
 #'
 #' @return A `ggplot` object that can be further customized with standard ggplot2 functions (e.g., `+ theme_...()`, `+ ggtitle(...)`).
 #'

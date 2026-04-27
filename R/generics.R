@@ -169,7 +169,6 @@ prepare_structure_data.default <- function(structure, data, ...) {
 
 #' Define JAGS Family Implementation
 #'
-#' Modules implement this method to inject specific JAGS model code for response families.
 #' @param family The S3 family object (e.g., because_family_occupancy).
 #' @param response The name of the response variable.
 #' @param predictors Character vector of predictor names.
@@ -549,17 +548,20 @@ get_structure_name_hook.default <- function(structure, ...) {
     return(NULL)
 }
 
-#' @rdname plot_dsep
-#' @export
-plot_dsep <- function(object, ...) {
-    UseMethod("plot_dsep")
-}
-
-#' plot_coef
+#' @param object A fitted model object.
+#' @param ... Additional arguments.
 #' @rdname plot_coef
 #' @export
 plot_coef <- function(object, ...) {
     UseMethod("plot_coef")
+}
+
+#' @param object A fitted model object.
+#' @param ... Additional arguments.
+#' @rdname plot_dsep
+#' @export
+plot_dsep <- function(object, ...) {
+    UseMethod("plot_dsep")
 }
 
 #' @keywords internal

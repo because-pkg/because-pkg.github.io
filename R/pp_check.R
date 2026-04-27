@@ -10,6 +10,7 @@
 #' @param type Character string; the type of PPC plot to generate.
 #'   Supported: \code{"dens_overlay"}, \code{"hist"}, \code{"stat"}.
 #' @param ndraws Integer; number of posterior draws to use. Defaults to 50.
+#' @param trim Logical; if TRUE, zooms plot to observed data range.
 #' @param re_formula Formula or \code{NA}; determines which random effects to include
 #'   in the posterior predictions. See \code{\link{posterior_predict}} for details.
 #' @param ... Additional arguments passed to \code{bayesplot} functions.

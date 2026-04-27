@@ -60,6 +60,8 @@
 #' @param priors Optional named list of custom priors.
 #' @param hierarchical_info Optional list containing data hierarchy (levels, link_vars).
 #' @param engine Bayesian engine to use ("jags" or "nimble").
+#' @param fix_latent Variable to fix for latent identification.
+#' @param quiet Logical; suppress status messages.
 #' @export
 #' @importFrom stats formula terms setNames sd
 #' @importFrom utils combn

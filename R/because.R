@@ -298,20 +298,27 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @param fix_residual_variance Optional named vector for fixing residual variances.
 #'   Useful for handling non-identified models or specific theoretical constraints.
 #'   Example: \code{c(response_var = 1)}.
-#' @param priors Optional named list of character strings specifying custom priors for specific parameters.
-#'   By default, \code{because} uses "boundary-avoiding" regularizing priors for hierarchical variance components:
-#'   \itemize{
-#'     \item \strong{Gaussian}: \code{dgamma(1, 1)} (vague) for residual and random effect precisions.
-#'     \item \strong{Non-Gaussian}: \code{dgamma(10, 10)} for overdispersion and hierarchical random effects (\eqn{\tau}).
-#'           This regularizing prior (Gelman 2006, McElreath 2020) prevents numerical overflow in models
-#'           with exponential or logit link functions by constraining the sampler away from astronomically
-#'           large variances during adaptation.
-#'   }
-#'   Example: \code{list(alpha_Response = "dnorm(0, 0.001)", sigma_Response_res = "dunif(0, 50)")}.
-
-#' @param reuse_models List of previously fitted 'because' models to scan for reusable d-separation test results.
-#'   If a test in the current run matches a test in a reused model (same formula), the result is copied
-#'   instead of re-running JAGS. **Note**: Ensuring that the data is consistent is the user's responsibility.
+#' @param id_col Character; name of the column containing species or unit identifiers.
+#' @param structure Optional structural object (e.g., matrix, tree) for correlated residuals.
+#' @param engine Bayesian engine to use: "jags" (default) or "nimble".
+#' @param monitor Character; "interpretable" (default) or "all" parameters to monitor.
+#' @param nimble_samplers Optional named list of user-specified NIMBLE samplers.
+#' @param n.chains Integer; number of MCMC chains (default = 3).
+#' @param n.iter Integer; total iterations per chain (default = 12500).
+#' @param n.burnin Integer; burn-in iterations (default = 20% of n.iter).
+#' @param n.thin Integer; thinning interval (default = 10).
+#' @param DIC Logical; compute DIC? (default = TRUE).
+#' @param WAIC Logical; compute WAIC? (default = FALSE).
+#' @param n.adapt Integer; adaptation iterations (default = 20% of n.iter).
+#' @param quiet Logical; suppress MCMC progress messages? (default = FALSE).
+#' @param verbose Logical; print verbose debug information? (default = FALSE).
+#' @param dsep Logical; perform d-separation independence tests? (default = FALSE).
+#' @param priors Optional named list of character strings specifying custom priors.
+#' @param reuse_models List of previously fitted 'because' models to scan for reusable results.
+#' @param expand_ordered Logical; expand ordered factors into polynomial contrasts?
+#' @param structure_multi List of multiple structures for uncertainty.
+#' @param structure_levels Mapping of structures to hierarchy levels.
+#' @param ... Additional arguments passed to because_model.
 #'
 #' @return An object of class \code{"because"} containing:
 #'   \item{samples}{MCMC samples (mcmc.list).}
@@ -333,18 +340,15 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #'   M ~ X,
 #'   Y ~ M + X
 #' )
-#' fit_med <- because(equations, data = match_df)
+#' fit_med <- because(equations, data = df)
 #' }
 #'
 #' @export
+#' @import coda
 #' @importFrom rjags jags.model coda.samples dic.samples jags.samples
 #' @importFrom stats formula terms setNames start var na.omit update
 #' @importFrom utils capture.output head
 #' @importFrom coda gelman.diag effectiveSize
-# @keywords internal
-
-#' @export
-#' @import coda
 because <- function(
   equations,
   data,
