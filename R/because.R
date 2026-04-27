@@ -1078,7 +1078,7 @@ because <- function(
         formatted_list <- because_format_data(
           data,
           species_col = id_col,
-          structure = use_tree
+          tree = use_tree
         )
 
         # Now rename the variables that are 'reps' to include '_obs' suffix
