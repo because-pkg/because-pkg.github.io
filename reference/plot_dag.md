@@ -24,6 +24,7 @@ plot_dag(
   node_fill = "white",
   node_stroke = 1.2,
   text_size = 3.5,
+  edge_label_size = 3,
   edge_width_range = c(0.5, 2),
   edge_color_scheme = c("directional", "binary", "monochrome"),
   show_coefficients = TRUE,
@@ -88,7 +89,12 @@ plot_dag(
 
 - text_size:
 
-  Size of the labels (default 4).
+  Size of the node labels (default 3.5).
+
+- edge_label_size:
+
+  Size of the edge coefficient labels (default 3). Reduce for crowded
+  plots (e.g., 2 or 2.5).
 
 - edge_width_range:
 

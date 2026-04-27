@@ -40,7 +40,7 @@ for because model objects."><meta property="og:image" content="https://because-p
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Posterior Predictive Checks for Because Fits</h1>
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/v1.2.7/R/pp_check.R" class="external-link"><code>R/pp_check.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/master/R/pp_check.R" class="external-link"><code>R/pp_check.R</code></a></small>
       <div class="d-none name"><code>pp_check.because.Rd</code></div>
     </div>
 
@@ -58,6 +58,7 @@ for <code>because</code> model objects.</p>
 <span>  type <span class="op">=</span> <span class="st">"dens_overlay"</span>,</span>
 <span>  ndraws <span class="op">=</span> <span class="fl">50</span>,</span>
 <span>  trim <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  re_formula <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -82,6 +83,11 @@ Supported: <code>"dens_overlay"</code>, <code>"hist"</code>, <code>"stat"</code>
 
 <dt id="arg-ndraws">ndraws<a class="anchor" aria-label="anchor" href="#arg-ndraws"></a></dt>
 <dd><p>Integer; number of posterior draws to use. Defaults to 50.</p></dd>
+
+
+<dt id="arg-re-formula">re_formula<a class="anchor" aria-label="anchor" href="#arg-re-formula"></a></dt>
+<dd><p>Formula or <code>NA</code>; determines which random effects to include
+in the posterior predictions. See <code>posterior_predict</code> for details.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

@@ -10,7 +10,8 @@ validate_hierarchical_data(
   levels,
   hierarchy,
   link_vars,
-  latent_vars = NULL
+  latent_vars = NULL,
+  equations = NULL
 )
 ```
 

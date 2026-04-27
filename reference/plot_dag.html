@@ -52,7 +52,7 @@ Edge thickness scales with the absolute effect size.
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Plot DAG from Equations or Fitted Model</h1>
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/v1.2.7/R/plot_dag.R" class="external-link"><code>R/plot_dag.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/master/R/plot_dag.R" class="external-link"><code>R/plot_dag.R</code></a></small>
       <div class="d-none name"><code>plot_dag.Rd</code></div>
     </div>
 
@@ -75,6 +75,7 @@ or a fitted <code>because</code> model. If a fitted model is provided:</p><ul><l
 <span>  node_fill <span class="op">=</span> <span class="st">"white"</span>,</span>
 <span>  node_stroke <span class="op">=</span> <span class="fl">1.2</span>,</span>
 <span>  text_size <span class="op">=</span> <span class="fl">3.5</span>,</span>
+<span>  edge_label_size <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  edge_width_range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">2</span><span class="op">)</span>,</span>
 <span>  edge_color_scheme <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"directional"</span>, <span class="st">"binary"</span>, <span class="st">"monochrome"</span><span class="op">)</span>,</span>
 <span>  show_coefficients <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -128,7 +129,11 @@ and only appear on the RHS of equations.</p></dd>
 
 
 <dt id="arg-text-size">text_size<a class="anchor" aria-label="anchor" href="#arg-text-size"></a></dt>
-<dd><p>Size of the labels (default 4).</p></dd>
+<dd><p>Size of the node labels (default 3.5).</p></dd>
+
+
+<dt id="arg-edge-label-size">edge_label_size<a class="anchor" aria-label="anchor" href="#arg-edge-label-size"></a></dt>
+<dd><p>Size of the edge coefficient labels (default 3). Reduce for crowded plots (e.g., 2 or 2.5).</p></dd>
 
 
 <dt id="arg-edge-width-range">edge_width_range<a class="anchor" aria-label="anchor" href="#arg-edge-width-range"></a></dt>

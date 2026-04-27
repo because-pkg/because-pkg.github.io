@@ -8,7 +8,7 @@ posterior predictive checks (PPC) and model validation.
 
 ``` r
 # S3 method for class 'because'
-posterior_predict(object, resp = NULL, ndraws = NULL, ...)
+posterior_predict(object, resp = NULL, ndraws = NULL, re_formula = NULL, ...)
 ```
 
 ## Arguments
@@ -25,6 +25,12 @@ posterior_predict(object, resp = NULL, ndraws = NULL, ...)
 - ndraws:
 
   Integer; number of posterior draws to use. Defaults to all draws.
+
+- re_formula:
+
+  Formula or `NA`; determines which random effects to include. If `NULL`
+  (default), all random effects are included (conditional prediction).
+  If `NA`, no random effects are included (marginal prediction).
 
 - ...:
 

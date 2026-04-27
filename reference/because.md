@@ -222,8 +222,8 @@ because(
 - family:
 
   Optional named character vector specifying the family/distribution for
-  response variables. Additional families (e.g., `"occupancy"`) are
-  provided by the because.detection extension package. Example:
+  response variables. Additional families (e.g., `"occupancy"`) can be
+  provided by extension packages. Example:
   `family = c(Gregarious = "binomial")`.
 
 - distribution:

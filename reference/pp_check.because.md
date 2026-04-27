@@ -14,6 +14,7 @@ pp_check(
   type = "dens_overlay",
   ndraws = 50,
   trim = TRUE,
+  re_formula = NULL,
   ...
 )
 ```
@@ -37,6 +38,11 @@ pp_check(
 - ndraws:
 
   Integer; number of posterior draws to use. Defaults to 50.
+
+- re_formula:
+
+  Formula or `NA`; determines which random effects to include in the
+  posterior predictions. See `posterior_predict` for details.
 
 - ...:
 

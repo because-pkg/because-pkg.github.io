@@ -5,22 +5,30 @@ Determine which hierarchical level a variable belongs to
 ## Usage
 
 ``` r
-infer_variable_level(var, levels, data = NULL)
+infer_variable_level(
+  var,
+  levels,
+  data = NULL,
+  equations = NULL,
+  latent = NULL,
+  hierarchy = NULL
+)
 ```
 
 ## Arguments
 
-- var:
+- equations:
 
-  Character, variable name
+  Optional list of model formulas for context
 
-- levels:
+- latent:
 
-  List mapping variable names to level names
+  Character vector of latent variables
 
-- data:
+- hierarchy:
 
-  Optional list of data.frames for fallback searching
+  Optional hierarchy string (e.g. "individual \> obs") to determine
+  ordering
 
 ## Value
 

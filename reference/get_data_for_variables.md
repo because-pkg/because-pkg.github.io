@@ -6,7 +6,15 @@ return the appropriate dataset (with joining if needed)
 ## Usage
 
 ``` r
-get_data_for_variables(variables, data, levels, hierarchy, link_vars)
+get_data_for_variables(
+  variables,
+  data,
+  levels,
+  hierarchy,
+  link_vars,
+  equations = NULL,
+  latent = NULL
+)
 ```
 
 ## Arguments

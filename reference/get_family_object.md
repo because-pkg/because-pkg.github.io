@@ -1,8 +1,8 @@
 # Get Family Object for S3 Dispatch
 
 Converts a family name string into a family class object for S3
-dispatch. This is the gatekeeper that ensures module packages are
-installed before allowing specialized families to be used.
+dispatch. This provides a general mechanism for family extensions to be
+used.
 
 ## Usage
 
