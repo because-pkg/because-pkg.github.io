@@ -10,7 +10,7 @@
 plot_dsep(object, ...)
 }
 \arguments{
-\item{object}{A \code{because} object fitted with \code{dsep = TRUE}.}
+\item{object}{A fitted model object.}
 
 \item{...}{Additional arguments.}
 }

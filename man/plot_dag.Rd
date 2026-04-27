@@ -71,6 +71,10 @@ For deterministic nodes (interactions and powers), you can use the original form
 as the key (e.g., \code{"I(age^2)" = c(x, y)} or \code{"X:Y" = c(x, y)}).}
 
 \item{family}{Optional named character vector of families for response variables.}
+
+\item{type}{Character; either "raw" (default) or "marginal" effects.}
+
+\item{multinomial_probabilities}{Logical; if TRUE, expands multinomial categories.}
 }
 \value{
 A \code{ggplot} object that can be further customized with standard ggplot2 functions (e.g., \code{+ theme_...()}, \code{+ ggtitle(...)}).

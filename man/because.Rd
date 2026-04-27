@@ -2,7 +2,7 @@
 % Please edit documentation in R/because.R
 \name{because}
 \alias{because}
-\title{Run a Bayesian Structural Equation Model}
+\title{Run a Bayesian Structural Equation Model (Because)}
 \usage{
 because(
   equations,
@@ -49,185 +49,83 @@ because(
 \arguments{
 \item{equations}{A list of model formulas describing the structural equation model.}
 
-\item{data}{A data.frame containining the variables in the model. If using hierarchical
-models (see hierarchical section below), this can also be a list of data frames.}
+\item{data}{A data.frame containing the variables in the model. If using hierarchical
+models, this can also be a list of data frames.}
 
 \item{id_col}{Character string specifying the column name containing unit
-identifiers (e.g., species names).
+identifiers (e.g., species names). If NULL, uses row names.}
 
-\strong{Important Alignment Rules:}
-\enumerate{
-\item If \code{id_col} is provided, the engine uses this specific column to match
-data rows to external structure labels (e.g., \code{tree$tip.label}).
-\strong{Use this if your ID column has a custom name (e.g., "Butterfly_ID").}
-\item If \code{id_col} is \code{NULL} (default), the engine attempts to use
-\strong{row names} from the data frame.
-\item If your IDs are in a column (e.g. "Species") but your row names
-are standard numbers (1, 2, 3...), you \strong{MUST} specify \code{id_col}.
-}}
+\item{structure}{Optional structural object (e.g., matrix, tree) for correlated residuals.}
 
-\item{structure}{The covariance structure for the model. Accepts:
-\itemize{
-\item \code{NULL}: Independent model (Standard SEM, no covariance structure).
-\item \code{matrix}: Custom covariance or precision matrix (e.g., spatial connectivity, kinship).
-\item Custom objects: Supported via extension packages (e.g., phylogenetic trees from \pkg{because.phybase} or spatial structures).
-}}
+\item{engine}{Bayesian engine to use: "jags" (default) or "nimble".}
 
-\item{engine}{Character string specifying the inference engine to use. Supported values:
-\itemize{
-\item \code{"jags"} (default): Use Just Another Gibbs Sampler (via rjags).
-\item \code{"nimble"}: Use the compiled C++ backend (via NIMBLE). Offers significant
-speedups for complex models, parallel execution, and marginalized likelihoods.
-}}
+\item{monitor}{Character; "interpretable" (default) or "all" parameters to monitor.}
 
-\item{monitor}{Parameter monitoring mode. Options:
-\itemize{
-\item \code{"interpretable"} (default): Monitor only scientifically meaningful parameters:
-intercepts (alpha), regression coefficients (beta), phylogenetic signals (lambda) for
-responses, and WAIC terms. Excludes variance components (tau) and auxiliary predictor parameters.
-\item \code{"all"}: Monitor all model parameters including variance components and implicit equation parameters.
-\item Custom vector: Provide a character vector of specific parameter names to monitor.
-\item \code{NULL}: Auto-detect based on model structure (equivalent to "interpretable").
-}}
+\item{nimble_samplers}{Optional named list of user-specified NIMBLE samplers.}
 
-\item{nimble_samplers}{(NIMBLE-only) A named list specifying custom samplers for specific
-model nodes. Example: \code{nimble_samplers = list(beta_X_Y = "slice")}.
-Common sampler types include:
-\itemize{
-\item \code{"RW"}: Scalar Random-Walk Metropolis-Hastings.
-\item \code{"RW_block"}: Multivariate Random-Walk Metropolis-Hastings.
-\item \code{"slice"}: Scalar slice sampler.
-\item \code{"AF_slice"}: Automated Factor Slice Sampler (multivariate slice).
-\item \code{"categorical"}: Specialized discrete sampler for Multinomial/Ordinal choices.
-}}
+\item{n.chains}{Integer; number of MCMC chains (default = 3).}
 
-\item{n.chains}{Number of MCMC chains (default = 3).}
+\item{n.iter}{Integer; total iterations per chain (default = 12500).}
 
-\item{n.iter}{Total number of MCMC iterations (default = 12500).}
+\item{n.burnin}{Integer; burn-in iterations (default = 20\% of n.iter).}
 
-\item{n.burnin}{Number of burn-in iterations (default = n.iter / 5).}
+\item{n.thin}{Integer; thinning interval (default = 10).}
 
-\item{n.thin}{Thinning rate (default = 10).}
+\item{DIC}{Logical; compute DIC? (default = TRUE).}
 
-\item{DIC}{Logical; whether to compute DIC using \code{dic.samples()} (default = TRUE).
-\strong{Note}: DIC penalty will be inflated for models with measurement error or repeated measures
-because latent variables are counted as parameters (penalty ~ structural parameters + N).
-For model comparison, use WAIC or compare mean deviance across models with similar structure.}
+\item{WAIC}{Logical; compute WAIC? (default = FALSE).}
 
-\item{WAIC}{Logical; whether to sample values for WAIC and deviance (default = FALSE).
-WAIC is generally more appropriate than DIC for hierarchical models with latent variables.}
+\item{n.adapt}{Integer; adaptation iterations (default = 20\% of n.iter).}
 
-\item{n.adapt}{Number of adaptation iterations (default = n.iter / 5).}
+\item{quiet}{Logical; suppress MCMC progress messages? (default = FALSE).}
 
-\item{quiet}{Logical; suppress JAGS output (default = FALSE).}
+\item{verbose}{Logical; print verbose debug information? (default = FALSE).}
 
-\item{verbose}{Logical; if \code{TRUE}, print generated JAGS model code and data names (default = FALSE).}
+\item{dsep}{Logical; perform d-separation independence tests? (default = FALSE).}
 
-\item{dsep}{Logical; if \code{TRUE}, evaluate the model's global fit using d-separation (basis set) path analysis.
-This identifies the complete set of independence claims implied by the DAG and tests each one via Bayesian inference.
-Results can be explored via \code{summary()} or visualized using \code{plot_dsep()}.}
+\item{variability}{Optional specification for variables with measurement error or within-species variability.}
 
-\item{variability}{Optional specification for variables with measurement error or within-species variability.
-\strong{Global Setting}:
-\itemize{
-\item \code{"reps"}: Applies repeat-measures modeling to \strong{all} continuous variables in the equations (except grouping variables). Expects \code{X_obs} matrix or long-format data.
-\item \code{"se"}: Applies measurement error modeling to \strong{all} continuous variables. Expects \code{X_se} columns.
-}
-
-\strong{Manual Specification} (Named Vector/List):
-\itemize{
-\item Simple: \code{c(X = "se", Y = "reps")} - mixed types
-\item Custom columns: \code{list(X = list(type = "se", se_col = "X_sd"))}
-\item For SE: \code{se_col} (SE column), \code{mean_col} (mean column, optional)
-\item For reps: \code{obs_col} (observations matrix column)
-}
-
-\strong{Auto-Detection}:
-If not specified, the package attempts to detect variability based on column names:
-\itemize{
-\item \code{X_se} -> type="se"
-\item \code{X_obs} or matrix column -> type="reps"
-}}
-
-\item{family}{Optional named character vector specifying the family/distribution for response variables.
-Additional families (e.g., \code{"occupancy"}) can be provided by extension packages.
-Example: \code{family = c(Gregarious = "binomial")}.}
+\item{family}{Optional named character vector specifying the family/distribution for response variables.}
 
 \item{distribution}{Deprecated alias for \code{family}.}
 
-\item{latent}{Optional character vector of latent (unmeasured) variable names.
-If specified, the model will account for induced correlations among observed
-variables that share these latent common causes.}
+\item{latent}{Optional character vector of latent (unmeasured) variable names.}
 
-\item{latent_method}{Method for handling latent variables (default = "correlations").}
+\item{latent_method}{Method for handling latent variables ("correlations" or "explicit").}
 
-\item{standardize_latent}{Logical; if \code{TRUE} and \code{latent_method = "explicit"},
-adds standardized priors (\code{N(0,1)}) to latent variables to identify scale and location.
-This improves convergence and makes regression coefficients interpretable as standardized effects.
-Only applicable when using explicit latent variable modeling (default = TRUE).}
+\item{standardize_latent}{Logical; standardize latents to unit variance?}
 
-\item{fix_latent}{Identification strategy for latent variables. Choices:
-\itemize{
-\item \code{"loading"} (default): Unit Loading Identification (ULI). Fixes the first indicator's
-loading to 1.0. Most stable for non-linear GLVMs (Poisson/Binomial).
-\item \code{"sign"}: Sign Identification. Estimates all loadings with a sign constraint (positive)
-on the first indicator. Can be unstable due to scale-drift.
-}
-\itemize{
-\item \code{"correlations"}: MAG approach - marginalize latent variables and estimate
-induced correlations (\code{rho}) between observed variables that share latent parents.
-\item \code{"explicit"}: Model latent variables as JAGS nodes and estimate structural
-paths from latents to observed variables.
-}}
+\item{fix_latent}{Identification strategy for latent variables ("loading" or "sign").}
 
-\item{parallel}{Logical; if \code{TRUE}, run MCMC chains in parallel (default = FALSE).
-For standard SEM (\code{dsep = FALSE}), this runs the chains on different cores.
-For d-separation testing (\code{dsep = TRUE}), this instead runs individual independence tests
-on different cores to maximize throughput. Each sub-test runs its chains sequentially.
-Note: Requires \code{n.cores > 1} to take effect.}
+\item{parallel}{Logical; run chains in parallel? (default = FALSE).}
 
-\item{n.cores}{Integer; number of CPU cores to use for parallel chains (default = 1).
-Only used when \code{parallel = TRUE}.}
+\item{n.cores}{Integer; number of CPU cores to use.}
 
 \item{cl}{Optional cluster object for parallel execution.}
 
-\item{ic_recompile}{Logical; if \code{TRUE} and \code{parallel = TRUE}, recompile the model
-after parallel chains to compute DIC/WAIC (default = TRUE).
-This adds a small sequential overhead but enables information criteria calculation.}
+\item{ic_recompile}{Logical; recompile model after parallel chains for IC?}
 
-\item{random}{Optional formula or list of formulas specifying global random effects
-applied to all equations (e.g. \code{~(1|species)}).}
+\item{random}{Optional formula for global random effects (e.g. ~(1|species)).}
 
-\item{levels}{(Hierarchical Data) A named list mapping variables to their hierarchy levels.
-Required if \code{data} is a list of data frames (hierarchical format).
-Example: \code{list(individual = c("y", "x"), site = c("z"))}.}
+\item{levels}{(Hierarchical) Named list mapping variables to hierarchy levels.}
 
-\item{hierarchy}{(Hierarchical Data) Character string describing the topological ordering of levels
-(e.g., \code{"site > individual"}). Required for hierarchical data if not fully inferred from random effects.}
+\item{hierarchy}{(Hierarchical) Topological ordering of levels (e.g., "site > individual").}
 
-\item{link_vars}{(Hierarchical Data) Optional named character vector specifying variables used to link
-data levels (e.g. \code{c(site = "site_id")}).}
+\item{link_vars}{(Hierarchical) Named vector specifying variables used to link levels.}
 
-\item{fix_residual_variance}{Optional named vector for fixing residual variances.
-Useful for handling non-identified models or specific theoretical constraints.
-Example: \code{c(response_var = 1)}.}
+\item{fix_residual_variance}{Optional named vector for fixing residual variances.}
 
-\item{priors}{Optional named list of character strings specifying custom priors for specific parameters.
-By default, \code{because} uses "boundary-avoiding" regularizing priors for hierarchical variance components:
-\itemize{
-\item \strong{Gaussian}: \code{dgamma(1, 1)} (vague) for residual and random effect precisions.
-\item \strong{Non-Gaussian}: \code{dgamma(10, 10)} for overdispersion and hierarchical random effects (\eqn{\tau}).
-This regularizing prior (Gelman 2006, McElreath 2020) prevents numerical overflow in models
-with exponential or logit link functions by constraining the sampler away from astronomically
-large variances during adaptation.
-}
-Example: \code{list(alpha_Response = "dnorm(0, 0.001)", sigma_Response_res = "dunif(0, 50)")}.}
+\item{priors}{Optional named list of custom priors.}
 
-\item{reuse_models}{List of previously fitted 'because' models to scan for reusable d-separation test results.
-If a test in the current run matches a test in a reused model (same formula), the result is copied
-instead of re-running JAGS. \strong{Note}: Ensuring that the data is consistent is the user's responsibility.}
+\item{reuse_models}{List of previously fitted 'because' models to scan for reusable results.}
 
-\item{tree}{(Deprecated alias for \code{structure}). Use \code{structure} instead for new code.}
+\item{expand_ordered}{Logical; expand ordered factors into polynomial contrasts?}
+
+\item{structure_multi}{List of multiple structures for uncertainty.}
+
+\item{structure_levels}{Mapping of structures to hierarchy levels.}
+
+\item{...}{Additional arguments passed to because_model.}
 }
 \value{
 An object of class \code{"because"} containing:
@@ -240,7 +138,10 @@ An object of class \code{"because"} containing:
 \item{WAIC}{Watanabe-Akaike Information Criterion (if WAIC=TRUE).}
 }
 \description{
-This function fits a Bayesian ...
+Fits a Bayesian Structural Equation Model (SEM) using JAGS or NIMBLE.
+Supports multi-level (hierarchical) data, custom covariance structures
+(phylogenetic, spatial, etc.), missing data imputation, and d-separation
+global fit testing.
 }
 \examples{
 \dontrun{
@@ -253,7 +154,7 @@ equations <- list(
   M ~ X,
   Y ~ M + X
 )
-fit_med <- because(equations, data = match_df)
+fit_med <- because(equations, data = df)
 }
 
 }

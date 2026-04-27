@@ -67,6 +67,8 @@ For "binomial" variables, the model uses a logit link and a Bernoulli likelihood
 
 \item{categorical_vars}{Optional character vector of categorical variable names.}
 
+\item{fix_latent}{Variable to fix for latent identification.}
+
 \item{fix_residual_variance}{Optional numeric value or named vector to fix residual variance.}
 
 \item{priors}{Optional named list of custom priors.}
@@ -74,6 +76,8 @@ For "binomial" variables, the model uses a logit link and a Bernoulli likelihood
 \item{hierarchical_info}{Optional list containing data hierarchy (levels, link_vars).}
 
 \item{engine}{Bayesian engine to use ("jags" or "nimble").}
+
+\item{quiet}{Logical; suppress status messages.}
 }
 \value{
 A list with two elements:

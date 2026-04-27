@@ -19,6 +19,6 @@ jags_family_definition(family, response, predictors, ...)
 A list containing \code{model_code} (the likelihood block) and \code{monitor_params}.
 }
 \description{
-Modules implement this method to inject specific JAGS model code for response families.
+Define JAGS Family Implementation
 }
 \keyword{internal}

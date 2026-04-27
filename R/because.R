@@ -158,147 +158,19 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 }
 
 
-#' @importFrom stats dist
-#' @importFrom utils read.csv
-#' @importFrom methods is
-#' @importFrom rjags jags.model
-#'
-#' @title Run a Bayesian Structural Equation Model
+#' @title Run a Bayesian Structural Equation Model (Because)
 #'
 #' @description
-#' This function fits a Bayesian ...
+#' Fits a Bayesian Structural Equation Model (SEM) using JAGS or NIMBLE.
+#' Supports multi-level (hierarchical) data, custom covariance structures
+#' (phylogenetic, spatial, etc.), missing data imputation, and d-separation
+#' global fit testing.
+#'
 #' @param equations A list of model formulas describing the structural equation model.
-#' @param data A data.frame containining the variables in the model. If using hierarchical
-#'   models (see hierarchical section below), this can also be a list of data frames.
+#' @param data A data.frame containing the variables in the model. If using hierarchical
+#'   models, this can also be a list of data frames.
 #' @param id_col Character string specifying the column name containing unit
-#'   identifiers (e.g., species names).
-#'
-#'   **Important Alignment Rules:**
-#'   1. If `id_col` is provided, the engine uses this specific column to match
-#'      data rows to external structure labels (e.g., `tree$tip.label`).
-#'      **Use this if your ID column has a custom name (e.g., "Butterfly_ID").**
-#'   2. If `id_col` is `NULL` (default), the engine attempts to use
-#'      **row names** from the data frame.
-#'   3. If your IDs are in a column (e.g. "Species") but your row names
-#'      are standard numbers (1, 2, 3...), you **MUST** specify `id_col`.
-#' @param structure The covariance structure for the model. Accepts:
-#'   \itemize{
-#'     \item \code{NULL}: Independent model (Standard SEM, no covariance structure).
-#'     \item \code{matrix}: Custom covariance or precision matrix (e.g., spatial connectivity, kinship).
-#'     \item Custom objects: Supported via extension packages (e.g., phylogenetic trees from \pkg{because.phybase} or spatial structures).
-#'   }
-#' @param tree (Deprecated alias for \code{structure}). Use \code{structure} instead for new code.
-#' @param engine Character string specifying the inference engine to use. Supported values:
-#'   \itemize{
-#'     \item \code{"jags"} (default): Use Just Another Gibbs Sampler (via rjags).
-#'     \item \code{"nimble"}: Use the compiled C++ backend (via NIMBLE). Offers significant
-#'           speedups for complex models, parallel execution, and marginalized likelihoods.
-#'   }
-#' @param nimble_samplers (NIMBLE-only) A named list specifying custom samplers for specific
-#'   model nodes. Example: \code{nimble_samplers = list(beta_X_Y = "slice")}.
-#'   Common sampler types include:
-#'   \itemize{
-#'     \item \code{"RW"}: Scalar Random-Walk Metropolis-Hastings.
-#'     \item \code{"RW_block"}: Multivariate Random-Walk Metropolis-Hastings.
-#'     \item \code{"slice"}: Scalar slice sampler.
-#'     \item \code{"AF_slice"}: Automated Factor Slice Sampler (multivariate slice).
-#'     \item \code{"categorical"}: Specialized discrete sampler for Multinomial/Ordinal choices.
-#'   }
-#' @param monitor Parameter monitoring mode. Options:
-#'   \itemize{
-#'     \item \code{"interpretable"} (default): Monitor only scientifically meaningful parameters:
-#'           intercepts (alpha), regression coefficients (beta), phylogenetic signals (lambda) for
-#'          responses, and WAIC terms. Excludes variance components (tau) and auxiliary predictor parameters.
-#'     \item \code{"all"}: Monitor all model parameters including variance components and implicit equation parameters.
-#'     \item Custom vector: Provide a character vector of specific parameter names to monitor.
-#'     \item \code{NULL}: Auto-detect based on model structure (equivalent to "interpretable").
-#'   }
-#' @param n.chains Number of MCMC chains (default = 3).
-#' @param n.iter Total number of MCMC iterations (default = 12500).
-#' @param n.burnin Number of burn-in iterations (default = n.iter / 5).
-#' @param n.thin Thinning rate (default = 10).
-#' @param DIC Logical; whether to compute DIC using \code{dic.samples()} (default = TRUE).
-#'   **Note**: DIC penalty will be inflated for models with measurement error or repeated measures
-#'   because latent variables are counted as parameters (penalty ~ structural parameters + N).
-#'   For model comparison, use WAIC or compare mean deviance across models with similar structure.
-#' @param WAIC Logical; whether to sample values for WAIC and deviance (default = FALSE).
-#'   WAIC is generally more appropriate than DIC for hierarchical models with latent variables.
-#' @param n.adapt Number of adaptation iterations (default = n.iter / 5).
-#' @param quiet Logical; suppress JAGS output (default = FALSE).
-#' @param verbose Logical; if \code{TRUE}, print generated JAGS model code and data names (default = FALSE).
-#' @param dsep Logical; if \code{TRUE}, evaluate the model's global fit using d-separation (basis set) path analysis.
-#'   This identifies the complete set of independence claims implied by the DAG and tests each one via Bayesian inference.
-#'   Results can be explored via \code{summary()} or visualized using \code{plot_dsep()}.
-#' @param variability Optional specification for variables with measurement error or within-species variability.
-#'   \strong{Global Setting}:
-#'   \itemize{
-#'     \item \code{"reps"}: Applies repeat-measures modeling to \strong{all} continuous variables in the equations (except grouping variables). Expects \code{X_obs} matrix or long-format data.
-#'     \item \code{"se"}: Applies measurement error modeling to \strong{all} continuous variables. Expects \code{X_se} columns.
-#'   }
-#'
-#'   \strong{Manual Specification} (Named Vector/List):
-#'   \itemize{
-#'     \item Simple: \code{c(X = "se", Y = "reps")} - mixed types
-#'     \item Custom columns: \code{list(X = list(type = "se", se_col = "X_sd"))}
-#'     \item For SE: \code{se_col} (SE column), \code{mean_col} (mean column, optional)
-#'     \item For reps: \code{obs_col} (observations matrix column)
-#'   }
-#'
-#'   \strong{Auto-Detection}:
-#'   If not specified, the package attempts to detect variability based on column names:
-#'   \itemize{
-#'     \item \code{X_se} -> type="se"
-#'     \item \code{X_obs} or matrix column -> type="reps"
-#'   }
-#' @param family Optional named character vector specifying the family/distribution for response variables.
-#'   Additional families (e.g., \code{"occupancy"}) can be provided by extension packages.
-#'   Example: \code{family = c(Gregarious = "binomial")}.
-#' @param distribution Deprecated alias for \code{family}.
-#' @param latent Optional character vector of latent (unmeasured) variable names.
-#'   If specified, the model will account for induced correlations among observed
-#'   variables that share these latent common causes.
-#' @param latent_method Method for handling latent variables (default = "correlations").
-#' @param fix_latent Identification strategy for latent variables. Choices:
-#'   \itemize{
-#'     \item \code{"loading"} (default): Unit Loading Identification (ULI). Fixes the first indicator's
-#'           loading to 1.0. Most stable for non-linear GLVMs (Poisson/Binomial).
-#'     \item \code{"sign"}: Sign Identification. Estimates all loadings with a sign constraint (positive)
-#'           on the first indicator. Can be unstable due to scale-drift.
-#'   }
-#'   \itemize{
-#'     \item \code{"correlations"}: MAG approach - marginalize latent variables and estimate
-#'           induced correlations (\code{rho}) between observed variables that share latent parents.
-#'     \item \code{"explicit"}: Model latent variables as JAGS nodes and estimate structural
-#'           paths from latents to observed variables.
-#'   }
-#' @param standardize_latent Logical; if \code{TRUE} and \code{latent_method = "explicit"},
-#'   adds standardized priors (\code{N(0,1)}) to latent variables to identify scale and location.
-#'   This improves convergence and makes regression coefficients interpretable as standardized effects.
-#'   Only applicable when using explicit latent variable modeling (default = TRUE).
-#' @param parallel Logical; if \code{TRUE}, run MCMC chains in parallel (default = FALSE).
-#'   For standard SEM (\code{dsep = FALSE}), this runs the chains on different cores.
-#'   For d-separation testing (\code{dsep = TRUE}), this instead runs individual independence tests
-#'   on different cores to maximize throughput. Each sub-test runs its chains sequentially.
-#'   Note: Requires \code{n.cores > 1} to take effect.
-#' @param n.cores Integer; number of CPU cores to use for parallel chains (default = 1).
-#'   Only used when \code{parallel = TRUE}.
-#' @param cl Optional cluster object for parallel execution.
-#' @param ic_recompile Logical; if \code{TRUE} and \code{parallel = TRUE}, recompile the model
-#'   after parallel chains to compute DIC/WAIC (default = TRUE).
-#'   This adds a small sequential overhead but enables information criteria calculation.
-#' @param random Optional formula or list of formulas specifying global random effects
-#'   applied to all equations (e.g. \code{~(1|species)}).
-#' @param levels (Hierarchical Data) A named list mapping variables to their hierarchy levels.
-#'   Required if \code{data} is a list of data frames (hierarchical format).
-#'   Example: \code{list(individual = c("y", "x"), site = c("z"))}.
-#' @param hierarchy (Hierarchical Data) Character string describing the topological ordering of levels
-#'   (e.g., \code{"site > individual"}). Required for hierarchical data if not fully inferred from random effects.
-#' @param link_vars (Hierarchical Data) Optional named character vector specifying variables used to link
-#'   data levels (e.g. \code{c(site = "site_id")}).
-#' @param fix_residual_variance Optional named vector for fixing residual variances.
-#'   Useful for handling non-identified models or specific theoretical constraints.
-#'   Example: \code{c(response_var = 1)}.
-#' @param id_col Character; name of the column containing species or unit identifiers.
+#'   identifiers (e.g., species names). If NULL, uses row names.
 #' @param structure Optional structural object (e.g., matrix, tree) for correlated residuals.
 #' @param engine Bayesian engine to use: "jags" (default) or "nimble".
 #' @param monitor Character; "interpretable" (default) or "all" parameters to monitor.
@@ -313,7 +185,23 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @param quiet Logical; suppress MCMC progress messages? (default = FALSE).
 #' @param verbose Logical; print verbose debug information? (default = FALSE).
 #' @param dsep Logical; perform d-separation independence tests? (default = FALSE).
-#' @param priors Optional named list of character strings specifying custom priors.
+#' @param variability Optional specification for variables with measurement error or within-species variability.
+#' @param family Optional named character vector specifying the family/distribution for response variables.
+#' @param distribution Deprecated alias for \code{family}.
+#' @param latent Optional character vector of latent (unmeasured) variable names.
+#' @param latent_method Method for handling latent variables ("correlations" or "explicit").
+#' @param standardize_latent Logical; standardize latents to unit variance?
+#' @param fix_latent Identification strategy for latent variables ("loading" or "sign").
+#' @param parallel Logical; run chains in parallel? (default = FALSE).
+#' @param n.cores Integer; number of CPU cores to use.
+#' @param cl Optional cluster object for parallel execution.
+#' @param ic_recompile Logical; recompile model after parallel chains for IC?
+#' @param random Optional formula for global random effects (e.g. ~(1|species)).
+#' @param levels (Hierarchical) Named list mapping variables to hierarchy levels.
+#' @param hierarchy (Hierarchical) Topological ordering of levels (e.g., "site > individual").
+#' @param link_vars (Hierarchical) Named vector specifying variables used to link levels.
+#' @param fix_residual_variance Optional named vector for fixing residual variances.
+#' @param priors Optional named list of custom priors.
 #' @param reuse_models List of previously fitted 'because' models to scan for reusable results.
 #' @param expand_ordered Logical; expand ordered factors into polynomial contrasts?
 #' @param structure_multi List of multiple structures for uncertainty.

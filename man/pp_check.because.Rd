@@ -25,6 +25,8 @@ Supported: \code{"dens_overlay"}, \code{"hist"}, \code{"stat"}.}
 
 \item{ndraws}{Integer; number of posterior draws to use. Defaults to 50.}
 
+\item{trim}{Logical; if TRUE, zooms plot to observed data range.}
+
 \item{re_formula}{Formula or \code{NA}; determines which random effects to include
 in the posterior predictions. See \code{\link{posterior_predict}} for details.}
 
