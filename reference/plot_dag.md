@@ -127,6 +127,14 @@ plot_dag(
 
   Optional named character vector of families for response variables.
 
+- type:
+
+  Character; either "raw" (default) or "marginal" effects.
+
+- multinomial_probabilities:
+
+  Logical; if TRUE, expands multinomial categories.
+
 ## Value
 
 A `ggplot` object that can be further customized with standard ggplot2

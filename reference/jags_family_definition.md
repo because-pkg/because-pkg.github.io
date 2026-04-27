@@ -1,7 +1,6 @@
 # Define JAGS Family Implementation
 
-Modules implement this method to inject specific JAGS model code for
-response families.
+Define JAGS Family Implementation
 
 ## Usage
 

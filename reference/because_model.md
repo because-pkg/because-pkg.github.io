@@ -114,6 +114,10 @@ because_model(
 
   Optional character vector of categorical variable names.
 
+- fix_latent:
+
+  Variable to fix for latent identification.
+
 - fix_residual_variance:
 
   Optional numeric value or named vector to fix residual variance.
@@ -129,6 +133,10 @@ because_model(
 - engine:
 
   Bayesian engine to use ("jags" or "nimble").
+
+- quiet:
+
+  Logical; suppress status messages.
 
 ## Value
 

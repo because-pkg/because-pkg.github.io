@@ -1,6 +1,9 @@
-# Run a Bayesian Structural Equation Model
+# Run a Bayesian Structural Equation Model (Because)
 
-This function fits a Bayesian ...
+Fits a Bayesian Structural Equation Model (SEM) using JAGS or NIMBLE.
+Supports multi-level (hierarchical) data, custom covariance structures
+(phylogenetic, spatial, etc.), missing data imputation, and d-separation
+global fit testing.
 
 ## Usage
 
@@ -56,175 +59,80 @@ because(
 
 - data:
 
-  A data.frame containining the variables in the model. If using
-  hierarchical models (see hierarchical section below), this can also be
-  a list of data frames.
+  A data.frame containing the variables in the model. If using
+  hierarchical models, this can also be a list of data frames.
 
 - id_col:
 
   Character string specifying the column name containing unit
-  identifiers (e.g., species names).
-
-  **Important Alignment Rules:**
-
-  1.  If `id_col` is provided, the engine uses this specific column to
-      match data rows to external structure labels (e.g.,
-      `tree$tip.label`). **Use this if your ID column has a custom name
-      (e.g., "Butterfly_ID").**
-
-  2.  If `id_col` is `NULL` (default), the engine attempts to use **row
-      names** from the data frame.
-
-  3.  If your IDs are in a column (e.g. "Species") but your row names
-      are standard numbers (1, 2, 3...), you **MUST** specify `id_col`.
+  identifiers (e.g., species names). If NULL, uses row names.
 
 - structure:
 
-  The covariance structure for the model. Accepts:
-
-  - `NULL`: Independent model (Standard SEM, no covariance structure).
-
-  - `matrix`: Custom covariance or precision matrix (e.g., spatial
-    connectivity, kinship).
-
-  - Custom objects: Supported via extension packages (e.g., phylogenetic
-    trees from because.phybase or spatial structures).
+  Optional structural object (e.g., matrix, tree) for correlated
+  residuals.
 
 - engine:
 
-  Character string specifying the inference engine to use. Supported
-  values:
-
-  - `"jags"` (default): Use Just Another Gibbs Sampler (via rjags).
-
-  - `"nimble"`: Use the compiled C++ backend (via NIMBLE). Offers
-    significant speedups for complex models, parallel execution, and
-    marginalized likelihoods.
+  Bayesian engine to use: "jags" (default) or "nimble".
 
 - monitor:
 
-  Parameter monitoring mode. Options:
-
-  - `"interpretable"` (default): Monitor only scientifically meaningful
-    parameters: intercepts (alpha), regression coefficients (beta),
-    phylogenetic signals (lambda) for responses, and WAIC terms.
-    Excludes variance components (tau) and auxiliary predictor
-    parameters.
-
-  - `"all"`: Monitor all model parameters including variance components
-    and implicit equation parameters.
-
-  - Custom vector: Provide a character vector of specific parameter
-    names to monitor.
-
-  - `NULL`: Auto-detect based on model structure (equivalent to
-    "interpretable").
+  Character; "interpretable" (default) or "all" parameters to monitor.
 
 - nimble_samplers:
 
-  (NIMBLE-only) A named list specifying custom samplers for specific
-  model nodes. Example: `nimble_samplers = list(beta_X_Y = "slice")`.
-  Common sampler types include:
-
-  - `"RW"`: Scalar Random-Walk Metropolis-Hastings.
-
-  - `"RW_block"`: Multivariate Random-Walk Metropolis-Hastings.
-
-  - `"slice"`: Scalar slice sampler.
-
-  - `"AF_slice"`: Automated Factor Slice Sampler (multivariate slice).
-
-  - `"categorical"`: Specialized discrete sampler for
-    Multinomial/Ordinal choices.
+  Optional named list of user-specified NIMBLE samplers.
 
 - n.chains:
 
-  Number of MCMC chains (default = 3).
+  Integer; number of MCMC chains (default = 3).
 
 - n.iter:
 
-  Total number of MCMC iterations (default = 12500).
+  Integer; total iterations per chain (default = 12500).
 
 - n.burnin:
 
-  Number of burn-in iterations (default = n.iter / 5).
+  Integer; burn-in iterations (default = 20% of n.iter).
 
 - n.thin:
 
-  Thinning rate (default = 10).
+  Integer; thinning interval (default = 10).
 
 - DIC:
 
-  Logical; whether to compute DIC using `dic.samples()` (default =
-  TRUE). **Note**: DIC penalty will be inflated for models with
-  measurement error or repeated measures because latent variables are
-  counted as parameters (penalty ~ structural parameters + N). For model
-  comparison, use WAIC or compare mean deviance across models with
-  similar structure.
+  Logical; compute DIC? (default = TRUE).
 
 - WAIC:
 
-  Logical; whether to sample values for WAIC and deviance (default =
-  FALSE). WAIC is generally more appropriate than DIC for hierarchical
-  models with latent variables.
+  Logical; compute WAIC? (default = FALSE).
 
 - n.adapt:
 
-  Number of adaptation iterations (default = n.iter / 5).
+  Integer; adaptation iterations (default = 20% of n.iter).
 
 - quiet:
 
-  Logical; suppress JAGS output (default = FALSE).
+  Logical; suppress MCMC progress messages? (default = FALSE).
 
 - verbose:
 
-  Logical; if `TRUE`, print generated JAGS model code and data names
-  (default = FALSE).
+  Logical; print verbose debug information? (default = FALSE).
 
 - dsep:
 
-  Logical; if `TRUE`, evaluate the model's global fit using d-separation
-  (basis set) path analysis. This identifies the complete set of
-  independence claims implied by the DAG and tests each one via Bayesian
-  inference. Results can be explored via
-  [`summary()`](https://rdrr.io/r/base/summary.html) or visualized using
-  [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md).
+  Logical; perform d-separation independence tests? (default = FALSE).
 
 - variability:
 
   Optional specification for variables with measurement error or
-  within-species variability. **Global Setting**:
-
-  - `"reps"`: Applies repeat-measures modeling to **all** continuous
-    variables in the equations (except grouping variables). Expects
-    `X_obs` matrix or long-format data.
-
-  - `"se"`: Applies measurement error modeling to **all** continuous
-    variables. Expects `X_se` columns.
-
-  **Manual Specification** (Named Vector/List):
-
-  - Simple: `c(X = "se", Y = "reps")` - mixed types
-
-  - Custom columns: `list(X = list(type = "se", se_col = "X_sd"))`
-
-  - For SE: `se_col` (SE column), `mean_col` (mean column, optional)
-
-  - For reps: `obs_col` (observations matrix column)
-
-  **Auto-Detection**: If not specified, the package attempts to detect
-  variability based on column names:
-
-  - `X_se` -\> type="se"
-
-  - `X_obs` or matrix column -\> type="reps"
+  within-species variability.
 
 - family:
 
   Optional named character vector specifying the family/distribution for
-  response variables. Additional families (e.g., `"occupancy"`) can be
-  provided by extension packages. Example:
-  `family = c(Gregarious = "binomial")`.
+  response variables.
 
 - distribution:
 
@@ -232,56 +140,27 @@ because(
 
 - latent:
 
-  Optional character vector of latent (unmeasured) variable names. If
-  specified, the model will account for induced correlations among
-  observed variables that share these latent common causes.
+  Optional character vector of latent (unmeasured) variable names.
 
 - latent_method:
 
-  Method for handling latent variables (default = "correlations").
+  Method for handling latent variables ("correlations" or "explicit").
 
 - standardize_latent:
 
-  Logical; if `TRUE` and `latent_method = "explicit"`, adds standardized
-  priors (`N(0,1)`) to latent variables to identify scale and location.
-  This improves convergence and makes regression coefficients
-  interpretable as standardized effects. Only applicable when using
-  explicit latent variable modeling (default = TRUE).
+  Logical; standardize latents to unit variance?
 
 - fix_latent:
 
-  Identification strategy for latent variables. Choices:
-
-  - `"loading"` (default): Unit Loading Identification (ULI). Fixes the
-    first indicator's loading to 1.0. Most stable for non-linear GLVMs
-    (Poisson/Binomial).
-
-  - `"sign"`: Sign Identification. Estimates all loadings with a sign
-    constraint (positive) on the first indicator. Can be unstable due to
-    scale-drift.
-
-  &nbsp;
-
-  - `"correlations"`: MAG approach - marginalize latent variables and
-    estimate induced correlations (`rho`) between observed variables
-    that share latent parents.
-
-  - `"explicit"`: Model latent variables as JAGS nodes and estimate
-    structural paths from latents to observed variables.
+  Identification strategy for latent variables ("loading" or "sign").
 
 - parallel:
 
-  Logical; if `TRUE`, run MCMC chains in parallel (default = FALSE). For
-  standard SEM (`dsep = FALSE`), this runs the chains on different
-  cores. For d-separation testing (`dsep = TRUE`), this instead runs
-  individual independence tests on different cores to maximize
-  throughput. Each sub-test runs its chains sequentially. Note: Requires
-  `n.cores > 1` to take effect.
+  Logical; run chains in parallel? (default = FALSE).
 
 - n.cores:
 
-  Integer; number of CPU cores to use for parallel chains (default = 1).
-  Only used when `parallel = TRUE`.
+  Integer; number of CPU cores to use.
 
 - cl:
 
@@ -289,69 +168,53 @@ because(
 
 - ic_recompile:
 
-  Logical; if `TRUE` and `parallel = TRUE`, recompile the model after
-  parallel chains to compute DIC/WAIC (default = TRUE). This adds a
-  small sequential overhead but enables information criteria
-  calculation.
+  Logical; recompile model after parallel chains for IC?
 
 - random:
 
-  Optional formula or list of formulas specifying global random effects
-  applied to all equations (e.g. `~(1|species)`).
+  Optional formula for global random effects (e.g. ~(1\|species)).
 
 - levels:
 
-  (Hierarchical Data) A named list mapping variables to their hierarchy
-  levels. Required if `data` is a list of data frames (hierarchical
-  format). Example: `list(individual = c("y", "x"), site = c("z"))`.
+  (Hierarchical) Named list mapping variables to hierarchy levels.
 
 - hierarchy:
 
-  (Hierarchical Data) Character string describing the topological
-  ordering of levels (e.g., `"site > individual"`). Required for
-  hierarchical data if not fully inferred from random effects.
+  (Hierarchical) Topological ordering of levels (e.g., "site \>
+  individual").
 
 - link_vars:
 
-  (Hierarchical Data) Optional named character vector specifying
-  variables used to link data levels (e.g. `c(site = "site_id")`).
+  (Hierarchical) Named vector specifying variables used to link levels.
 
 - fix_residual_variance:
 
-  Optional named vector for fixing residual variances. Useful for
-  handling non-identified models or specific theoretical constraints.
-  Example: `c(response_var = 1)`.
+  Optional named vector for fixing residual variances.
 
 - priors:
 
-  Optional named list of character strings specifying custom priors for
-  specific parameters. By default, `because` uses "boundary-avoiding"
-  regularizing priors for hierarchical variance components:
-
-  - **Gaussian**: `dgamma(1, 1)` (vague) for residual and random effect
-    precisions.
-
-  - **Non-Gaussian**: `dgamma(10, 10)` for overdispersion and
-    hierarchical random effects (\\\tau\\). This regularizing prior
-    (Gelman 2006, McElreath 2020) prevents numerical overflow in models
-    with exponential or logit link functions by constraining the sampler
-    away from astronomically large variances during adaptation.
-
-  Example:
-  `list(alpha_Response = "dnorm(0, 0.001)", sigma_Response_res = "dunif(0, 50)")`.
+  Optional named list of custom priors.
 
 - reuse_models:
 
   List of previously fitted 'because' models to scan for reusable
-  d-separation test results. If a test in the current run matches a test
-  in a reused model (same formula), the result is copied instead of
-  re-running JAGS. **Note**: Ensuring that the data is consistent is the
-  user's responsibility.
+  results.
 
-- tree:
+- expand_ordered:
 
-  (Deprecated alias for `structure`). Use `structure` instead for new
-  code.
+  Logical; expand ordered factors into polynomial contrasts?
+
+- structure_multi:
+
+  List of multiple structures for uncertainty.
+
+- structure_levels:
+
+  Mapping of structures to hierarchy levels.
+
+- ...:
+
+  Additional arguments passed to because_model.
 
 ## Value
 
@@ -398,6 +261,6 @@ equations <- list(
   M ~ X,
   Y ~ M + X
 )
-fit_med <- because(equations, data = match_df)
+fit_med <- because(equations, data = df)
 } # }
 ```

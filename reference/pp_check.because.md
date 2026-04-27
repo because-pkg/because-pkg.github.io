@@ -39,6 +39,10 @@ pp_check(
 
   Integer; number of posterior draws to use. Defaults to 50.
 
+- trim:
+
+  Logical; if TRUE, zooms plot to observed data range.
+
 - re_formula:
 
   Formula or `NA`; determines which random effects to include in the

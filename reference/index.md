@@ -3,7 +3,7 @@
 ## All functions
 
 - [`because()`](https://because-pkg.github.io/because/reference/because.md)
-  : Run a Bayesian Structural Equation Model
+  : Run a Bayesian Structural Equation Model (Because)
 - [`because_compare()`](https://because-pkg.github.io/because/reference/because_compare.md)
   : Compare Because Models
 - [`because_dsep()`](https://because-pkg.github.io/because/reference/because_dsep.md)
@@ -39,8 +39,6 @@
   satisfied)
 - [`marginal_effects()`](https://because-pkg.github.io/because/reference/marginal_effects.md)
   : Calculate Marginal Effects for Because Fit
-- [`plot_coef()`](https://because-pkg.github.io/because/reference/plot_coef.md)
-  : plot_coef
 - [`plot_coef(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/plot_coef.because.md)
   : Plot Path Coefficients (Caterpillar Plot)
 - [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)

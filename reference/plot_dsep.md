@@ -18,7 +18,7 @@ plot_dsep(object, ...)
 
 - object:
 
-  A `because` object fitted with `dsep = TRUE`.
+  A fitted model object.
 
 - ...:
 
