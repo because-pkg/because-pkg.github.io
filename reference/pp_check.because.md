@@ -46,7 +46,9 @@ pp_check(
 - re_formula:
 
   Formula or `NA`; determines which random effects to include in the
-  posterior predictions. See `posterior_predict` for details.
+  posterior predictions. See
+  [`posterior_predict`](https://because-pkg.github.io/because/reference/posterior_predict.md)
+  for details.
 
 - ...:
 

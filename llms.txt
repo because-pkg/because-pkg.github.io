@@ -133,6 +133,8 @@ Ubuntu/Debian) or equivalent development tools for your distribution. -
   satisfied)
 - [`marginal_effects()`](https://because-pkg.github.io/because/reference/marginal_effects.md)
   : Calculate Marginal Effects for Because Fit
+- [`plot_coef()`](https://because-pkg.github.io/because/reference/plot_coef.md)
+  : Plot Path Coefficients
 - [`plot_coef(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/plot_coef.because.md)
   : Plot Path Coefficients (Caterpillar Plot)
 - [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
@@ -141,8 +143,12 @@ Ubuntu/Debian) or equivalent development tools for your distribution. -
   : plot_dsep
 - [`plot_posterior()`](https://because-pkg.github.io/because/reference/plot_posterior.md)
   : Plot Posterior Distributions for Model Comparison
+- [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)
+  : Posterior Predictive Samples
 - [`posterior_predict(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/posterior_predict.because.md)
   : Generate Posterior Predictive Draws for Because Models
+- [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
+  : Posterior Predictive Checks
 - [`pp_check(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/pp_check.because.md)
   : Posterior Predictive Checks for Because Fits
 - [`storks`](https://because-pkg.github.io/because/reference/storks.md)
