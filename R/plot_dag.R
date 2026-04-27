@@ -175,7 +175,7 @@ plot_dag <- function(
             current_poly_terms <- if (!is.null(obj$poly_terms)) obj$poly_terms else obj$input$poly_terms
         } else {
             # List of formulas
-            eqs <- obj
+            equations <- obj
 
             # Auto-detect latent variables from structural equations:
             # A variable that (a) never appears as a LHS response, and (b) matches

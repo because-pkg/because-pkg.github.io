@@ -93,19 +93,29 @@ get_nimble_fn <- function(name) {
     return(fn)
 }
 
-# Dummy exports to satisfy NAMESPACE during installation/documentation
-# In practice these should not be used directly by users without nimble.
+#' @title Custom NIMBLE Distributions for because
+#' @description These functions provide custom distribution implementations for NIMBLE.
+#' @param ... Arguments passed to the distribution.
+#' @name nimble_distributions
+#' @keywords internal
+NULL
 
+#' @rdname nimble_distributions
 #' @export
 dnb_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
+#' @rdname nimble_distributions
 #' @export
 rnb_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
+#' @rdname nimble_distributions
 #' @export
 dzip_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
+#' @rdname nimble_distributions
 #' @export
 rzip_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
+#' @rdname nimble_distributions
 #' @export
 dzinb_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
+#' @rdname nimble_distributions
 #' @export
 rzinb_because <- function(...) { stop("Use nimble_family_optimization to access this NIMBLE function.") }
 

@@ -50,6 +50,15 @@ equations <- list(
     Lifespan ~ Mass + Habitat
 )
 
+# Dummy data for demonstration
+my_data <- data.frame(
+  Mass = rnorm(100),
+  Age = rnorm(100),
+  Sex = rbinom(100, 1, 0.5),
+  Lifespan = rnorm(100),
+  Habitat = factor(sample(c("Forest", "Grassland"), 100, replace = TRUE))
+)
+
 # Fit using NIMBLE instead of JAGS
 fit <- because(
     equations = equations,

@@ -548,17 +548,39 @@ get_structure_name_hook.default <- function(structure, ...) {
     return(NULL)
 }
 
+#' @title Plot Path Coefficients
+#' @name plot_coef
 #' @param object A fitted model object.
 #' @param ... Additional arguments.
-#' @rdname plot_coef
 #' @export
 plot_coef <- function(object, ...) {
     UseMethod("plot_coef")
 }
 
+#' Posterior Predictive Samples
+#'
 #' @param object A fitted model object.
 #' @param ... Additional arguments.
-#' @rdname plot_dsep
+#' @return A matrix of posterior predictive draws.
+#' @export
+posterior_predict <- function(object, ...) {
+    UseMethod("posterior_predict")
+}
+
+#' Posterior Predictive Checks
+#'
+#' @param object A fitted model object.
+#' @param ... Additional arguments.
+#' @return A ggplot object.
+#' @export
+pp_check <- function(object, ...) {
+  UseMethod("pp_check")
+}
+
+#' @title Plot D-Separation Tests
+#' @name plot_dsep
+#' @param object A fitted model object.
+#' @param ... Additional arguments.
 #' @export
 plot_dsep <- function(object, ...) {
     UseMethod("plot_dsep")

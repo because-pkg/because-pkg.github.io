@@ -233,6 +233,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #'
 #' @export
 #' @import coda
+#' @import methods
 #' @importFrom rjags jags.model coda.samples dic.samples jags.samples
 #' @importFrom stats formula terms setNames start var na.omit update
 #' @importFrom utils capture.output head
@@ -320,7 +321,7 @@ because <- function(
 
   # [FIX] Ensure all MCMC parameters are coercible to non-negative integer for JAGS
   n.chains <- as.integer(max(1, n.chains))
-  n.iter <- as.integer(max(1, n.iter))
+  n.iter <- as.integer(max(0, n.iter))
   n.thin <- as.integer(max(1, n.thin))
   n.burnin <- as.integer(max(0, n.burnin))
   n.adapt <- as.integer(max(0, n.adapt))
