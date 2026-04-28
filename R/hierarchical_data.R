@@ -680,6 +680,7 @@ auto_stack_multispecies_data <- function(data, equations, quiet = FALSE) {
 #' @param lvl Level name to find
 #' @param hierarchy_str Hierarchy string
 #' @return Integer depth
+#' @keywords internal
 get_level_depth <- function(lvl, hierarchy_str) {
   if (is.null(lvl) || is.null(hierarchy_str)) return(NA)
   

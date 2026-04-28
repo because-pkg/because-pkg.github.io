@@ -23,3 +23,4 @@ set does not contain a variable from a level that connects the two branches
 design of the hierarchical data structure and cannot be run in JAGS because
 no cross-level index exists between orthogonal branches.
 }
+\keyword{internal}
