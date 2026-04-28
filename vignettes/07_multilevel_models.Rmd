@@ -80,46 +80,53 @@ If you omit the `levels` argument, `because` will try to auto-detect which varia
 
 ## Simulate Hierarchical Example Data
 
-We simulate a 10-year study with 30 individuals per year. Note how we keep the year-level and individual-level variables strictly separated.
-
 ```{r simulate}
 set.seed(42)
 
 n_years <- 10
-n_ind   <- 30
+n_ind   <- 10   # 10 individuals followed over time
 
-# Year-level data  
+# --- Year-level data ---
 year_df <- data.frame(
   Year = 1:n_years,
   Temp = rnorm(n_years, mean = 0, sd = 1),
   NDVI = NA_real_
 )
-
-# NDVI depends on Temp at the year level
 year_df$NDVI <- 0.7 * year_df$Temp + rnorm(n_years, 0, 0.5)
 
-# Individual-level data 
-ind_df <- data.frame(
-  ID         = 1:(n_years * n_ind),
-  Year       = rep(1:n_years, each = n_ind),    # <-- linking variable
-  Mass       = NA_real_,
-  Offspring  = NA_integer_
+# --- Individual-level (Repeated Measures) data ---
+# We use expand.grid to ensure every individual is measured every year
+ind_df <- expand.grid(
+  ID   = 1:n_ind,
+  Year = 1:n_years
 )
 
-# For the simulation, we expand year-level values down to individuals to generate Mass and Offspring but we DO NOT store them in ind_df
-temp_exp <- year_df$Temp[ind_df$Year]
-ndvi_exp <- year_df$NDVI[ind_df$Year]
+# For simulation, each individual has a unique "personality" (random effect)
+# that stays constant across years.
+ind_personality <- rnorm(n_ind, 0, 0.5)
+names(ind_personality) <- 1:n_ind
 
-# Mass depends on year-level NDVI and Temp
+# Look up year-level and individual-level components
+temp_lookup <- year_df$Temp[ind_df$Year]
+ndvi_lookup <- year_df$NDVI[ind_df$Year]
+pers_lookup <- ind_personality[as.character(ind_df$ID)]
+
+# Mass depends on year-level NDVI/Temp AND the individual's personality
 ind_df$Mass <- (
-  1.2 * ndvi_exp + 
-  0.4 * temp_exp + 
-  rnorm(n_years * n_ind, 0, 0.8)
+  1.2 * ndvi_lookup + 
+  0.4 * temp_lookup + 
+  pers_lookup +        # <-- Individual-level consistency
+  rnorm(nrow(ind_df), 0, 0.4)
 )
 
-# Offspring depends on individual Mass
-ind_df$Offspring <- rpois(n_years * n_ind, lambda = exp(0.5 + 0.6 * ind_df$Mass))
+# Offspring depends on Mass
+ind_df$Offspring <- rpois(nrow(ind_df), lambda = exp(0.5 + 0.6 * ind_df$Mass))
 
+# Combine into a hierarchical list
+data_list <- list(
+  year       = year_df,
+  individual = ind_df
+)
 ```
 
 ## Supplying Multilevel Data to `because`
@@ -210,6 +217,7 @@ For example, if you believe there is year-level variation in `Mass` that is not 
 
 ```{r re_per_equation, eval = FALSE}
 equations_re <- list(
+  NDVI      ~ Temp,  
   Mass ~ NDVI + Temp + (1|Year),    # Year random intercept for Mass
   Offspring ~ Mass  + (1|Year) + (1|ID)  # Year AND individual random intercepts
 )
@@ -229,6 +237,8 @@ You would then run this model like this:
   n.iter     = 15000,
   n.burnin   = 3000
 )
+
+summary(fit_re)
 ```
 
 ### Syntax option B: global `random` argument (convenient when all equations share the same grouping)**

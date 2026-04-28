@@ -402,14 +402,33 @@ because_model <- function(
     grp_lvl <- get_var_level(group_var, h_info)
 
     if (is.null(resp_lvl) || is.null(grp_lvl)) {
-      # If hierarchy exists, but levels are unknown, assume invalid (blocked) for safety
-      if (!is.null(h_info$hierarchy)) { return(FALSE) }
-      return(TRUE) 
+      # [INFERENCE FIX] If hierarchy exists but grp_lvl is unknown, try to infer it 
+      # from the data frames (in case it was excluded from auto-detect to avoid duplication)
+      if (is.null(grp_lvl) && !is.null(h_info$data)) {
+        for (lvl_name in names(h_info$data)) {
+          if (group_var %in% colnames(h_info$data[[lvl_name]])) {
+            grp_lvl <- lvl_name
+            break
+          }
+        }
+      }
+      
+      # If still unknown and hierarchy exists, assume invalid (blocked) for safety
+      if (is.null(grp_lvl) && !is.null(h_info$hierarchy)) { return(FALSE) }
+      if (is.null(resp_lvl) && !is.null(h_info$hierarchy)) { return(FALSE) }
+      if (is.null(resp_lvl) || is.null(grp_lvl)) { return(TRUE) }
     }
 
+
+    # [OLRE FIX] Allow random effects at the SAME level if it's an overdispersed 
+    # distribution (Poisson, Binomial, Bernoulli) that lacks a residual tau node.
+    dist <- if (response %in% names(family)) family[[response]] else "gaussian"
+    allow_id <- dist %in% c("poisson", "binomial", "bernoulli")
+
     # Use the robust checker
-    return(is_valid_structure_mapping(grp_lvl, resp_lvl, h_info))
+    return(is_valid_structure_mapping(grp_lvl, resp_lvl, h_info, allow_identity = allow_id))
   }
+
 
   # Helper: Resolve group indexing for hierarchical random effects
   get_group_idx_string <- function(response, r_name, hierarchical_info) {
@@ -1895,9 +1914,11 @@ because_model <- function(
               
               # Determine hierarchical level if available
               r_lvl <- get_random_level(response, r_name, hierarchical_info)
-              # [SYNTAX GUARD] Final fallback to prevent empty [1:] indices
-              n_groups <- if (!is.null(r_lvl) && nchar(r_lvl) > 0) paste0("N_", r_lvl) else if (nchar(r_name) > 0) paste0("N_", r_name) else "N"
-              zeros_name <- if (!is.null(r_lvl) && nchar(r_lvl) > 0) paste0("zeros_", r_lvl) else if (nchar(r_name) > 0) paste0("zeros_", r_name) else "zeros"
+              # [DIMENSION FIX] Prioritize the specific group count (N_Group) over the level count (N_Level)
+              # to avoid index-out-of-range errors in repeated measures designs.
+              n_groups <- paste0("N_", r_name)
+              zeros_name <- paste0("zeros_", r_name)
+
               
               prec_name <- paste0("Prec_", r_name)
 
@@ -2053,9 +2074,12 @@ because_model <- function(
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
             
             r_lvl <- get_random_level(response, r_name, hierarchical_info)
-            n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
-            zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
+            # [DIMENSION FIX] Prioritize the specific group count (N_Group) over the level count (N_Level)
+            # to avoid index-out-of-range errors in repeated measures designs.
+            n_groups <- paste0("N_", r_name)
+            zeros_name <- paste0("zeros_", r_name)
             prec_name <- paste0("Prec_", r_name)
+
 
             model_lines <- c(
               model_lines,
@@ -2196,10 +2220,12 @@ because_model <- function(
                 tau_u <- paste0("tau_u_", response, suffix, s_suffix)
                 
                 r_lvl <- get_random_level(response, r_name, hierarchical_info)
-                # [SYNTAX GUARD] Final fallback to prevent empty [1:] indices
-                n_groups <- if (!is.null(r_lvl) && nchar(r_lvl) > 0) paste0("N_", r_lvl) else if (nchar(r_name) > 0) paste0("N_", r_name) else "N"
-                zeros_name <- if (!is.null(r_lvl) && nchar(r_lvl) > 0) paste0("zeros_", r_lvl) else if (nchar(r_name) > 0) paste0("zeros_", r_name) else "zeros"
+                # [DIMENSION FIX] Prioritize the specific group count (N_Group) over the level count (N_Level)
+                # to avoid index-out-of-range errors in repeated measures designs.
+                n_groups <- paste0("N_", r_name)
+                zeros_name <- paste0("zeros_", r_name)
                 prec_name <- paste0("Prec_", r_name)
+
 
                 model_lines <- safe_add_lines(model_lines, c(
                   paste0("  ", u_std, "[1:", n_groups, ", k] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
@@ -2319,9 +2345,10 @@ because_model <- function(
                 
                 # Determine hierarchical level if available
                 r_lvl <- get_random_level(response, r_name, hierarchical_info)
-                # [SYNTAX GUARD] Final fallback to prevent empty [1:] indices
-                n_groups <- if (!is.null(r_lvl) && nchar(r_lvl) > 0) paste0("N_", r_lvl) else if (nchar(r_name) > 0) paste0("N_", r_name) else "N"
-                zeros_name <- if (!is.null(r_lvl) && nchar(r_lvl) > 0) paste0("zeros_", r_lvl) else if (nchar(r_name) > 0) paste0("zeros_", r_name) else "zeros"
+                # [DIMENSION FIX] Prioritize the specific group count (N_Group) over the level count (N_Level)
+                # to avoid index-out-of-range errors in repeated measures designs.
+                n_groups <- paste0("N_", r_name)
+                zeros_name <- paste0("zeros_", r_name)
                 prec_name <- paste0("Prec_", r_name)
 
                 model_lines <- safe_add_lines(model_lines, c(
@@ -2421,8 +2448,10 @@ because_model <- function(
             
             # Determine hierarchical level if available
             r_lvl <- get_random_level(response, r_name, hierarchical_info)
-            n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
-            zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
+            # [DIMENSION FIX] Prioritize the specific group count (N_Group) over the level count (N_Level)
+            # to avoid index-out-of-range errors in repeated measures designs.
+            n_groups <- paste0("N_", r_name)
+            zeros_name <- paste0("zeros_", r_name)
             prec_name <- paste0("Prec_", r_name)
 
             model_lines <- c(
@@ -2614,9 +2643,10 @@ because_model <- function(
             u <- paste0("u_", response, suffix, s_suffix)
             tau_u <- paste0("tau_u_", response, suffix, s_suffix)
             
-            r_lvl <- get_random_level(response, r_name, hierarchical_info)
-            n_groups <- if (!is.null(r_lvl)) paste0("N_", r_lvl) else paste0("N_", r_name)
-            zeros_name <- if (!is.null(r_lvl)) paste0("zeros_", r_lvl) else paste0("zeros_", r_name)
+            # [DIMENSION FIX] Prioritize the specific group count (N_Group) over the level count (N_Level)
+            # to avoid index-out-of-range errors in repeated measures designs.
+            n_groups <- paste0("N_", r_name)
+            zeros_name <- paste0("zeros_", r_name)
             prec_name <- paste0("Prec_", r_name)
 
             model_lines <- c(
