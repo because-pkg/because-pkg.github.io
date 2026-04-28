@@ -17,6 +17,21 @@
 #'
 #' @return A \code{ggplot} object produced by \code{bayesplot}.
 #'
+#' @examples
+#' \dontrun{
+#' df <- data.frame(Y = rnorm(100), X = rnorm(100))
+#' fit <- because(list(Y ~ X), data = df)
+#'
+#' # Default density overlay check
+#' pp_check(fit)
+#'
+#' # Histogram check for a specific response
+#' pp_check(fit, resp = "Y", type = "hist", ndraws = 30)
+#'
+#' # Test statistic check (e.g., mean)
+#' pp_check(fit, type = "stat", stat = "mean")
+#' }
+#'
 #' @importFrom bayesplot ppc_dens_overlay ppc_hist ppc_stat
 #' @importFrom ggplot2 ggplot
 #' @export

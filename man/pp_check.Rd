@@ -9,11 +9,15 @@ pp_check(object, ...)
 \arguments{
 \item{object}{A fitted model object.}
 
-\item{...}{Additional arguments.}
+\item{...}{Additional arguments passed to the method.}
 }
 \value{
 A ggplot object.
 }
 \description{
-Posterior Predictive Checks
+Generic function for posterior predictive checks of a fitted model.
+For \code{because} model objects, see \code{\link{pp_check.because}},
+which wraps \code{bayesplot} functions (density overlay, histogram, test
+statistics) and supports conditional or marginal prediction via
+\code{re_formula}.
 }

@@ -550,8 +550,13 @@ get_structure_name_hook.default <- function(structure, ...) {
 
 #' @title Plot Path Coefficients
 #' @name plot_coef
+#' @description
+#' Generic for plotting path coefficients from a fitted model object.
+#' For \code{because} model objects, see \code{\link{plot_coef.because}}, which
+#' produces a caterpillar plot of raw or marginal-effects estimates with
+#' customisable colour schemes and significance highlighting.
 #' @param object A fitted model object.
-#' @param ... Additional arguments.
+#' @param ... Additional arguments passed to the method.
 #' @export
 plot_coef <- function(object, ...) {
     UseMethod("plot_coef")
@@ -559,8 +564,13 @@ plot_coef <- function(object, ...) {
 
 #' Posterior Predictive Samples
 #'
+#' @description
+#' Generic function for generating posterior predictive draws from a fitted model.
+#' For \code{because} model objects, see \code{\link{posterior_predict.because}},
+#' which returns an \code{[ndraws x N_obs]} matrix of simulated response values.
+#' These draws are the basis for \code{\link{pp_check}}.
 #' @param object A fitted model object.
-#' @param ... Additional arguments.
+#' @param ... Additional arguments passed to the method.
 #' @return A matrix of posterior predictive draws.
 #' @export
 posterior_predict <- function(object, ...) {
@@ -569,8 +579,14 @@ posterior_predict <- function(object, ...) {
 
 #' Posterior Predictive Checks
 #'
+#' @description
+#' Generic function for posterior predictive checks of a fitted model.
+#' For \code{because} model objects, see \code{\link{pp_check.because}},
+#' which wraps \code{bayesplot} functions (density overlay, histogram, test
+#' statistics) and supports conditional or marginal prediction via
+#' \code{re_formula}.
 #' @param object A fitted model object.
-#' @param ... Additional arguments.
+#' @param ... Additional arguments passed to the method.
 #' @return A ggplot object.
 #' @export
 pp_check <- function(object, ...) {

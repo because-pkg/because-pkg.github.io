@@ -12,7 +12,36 @@
 #' @param samples Integer. Number of posterior samples to use (default 1000 for precision and consistency across plots).
 #' @param multinomial_probabilities Logical. If TRUE, returns granular probability shifts for each category
 #'   of multinomial (unordered) responses instead of a single expected value shift. Default FALSE.
-#' @return A data frame with marginal effects per path.
+#' @return A data frame with marginal effects per path. Each row contains:
+#'   \item{Response}{Name of the response variable.}
+#'   \item{Predictor}{Name of the predictor variable.}
+#'   \item{Category}{For categorical predictors: the comparison category (vs. reference). \code{NA} for continuous predictors.}
+#'   \item{Effect}{Posterior mean of the marginal effect.}
+#'   \item{Lower}{Lower bound of the credible interval (at \code{(1-prob)/2}).}
+#'   \item{Upper}{Upper bound of the credible interval (at \code{1-(1-prob)/2}).}
+#'   \item{Family}{Distribution family of the response.}
+#'
+#' @examples
+#' \dontrun{
+#' # Fit a mixed-family SEM
+#' df <- data.frame(
+#'   Y = rbinom(100, 1, 0.4),
+#'   M = rnorm(100),
+#'   X = rnorm(100)
+#' )
+#' fit <- because(list(M ~ X, Y ~ M + X), data = df, family = c(Y = "binomial"))
+#'
+#' # Average Marginal Effects (default) — on the response scale for all families
+#' me <- marginal_effects(fit)
+#' print(me)
+#'
+#' # Marginal Effects at the Mean
+#' me_mem <- marginal_effects(fit, at = "mean")
+#' print(me_mem)
+#'
+#' # Narrow credible interval
+#' me_90 <- marginal_effects(fit, prob = 0.90)
+#' }
 #' @export
 marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multinomial_probabilities = FALSE) {
   if (is.null(fit$parameter_map)) {

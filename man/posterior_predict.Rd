@@ -9,11 +9,14 @@ posterior_predict(object, ...)
 \arguments{
 \item{object}{A fitted model object.}
 
-\item{...}{Additional arguments.}
+\item{...}{Additional arguments passed to the method.}
 }
 \value{
 A matrix of posterior predictive draws.
 }
 \description{
-Posterior Predictive Samples
+Generic function for generating posterior predictive draws from a fitted model.
+For \code{because} model objects, see \code{\link{posterior_predict.because}},
+which returns an \code{[ndraws x N_obs]} matrix of simulated response values.
+These draws are the basis for \code{\link{pp_check}}.
 }

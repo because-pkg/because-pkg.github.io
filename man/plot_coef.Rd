@@ -9,8 +9,11 @@ plot_coef(object, ...)
 \arguments{
 \item{object}{A fitted model object.}
 
-\item{...}{Additional arguments.}
+\item{...}{Additional arguments passed to the method.}
 }
 \description{
-Plot Path Coefficients
+Generic for plotting path coefficients from a fitted model object.
+For \code{because} model objects, see \code{\link{plot_coef.because}}, which
+produces a caterpillar plot of raw or marginal-effects estimates with
+customisable colour schemes and significance highlighting.
 }

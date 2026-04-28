@@ -157,6 +157,7 @@ are_levels_orthogonal <- function(lvl_a, lvl_b, hierarchy_str) {
 #' @param test_eq A formula with attribute "test_var" naming the focal predictor.
 #' @param hierarchical_info List with $levels (named list) and $hierarchy (string).
 #' @return TRUE if the test should be skipped; FALSE otherwise.
+#' @keywords internal
 is_cross_hierarchy_test <- function(test_eq, hierarchical_info) {
   if (is.null(hierarchical_info) ||
       is.null(hierarchical_info$levels) ||
@@ -229,6 +230,7 @@ is_cross_hierarchy_test <- function(test_eq, hierarchical_info) {
 #' @param var Variable name
 #' @param hierarchical_info List with $levels, $hierarchy, and $link_vars
 #' @return List of random terms (group, type)
+#' @keywords internal
 get_inherited_random_terms <- function(var, hierarchical_info) {
   if (is.null(hierarchical_info) ||
       is.null(hierarchical_info$levels) ||

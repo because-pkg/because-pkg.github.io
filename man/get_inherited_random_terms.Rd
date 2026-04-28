@@ -17,3 +17,4 @@ List of random terms (group, type)
 \description{
 Get inherited random terms for a variable based on hierarchy
 }
+\keyword{internal}
