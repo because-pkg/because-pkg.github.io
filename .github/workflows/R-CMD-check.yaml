@@ -58,9 +58,14 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
+      - name: Set up Bioconductor
+        run: |
+          options(repos = c(CRAN = "https://cran.rstudio.com/", BIOC = BiocManager::repositories()))
+        shell: Rscript {0}
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck, any::BiocManager
+          extra-packages: any::rcmdcheck, any::BiocManager, any::graph
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
