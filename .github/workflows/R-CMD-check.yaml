@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: r-lib/actions/setup-pandoc@v5
+      - uses: r-lib/actions/setup-pandoc@v2
 
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
