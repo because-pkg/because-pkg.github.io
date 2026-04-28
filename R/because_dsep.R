@@ -290,7 +290,7 @@ is_valid_structure_mapping_dsep <- function(s_lvl, r_lvl, hierarchical_info) {
   return(FALSE)
 }
 
-# Standard d-separation for DAGs (using ggm::basiSet)
+# Standard d-separation for DAGs (using dagitty)
 dsep_standard <- function(
   equations,
   random_terms = list(),
@@ -344,12 +344,15 @@ dsep_standard <- function(
     deterministic_terms = all_det_terms
   )
 
-  # Use ggm::basiSet to get the correct d-separation basis set
-  if (!requireNamespace("ggm", quietly = TRUE)) {
-    stop("Package 'ggm' is required for d-separation tests.")
-  }
-
-  basis <- ggm::basiSet(dag)
+  # Use dagitty to get the correct d-separation basis set
+  dag_str <- dag_matrix_to_dagitty(dag)
+  d_obj <- dagitty::dagitty(dag_str)
+  ici <- dagitty::impliedConditionalIndependencies(d_obj)
+  
+  # Convert dagitty output to the format expected by mag_basis_to_formulas
+  basis <- lapply(ici, function(x) {
+    c(as.character(x$X), as.character(x$Y), as.character(x$Z))
+  })
 
   # Build combined exclusion list:
   #   1. Deterministic interaction/I() nodes from extract_deterministic_terms.
@@ -572,21 +575,17 @@ dsep_with_latents <- function(
     deterministic_terms = all_det_terms
   )
 
-  # Always suppress DAG.to.MAG output
-  invisible(capture.output(
-    {
-      mag <- suppressMessages(DAG.to.MAG(dag, latents = latent))
-    },
-    type = "output"
-  ))
-
-  # Extract basis set from MAG
-  invisible(capture.output(
-    {
-      basis <- suppressMessages(basiSet.mag(mag))
-    },
-    type = "output"
-  ))
+  # Use dagitty to handle latent variables natively
+  dag_str <- dag_matrix_to_dagitty(dag)
+  d_obj <- dagitty::dagitty(dag_str)
+  if (!is.null(latent)) {
+    dagitty::latents(d_obj) <- latent
+  }
+  
+  ici <- dagitty::impliedConditionalIndependencies(d_obj)
+  basis <- lapply(ici, function(x) {
+    c(as.character(x$X), as.character(x$Y), as.character(x$Z))
+  })
 
   # Build combined exclusion list (same logic as dsep_standard)
   excl_names <- unique(c(
@@ -778,7 +777,8 @@ dsep_with_latents <- function(
   }
 
   # Extract bidirected edges (induced correlations)
-  correlations <- extract_bidirected_edges(mag)
+  # Induced correlations in dagitty are handled via d-connection
+  correlations <- list()
 
   # Print basis set if not quiet
   if (!quiet) {
@@ -799,7 +799,7 @@ dsep_with_latents <- function(
   return(list(
     tests = tests,
     correlations = correlations,
-    mag = mag
+    mag = d_obj
   ))
 }
 

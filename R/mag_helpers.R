@@ -1,4 +1,4 @@
-#' Convert because equations to ggm DAG adjacency matrix
+#' Convert because equations to dagitty-style adjacency matrix
 #'
 #' When \code{deterministic_terms} is supplied (a list returned by
 #' \code{extract_deterministic_terms}), interaction and \code{I()} terms are
@@ -14,7 +14,7 @@
 #'   \code{extract_deterministic_terms}.  Each element must have
 #'   \code{$original} (the R term string, e.g. \code{"BM:M"}) and
 #'   \code{$internal_name} (the JAGS-safe node name, e.g. \code{"BM_x_M"}).
-#' @return Named adjacency matrix in ggm format
+#' @return Named adjacency matrix in binary format
 #' @references
 #'   Geiger, D., Verma, T., & Pearl, J. (1990). Identifying independence in
 #'   Bayesian Networks. \emph{Networks}, 20(5), 507–534.
@@ -164,36 +164,32 @@ equations_to_dag <- function(
     return(dag)
 }
 
-#' Extract bidirected edges (induced correlations) from MAG
+
+#' Convert an adjacency matrix to a dagitty string
 #'
-#' @param mag MAG adjacency matrix from DAG.to.MAG
-#' @return List of variable pairs with induced correlations
+#' @param dag Named adjacency matrix (1 for edge, 0 for no edge)
+#' @param latents Optional character vector of latent variable names
+#' @return A character string in dagitty format
 #' @keywords internal
-extract_bidirected_edges <- function(mag) {
-    # Bidirected edges in MAG are coded as 100
-    n <- nrow(mag)
-    var_names <- rownames(mag)
-
-    correlations <- list()
-
-    for (i in seq_len(max(0, n - 1))) {
-        for (j in (i + 1):n) {
-            if (mag[i, j] == 100 && mag[j, i] == 100) {
-                # Bidirected edge found
-                correlations[[length(correlations) + 1]] <- c(
-                    var_names[i],
-                    var_names[j]
-                )
+dag_matrix_to_dagitty <- function(dag, latents = NULL) {
+    all_vars <- rownames(dag)
+    edges <- character(0)
+    
+    for (i in seq_along(all_vars)) {
+        for (j in seq_along(all_vars)) {
+            if (dag[i, j] == 1) {
+                edges <- c(edges, paste0(all_vars[i], " -> ", all_vars[j]))
             }
         }
     }
-
-    return(correlations)
+    
+    dag_str <- paste0("dag { ", paste(edges, collapse = "; "), " }")
+    return(dag_str)
 }
 
-#' Convert MAG basis set to because formula format
+#' Convert basis set to because formula format
 #'
-#' @param basis_set Basis set from basiSet.mag() or ggm::basiSet()
+#' @param basis_set Basis set from dagitty
 #' @param latent_children Optional character vector of variables that are direct children of latents
 #' @param categorical_vars Optional named list of categorical variable info
 #' @param family Optional named character vector of family distributions
