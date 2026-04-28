@@ -4,7 +4,7 @@ author: "Achaz von Hardenberg"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{02. D-Separation and Causal Inference}
+  %\VignetteIndexEntry{D-Separation and Causal Inference}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 editor_options: 
