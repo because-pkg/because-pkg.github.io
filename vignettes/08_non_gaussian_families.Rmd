@@ -41,11 +41,22 @@ are the response variables and values are the distribution names:
 ```{r family_syntax}
 library(because)
 
+# Minimal example data
+set.seed(1)
+N <- 100
+example_data <- data.frame(
+  Y     = rpois(N, lambda = 3),
+  Count = rpois(N, lambda = 5),
+  Presence = rbinom(N, size = 1, prob = 0.4),
+  X = rnorm(N)
+)
+
 # Single non-Gaussian response
 fit <- because(
   equations = list(Y ~ X),
-  data = mydata,
-  family = c(Y = "poisson")
+  data = example_data,
+  family = c(Y = "poisson"),
+  quiet = TRUE
 )
 
 # Multiple responses with different families
@@ -54,8 +65,9 @@ fit_mixed <- because(
     Count ~ X,
     Presence ~ X
   ),
-  data = mydata,
-  family = c(Count = "poisson", Presence = "bernoulli")
+  data = example_data,
+  family = c(Count = "poisson", Presence = "bernoulli"),
+  quiet = TRUE
 )
 ```
 

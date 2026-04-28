@@ -90,15 +90,20 @@ diagnostic) and **n.eff** (the effective sample size) for each parameter.
   `n.thin`.
 
 ```{r rhat}
-# Extract the summary table and check Rhat
-fit_summary <- summary(fit)
+# The stored summary object has $statistics containing Rhat and n.eff
+sum_stats <- fit$summary$statistics
 
 # Identify parameters with potential convergence issues
-high_rhat <- fit_summary$statistics[fit_summary$statistics[, "Rhat"] > 1.05, ]
-if (nrow(high_rhat) == 0) {
-  cat("All parameters converged (Rhat < 1.05).\n")
+if (!is.null(sum_stats) && "Rhat" %in% colnames(sum_stats)) {
+  high_rhat <- sum_stats[sum_stats[, "Rhat"] > 1.05, , drop = FALSE]
+  if (nrow(high_rhat) == 0) {
+    cat("All parameters converged (Rhat < 1.05).\n")
+  } else {
+    print(high_rhat)
+  }
 } else {
-  print(high_rhat)
+  # summary() prints results to console; inspect Rhat column visually
+  summary(fit)
 }
 ```
 
