@@ -47,85 +47,51 @@ because(
 )
 }
 \arguments{
-\item{equations}{A list of model formulas describing the structural equation model.}
+\item{equations}{A list of R formulas describing the structural model. Each formula represents
+a causal path (e.g., \code{Y ~ X1 + X2}). Categorical predictors are automatically handled.}
 
-\item{data}{A data.frame containing the variables in the model. If using hierarchical
-models, this can also be a list of data frames.}
+\item{data}{A data frame containing all variables. For \strong{hierarchical models},
+this must be a named list of data frames (one per level).}
 
-\item{id_col}{Character string specifying the column name containing unit
-identifiers (e.g., species names). If NULL, uses row names.}
+\item{id_col}{Character string for the column identifying units (e.g. species names).}
 
-\item{structure}{Optional structural object (e.g., matrix, tree) for correlated residuals.}
+\item{structure}{Optional covariance structure (e.g., a phylogenetic tree or spatial matrix)
+for modeling correlated residuals.}
 
-\item{engine}{Bayesian engine to use: "jags" (default) or "nimble".}
+\item{engine}{Bayesian backend: \code{"jags"} (default) or \code{"nimble"}.}
 
-\item{monitor}{Character; "interpretable" (default) or "all" parameters to monitor.}
+\item{n.chains}{Number of independent MCMC chains (default = 3).}
 
-\item{nimble_samplers}{Optional named list of user-specified NIMBLE samplers.}
+\item{n.iter}{Total MCMC iterations per chain (default = 12500).}
 
-\item{n.chains}{Integer; number of MCMC chains (default = 3).}
+\item{n.burnin}{Number of burn-in iterations (default = 20\% of \code{n.iter}).}
 
-\item{n.iter}{Integer; total iterations per chain (default = 12500).}
+\item{dsep}{Logical; if \code{TRUE}, performs d-separation tests to evaluate the global
+fit of the DAG against the data. Highly recommended for causal validation.}
 
-\item{n.burnin}{Integer; burn-in iterations (default = 20\% of n.iter).}
+\item{family}{A named character vector specifying the distribution for each response
+(e.g., \code{c(Y = "poisson", M = "gaussian")}). Supports "gaussian" (default), "poisson",
+"binomial", "gamma", "lognormal", "bernoulli", "ordinal", and "occupancy".}
 
-\item{n.thin}{Integer; thinning interval (default = 10).}
+\item{latent}{Optional character vector of latent (unmeasured) variables.}
 
-\item{DIC}{Logical; compute DIC? (default = TRUE).}
+\item{parallel}{Logical; if \code{TRUE}, runs MCMC chains in parallel.}
 
-\item{WAIC}{Logical; compute WAIC? (default = FALSE).}
+\item{n.cores}{Number of CPU cores for parallel execution.}
 
-\item{n.adapt}{Integer; adaptation iterations (default = 20\% of n.iter).}
+\item{random}{Optional formula for \strong{global random intercepts} (e.g., \code{~(1|Site)}).
+Deprecated in favor of inline specification: \code{Y ~ X + (1|Site)}.}
 
-\item{quiet}{Logical; suppress MCMC progress messages? (default = FALSE).}
+\item{levels}{(Hierarchical) Optional named list mapping variables to their home levels.
+If omitted, \code{because} will attempt to auto-detect levels based on column availability.}
 
-\item{verbose}{Logical; print verbose debug information? (default = FALSE).}
+\item{hierarchy}{(Hierarchical) A string defining the nesting structure (e.g., \code{"site > individual"}).
+Semicolons separate parallel branches (e.g., \code{"site > obs; species > obs"}).}
 
-\item{dsep}{Logical; perform d-separation independence tests? (default = FALSE).}
+\item{link_vars}{(Hierarchical) A named character vector specifying the columns used to
+link data frames across levels (e.g., \code{c(site = "SiteID")}).}
 
-\item{variability}{Optional specification for variables with measurement error or within-species variability.}
-
-\item{family}{Optional named character vector specifying the family/distribution for response variables.}
-
-\item{distribution}{Deprecated alias for \code{family}.}
-
-\item{latent}{Optional character vector of latent (unmeasured) variable names.}
-
-\item{latent_method}{Method for handling latent variables ("correlations" or "explicit").}
-
-\item{standardize_latent}{Logical; standardize latents to unit variance?}
-
-\item{fix_latent}{Identification strategy for latent variables ("loading" or "sign").}
-
-\item{parallel}{Logical; run chains in parallel? (default = FALSE).}
-
-\item{n.cores}{Integer; number of CPU cores to use.}
-
-\item{cl}{Optional cluster object for parallel execution.}
-
-\item{ic_recompile}{Logical; recompile model after parallel chains for IC?}
-
-\item{random}{Optional formula for global random effects (e.g. ~(1|species)).}
-
-\item{levels}{(Hierarchical) Named list mapping variables to hierarchy levels.}
-
-\item{hierarchy}{(Hierarchical) Topological ordering of levels (e.g., "site > individual").}
-
-\item{link_vars}{(Hierarchical) Named vector specifying variables used to link levels.}
-
-\item{fix_residual_variance}{Optional named vector for fixing residual variances.}
-
-\item{priors}{Optional named list of custom priors.}
-
-\item{reuse_models}{List of previously fitted 'because' models to scan for reusable results.}
-
-\item{expand_ordered}{Logical; expand ordered factors into polynomial contrasts?}
-
-\item{structure_multi}{List of multiple structures for uncertainty.}
-
-\item{structure_levels}{Mapping of structures to hierarchy levels.}
-
-\item{...}{Additional arguments passed to because_model.}
+\item{...}{Additional arguments passed to the underlying model engines.}
 }
 \value{
 An object of class \code{"because"} containing:
@@ -145,16 +111,30 @@ global fit testing.
 }
 \examples{
 \dontrun{
-# A simple linear regression
-df <- data.frame(Y = rnorm(100), X = rnorm(100))
-fit <- because(list(Y ~ X), data = df)
+# 1. Simple Path Model
+df <- data.frame(Y = rnorm(100), M = rnorm(100), X = rnorm(100))
+eqs <- list(M ~ X, Y ~ M + X)
+fit <- because(eqs, data = df, dsep = TRUE)
+summary(fit)
 
-# A mediation model
-equations <- list(
-  M ~ X,
-  Y ~ M + X
+# 2. Hierarchical Model (Auto-detection)
+# Suppose we have year-level data and individual-level data
+year_df <- data.frame(Year = 1:5, Temp = rnorm(5))
+ind_df  <- data.frame(Year = rep(1:5, each=10), Mass = rnorm(50))
+data_list <- list(yr = year_df, ind = ind_df)
+
+# Mass depends on Temp (cross-level link via Year)
+fit_h <- because(
+  equations = list(Mass ~ Temp),
+  data      = data_list,
+  hierarchy = "yr > ind",
+  link_vars = c(yr = "Year")
 )
-fit_med <- because(equations, data = df)
+
+# 3. Random Intercepts (lme4-style)
+# Note: Grouping variables (Site) must be in the data
+df$Site <- rep(1:10, each=10)
+fit_re <- because(list(Y ~ X + (1|Site)), data = df)
 }
 
 }

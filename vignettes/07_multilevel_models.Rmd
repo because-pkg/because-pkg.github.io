@@ -84,7 +84,7 @@ If you omit the `levels` argument, `because` will try to auto-detect which varia
 set.seed(42)
 
 n_years <- 10
-n_ind   <- 10   # 10 individuals followed over time
+n_ind   <- 30   # 10 individuals followed over time
 
 # --- Year-level data ---
 year_df <- data.frame(
@@ -218,7 +218,7 @@ For example, if you believe there is year-level variation in `Mass` that is not 
 ```{r re_per_equation, eval = FALSE}
 equations_re <- list(
   NDVI      ~ Temp,  
-  Mass ~ NDVI + Temp + (1|Year),    # Year random intercept for Mass
+  Mass ~ NDVI + Temp + (1|Year) + (1|ID),    # Year random intercept for Mass
   Offspring ~ Mass  + (1|Year) + (1|ID)  # Year AND individual random intercepts
 )
 ```
@@ -228,6 +228,7 @@ The random terms are **equation-specific**: here only `Offspring` gets the indiv
 You would then run this model like this: 
 
 ```{r fit_inline_re, eval = FALSE}
+set.seed(42)
  fit_re <- because(
   equations  = equations_re,
   data       = data_list,
@@ -245,13 +246,15 @@ summary(fit_re)
 
 We could specify the same model as above using the `random` argument to apply the same random structure to all equations (in this case the year random intercept applies to both equations, while the individual random intercept applies only to `Offspring` because `Mass` does not have `(1|ID)` in its equation): 
 
-```{r re_per_equation, eval = FALSE}
+```{r fit_global_re, eval = FALSE}
 
 equations_re2 <- list(
-  Mass ~ NDVI + Temp,    # Year random intercept for Mass
+   NDVI      ~ Temp,
+  Mass ~ NDVI + Temp + (1|ID),    # Year random intercept for Mass
   Offspring ~ Mass  + (1|ID)  # Year AND individual random intercepts
 )
 
+set.seed(42)
 fit_re2 <- because(
   equations  = equations_re2,
   data       = data_list,
@@ -259,7 +262,6 @@ fit_re2 <- because(
   hierarchy  = "year > individual",
   link_vars  = c(year = "Year"),
   random     = ~(1|Year), # applied to ALL equations
-  dsep       = TRUE,
   n.iter     = 15000,
   n.burnin   = 3000
 )
