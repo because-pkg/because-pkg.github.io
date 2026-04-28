@@ -41,7 +41,7 @@ For detailed installation instructions and system-specific requirements, please 
 
 To use the NIMBLE engine, you simply need to set the `engine` argument in the `because()` function:
 
-```{r}
+```{r, eval = FALSE}
 library(because)
 
 # Define your SEM
@@ -79,7 +79,7 @@ One of the easiest ways to speed up your analysis in **because** is to run MCMC 
 
 Since NIMBLE must compile the C++ code for each chain, running them in parallel allows this compilation to happen simultaneously on different CPU cores, significantly reducing the total "wait time" before sampling begins.
 
-```{r}
+```{r, eval = FALSE}
 fit <- because(
     equations = equations,
     data = my_data,
@@ -94,7 +94,7 @@ fit <- because(
 
 NIMBLE allows you to control which sampling algorithm is used for every node in your model. While `because` sets high-performance defaults (like `AF_slice` for random effects and `slice` for precision parameters), you can manually override these using the `nimble_samplers` argument.
 
-```{r}
+```{r, eval = FALSE}
 # Override the default RW-MH sampler for a specific coefficient
 fit <- because(
     equations = equations,

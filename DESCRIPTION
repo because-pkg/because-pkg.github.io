@@ -36,7 +36,7 @@ Imports:
     bayesplot,
     pbapply
 Depends: 
-    R (>= 3.5)
+    R (>= 4.1.0)
 RoxygenNote: 7.3.3
 Roxygen: list(markdown = TRUE)
 Suggests: 

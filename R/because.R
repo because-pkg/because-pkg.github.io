@@ -3780,10 +3780,6 @@ because <- function(
             message("\nCRITICAL JAGS ERROR during compilation:")
             message(e$message)
             message("Check your model code syntax or data dimensions.\n")
-            
-            # DIAGNOSTIC DUMP: Copy the failing model to a known location for analysis
-            file.copy(model_file, "debug_model.jags", overwrite = TRUE)
-            message("Failing model dumped to: debug_model.jags")
           }
           stop(e)
         }
