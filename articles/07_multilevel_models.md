@@ -16,23 +16,25 @@ supplied as a **named list of data frames**, one per hierarchical level,
 the engine:
 
 1.  Correctly maps each variable to its natural level.
+
 2.  Uses the **appropriate degrees of freedom** for each d-separation
     test: year-level tests use $N_{years}$, individual-level tests use
     $N_{individuals}$, and cross-level tests are fitted at the lower
     level using whatever random effects the researcher specified in the
     structural equations.
+
 3.  Skips tests that are trivially satisfied by the design of the
     hierarchy (e.g., orthogonal branches that share no observations).
 
-## A Motivating Example: Climate, Resources, and Reproductive Success
+## Example: Climate, Resources, and Reproductive Success
 
-Consider a long-term monitoring study of a wild ungulate population.
-Over 10 years, ecologists record:
+Consider a long-term monitoring study of a wild mammal population. Over
+10 years, ecologists record:
 
 - **Year-level** variables (1 row per year): mean winter temperature
-  (`Temp`), annual primary productivity (`NDVI`).
+  (`Temp`) and annual primary productivity (`NDVI`).
 - **Individual-level** variables (multiple rows per individual per
-  year): body mass (`Mass`), number of offspring (`Offspring`).
+  year): body mass (`Mass`) and number of offspring (`Offspring`).
 
 The causal hypothesis is:
 
@@ -57,7 +59,7 @@ dag <- list(
 plot_dag(dag)
 ```
 
-## Data Preparation and Rules
+## Data Preparation
 
 To use the hierarchical modeling features, your data must be structured
 as a **named list of data frames**, where each list element corresponds
@@ -66,8 +68,8 @@ to a level in your hierarchy.
 ### The “One Home” Rule
 
 Every variable in your model (predictors and responses) must live in
-**exactly one** data frame—the one corresponding to the level where it
-was measured.
+**exactly one** data frame (the one corresponding to the level where it
+was measured).
 
 - **Year-level variables** (like `Temp`) should only be in the `year`
   data frame.
@@ -88,16 +90,13 @@ column names. 2. It allows you to explicitly **exclude** nuisance
 variables that might be in your data frames but are not part of the
 causal model.
 
-## Step 1: Simulate Hierarchical Data
-
-We simulate a 10-year study with 30 individuals per year. Note how we
-keep the year-level and individual-level variables strictly separated.
+## Simulate Hierarchical Example Data
 
 ``` r
 set.seed(42)
 
 n_years <- 10
-n_ind   <- 30
+n_ind   <- 30   # 10 individuals followed over time
 
 # --- Year-level data ---
 year_df <- data.frame(
@@ -105,32 +104,35 @@ year_df <- data.frame(
   Temp = rnorm(n_years, mean = 0, sd = 1),
   NDVI = NA_real_
 )
-
-# NDVI depends on Temp at the year level
 year_df$NDVI <- 0.7 * year_df$Temp + rnorm(n_years, 0, 0.5)
 
-# --- Individual-level data ---
-ind_df <- data.frame(
-  ID         = 1:(n_years * n_ind),
-  Year       = rep(1:n_years, each = n_ind),    # <-- linking variable
-  Mass       = NA_real_,
-  Offspring  = NA_integer_
+# --- Individual-level (Repeated Measures) data ---
+# We use expand.grid to ensure every individual is measured every year
+ind_df <- expand.grid(
+  ID   = 1:n_ind,
+  Year = 1:n_years
 )
 
-# For simulation, we look up year-level values, 
-# but we DO NOT store them in ind_df
+# For simulation, each individual has a unique "personality" (random effect)
+# that stays constant across years.
+ind_personality <- rnorm(n_ind, 0, 0.5)
+names(ind_personality) <- 1:n_ind
+
+# Look up year-level and individual-level components
 temp_lookup <- year_df$Temp[ind_df$Year]
 ndvi_lookup <- year_df$NDVI[ind_df$Year]
+pers_lookup <- ind_personality[as.character(ind_df$ID)]
 
-# Mass depends on year-level NDVI and Temp
+# Mass depends on year-level NDVI/Temp AND the individual's personality
 ind_df$Mass <- (
   1.2 * ndvi_lookup + 
   0.4 * temp_lookup + 
-  rnorm(n_years * n_ind, 0, 0.8)
+  pers_lookup +        # <-- Individual-level consistency
+  rnorm(nrow(ind_df), 0, 0.4)
 )
 
-# Offspring depends on individual Mass
-ind_df$Offspring <- rpois(n_years * n_ind, lambda = exp(0.5 + 0.6 * ind_df$Mass))
+# Offspring depends on Mass
+ind_df$Offspring <- rpois(nrow(ind_df), lambda = exp(0.5 + 0.6 * ind_df$Mass))
 
 # Combine into a hierarchical list
 data_list <- list(
@@ -142,171 +144,37 @@ data_list <- list(
 ## Supplying Multilevel Data to `because`
 
 Pass the data as a **named list of data frames**. The names define the
-level labels that the engine uses to assign variables.
-
-## Random Effects in `because`
-
-`because` uses the same `(1|grouping_variable)` notation as `lme4`’s
-`lmer()` / `glmer()` to specify **random intercepts**. This will be
-immediately familiar if you have used mixed-effects models in R.
-
-A random intercept `(1|Group)` tells `because` that observations sharing
-the same value of `Group` are not independent — each group gets its own
-intercept drawn from a common Normal distribution:
-
-$$u_{g} \sim \text{Normal}\left( 0,\sigma_{u}^{2} \right),\quad g = 1,\ldots,G$$
-
-with the precision $\tau_{u} = 1/\sigma_{u}^{2}$ estimated from the
-data.
-
-> \[!NOTE\] **Random slopes** (e.g. `(X|Group)`) are **not yet
-> implemented**. Only random intercepts `(1|Group)` are currently
-> supported. The syntax deliberately mirrors `lme4` so that random
-> slopes can be added as a natural extension in a future release without
-> any change to the user interface.
-
-### Syntax: inline in the equation
-
-Place `(1|Group)` directly inside any structural equation, just as you
-would in `lmer()`:
-
-``` r
-library(because)
-
-# Individuals nested within Sites — Site gets a random intercept in Y
-equations <- list(
-  Y ~ X + (1|Site),
-  Z ~ Y
-)
-
-fit <- because(equations = equations, data = my_data)
-```
-
-The random term is **equation-specific**: here only `Y` gets the Site
-random intercept. `Z ~ Y` is fitted without it (assuming no residual
-site-level variation in `Z` beyond what is mediated through `Y`).
-
-You can specify different grouping structures for different responses:
-
-``` r
-equations <- list(
-  Mass      ~ NDVI + Temp + (1|Year),    # Year random intercept for Mass
-  Offspring ~ Mass  + (1|Year) + (1|ID)  # Year AND individual random intercepts
-)
-```
-
-### Syntax: global `random` argument
-
-When the same random effect applies to **all** response variables, the
-`random` argument is a convenient shorthand:
-
-``` r
-fit <- because(
-  equations = list(Y ~ X, Z ~ Y),
-  data      = my_data,
-  random    = ~(1|Site)          # (1|Site) added to every equation
-)
-```
-
-Internally this is identical to embedding `(1|Site)` in each equation.
-
-### When to include a random effect
-
-| Situation                                                                                               | Include `(1|Group)`? |
-|:--------------------------------------------------------------------------------------------------------|:---------------------|
-| Observations share a year-level environment and year predictors **do not** fully capture year variation | **Yes**              |
-| Year-level predictors (e.g. Temp, NDVI) fully explain year variation                                    | Not necessary        |
-| Repeated measures on the same individual across time                                                    | **Yes** — `(1|ID)`   |
-| Balanced, fully crossed design with all levels as fixed effects                                         | Not needed           |
-
-> \[!IMPORTANT\] Random effects specified in the structural equations
-> are automatically carried forward into the d-separation sub-tests for
-> all equations they apply to. This keeps the independence tests
-> internally consistent with the structural model — see the [Cross-level
-> tests](#cross-level-tests) section below.
-
-### Specifying random effects
-
-If you believe there is residual year-level variation beyond what `Temp`
-and `NDVI` explain (unmeasured confounders such as snow depth or disease
-pressure), you should include a year-level random effect. There are two
-equivalent syntaxes — choose the one that fits your workflow:
-
-**Option A — inline in the equation (recommended for equation-specific
-effects):**
-
-Just as in `lme4`’s `lmer()`, you can embed `(1|Group)` terms directly
-inside the formula. This is the most flexible approach when different
-equations require different grouping structures:
-
-``` r
-equations_re <- list(
-  NDVI      ~ Temp,
-  Mass      ~ NDVI + Temp + (1|Year),    # year random intercept for Mass only
-  Offspring ~ Mass  + (1|Year)           # year random intercept for Offspring
-)
-
-fit_re <- because(
-  equations  = equations_re,
-  data       = data_list,
-  family     = c(Offspring = "poisson"),
-  hierarchy  = "year > individual",
-  link_vars  = c(year = "Year"),
-  dsep       = TRUE,
-  n.iter     = 15000,
-  n.burnin   = 3000
-)
-```
-
-**Option B — global `random` argument (convenient when all equations
-share the same grouping):**
-
-``` r
-fit_re2 <- because(
-  equations  = equations,
-  data       = data_list,
-  family     = c(Offspring = "poisson"),
-  hierarchy  = "year > individual",
-  link_vars  = c(year = "Year"),
-  random     = ~(1|Year),               # applied to ALL equations
-  dsep       = TRUE,
-  n.iter     = 15000,
-  n.burnin   = 3000
-)
-```
-
-Both syntaxes are internally parsed into the same JAGS model code. The
-inline version gives you equation-level control; the global version is a
-shorthand when the grouping structure is uniform.
-
-> \[!NOTE\] Random intercepts specified by the user — whether inline or
-> global — are propagated into the d-separation sub-tests for all
-> equations they apply to. This ensures the independence tests reflect
-> exactly the same random structure as the structural model, maintaining
-> internal consistency.
-
-For the worked example below we proceed without the year random effect,
-assuming `Temp` and `NDVI` fully capture year-level variation:
+level labels that `because` uses to assign variables.
 
 ``` r
 data_list <- list(
   year       = year_df,
   individual = ind_df
 )
+```
 
+We specify the structural equations as usual:
+
+``` r
 equations <- list(
   NDVI      ~ Temp,
   Mass      ~ NDVI + Temp,
   Offspring ~ Mass
 )
+```
 
+and finally we can fit the model with
+[`because()`](https://because-pkg.github.io/because/reference/because.md),
+specifying the `hierarchy` and the variable linking the two dataset (ie
+present in both datasets) with the `link_vars` argument.
+
+``` r
 fit <- because(
   equations  = equations,
   data       = data_list,
   family     = c(Offspring = "poisson"),
   hierarchy  = "year > individual",
   link_vars  = c(year = "Year"),
-  dsep       = TRUE,
   n.iter     = 15000,
   n.burnin   = 3000
 )
@@ -339,6 +207,112 @@ This is analogous to a foreign key in a relational database.
 | `NDVI`      | year       | 10               |
 | `Mass`      | individual | 300              |
 | `Offspring` | individual | 300              |
+
+## Random Effects in `because`
+
+`because` uses the same `(1|grouping_variable)` notation as `lme4`’s
+`lmer()` / `glmer()` to specify **random intercepts**. This will be
+immediately familiar if you have used mixed-effects models in R.
+
+A random intercept `(1|Group)` tells `because` that observations sharing
+the same value of `Group` are not independent — each group gets its own
+intercept drawn from a common Normal distribution:
+
+$$u_{g} \sim \text{Normal}\left( 0,\sigma_{u}^{2} \right),\quad g = 1,\ldots,G$$
+
+with the precision $\tau_{u} = 1/\sigma_{u}^{2}$ estimated from the
+data.
+
+> \[!NOTE\] **Random slopes** (e.g. `(X|Group)`) are **not yet
+> implemented**. Only random intercepts `(1|Group)` are currently
+> supported. The syntax deliberately mirrors `lme4` so that random
+> slopes can be added as a natural extension in a future release without
+> any change to the user interface.
+
+### Syntax option A: inline in the equation
+
+Place `(1|Group)` directly inside any structural equation, just as you
+would in `lmer()`. You can specify different grouping structures for
+different responses: For example, if you believe there is year-level
+variation in `Mass` that is not fully explained by `Temp` and `NDVI`,
+you can specify:
+
+``` r
+equations_re <- list(
+  NDVI      ~ Temp,  
+  Mass ~ NDVI + Temp + (1|Year) + (1|ID),    # Year random intercept for Mass
+  Offspring ~ Mass  + (1|Year) + (1|ID)  # Year AND individual random intercepts
+)
+```
+
+The random terms are **equation-specific**: here only `Offspring` gets
+the individual random intercept `(1|ID)`, while both `Mass` and
+`Offspring` get the year random intercept `(1|Year)`.
+
+You would then run this model like this:
+
+``` r
+set.seed(42)
+ fit_re <- because(
+  equations  = equations_re,
+  data       = data_list,
+  family     = c(Offspring = "poisson"),
+  hierarchy  = "year > individual",
+  link_vars  = c(year = "Year"),
+  n.iter     = 15000,
+  n.burnin   = 3000
+)
+
+summary(fit_re)
+```
+
+### Syntax option B: global `random` argument (convenient when all equations share the same grouping)\*\*
+
+We could specify the same model as above using the `random` argument to
+apply the same random structure to all equations (in this case the year
+random intercept applies to both equations, while the individual random
+intercept applies only to `Offspring` because `Mass` does not have
+`(1|ID)` in its equation):
+
+``` r
+
+equations_re2 <- list(
+   NDVI      ~ Temp,
+  Mass ~ NDVI + Temp + (1|ID),    # Year random intercept for Mass
+  Offspring ~ Mass  + (1|ID)  # Year AND individual random intercepts
+)
+
+set.seed(42)
+fit_re2 <- because(
+  equations  = equations_re2,
+  data       = data_list,
+  family     = c(Offspring = "poisson"),
+  hierarchy  = "year > individual",
+  link_vars  = c(year = "Year"),
+  random     = ~(1|Year), # applied to ALL equations
+  n.iter     = 15000,
+  n.burnin   = 3000
+)
+```
+
+Both syntaxes are internally parsed into the same JAGS/NIMBLE model
+code. The inline version gives you equation-level control; the global
+version is a shorthand when the grouping structure is uniform.
+
+> \[!NOTE\] Random intercepts specified by the user — whether inline or
+> global — are propagated into the d-separation sub-tests for all
+> equations they apply to. This ensures the independence tests reflect
+> exactly the same random structure as the structural model, maintaining
+> internal consistency.
+
+### When to include a random effect
+
+| Situation                                                                                               | Include `(1|Group)`? |
+|:--------------------------------------------------------------------------------------------------------|:---------------------|
+| Observations share a year-level environment and year predictors **do not** fully capture year variation | **Yes**              |
+| Year-level predictors (e.g. Temp, NDVI) fully explain year variation                                    | Not necessary        |
+| Repeated measures on the same individual across time                                                    | **Yes** — `(1|ID)`   |
+| Balanced, fully crossed design with all levels as fixed effects                                         | Not needed           |
 
 ## D-Separation with Correct Degrees of Freedom
 

@@ -106,161 +106,85 @@ global fit testing.</p>
 
 
 <dl><dt id="arg-equations">equations<a class="anchor" aria-label="anchor" href="#arg-equations"></a></dt>
-<dd><p>A list of model formulas describing the structural equation model.</p></dd>
+<dd><p>A list of R formulas describing the structural model. Each formula represents
+a causal path (e.g., <code>Y ~ X1 + X2</code>). Categorical predictors are automatically handled.</p></dd>
 
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>A data.frame containing the variables in the model. If using hierarchical
-models, this can also be a list of data frames.</p></dd>
+<dd><p>A data frame containing all variables. For <strong>hierarchical models</strong>,
+this must be a named list of data frames (one per level).</p></dd>
 
 
 <dt id="arg-id-col">id_col<a class="anchor" aria-label="anchor" href="#arg-id-col"></a></dt>
-<dd><p>Character string specifying the column name containing unit
-identifiers (e.g., species names). If NULL, uses row names.</p></dd>
+<dd><p>Character string for the column identifying units (e.g. species names).</p></dd>
 
 
 <dt id="arg-structure">structure<a class="anchor" aria-label="anchor" href="#arg-structure"></a></dt>
-<dd><p>Optional structural object (e.g., matrix, tree) for correlated residuals.</p></dd>
+<dd><p>Optional covariance structure (e.g., a phylogenetic tree or spatial matrix)
+for modeling correlated residuals.</p></dd>
 
 
 <dt id="arg-engine">engine<a class="anchor" aria-label="anchor" href="#arg-engine"></a></dt>
-<dd><p>Bayesian engine to use: "jags" (default) or "nimble".</p></dd>
-
-
-<dt id="arg-monitor">monitor<a class="anchor" aria-label="anchor" href="#arg-monitor"></a></dt>
-<dd><p>Character; "interpretable" (default) or "all" parameters to monitor.</p></dd>
-
-
-<dt id="arg-nimble-samplers">nimble_samplers<a class="anchor" aria-label="anchor" href="#arg-nimble-samplers"></a></dt>
-<dd><p>Optional named list of user-specified NIMBLE samplers.</p></dd>
+<dd><p>Bayesian backend: <code>"jags"</code> (default) or <code>"nimble"</code>.</p></dd>
 
 
 <dt id="arg-n-chains">n.chains<a class="anchor" aria-label="anchor" href="#arg-n-chains"></a></dt>
-<dd><p>Integer; number of MCMC chains (default = 3).</p></dd>
+<dd><p>Number of independent MCMC chains (default = 3).</p></dd>
 
 
 <dt id="arg-n-iter">n.iter<a class="anchor" aria-label="anchor" href="#arg-n-iter"></a></dt>
-<dd><p>Integer; total iterations per chain (default = 12500).</p></dd>
+<dd><p>Total MCMC iterations per chain (default = 12500).</p></dd>
 
 
 <dt id="arg-n-burnin">n.burnin<a class="anchor" aria-label="anchor" href="#arg-n-burnin"></a></dt>
-<dd><p>Integer; burn-in iterations (default = 20% of n.iter).</p></dd>
-
-
-<dt id="arg-n-thin">n.thin<a class="anchor" aria-label="anchor" href="#arg-n-thin"></a></dt>
-<dd><p>Integer; thinning interval (default = 10).</p></dd>
-
-
-<dt id="arg-dic">DIC<a class="anchor" aria-label="anchor" href="#arg-dic"></a></dt>
-<dd><p>Logical; compute DIC? (default = TRUE).</p></dd>
-
-
-<dt id="arg-waic">WAIC<a class="anchor" aria-label="anchor" href="#arg-waic"></a></dt>
-<dd><p>Logical; compute WAIC? (default = FALSE).</p></dd>
-
-
-<dt id="arg-n-adapt">n.adapt<a class="anchor" aria-label="anchor" href="#arg-n-adapt"></a></dt>
-<dd><p>Integer; adaptation iterations (default = 20% of n.iter).</p></dd>
-
-
-<dt id="arg-quiet">quiet<a class="anchor" aria-label="anchor" href="#arg-quiet"></a></dt>
-<dd><p>Logical; suppress MCMC progress messages? (default = FALSE).</p></dd>
-
-
-<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
-<dd><p>Logical; print verbose debug information? (default = FALSE).</p></dd>
+<dd><p>Number of burn-in iterations (default = 20% of <code>n.iter</code>).</p></dd>
 
 
 <dt id="arg-dsep">dsep<a class="anchor" aria-label="anchor" href="#arg-dsep"></a></dt>
-<dd><p>Logical; perform d-separation independence tests? (default = FALSE).</p></dd>
-
-
-<dt id="arg-variability">variability<a class="anchor" aria-label="anchor" href="#arg-variability"></a></dt>
-<dd><p>Optional specification for variables with measurement error or within-species variability.</p></dd>
+<dd><p>Logical; if <code>TRUE</code>, performs d-separation tests to evaluate the global
+fit of the DAG against the data. Highly recommended for causal validation.</p></dd>
 
 
 <dt id="arg-family">family<a class="anchor" aria-label="anchor" href="#arg-family"></a></dt>
-<dd><p>Optional named character vector specifying the family/distribution for response variables.</p></dd>
-
-
-<dt id="arg-distribution">distribution<a class="anchor" aria-label="anchor" href="#arg-distribution"></a></dt>
-<dd><p>Deprecated alias for <code>family</code>.</p></dd>
+<dd><p>A named character vector specifying the distribution for each response
+(e.g., <code>c(Y = "poisson", M = "gaussian")</code>). Supports "gaussian" (default), "poisson",
+"binomial", "gamma", "lognormal", "bernoulli", "ordinal", and "occupancy".</p></dd>
 
 
 <dt id="arg-latent">latent<a class="anchor" aria-label="anchor" href="#arg-latent"></a></dt>
-<dd><p>Optional character vector of latent (unmeasured) variable names.</p></dd>
-
-
-<dt id="arg-latent-method">latent_method<a class="anchor" aria-label="anchor" href="#arg-latent-method"></a></dt>
-<dd><p>Method for handling latent variables ("correlations" or "explicit").</p></dd>
-
-
-<dt id="arg-standardize-latent">standardize_latent<a class="anchor" aria-label="anchor" href="#arg-standardize-latent"></a></dt>
-<dd><p>Logical; standardize latents to unit variance?</p></dd>
-
-
-<dt id="arg-fix-latent">fix_latent<a class="anchor" aria-label="anchor" href="#arg-fix-latent"></a></dt>
-<dd><p>Identification strategy for latent variables ("loading" or "sign").</p></dd>
+<dd><p>Optional character vector of latent (unmeasured) variables.</p></dd>
 
 
 <dt id="arg-parallel">parallel<a class="anchor" aria-label="anchor" href="#arg-parallel"></a></dt>
-<dd><p>Logical; run chains in parallel? (default = FALSE).</p></dd>
+<dd><p>Logical; if <code>TRUE</code>, runs MCMC chains in parallel.</p></dd>
 
 
 <dt id="arg-n-cores">n.cores<a class="anchor" aria-label="anchor" href="#arg-n-cores"></a></dt>
-<dd><p>Integer; number of CPU cores to use.</p></dd>
-
-
-<dt id="arg-cl">cl<a class="anchor" aria-label="anchor" href="#arg-cl"></a></dt>
-<dd><p>Optional cluster object for parallel execution.</p></dd>
-
-
-<dt id="arg-ic-recompile">ic_recompile<a class="anchor" aria-label="anchor" href="#arg-ic-recompile"></a></dt>
-<dd><p>Logical; recompile model after parallel chains for IC?</p></dd>
+<dd><p>Number of CPU cores for parallel execution.</p></dd>
 
 
 <dt id="arg-random">random<a class="anchor" aria-label="anchor" href="#arg-random"></a></dt>
-<dd><p>Optional formula for global random effects (e.g. ~(1|species)).</p></dd>
+<dd><p>Optional formula for <strong>global random intercepts</strong> (e.g., <code>~(1|Site)</code>).
+Deprecated in favor of inline specification: <code>Y ~ X + (1|Site)</code>.</p></dd>
 
 
 <dt id="arg-levels">levels<a class="anchor" aria-label="anchor" href="#arg-levels"></a></dt>
-<dd><p>(Hierarchical) Named list mapping variables to hierarchy levels.</p></dd>
+<dd><p>(Hierarchical) Optional named list mapping variables to their home levels.
+If omitted, <code>because</code> will attempt to auto-detect levels based on column availability.</p></dd>
 
 
 <dt id="arg-hierarchy">hierarchy<a class="anchor" aria-label="anchor" href="#arg-hierarchy"></a></dt>
-<dd><p>(Hierarchical) Topological ordering of levels (e.g., "site &gt; individual").</p></dd>
+<dd><p>(Hierarchical) A string defining the nesting structure (e.g., <code>"site &gt; individual"</code>).
+Semicolons separate parallel branches (e.g., <code>"site &gt; obs; species &gt; obs"</code>).</p></dd>
 
 
 <dt id="arg-link-vars">link_vars<a class="anchor" aria-label="anchor" href="#arg-link-vars"></a></dt>
-<dd><p>(Hierarchical) Named vector specifying variables used to link levels.</p></dd>
-
-
-<dt id="arg-fix-residual-variance">fix_residual_variance<a class="anchor" aria-label="anchor" href="#arg-fix-residual-variance"></a></dt>
-<dd><p>Optional named vector for fixing residual variances.</p></dd>
-
-
-<dt id="arg-priors">priors<a class="anchor" aria-label="anchor" href="#arg-priors"></a></dt>
-<dd><p>Optional named list of custom priors.</p></dd>
-
-
-<dt id="arg-reuse-models">reuse_models<a class="anchor" aria-label="anchor" href="#arg-reuse-models"></a></dt>
-<dd><p>List of previously fitted 'because' models to scan for reusable results.</p></dd>
-
-
-<dt id="arg-expand-ordered">expand_ordered<a class="anchor" aria-label="anchor" href="#arg-expand-ordered"></a></dt>
-<dd><p>Logical; expand ordered factors into polynomial contrasts?</p></dd>
-
-
-<dt id="arg-structure-multi">structure_multi<a class="anchor" aria-label="anchor" href="#arg-structure-multi"></a></dt>
-<dd><p>List of multiple structures for uncertainty.</p></dd>
-
-
-<dt id="arg-structure-levels">structure_levels<a class="anchor" aria-label="anchor" href="#arg-structure-levels"></a></dt>
-<dd><p>Mapping of structures to hierarchy levels.</p></dd>
+<dd><p>(Hierarchical) A named character vector specifying the columns used to
+link data frames across levels (e.g., <code>c(site = "SiteID")</code>).</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional arguments passed to because_model.</p></dd>
+<dd><p>Additional arguments passed to the underlying model engines.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -292,16 +216,30 @@ identifiers (e.g., species names). If NULL, uses row names.</p></dd>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># A simple linear regression</span></span></span>
-<span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>, X <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">because</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">X</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">df</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># 1. Simple Path Model</span></span></span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>, M <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>, X <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">eqs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">M</span> <span class="op">~</span> <span class="va">X</span>, <span class="va">Y</span> <span class="op">~</span> <span class="va">M</span> <span class="op">+</span> <span class="va">X</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">because</span><span class="op">(</span><span class="va">eqs</span>, data <span class="op">=</span> <span class="va">df</span>, dsep <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># A mediation model</span></span></span>
-<span class="r-in"><span><span class="va">equations</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="va">M</span> <span class="op">~</span> <span class="va">X</span>,</span></span>
-<span class="r-in"><span>  <span class="va">Y</span> <span class="op">~</span> <span class="va">M</span> <span class="op">+</span> <span class="va">X</span></span></span>
+<span class="r-in"><span><span class="co"># 2. Hierarchical Model (Auto-detection)</span></span></span>
+<span class="r-in"><span><span class="co"># Suppose we have year-level data and individual-level data</span></span></span>
+<span class="r-in"><span><span class="va">year_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Year <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, Temp <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">ind_df</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, each<span class="op">=</span><span class="fl">10</span><span class="op">)</span>, Mass <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">50</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>yr <span class="op">=</span> <span class="va">year_df</span>, ind <span class="op">=</span> <span class="va">ind_df</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Mass depends on Temp (cross-level link via Year)</span></span></span>
+<span class="r-in"><span><span class="va">fit_h</span> <span class="op">&lt;-</span> <span class="fu">because</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  equations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">Mass</span> <span class="op">~</span> <span class="va">Temp</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  data      <span class="op">=</span> <span class="va">data_list</span>,</span></span>
+<span class="r-in"><span>  hierarchy <span class="op">=</span> <span class="st">"yr &gt; ind"</span>,</span></span>
+<span class="r-in"><span>  link_vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>yr <span class="op">=</span> <span class="st">"Year"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">fit_med</span> <span class="op">&lt;-</span> <span class="fu">because</span><span class="op">(</span><span class="va">equations</span>, data <span class="op">=</span> <span class="va">df</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># 3. Random Intercepts (lme4-style)</span></span></span>
+<span class="r-in"><span><span class="co"># Note: Grouping variables (Site) must be in the data</span></span></span>
+<span class="r-in"><span><span class="va">df</span><span class="op">$</span><span class="va">Site</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span>, each<span class="op">=</span><span class="fl">10</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit_re</span> <span class="op">&lt;-</span> <span class="fu">because</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">X</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Site</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">df</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

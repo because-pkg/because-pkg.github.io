@@ -55,166 +55,91 @@ because(
 
 - equations:
 
-  A list of model formulas describing the structural equation model.
+  A list of R formulas describing the structural model. Each formula
+  represents a causal path (e.g., `Y ~ X1 + X2`). Categorical predictors
+  are automatically handled.
 
 - data:
 
-  A data.frame containing the variables in the model. If using
-  hierarchical models, this can also be a list of data frames.
+  A data frame containing all variables. For **hierarchical models**,
+  this must be a named list of data frames (one per level).
 
 - id_col:
 
-  Character string specifying the column name containing unit
-  identifiers (e.g., species names). If NULL, uses row names.
+  Character string for the column identifying units (e.g. species
+  names).
 
 - structure:
 
-  Optional structural object (e.g., matrix, tree) for correlated
-  residuals.
+  Optional covariance structure (e.g., a phylogenetic tree or spatial
+  matrix) for modeling correlated residuals.
 
 - engine:
 
-  Bayesian engine to use: "jags" (default) or "nimble".
-
-- monitor:
-
-  Character; "interpretable" (default) or "all" parameters to monitor.
-
-- nimble_samplers:
-
-  Optional named list of user-specified NIMBLE samplers.
+  Bayesian backend: `"jags"` (default) or `"nimble"`.
 
 - n.chains:
 
-  Integer; number of MCMC chains (default = 3).
+  Number of independent MCMC chains (default = 3).
 
 - n.iter:
 
-  Integer; total iterations per chain (default = 12500).
+  Total MCMC iterations per chain (default = 12500).
 
 - n.burnin:
 
-  Integer; burn-in iterations (default = 20% of n.iter).
-
-- n.thin:
-
-  Integer; thinning interval (default = 10).
-
-- DIC:
-
-  Logical; compute DIC? (default = TRUE).
-
-- WAIC:
-
-  Logical; compute WAIC? (default = FALSE).
-
-- n.adapt:
-
-  Integer; adaptation iterations (default = 20% of n.iter).
-
-- quiet:
-
-  Logical; suppress MCMC progress messages? (default = FALSE).
-
-- verbose:
-
-  Logical; print verbose debug information? (default = FALSE).
+  Number of burn-in iterations (default = 20% of `n.iter`).
 
 - dsep:
 
-  Logical; perform d-separation independence tests? (default = FALSE).
-
-- variability:
-
-  Optional specification for variables with measurement error or
-  within-species variability.
+  Logical; if `TRUE`, performs d-separation tests to evaluate the global
+  fit of the DAG against the data. Highly recommended for causal
+  validation.
 
 - family:
 
-  Optional named character vector specifying the family/distribution for
-  response variables.
-
-- distribution:
-
-  Deprecated alias for `family`.
+  A named character vector specifying the distribution for each response
+  (e.g., `c(Y = "poisson", M = "gaussian")`). Supports "gaussian"
+  (default), "poisson", "binomial", "gamma", "lognormal", "bernoulli",
+  "ordinal", and "occupancy".
 
 - latent:
 
-  Optional character vector of latent (unmeasured) variable names.
-
-- latent_method:
-
-  Method for handling latent variables ("correlations" or "explicit").
-
-- standardize_latent:
-
-  Logical; standardize latents to unit variance?
-
-- fix_latent:
-
-  Identification strategy for latent variables ("loading" or "sign").
+  Optional character vector of latent (unmeasured) variables.
 
 - parallel:
 
-  Logical; run chains in parallel? (default = FALSE).
+  Logical; if `TRUE`, runs MCMC chains in parallel.
 
 - n.cores:
 
-  Integer; number of CPU cores to use.
-
-- cl:
-
-  Optional cluster object for parallel execution.
-
-- ic_recompile:
-
-  Logical; recompile model after parallel chains for IC?
+  Number of CPU cores for parallel execution.
 
 - random:
 
-  Optional formula for global random effects (e.g. ~(1\|species)).
+  Optional formula for **global random intercepts** (e.g., `~(1|Site)`).
+  Deprecated in favor of inline specification: `Y ~ X + (1|Site)`.
 
 - levels:
 
-  (Hierarchical) Named list mapping variables to hierarchy levels.
+  (Hierarchical) Optional named list mapping variables to their home
+  levels. If omitted, `because` will attempt to auto-detect levels based
+  on column availability.
 
 - hierarchy:
 
-  (Hierarchical) Topological ordering of levels (e.g., "site \>
-  individual").
+  (Hierarchical) A string defining the nesting structure (e.g.,
+  `"site > individual"`). Semicolons separate parallel branches (e.g.,
+  `"site > obs; species > obs"`).
 
 - link_vars:
 
-  (Hierarchical) Named vector specifying variables used to link levels.
-
-- fix_residual_variance:
-
-  Optional named vector for fixing residual variances.
-
-- priors:
-
-  Optional named list of custom priors.
-
-- reuse_models:
-
-  List of previously fitted 'because' models to scan for reusable
-  results.
-
-- expand_ordered:
-
-  Logical; expand ordered factors into polynomial contrasts?
-
-- structure_multi:
-
-  List of multiple structures for uncertainty.
-
-- structure_levels:
-
-  Mapping of structures to hierarchy levels.
+  (Hierarchical) A named character vector specifying the columns used to
+  link data frames across levels (e.g., `c(site = "SiteID")`).
 
 - ...:
 
-  Additional arguments passed to because_model.
+  Additional arguments passed to the underlying model engines.
 
 ## Value
 
@@ -252,15 +177,29 @@ An object of class `"because"` containing:
 
 ``` r
 if (FALSE) { # \dontrun{
-# A simple linear regression
-df <- data.frame(Y = rnorm(100), X = rnorm(100))
-fit <- because(list(Y ~ X), data = df)
+# 1. Simple Path Model
+df <- data.frame(Y = rnorm(100), M = rnorm(100), X = rnorm(100))
+eqs <- list(M ~ X, Y ~ M + X)
+fit <- because(eqs, data = df, dsep = TRUE)
+summary(fit)
 
-# A mediation model
-equations <- list(
-  M ~ X,
-  Y ~ M + X
+# 2. Hierarchical Model (Auto-detection)
+# Suppose we have year-level data and individual-level data
+year_df <- data.frame(Year = 1:5, Temp = rnorm(5))
+ind_df  <- data.frame(Year = rep(1:5, each=10), Mass = rnorm(50))
+data_list <- list(yr = year_df, ind = ind_df)
+
+# Mass depends on Temp (cross-level link via Year)
+fit_h <- because(
+  equations = list(Mass ~ Temp),
+  data      = data_list,
+  hierarchy = "yr > ind",
+  link_vars = c(yr = "Year")
 )
-fit_med <- because(equations, data = df)
+
+# 3. Random Intercepts (lme4-style)
+# Note: Grouping variables (Site) must be in the data
+df$Site <- rep(1:10, each=10)
+fit_re <- because(list(Y ~ X + (1|Site)), data = df)
 } # }
 ```

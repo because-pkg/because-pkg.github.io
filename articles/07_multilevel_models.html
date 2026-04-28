@@ -94,34 +94,34 @@ those years.</p>
 When data are supplied as a <strong>named list of data frames</strong>,
 one per hierarchical level, the engine:</p>
 <ol style="list-style-type: decimal">
-<li>Correctly maps each variable to its natural level.</li>
-<li>Uses the <strong>appropriate degrees of freedom</strong> for each
+<li><p>Correctly maps each variable to its natural level.</p></li>
+<li><p>Uses the <strong>appropriate degrees of freedom</strong> for each
 d-separation test: year-level tests use
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>N</mi><mrow><mi>y</mi><mi>e</mi><mi>a</mi><mi>r</mi><mi>s</mi></mrow></msub><annotation encoding="application/x-tex">N_{years}</annotation></semantics></math>,
 individual-level tests use
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>N</mi><mrow><mi>i</mi><mi>n</mi><mi>d</mi><mi>i</mi><mi>v</mi><mi>i</mi><mi>d</mi><mi>u</mi><mi>a</mi><mi>l</mi><mi>s</mi></mrow></msub><annotation encoding="application/x-tex">N_{individuals}</annotation></semantics></math>,
 and cross-level tests are fitted at the lower level using whatever
 random effects the researcher specified in the structural
-equations.</li>
-<li>Skips tests that are trivially satisfied by the design of the
-hierarchy (e.g., orthogonal branches that share no observations).</li>
+equations.</p></li>
+<li><p>Skips tests that are trivially satisfied by the design of the
+hierarchy (e.g., orthogonal branches that share no
+observations).</p></li>
 </ol>
 </div>
 <div class="section level2">
-<h2 id="a-motivating-example-climate-resources-and-reproductive-success">A Motivating Example: Climate, Resources, and Reproductive
-Success<a class="anchor" aria-label="anchor" href="#a-motivating-example-climate-resources-and-reproductive-success"></a>
+<h2 id="example-climate-resources-and-reproductive-success">Example: Climate, Resources, and Reproductive Success<a class="anchor" aria-label="anchor" href="#example-climate-resources-and-reproductive-success"></a>
 </h2>
-<p>Consider a long-term monitoring study of a wild ungulate population.
+<p>Consider a long-term monitoring study of a wild mammal population.
 Over 10 years, ecologists record:</p>
 <ul>
 <li>
 <strong>Year-level</strong> variables (1 row per year): mean winter
-temperature (<code>Temp</code>), annual primary productivity
+temperature (<code>Temp</code>) and annual primary productivity
 (<code>NDVI</code>).</li>
 <li>
 <strong>Individual-level</strong> variables (multiple rows per
-individual per year): body mass (<code>Mass</code>), number of offspring
-(<code>Offspring</code>).</li>
+individual per year): body mass (<code>Mass</code>) and number of
+offspring (<code>Offspring</code>).</li>
 </ul>
 <p>The causal hypothesis is:</p>
 <ul>
@@ -147,7 +147,7 @@ condition.</p>
 <span><span class="fu"><a href="../reference/plot_dag.html">plot_dag</a></span><span class="op">(</span><span class="va">dag</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="data-preparation-and-rules">Data Preparation and Rules<a class="anchor" aria-label="anchor" href="#data-preparation-and-rules"></a>
+<h2 id="data-preparation">Data Preparation<a class="anchor" aria-label="anchor" href="#data-preparation"></a>
 </h2>
 <p>To use the hierarchical modeling features, your data must be
 structured as a <strong>named list of data frames</strong>, where each
@@ -156,8 +156,8 @@ list element corresponds to a level in your hierarchy.</p>
 <h3 id="the-one-home-rule">The “One Home” Rule<a class="anchor" aria-label="anchor" href="#the-one-home-rule"></a>
 </h3>
 <p>Every variable in your model (predictors and responses) must live in
-<strong>exactly one</strong> data frame—the one corresponding to the
-level where it was measured.</p>
+<strong>exactly one</strong> data frame (the one corresponding to the
+level where it was measured).</p>
 <ul>
 <li>
 <strong>Year-level variables</strong> (like <code>Temp</code>)
@@ -183,16 +183,13 @@ frames but are not part of the causal model.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="step-1-simulate-hierarchical-data">Step 1: Simulate Hierarchical Data<a class="anchor" aria-label="anchor" href="#step-1-simulate-hierarchical-data"></a>
+<h2 id="simulate-hierarchical-example-data">Simulate Hierarchical Example Data<a class="anchor" aria-label="anchor" href="#simulate-hierarchical-example-data"></a>
 </h2>
-<p>We simulate a 10-year study with 30 individuals per year. Note how we
-keep the year-level and individual-level variables strictly
-separated.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">n_years</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
-<span><span class="va">n_ind</span>   <span class="op">&lt;-</span> <span class="fl">30</span></span>
+<span><span class="va">n_ind</span>   <span class="op">&lt;-</span> <span class="fl">30</span>   <span class="co"># 10 individuals followed over time</span></span>
 <span></span>
 <span><span class="co"># --- Year-level data ---</span></span>
 <span><span class="va">year_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
@@ -200,32 +197,35 @@ separated.</p>
 <span>  Temp <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n_years</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
 <span>  NDVI <span class="op">=</span> <span class="cn">NA_real_</span></span>
 <span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># NDVI depends on Temp at the year level</span></span>
 <span><span class="va">year_df</span><span class="op">$</span><span class="va">NDVI</span> <span class="op">&lt;-</span> <span class="fl">0.7</span> <span class="op">*</span> <span class="va">year_df</span><span class="op">$</span><span class="va">Temp</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n_years</span>, <span class="fl">0</span>, <span class="fl">0.5</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># --- Individual-level data ---</span></span>
-<span><span class="va">ind_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  ID         <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="op">(</span><span class="va">n_years</span> <span class="op">*</span> <span class="va">n_ind</span><span class="op">)</span>,</span>
-<span>  Year       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">n_years</span>, each <span class="op">=</span> <span class="va">n_ind</span><span class="op">)</span>,    <span class="co"># &lt;-- linking variable</span></span>
-<span>  Mass       <span class="op">=</span> <span class="cn">NA_real_</span>,</span>
-<span>  Offspring  <span class="op">=</span> <span class="cn">NA_integer_</span></span>
+<span><span class="co"># --- Individual-level (Repeated Measures) data ---</span></span>
+<span><span class="co"># We use expand.grid to ensure every individual is measured every year</span></span>
+<span><span class="va">ind_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html" class="external-link">expand.grid</a></span><span class="op">(</span></span>
+<span>  ID   <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="va">n_ind</span>,</span>
+<span>  Year <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="va">n_years</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># For simulation, we look up year-level values, </span></span>
-<span><span class="co"># but we DO NOT store them in ind_df</span></span>
+<span><span class="co"># For simulation, each individual has a unique "personality" (random effect)</span></span>
+<span><span class="co"># that stays constant across years.</span></span>
+<span><span class="va">ind_personality</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n_ind</span>, <span class="fl">0</span>, <span class="fl">0.5</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">ind_personality</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="va">n_ind</span></span>
+<span></span>
+<span><span class="co"># Look up year-level and individual-level components</span></span>
 <span><span class="va">temp_lookup</span> <span class="op">&lt;-</span> <span class="va">year_df</span><span class="op">$</span><span class="va">Temp</span><span class="op">[</span><span class="va">ind_df</span><span class="op">$</span><span class="va">Year</span><span class="op">]</span></span>
 <span><span class="va">ndvi_lookup</span> <span class="op">&lt;-</span> <span class="va">year_df</span><span class="op">$</span><span class="va">NDVI</span><span class="op">[</span><span class="va">ind_df</span><span class="op">$</span><span class="va">Year</span><span class="op">]</span></span>
+<span><span class="va">pers_lookup</span> <span class="op">&lt;-</span> <span class="va">ind_personality</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">ind_df</span><span class="op">$</span><span class="va">ID</span><span class="op">)</span><span class="op">]</span></span>
 <span></span>
-<span><span class="co"># Mass depends on year-level NDVI and Temp</span></span>
+<span><span class="co"># Mass depends on year-level NDVI/Temp AND the individual's personality</span></span>
 <span><span class="va">ind_df</span><span class="op">$</span><span class="va">Mass</span> <span class="op">&lt;-</span> <span class="op">(</span></span>
 <span>  <span class="fl">1.2</span> <span class="op">*</span> <span class="va">ndvi_lookup</span> <span class="op">+</span> </span>
 <span>  <span class="fl">0.4</span> <span class="op">*</span> <span class="va">temp_lookup</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n_years</span> <span class="op">*</span> <span class="va">n_ind</span>, <span class="fl">0</span>, <span class="fl">0.8</span><span class="op">)</span></span>
+<span>  <span class="va">pers_lookup</span> <span class="op">+</span>        <span class="co"># &lt;-- Individual-level consistency</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">ind_df</span><span class="op">)</span>, <span class="fl">0</span>, <span class="fl">0.4</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Offspring depends on individual Mass</span></span>
-<span><span class="va">ind_df</span><span class="op">$</span><span class="va">Offspring</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">n_years</span> <span class="op">*</span> <span class="va">n_ind</span>, lambda <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fl">0.5</span> <span class="op">+</span> <span class="fl">0.6</span> <span class="op">*</span> <span class="va">ind_df</span><span class="op">$</span><span class="va">Mass</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Offspring depends on Mass</span></span>
+<span><span class="va">ind_df</span><span class="op">$</span><span class="va">Offspring</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">ind_df</span><span class="op">)</span>, lambda <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fl">0.5</span> <span class="op">+</span> <span class="fl">0.6</span> <span class="op">*</span> <span class="va">ind_df</span><span class="op">$</span><span class="va">Mass</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Combine into a hierarchical list</span></span>
 <span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
@@ -237,202 +237,36 @@ separated.</p>
 <h2 id="supplying-multilevel-data-to-because">Supplying Multilevel Data to <code>because</code><a class="anchor" aria-label="anchor" href="#supplying-multilevel-data-to-because"></a>
 </h2>
 <p>Pass the data as a <strong>named list of data frames</strong>. The
-names define the level labels that the engine uses to assign
+names define the level labels that <code>because</code> uses to assign
 variables.</p>
-</div>
-<div class="section level2">
-<h2 id="random-effects-in-because">Random Effects in <code>because</code><a class="anchor" aria-label="anchor" href="#random-effects-in-because"></a>
-</h2>
-<p><code>because</code> uses the same <code>(1|grouping_variable)</code>
-notation as <code>lme4</code>’s <code>lmer()</code> /
-<code>glmer()</code> to specify <strong>random intercepts</strong>. This
-will be immediately familiar if you have used mixed-effects models in
-R.</p>
-<p>A random intercept <code>(1|Group)</code> tells <code>because</code>
-that observations sharing the same value of <code>Group</code> are not
-independent — each group gets its own intercept drawn from a common
-Normal distribution:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>u</mi><mi>g</mi></msub><mo>∼</mo><mtext mathvariant="normal">Normal</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><msubsup><mi>σ</mi><mi>u</mi><mn>2</mn></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="1.0em"></mspace><mi>g</mi><mo>=</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>G</mi></mrow><annotation encoding="application/x-tex">u_g \sim \text{Normal}(0, \sigma^2_u), \quad g = 1, \dots, G</annotation></semantics></math></p>
-<p>with the precision
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mi>u</mi></msub><mo>=</mo><mn>1</mn><mi>/</mi><msubsup><mi>σ</mi><mi>u</mi><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">\tau_u = 1/\sigma^2_u</annotation></semantics></math>
-estimated from the data.</p>
-<blockquote>
-<p>[!NOTE] <strong>Random slopes</strong> (e.g. <code>(X|Group)</code>)
-are <strong>not yet implemented</strong>. Only random intercepts
-<code>(1|Group)</code> are currently supported. The syntax deliberately
-mirrors <code>lme4</code> so that random slopes can be added as a
-natural extension in a future release without any change to the user
-interface.</p>
-</blockquote>
-<div class="section level3">
-<h3 id="syntax-inline-in-the-equation">Syntax: inline in the equation<a class="anchor" aria-label="anchor" href="#syntax-inline-in-the-equation"></a>
-</h3>
-<p>Place <code>(1|Group)</code> directly inside any structural equation,
-just as you would in <code>lmer()</code>:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://because-pkg.github.io/because/">because</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Individuals nested within Sites — Site gets a random intercept in Y</span></span>
-<span><span class="va">equations</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  <span class="va">Y</span> <span class="op">~</span> <span class="va">X</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Site</span><span class="op">)</span>,</span>
-<span>  <span class="va">Z</span> <span class="op">~</span> <span class="va">Y</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because.html">because</a></span><span class="op">(</span>equations <span class="op">=</span> <span class="va">equations</span>, data <span class="op">=</span> <span class="va">my_data</span><span class="op">)</span></span></code></pre></div>
-<p>The random term is <strong>equation-specific</strong>: here only
-<code>Y</code> gets the Site random intercept. <code>Z ~ Y</code> is
-fitted without it (assuming no residual site-level variation in
-<code>Z</code> beyond what is mediated through <code>Y</code>).</p>
-<p>You can specify different grouping structures for different
-responses:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">equations</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  <span class="va">Mass</span>      <span class="op">~</span> <span class="va">NDVI</span> <span class="op">+</span> <span class="va">Temp</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Year</span><span class="op">)</span>,    <span class="co"># Year random intercept for Mass</span></span>
-<span>  <span class="va">Offspring</span> <span class="op">~</span> <span class="va">Mass</span>  <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Year</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">ID</span><span class="op">)</span>  <span class="co"># Year AND individual random intercepts</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="syntax-global-random-argument">Syntax: global <code>random</code> argument<a class="anchor" aria-label="anchor" href="#syntax-global-random-argument"></a>
-</h3>
-<p>When the same random effect applies to <strong>all</strong> response
-variables, the <code>random</code> argument is a convenient
-shorthand:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because.html">because</a></span><span class="op">(</span></span>
-<span>  equations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">X</span>, <span class="va">Z</span> <span class="op">~</span> <span class="va">Y</span><span class="op">)</span>,</span>
-<span>  data      <span class="op">=</span> <span class="va">my_data</span>,</span>
-<span>  random    <span class="op">=</span> <span class="op">~</span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Site</span><span class="op">)</span>          <span class="co"># (1|Site) added to every equation</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Internally this is identical to embedding <code>(1|Site)</code> in
-each equation.</p>
-</div>
-<div class="section level3">
-<h3 id="when-to-include-a-random-effect">When to include a random effect<a class="anchor" aria-label="anchor" href="#when-to-include-a-random-effect"></a>
-</h3>
-<table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
-<thead><tr class="header">
-<th align="left">Situation</th>
-<th align="left">Include <code>(1|Group)</code>?</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td align="left">Observations share a year-level environment and year
-predictors <strong>do not</strong> fully capture year variation</td>
-<td align="left"><strong>Yes</strong></td>
-</tr>
-<tr class="even">
-<td align="left">Year-level predictors (e.g. Temp, NDVI) fully explain
-year variation</td>
-<td align="left">Not necessary</td>
-</tr>
-<tr class="odd">
-<td align="left">Repeated measures on the same individual across
-time</td>
-<td align="left">
-<strong>Yes</strong> — <code>(1|ID)</code>
-</td>
-</tr>
-<tr class="even">
-<td align="left">Balanced, fully crossed design with all levels as fixed
-effects</td>
-<td align="left">Not needed</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p>[!IMPORTANT] Random effects specified in the structural equations are
-automatically carried forward into the d-separation sub-tests for all
-equations they apply to. This keeps the independence tests internally
-consistent with the structural model — see the <a href="#cross-level-tests">Cross-level tests</a> section below.</p>
-</blockquote>
-</div>
-<div class="section level3">
-<h3 id="specifying-random-effects">Specifying random effects<a class="anchor" aria-label="anchor" href="#specifying-random-effects"></a>
-</h3>
-<p>If you believe there is residual year-level variation beyond what
-<code>Temp</code> and <code>NDVI</code> explain (unmeasured confounders
-such as snow depth or disease pressure), you should include a year-level
-random effect. There are two equivalent syntaxes — choose the one that
-fits your workflow:</p>
-<p><strong>Option A — inline in the equation (recommended for
-equation-specific effects):</strong></p>
-<p>Just as in <code>lme4</code>’s <code>lmer()</code>, you can embed
-<code>(1|Group)</code> terms directly inside the formula. This is the
-most flexible approach when different equations require different
-grouping structures:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">equations_re</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  <span class="va">NDVI</span>      <span class="op">~</span> <span class="va">Temp</span>,</span>
-<span>  <span class="va">Mass</span>      <span class="op">~</span> <span class="va">NDVI</span> <span class="op">+</span> <span class="va">Temp</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Year</span><span class="op">)</span>,    <span class="co"># year random intercept for Mass only</span></span>
-<span>  <span class="va">Offspring</span> <span class="op">~</span> <span class="va">Mass</span>  <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Year</span><span class="op">)</span>           <span class="co"># year random intercept for Offspring</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">fit_re</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because.html">because</a></span><span class="op">(</span></span>
-<span>  equations  <span class="op">=</span> <span class="va">equations_re</span>,</span>
-<span>  data       <span class="op">=</span> <span class="va">data_list</span>,</span>
-<span>  family     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>Offspring <span class="op">=</span> <span class="st">"poisson"</span><span class="op">)</span>,</span>
-<span>  hierarchy  <span class="op">=</span> <span class="st">"year &gt; individual"</span>,</span>
-<span>  link_vars  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>year <span class="op">=</span> <span class="st">"Year"</span><span class="op">)</span>,</span>
-<span>  dsep       <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  n.iter     <span class="op">=</span> <span class="fl">15000</span>,</span>
-<span>  n.burnin   <span class="op">=</span> <span class="fl">3000</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p><strong>Option B — global <code>random</code> argument (convenient
-when all equations share the same grouping):</strong></p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_re2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because.html">because</a></span><span class="op">(</span></span>
-<span>  equations  <span class="op">=</span> <span class="va">equations</span>,</span>
-<span>  data       <span class="op">=</span> <span class="va">data_list</span>,</span>
-<span>  family     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>Offspring <span class="op">=</span> <span class="st">"poisson"</span><span class="op">)</span>,</span>
-<span>  hierarchy  <span class="op">=</span> <span class="st">"year &gt; individual"</span>,</span>
-<span>  link_vars  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>year <span class="op">=</span> <span class="st">"Year"</span><span class="op">)</span>,</span>
-<span>  random     <span class="op">=</span> <span class="op">~</span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Year</span><span class="op">)</span>,               <span class="co"># applied to ALL equations</span></span>
-<span>  dsep       <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  n.iter     <span class="op">=</span> <span class="fl">15000</span>,</span>
-<span>  n.burnin   <span class="op">=</span> <span class="fl">3000</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Both syntaxes are internally parsed into the same JAGS model code.
-The inline version gives you equation-level control; the global version
-is a shorthand when the grouping structure is uniform.</p>
-<blockquote>
-<p>[!NOTE] Random intercepts specified by the user — whether inline or
-global — are propagated into the d-separation sub-tests for all
-equations they apply to. This ensures the independence tests reflect
-exactly the same random structure as the structural model, maintaining
-internal consistency.</p>
-</blockquote>
-<p>For the worked example below we proceed without the year random
-effect, assuming <code>Temp</code> and <code>NDVI</code> fully capture
-year-level variation:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  year       <span class="op">=</span> <span class="va">year_df</span>,</span>
 <span>  individual <span class="op">=</span> <span class="va">ind_df</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">equations</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>We specify the structural equations as usual:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">equations</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="va">NDVI</span>      <span class="op">~</span> <span class="va">Temp</span>,</span>
 <span>  <span class="va">Mass</span>      <span class="op">~</span> <span class="va">NDVI</span> <span class="op">+</span> <span class="va">Temp</span>,</span>
 <span>  <span class="va">Offspring</span> <span class="op">~</span> <span class="va">Mass</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because.html">because</a></span><span class="op">(</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>and finally we can fit the model with <code><a href="../reference/because.html">because()</a></code>,
+specifying the <code>hierarchy</code> and the variable linking the two
+dataset (ie present in both datasets) with the <code>link_vars</code>
+argument.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because.html">because</a></span><span class="op">(</span></span>
 <span>  equations  <span class="op">=</span> <span class="va">equations</span>,</span>
 <span>  data       <span class="op">=</span> <span class="va">data_list</span>,</span>
 <span>  family     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>Offspring <span class="op">=</span> <span class="st">"poisson"</span><span class="op">)</span>,</span>
 <span>  hierarchy  <span class="op">=</span> <span class="st">"year &gt; individual"</span>,</span>
 <span>  link_vars  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>year <span class="op">=</span> <span class="st">"Year"</span><span class="op">)</span>,</span>
-<span>  dsep       <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  n.iter     <span class="op">=</span> <span class="fl">15000</span>,</span>
 <span>  n.burnin   <span class="op">=</span> <span class="fl">3000</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-</div>
 </div>
 <div class="section level2">
 <h2 id="understanding-the-hierarchical-data-structure">Understanding the Hierarchical Data Structure<a class="anchor" aria-label="anchor" href="#understanding-the-hierarchical-data-structure"></a>
@@ -485,6 +319,144 @@ to:</p>
 <td align="left"><code>Offspring</code></td>
 <td align="left">individual</td>
 <td align="left">300</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level2">
+<h2 id="random-effects-in-because">Random Effects in <code>because</code><a class="anchor" aria-label="anchor" href="#random-effects-in-because"></a>
+</h2>
+<p><code>because</code> uses the same <code>(1|grouping_variable)</code>
+notation as <code>lme4</code>’s <code>lmer()</code> /
+<code>glmer()</code> to specify <strong>random intercepts</strong>. This
+will be immediately familiar if you have used mixed-effects models in
+R.</p>
+<p>A random intercept <code>(1|Group)</code> tells <code>because</code>
+that observations sharing the same value of <code>Group</code> are not
+independent — each group gets its own intercept drawn from a common
+Normal distribution:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>u</mi><mi>g</mi></msub><mo>∼</mo><mtext mathvariant="normal">Normal</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><msubsup><mi>σ</mi><mi>u</mi><mn>2</mn></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="1.0em"></mspace><mi>g</mi><mo>=</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>G</mi></mrow><annotation encoding="application/x-tex">u_g \sim \text{Normal}(0, \sigma^2_u), \quad g = 1, \dots, G</annotation></semantics></math></p>
+<p>with the precision
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mi>u</mi></msub><mo>=</mo><mn>1</mn><mi>/</mi><msubsup><mi>σ</mi><mi>u</mi><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">\tau_u = 1/\sigma^2_u</annotation></semantics></math>
+estimated from the data.</p>
+<blockquote>
+<p>[!NOTE] <strong>Random slopes</strong> (e.g. <code>(X|Group)</code>)
+are <strong>not yet implemented</strong>. Only random intercepts
+<code>(1|Group)</code> are currently supported. The syntax deliberately
+mirrors <code>lme4</code> so that random slopes can be added as a
+natural extension in a future release without any change to the user
+interface.</p>
+</blockquote>
+<div class="section level3">
+<h3 id="syntax-option-a-inline-in-the-equation">Syntax option A: inline in the equation<a class="anchor" aria-label="anchor" href="#syntax-option-a-inline-in-the-equation"></a>
+</h3>
+<p>Place <code>(1|Group)</code> directly inside any structural equation,
+just as you would in <code>lmer()</code>. You can specify different
+grouping structures for different responses: For example, if you believe
+there is year-level variation in <code>Mass</code> that is not fully
+explained by <code>Temp</code> and <code>NDVI</code>, you can
+specify:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">equations_re</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="va">NDVI</span>      <span class="op">~</span> <span class="va">Temp</span>,  </span>
+<span>  <span class="va">Mass</span> <span class="op">~</span> <span class="va">NDVI</span> <span class="op">+</span> <span class="va">Temp</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Year</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">ID</span><span class="op">)</span>,    <span class="co"># Year random intercept for Mass</span></span>
+<span>  <span class="va">Offspring</span> <span class="op">~</span> <span class="va">Mass</span>  <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Year</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">ID</span><span class="op">)</span>  <span class="co"># Year AND individual random intercepts</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The random terms are <strong>equation-specific</strong>: here only
+<code>Offspring</code> gets the individual random intercept
+<code>(1|ID)</code>, while both <code>Mass</code> and
+<code>Offspring</code> get the year random intercept
+<code>(1|Year)</code>.</p>
+<p>You would then run this model like this:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<span> <span class="va">fit_re</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because.html">because</a></span><span class="op">(</span></span>
+<span>  equations  <span class="op">=</span> <span class="va">equations_re</span>,</span>
+<span>  data       <span class="op">=</span> <span class="va">data_list</span>,</span>
+<span>  family     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>Offspring <span class="op">=</span> <span class="st">"poisson"</span><span class="op">)</span>,</span>
+<span>  hierarchy  <span class="op">=</span> <span class="st">"year &gt; individual"</span>,</span>
+<span>  link_vars  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>year <span class="op">=</span> <span class="st">"Year"</span><span class="op">)</span>,</span>
+<span>  n.iter     <span class="op">=</span> <span class="fl">15000</span>,</span>
+<span>  n.burnin   <span class="op">=</span> <span class="fl">3000</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_re</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="syntax-option-b-global-random-argument-convenient-when-all-equations-share-the-same-grouping">Syntax option B: global <code>random</code> argument (convenient
+when all equations share the same grouping)**<a class="anchor" aria-label="anchor" href="#syntax-option-b-global-random-argument-convenient-when-all-equations-share-the-same-grouping"></a>
+</h3>
+<p>We could specify the same model as above using the
+<code>random</code> argument to apply the same random structure to all
+equations (in this case the year random intercept applies to both
+equations, while the individual random intercept applies only to
+<code>Offspring</code> because <code>Mass</code> does not have
+<code>(1|ID)</code> in its equation):</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="va">equations_re2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>   <span class="va">NDVI</span>      <span class="op">~</span> <span class="va">Temp</span>,</span>
+<span>  <span class="va">Mass</span> <span class="op">~</span> <span class="va">NDVI</span> <span class="op">+</span> <span class="va">Temp</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">ID</span><span class="op">)</span>,    <span class="co"># Year random intercept for Mass</span></span>
+<span>  <span class="va">Offspring</span> <span class="op">~</span> <span class="va">Mass</span>  <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">ID</span><span class="op">)</span>  <span class="co"># Year AND individual random intercepts</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<span><span class="va">fit_re2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because.html">because</a></span><span class="op">(</span></span>
+<span>  equations  <span class="op">=</span> <span class="va">equations_re2</span>,</span>
+<span>  data       <span class="op">=</span> <span class="va">data_list</span>,</span>
+<span>  family     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>Offspring <span class="op">=</span> <span class="st">"poisson"</span><span class="op">)</span>,</span>
+<span>  hierarchy  <span class="op">=</span> <span class="st">"year &gt; individual"</span>,</span>
+<span>  link_vars  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>year <span class="op">=</span> <span class="st">"Year"</span><span class="op">)</span>,</span>
+<span>  random     <span class="op">=</span> <span class="op">~</span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Year</span><span class="op">)</span>, <span class="co"># applied to ALL equations</span></span>
+<span>  n.iter     <span class="op">=</span> <span class="fl">15000</span>,</span>
+<span>  n.burnin   <span class="op">=</span> <span class="fl">3000</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Both syntaxes are internally parsed into the same JAGS/NIMBLE model
+code. The inline version gives you equation-level control; the global
+version is a shorthand when the grouping structure is uniform.</p>
+<blockquote>
+<p>[!NOTE] Random intercepts specified by the user — whether inline or
+global — are propagated into the d-separation sub-tests for all
+equations they apply to. This ensures the independence tests reflect
+exactly the same random structure as the structural model, maintaining
+internal consistency.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="when-to-include-a-random-effect">When to include a random effect<a class="anchor" aria-label="anchor" href="#when-to-include-a-random-effect"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Situation</th>
+<th align="left">Include <code>(1|Group)</code>?</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Observations share a year-level environment and year
+predictors <strong>do not</strong> fully capture year variation</td>
+<td align="left"><strong>Yes</strong></td>
+</tr>
+<tr class="even">
+<td align="left">Year-level predictors (e.g. Temp, NDVI) fully explain
+year variation</td>
+<td align="left">Not necessary</td>
+</tr>
+<tr class="odd">
+<td align="left">Repeated measures on the same individual across
+time</td>
+<td align="left">
+<strong>Yes</strong> — <code>(1|ID)</code>
+</td>
+</tr>
+<tr class="even">
+<td align="left">Balanced, fully crossed design with all levels as fixed
+effects</td>
+<td align="left">Not needed</td>
 </tr>
 </tbody>
 </table>
