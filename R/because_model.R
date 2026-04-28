@@ -2089,6 +2089,11 @@ because_model <- function(
 
           # 2. Random Effects (Grouped)
           for (r_name in random_structure_names) {
+            # [RELEVANCE CHECK] Only validate and warn if this effect was actually requested 
+            # for this response (either manually or via global random argument).
+            is_requested <- any(vapply(random_terms, function(rt) rt$group == r_name && rt$response == response, logical(1)))
+            if (!is_requested) next
+            
             if (!is_valid_random_level(response, r_name, hierarchical_info)) next
             
             # [UNIFICATION] Skip if handled as a unified structure
@@ -2245,6 +2250,11 @@ because_model <- function(
 
               # 2. Random Group Structures
               for (r_name in random_structure_names) {
+                # [RELEVANCE CHECK] Only validate and warn if this effect was actually requested 
+                # for this response (either manually or via global random argument).
+                is_requested <- any(vapply(random_terms, function(rt) rt$group == r_name && rt$response == response, logical(1)))
+                if (!is_requested) next
+                
                 if (!is_valid_random_level(response, r_name, hierarchical_info)) next
                 
                 s_suffix <- paste0("_", r_name)
@@ -2369,6 +2379,11 @@ because_model <- function(
 
               # 2. Random Groups for Ordinal
               for (r_name in random_structure_names) {
+                # [RELEVANCE CHECK] Only validate and warn if this effect was actually requested 
+                # for this response (either manually or via global random argument).
+                is_requested <- any(vapply(random_terms, function(rt) rt$group == r_name && rt$response == response, logical(1)))
+                if (!is_requested) next
+                
                 if (!is_valid_random_level(response, r_name, hierarchical_info)) next
                 
                 s_suffix <- paste0("_", r_name)
@@ -2471,6 +2486,11 @@ because_model <- function(
 
           # 2. Random Group Structures
           for (r_name in random_structure_names) {
+            # [RELEVANCE CHECK] Only validate and warn if this effect was actually requested 
+            # for this response (either manually or via global random argument).
+            is_requested <- any(vapply(random_terms, function(rt) rt$group == r_name && rt$response == response, logical(1)))
+            if (!is_requested) next
+            
             # [LINEAGE GUARD] Only process valid hierarchical branches
             if (!is_valid_random_level(response, r_name, hierarchical_info)) next
             
