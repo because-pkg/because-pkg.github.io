@@ -53,6 +53,8 @@ jobs:
           # CRAN binary rjags.so hard-codes /usr/local/lib (Intel path); symlink for Apple Silicon runners
           sudo mkdir -p /usr/local/lib
           sudo ln -sf "$(brew --prefix jags)/lib/libjags.4.dylib" /usr/local/lib/libjags.4.dylib
+          # rjags also hard-codes /usr/local/lib/JAGS/modules-4/ for module SOs; symlink the whole dir
+          sudo ln -sf "$(brew --prefix jags)/lib/JAGS" /usr/local/lib/JAGS
 
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
