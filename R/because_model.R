@@ -428,10 +428,6 @@ because_model <- function(
     
     if (!allow_id && dist == "gaussian" && !is.null(h_info$data) && !is.null(grp_lvl) && !is.null(resp_lvl)) {
       # [IDENTIFIABILITY FIX] 
-      # 1. If grouping is at a HIGHER level than the response, it is always valid 
-      #    if there are multiple observations per group in the response data frame.
-      # 2. If grouping is at the SAME level, check for repeated measures.
-      
       resp_df <- h_info$data[[resp_lvl]]
       if (group_var %in% colnames(resp_df)) {
         n_obs <- nrow(resp_df)
@@ -440,16 +436,16 @@ because_model <- function(
           allow_id <- TRUE
         } else {
           if (!quiet) {
-            # [DEDUPLICATION] Only warn once per response-group pair
             warn_id <- paste0("warn_", response, "_", group_var)
             if (!isTRUE(getOption(warn_id))) {
               options(setNames(list(TRUE), warn_id))
               warning(sprintf(
-                "Random effect (1|%s) for Gaussian response '%s' ignored. Identifiability requires repeated measures (multiple observations per %s) at the '%s' level.",
-                group_var, response, group_var, resp_lvl
+                "Random effect (1|%s) for response '%s' ignored: requires repeated measures for identifiability at the '%s' level.",
+                group_var, response, resp_lvl
               ))
             }
           }
+          return(FALSE)
         }
       }
     }
@@ -458,22 +454,20 @@ because_model <- function(
     valid <- is_valid_structure_mapping(grp_lvl, resp_lvl, h_info, allow_identity = allow_id)
     
     if (!valid && !quiet && !is.null(h_info$hierarchy)) {
-       # Don't warn for NDVI/Temp being at Year level if that's where they live
-       # Only warn if they are truly misaligned
-       if (grp_lvl != resp_lvl || !allow_id) {
-         warn_id <- paste0("warn_invalid_", response, "_", group_var)
-         if (!isTRUE(getOption(warn_id))) {
-           options(setNames(list(TRUE), warn_id))
-           warning(sprintf(
-             "Random effect (1|%s) for response '%s' is at an invalid hierarchical level and will be ignored.",
-             group_var, response
-           ))
-         }
+       # Consolidated warning
+       warn_id <- paste0("warn_invalid_", response, "_", group_var)
+       if (!isTRUE(getOption(warn_id))) {
+         options(setNames(list(TRUE), warn_id))
+         warning(sprintf(
+           "Random effect (1|%s) for response '%s' is at an invalid hierarchical level and will be ignored.",
+           group_var, response
+         ))
        }
     }
     
     return(valid)
   }
+
 
 
 
@@ -1949,6 +1943,16 @@ because_model <- function(
 
             # 2. Random Effects (Grouped)
             for (r_name in random_structure_names) {
+              # [STRICT RELEVANCE]
+              is_requested <- FALSE
+              for (rt in random_terms) {
+                if (identical(rt$response, response) && identical(rt$group, r_name)) {
+                  is_requested <- TRUE
+                  break
+                }
+              }
+              if (!is_requested) next
+
               if (!is_valid_random_level(response, r_name, hierarchical_info)) next
               
               # [UNIFICATION] Skip if handled as a unified structure
@@ -2106,9 +2110,15 @@ because_model <- function(
 
           # 2. Random Effects (Grouped)
           for (r_name in random_structure_names) {
-            # [RELEVANCE CHECK] Only validate and warn if this effect was actually requested 
-            # for this response (either manually or via global random argument).
-            is_requested <- any(vapply(random_terms, function(rt) rt$group == r_name && rt$response == response, logical(1)))
+            # [STRICT RELEVANCE] Only proceed if this variable actually requested this group.
+            # This prevents unrelated REs (like ID) from being checked against NDVI.
+            is_requested <- FALSE
+            for (rt in random_terms) {
+              if (identical(rt$response, response) && identical(rt$group, r_name)) {
+                is_requested <- TRUE
+                break
+              }
+            }
             if (!is_requested) next
             
             if (!is_valid_random_level(response, r_name, hierarchical_info)) next
@@ -2267,9 +2277,14 @@ because_model <- function(
 
               # 2. Random Group Structures
               for (r_name in random_structure_names) {
-                # [RELEVANCE CHECK] Only validate and warn if this effect was actually requested 
-                # for this response (either manually or via global random argument).
-                is_requested <- any(vapply(random_terms, function(rt) rt$group == r_name && rt$response == response, logical(1)))
+                # [STRICT RELEVANCE]
+                is_requested <- FALSE
+                for (rt in random_terms) {
+                  if (identical(rt$response, response) && identical(rt$group, r_name)) {
+                    is_requested <- TRUE
+                    break
+                  }
+                }
                 if (!is_requested) next
                 
                 if (!is_valid_random_level(response, r_name, hierarchical_info)) next
@@ -2396,9 +2411,14 @@ because_model <- function(
 
               # 2. Random Groups for Ordinal
               for (r_name in random_structure_names) {
-                # [RELEVANCE CHECK] Only validate and warn if this effect was actually requested 
-                # for this response (either manually or via global random argument).
-                is_requested <- any(vapply(random_terms, function(rt) rt$group == r_name && rt$response == response, logical(1)))
+                # [STRICT RELEVANCE]
+                is_requested <- FALSE
+                for (rt in random_terms) {
+                  if (identical(rt$response, response) && identical(rt$group, r_name)) {
+                    is_requested <- TRUE
+                    break
+                  }
+                }
                 if (!is_requested) next
                 
                 if (!is_valid_random_level(response, r_name, hierarchical_info)) next
@@ -2503,11 +2523,16 @@ because_model <- function(
 
           # 2. Random Group Structures
           for (r_name in random_structure_names) {
-            # [RELEVANCE CHECK] Only validate and warn if this effect was actually requested 
-            # for this response (either manually or via global random argument).
-            is_requested <- any(vapply(random_terms, function(rt) rt$group == r_name && rt$response == response, logical(1)))
+            # [STRICT RELEVANCE]
+            is_requested <- FALSE
+            for (rt in random_terms) {
+              if (identical(rt$response, response) && identical(rt$group, r_name)) {
+                is_requested <- TRUE
+                break
+              }
+            }
             if (!is_requested) next
-            
+
             # [LINEAGE GUARD] Only process valid hierarchical branches
             if (!is_valid_random_level(response, r_name, hierarchical_info)) next
             
@@ -2705,6 +2730,16 @@ because_model <- function(
 
           # Random Group Structures
           for (r_name in random_structure_names) {
+            # [STRICT RELEVANCE]
+            is_requested <- FALSE
+            for (rt in random_terms) {
+              if (identical(rt$response, response) && identical(rt$group, r_name)) {
+                is_requested <- TRUE
+                break
+              }
+            }
+            if (!is_requested) next
+
             # [LINEAGE GUARD] Only process valid hierarchical branches
             if (!is_valid_random_level(response, r_name, hierarchical_info)) next
             
