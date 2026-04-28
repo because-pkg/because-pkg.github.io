@@ -1,0 +1,338 @@
+# Creating Custom Distribution Families
+
+## Introduction
+
+`because` natively supports the most common distribution families
+(Gaussian, Poisson, Binomial, Negative Binomial, Ordinal, etc.). For
+specialised data types, the
+[`because_family()`](https://because-pkg.github.io/because/reference/because_family.md)
+function lets you define any JAGS-compatible distribution as a drop-in
+replacement with no need to modify the core package.
+
+**When do you need a custom family?**
+
+- **Robust regression**: Student-*t* for data with heavy tails or
+  outliers.
+- **Bounded proportions**: Beta distribution for continuous proportions
+  in (0, 1) (e.g., percentage cover, survival rates).
+- **Truncated distributions**: Modelling quantities that are physically
+  bounded (e.g., speeds that cannot be negative, body temperatures
+  within a viable range).
+- **Specialised ecological distributions**: Log-normal, Gamma, or
+  compound distributions not yet natively supported.
+
+------------------------------------------------------------------------
+
+### The `because_family()` Constructor
+
+``` r
+because_family(
+  name,           # A short name (e.g., "student_t", "beta_prop")
+  jags_likelihood,# JAGS likelihood code with placeholders
+  link    = "identity",  # "identity", "log", or "logit"
+  extra_priors = NULL,   # Additional JAGS prior statements
+  description  = NULL    # Optional human-readable description
+)
+```
+
+#### Template Placeholders
+
+The `jags_likelihood` string uses four placeholders that `because`
+replaces at model-build time:
+
+| Placeholder  | Replaced with                                            |
+|:-------------|:---------------------------------------------------------|
+| `{response}` | The response variable name (e.g., `Cover`)               |
+| `{mu}`       | The linear predictor mean vector (e.g., `mu_Cover`)      |
+| `{tau}`      | The residual precision parameter (e.g., `tau_res_Cover`) |
+| `{i}`        | The loop index (`i`)                                     |
+
+`extra_priors` uses the same placeholders and is appended outside the
+likelihood loop — use it for additional parameters like degrees of
+freedom or dispersion.
+
+------------------------------------------------------------------------
+
+### Example 1: Student-*t* Family (Robust Regression)
+
+The Student-*t* distribution with $\nu$ degrees of freedom has heavier
+tails than a Gaussian, making it robust to outliers. JAGS provides it as
+`dt(mu, tau, nu)`.
+
+``` r
+library(because)
+
+student_t <- because_family(
+  name = "student_t",
+
+  # JAGS dt(mu, tau, nu): location, precision, degrees of freedom
+  jags_likelihood = "{response}[{i}] ~ dt({mu}[{i}], {tau}, df_{response})",
+
+  link = "identity",
+
+  # Prior on degrees of freedom: wide uniform between 2 (very heavy) and 100 (near-Gaussian)
+  extra_priors = c("df_{response} ~ dunif(2, 100)"),
+
+  description = "Student-t for robust regression with estimated degrees of freedom"
+)
+```
+
+[`because_family()`](https://because-pkg.github.io/because/reference/because_family.md)
+returns a **constructor function** (`student_t`). Call it with no
+arguments to create the family object to pass to
+[`because()`](https://because-pkg.github.io/because/reference/because.md):
+
+``` r
+set.seed(42)
+N <- 80
+
+X <- rnorm(N)
+
+# Heavy-tailed response: many mild values plus a few large outliers
+Y <- 1.5 * X + rt(N, df = 3)
+
+robust_data <- data.frame(Y = Y, X = X)
+
+# Gaussian model (potentially biased by outliers)
+fit_gaussian <- because(
+  equations = list(Y ~ X),
+  data      = robust_data,
+  quiet     = TRUE
+)
+
+# Student-t model (robust to outliers)
+fit_robust <- because(
+  equations = list(Y ~ X),
+  data      = robust_data,
+  family    = c(Y = student_t()),   # Pass the constructor result
+  quiet     = TRUE
+)
+
+summary(fit_robust)
+# df_Y: estimated degrees of freedom — small values (2–5) indicate heavy tails
+```
+
+#### Comparing Fit
+
+``` r
+fit_gaussian_waic <- because(
+  equations = list(Y ~ X), data = robust_data, WAIC = TRUE, quiet = TRUE
+)
+fit_robust_waic <- because(
+  equations = list(Y ~ X), data = robust_data,
+  family = c(Y = student_t()), WAIC = TRUE, quiet = TRUE
+)
+
+because_compare(fit_gaussian_waic, fit_robust_waic)
+```
+
+With genuinely heavy-tailed data, the Student-*t* model will typically
+have a lower WAIC than the Gaussian.
+
+------------------------------------------------------------------------
+
+### Example 2: Beta Family for Proportions in (0, 1)
+
+Continuous proportions — percentage vegetation cover, task completion
+rates, dietary proportions — are bounded between 0 and 1. A Gaussian
+model can predict values outside this range; the **Beta distribution**
+is the natural choice.
+
+The Beta distribution is parameterised here by its mean $\mu \in (0,1)$
+and a precision (concentration) parameter $\phi > 0$:
+
+$$Y \sim \text{Beta}\left( \mu\phi,(1 - \mu)\phi \right)$$
+
+With this parameterisation, the variance is $\mu(1 - \mu)/(\phi + 1)$:
+larger $\phi$ means less variance around $\mu$.
+
+``` r
+beta_prop <- because_family(
+  name = "beta_prop",
+
+  # JAGS: dbeta(shape1, shape2)
+  # shape1 = mu * phi, shape2 = (1 - mu) * phi
+  jags_likelihood = paste0(
+    "{response}[{i}] ~ dbeta(",
+    "{mu}[{i}] * phi_{response}, ",
+    "(1 - {mu}[{i}]) * phi_{response})"
+  ),
+
+  link = "logit",   # Logit link maps (-Inf, Inf) to (0, 1)
+
+  # Prior on the precision (concentration) parameter
+  extra_priors = c("phi_{response} ~ dgamma(1, 0.1)"),
+
+  description = "Beta distribution for proportions in (0, 1) with logit link"
+)
+```
+
+``` r
+set.seed(7)
+N <- 100
+
+# Predictor: grazing intensity (standardised)
+Grazing <- rnorm(N, 0, 1)
+
+# Response: vegetation cover proportion in (0, 1)
+# True relationship on the logit scale
+logit_mu <- -0.5 - 0.8 * Grazing
+mu_true  <- 1 / (1 + exp(-logit_mu))
+Cover    <- rbeta(N, shape1 = mu_true * 5, shape2 = (1 - mu_true) * 5)
+
+prop_data <- data.frame(Cover = Cover, Grazing = Grazing)
+
+fit_beta <- because(
+  equations = list(Cover ~ Grazing),
+  data      = prop_data,
+  family    = c(Cover = beta_prop()),
+  n.iter    = 15000,
+  n.burnin  = 3000
+)
+
+summary(fit_beta)
+# beta_Cover_Grazing: effect on the logit scale (negative = grazing reduces cover)
+# phi_Cover: estimated precision (higher = lower variance around predicted mean)
+```
+
+``` r
+# Convert from logit scale to probability scale using marginal effects
+me_beta <- marginal_effects(fit_beta)
+print(me_beta)
+# Effect: expected change in Cover (proportion units) per 1-unit increase in Grazing
+```
+
+------------------------------------------------------------------------
+
+### Example 3: Truncated Gaussian (Positive-Only Data)
+
+Some biological quantities are strictly positive: body mass, flight
+speed, enzyme concentration. A standard Gaussian model can assign
+positive probability to negative values. JAGS supports truncation
+notation `T(lower, upper)`.
+
+``` r
+pos_gaussian <- because_family(
+  name = "pos_gaussian",
+  jags_likelihood = "{response}[{i}] ~ dnorm({mu}[{i}], {tau}) T(0, )",
+  link = "log",   # Log link ensures the linear predictor maps to positive means
+  description     = "Truncated Gaussian (positive support only)"
+)
+
+set.seed(99)
+N <- 100
+Mass <- rnorm(N, mean = 50, sd = 10)
+Speed <- exp(1.2 + 0.05 * Mass + rnorm(N, 0, 0.3))  # Strictly positive
+
+pos_data <- data.frame(Speed = Speed, Mass = scale(Mass)[, 1])
+
+fit_pos <- because(
+  equations = list(Speed ~ Mass),
+  data      = pos_data,
+  family    = c(Speed = pos_gaussian()),
+  quiet     = TRUE
+)
+
+summary(fit_pos)
+```
+
+------------------------------------------------------------------------
+
+### Checking the Generated JAGS Code
+
+You can inspect the JAGS model code that `because` generates for any
+family to verify the substitution is correct before running a full
+model:
+
+``` r
+model_code <- because_model(
+  equations = list(Cover ~ Grazing),
+  family    = c(Cover = beta_prop())
+)
+
+cat(model_code$model)
+```
+
+Look for the likelihood loop and confirm that `{response}`, `{mu}`, and
+`{tau}` were correctly substituted.
+
+------------------------------------------------------------------------
+
+### Advanced: The S3 Hook System for Extension Packages
+
+[`because_family()`](https://because-pkg.github.io/because/reference/because_family.md)
+is built on a general S3 hook system that allows developers of extension
+packages to add full support for new families or covariance structures.
+
+The key generics are documented in `R/generics.R`:
+
+| Generic                       | Purpose                                                                                                                                         |
+|:------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------|
+| `jags_family_definition`      | Defines the JAGS likelihood block for a response variable                                                                                       |
+| `jags_family_likelihood`      | Generates the per-observation likelihood code (used by [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md)) |
+| `jags_family_precision_prior` | Sets the prior on the precision/dispersion parameter                                                                                            |
+| `prepare_structure_data`      | Prepares custom covariance structures (e.g., trees, distance matrices) for JAGS                                                                 |
+| `get_inits_hook`              | Provides specialised MCMC starting values                                                                                                       |
+| `normalize_equations_hook`    | Handles specialised variable aliases                                                                                                            |
+
+#### Registering a Family from an Extension Package
+
+If you are building an extension package (e.g., `because.mytrait`), you
+can register a custom family method using standard S3 registration:
+
+``` r
+# In your package's R/ directory, define the S3 method:
+jags_family_likelihood.because_family_my_dist <- function(
+    family, response, predictors = NULL, suffix = "", ...
+) {
+  list(
+    likelihood_code = paste0(
+      "    ", response, "[i] ~ dmy_dist(mu_", response, "[i], tau_res_", response, ")"
+    ),
+    prior_code = paste0(
+      "  tau_res_", response, " ~ dgamma(1, 1)"
+    ),
+    data_requirements = NULL
+  )
+}
+
+# Then register it so S3 dispatch works:
+registerS3method(
+  "jags_family_likelihood",
+  "because_family_my_dist",
+  jags_family_likelihood.because_family_my_dist,
+  envir = asNamespace("because")
+)
+```
+
+For custom **covariance structures** (e.g., spatial distance matrices),
+use
+[`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md)
+— a parallel helper function described in
+[`?because_structure`](https://because-pkg.github.io/because/reference/because_structure.md).
+
+------------------------------------------------------------------------
+
+### Summary
+
+| Scenario                       | Tool                                                                                                                                        | Key argument                                                                  |
+|:-------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------|
+| One-off custom distribution    | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md)                                                     | `jags_likelihood`, `extra_priors`                                             |
+| Heavy-tailed robust regression | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with [`dt()`](https://rdrr.io/r/stats/TDist.html)   | `df_{response}` extra prior                                                   |
+| Proportions in (0,1)           | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with [`dbeta()`](https://rdrr.io/r/stats/Beta.html) | logit link, `phi_{response}`                                                  |
+| Strictly positive data         | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with `T(0,)` truncation                             | log link                                                                      |
+| Custom covariance structure    | [`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md)                                               | `precision_fn`                                                                |
+| Reusable family for a package  | S3 method for `jags_family_likelihood`                                                                                                      | Register with [`registerS3method()`](https://rdrr.io/r/base/ns-internal.html) |
+
+### References
+
+Lunn, D., Jackson, C., Best, N., Thomas, A., & Spiegelhalter, D. (2012).
+*The BUGS Book: A Practical Introduction to Bayesian Analysis*. Chapman
+& Hall/CRC.
+
+Ferrari, S., & Cribari-Neto, F. (2004). Beta regression for modelling
+rates and proportions. *Journal of Applied Statistics*, 31(7), 799–815.
+
+Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., &
+Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). Chapman &
+Hall/CRC.

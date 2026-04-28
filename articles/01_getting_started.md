@@ -20,38 +20,45 @@ autocorrelation, genetic relatedness etc.).
 - [Mediation
   Analysis](https://because-pkg.github.io/because/articles/04_mediation.md):
   Decomposing effects into direct and indirect components.
-  [Deterministic
+- [Deterministic
   Nodes](https://because-pkg.github.io/because/articles/05_deterministic_nodes.md):
-  Interactions, Tresholds and mathematical transformations.
-  - *Phylogenetic Path Analysis*: Using the Phylogenetic Bayesian
-    Structural Equation Model approach (PhyBaSE, von Hardenberg &
-    Gonzalez-Voyer, 2025)(through the `because.phybase` module)
-- - Phylogenetic Missing Data Imputation\*: Handling missing data using
-    Bayesian imputation (through the `because.phybase` module).
-- *Alternative Covariance structures:* Spatial, genetic, social, or
-  other correlation structures. *Alternative dustribution families:*
+  Interactions, thresholds and mathematical transformations.
+- [Non-Gaussian Distribution
+  Families](https://because-pkg.github.io/because/articles/08_non_gaussian_families.md):
   Modeling non-Gaussian data.
   - Gaussian (continuous data)
   - Binomial (binary/proportion data)
   - Multinomial (unordered categorical data)
   - Ordinal (ordered categorical data)
   - Poisson (count data)
-  - Negative Binomial (overdispersed count data
-  - Zero inflated Poissson (ZIP) and negative binomial (ZINB)
+  - Negative Binomial (overdispersed count data)
+  - Zero-inflated Poisson (ZIP) and Negative Binomial (ZINB)
+- [Bayesian Missing Data
+  Imputation](https://because-pkg.github.io/because/articles/09_missing_data.md):
+  Handling missing data through simultaneous Bayesian imputation within
+  the SEM.
+- [Model Diagnostics and
+  Comparison](https://because-pkg.github.io/because/articles/10_model_diagnostics_comparison.md):
+  Checking convergence, posterior predictive checks, comparing models
+  with WAIC and LOO-CV.
+- [Latent Variables and the MAG
+  Approach](https://because-pkg.github.io/because/articles/11_latent_variables_mag.md):
+  Causal inference in the presence of latent variables using the MAG
+  approach by Shipley & Douda (2021).
+- [Creating Custom Distribution
+  Families](https://because-pkg.github.io/because/articles/12_custom_families.md):
+  Extending `because` with user-defined JAGS distributions.
 - *Advanced Model Specifications:* [random
   effects](https://because-pkg.github.io/because/articles/07_multilevel_models.md)
   (lme4-style `(1|group)` notation, mixed models, nested designs),
-  polynomial terms, categorical predictors, measurement error, missing
-  data.
+  polynomial terms, categorical predictors, measurement error.
 - *[Multilevel & Hierarchical
   Data](https://because-pkg.github.io/because/articles/07_multilevel_models.md):*
   Multi-level data with variables at different hierarchical levels and
   correct degrees of freedom in d-separation tests.
-- *Latent Variables and MAG:* Measurement error models and causal
-  inference in the presence of latent variables using the MAG approach
-  by Shipley & Douda (2021).
-- *Model Diagnostics:* Checking convergence, comparing models, and
-  interpreting results.
+- *Phylogenetic Path Analysis*: Using the Phylogenetic Bayesian
+  Structural Equation Model approach (PhyBaSE, von Hardenberg &
+  Gonzalez-Voyer, 2025) through the `because.phybase` extension.
 
 ### Quick Start
 

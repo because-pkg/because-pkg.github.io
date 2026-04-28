@@ -16,4 +16,14 @@
   Engine](https://because-pkg.github.io/because/articles/06_nimble_engine.md):
 - [Multilevel Causal
   Models](https://because-pkg.github.io/because/articles/07_multilevel_models.md):
+- [Non-Gaussian Distribution
+  Families](https://because-pkg.github.io/because/articles/08_non_gaussian_families.md):
+- [Bayesian Missing Data
+  Imputation](https://because-pkg.github.io/because/articles/09_missing_data.md):
+- [Model Diagnostics and
+  Comparison](https://because-pkg.github.io/because/articles/10_model_diagnostics_comparison.md):
+- [Latent Variables and the MAG
+  Approach](https://because-pkg.github.io/because/articles/11_latent_variables_mag.md):
+- [Creating Custom Distribution
+  Families](https://because-pkg.github.io/because/articles/12_custom_families.md):
 - [Extensions](https://because-pkg.github.io/because/articles/extensions.md):
