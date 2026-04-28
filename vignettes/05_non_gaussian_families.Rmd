@@ -391,7 +391,7 @@ mixing slower. Recommendations:
 1. **Standardize predictors** before fitting: `data = as.data.frame(scale(mydata))`.
 2. **Use more iterations**: `n.iter = 25000` or more.
 3. **Check Rhat**: all parameters should have Rhat < 1.1.
-4. **Use the NIMBLE engine** for better mixing on non-Gaussian models: `engine = "nimble"` (see the [NIMBLE vignette](06_nimble_engine.html)).
+4. **Use the NIMBLE engine** for better mixing on non-Gaussian models: `engine = "nimble"` (see the [NIMBLE vignette](10_nimble_engine.html)).
 
 ## References
 
