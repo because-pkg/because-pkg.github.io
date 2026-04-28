@@ -420,14 +420,47 @@ because_model <- function(
     }
 
 
-    # [OLRE FIX] Allow random effects at the SAME level if it's an overdispersed 
-    # distribution (Poisson, Binomial, Bernoulli) that lacks a residual tau node.
+    # [OLRE FIX] Allow random effects at the SAME level if:
+    # 1. It's an overdispersed distribution (Poisson/Binomial) that lacks a residual tau node.
+    # 2. It's a Gaussian distribution but with REPEATED MEASURES (n_groups < n_obs).
     dist <- if (response %in% names(family)) family[[response]] else "gaussian"
     allow_id <- dist %in% c("poisson", "binomial", "bernoulli")
+    
+    if (!allow_id && dist == "gaussian" && !is.null(h_info$data) && !is.null(grp_lvl)) {
+      # Check if we have repeated measures for this group variable
+      df <- h_info$data[[grp_lvl]]
+      if (group_var %in% colnames(df)) {
+        n_obs <- nrow(df)
+        n_unique <- length(unique(df[[group_var]]))
+        if (n_unique < n_obs) {
+          allow_id <- TRUE
+        } else {
+          # Only warn if it was explicitly requested (not auto-detected)
+          # Note: we don't have easy access to 'source' here, so we warn generally
+          if (!quiet) {
+            warning(sprintf(
+              "Random effect (1|%s) for Gaussian response '%s' ignored. Identifiability requires repeated measures (multiple observations per %s) at the '%s' level.",
+              group_var, response, group_var, grp_lvl
+            ))
+          }
+        }
+      }
+    }
 
     # Use the robust checker
-    return(is_valid_structure_mapping(grp_lvl, resp_lvl, h_info, allow_identity = allow_id))
+    valid <- is_valid_structure_mapping(grp_lvl, resp_lvl, h_info, allow_identity = allow_id)
+    
+    if (!valid && !quiet && !is.null(h_info$hierarchy)) {
+       warning(sprintf(
+         "Random effect (1|%s) for response '%s' is at an invalid hierarchical level and will be ignored.",
+         group_var, response
+       ))
+    }
+    
+    return(valid)
   }
+
+
 
 
   # Helper: Resolve group indexing for hierarchical random effects
