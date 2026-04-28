@@ -37,33 +37,35 @@ autocorrelation, genetic relatedness etc.).
      Incorporating prior knowledge and mechanistic constraints.
 -   [Mediation Analysis](04_mediation.html):
      Decomposing effects into direct and indirect components.
-     [Deterministic Nodes](05_deterministic_nodes.html):
-     Interactions, Tresholds and mathematical transformations.
-     - *Phylogenetic Path Analysis*: Using the Phylogenetic Bayesian Structural Equation Model approach
-     (PhyBaSE, von Hardenberg & Gonzalez-Voyer, 2025)(through the `because.phybase` module)
--   * Phylogenetic Missing Data Imputation*:
-     Handling missing data using Bayesian imputation (through the `because.phybase` module).
--   *Alternative Covariance structures:*
-    Spatial, genetic, social, or other correlation structures.
-    *Alternative  dustribution families:* Modeling
-    non-Gaussian data.
+-   [Deterministic Nodes](05_deterministic_nodes.html):
+     Interactions, thresholds and mathematical transformations.
+-   [Non-Gaussian Distribution Families](08_non_gaussian_families.html):
+     Modeling non-Gaussian data.
     -   Gaussian (continuous data)
     -   Binomial (binary/proportion data)
     -   Multinomial (unordered categorical data)
     -   Ordinal (ordered categorical data)
     -   Poisson (count data)
-    -   Negative Binomial (overdispersed count data
-    -   Zero inflated Poissson (ZIP) and negative binomial (ZINB)
+    -   Negative Binomial (overdispersed count data)
+    -   Zero-inflated Poisson (ZIP) and Negative Binomial (ZINB)
+-   [Bayesian Missing Data Imputation](09_missing_data.html):
+     Handling missing data through simultaneous Bayesian imputation
+     within the SEM.
+-   [Model Diagnostics and Comparison](10_model_diagnostics_comparison.html):
+     Checking convergence, posterior predictive checks, comparing
+     models with WAIC and LOO-CV.
+-   [Latent Variables and the MAG Approach](11_latent_variables_mag.html):
+     Causal inference in the presence of latent variables using the MAG
+     approach by Shipley & Douda (2021).
+-   [Creating Custom Distribution Families](12_custom_families.html):
+     Extending `because` with user-defined JAGS distributions.
 -   *Advanced Model Specifications:* [random effects](07_multilevel_models.html)
     (lme4-style `(1|group)` notation, mixed models, nested designs),
-    polynomial terms, categorical predictors, measurement error, missing data.
+    polynomial terms, categorical predictors, measurement error.
 -   *[Multilevel & Hierarchical Data](07_multilevel_models.html):* Multi-level data with variables at
     different hierarchical levels and correct degrees of freedom in d-separation tests.
--   *Latent Variables and MAG:* Measurement
-    error models and causal inference in the presence of latent
-    variables using the MAG approach by Shipley & Douda (2021).
--   *Model Diagnostics:* Checking
-    convergence, comparing models, and interpreting results.
+-   *Phylogenetic Path Analysis*: Using the Phylogenetic Bayesian Structural Equation Model approach
+    (PhyBaSE, von Hardenberg & Gonzalez-Voyer, 2025) through the `because.phybase` extension.
 
 ## Quick Start
 
