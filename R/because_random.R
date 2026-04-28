@@ -142,61 +142,7 @@ create_group_structures <- function(data, random_terms) {
 All.vars <- function(x) all.vars(x)
 
 
-#' Expand Nesting Syntax in Random Effects
-#'
-#' Converts lme4-style nesting (1|A/B) to (1|A) + (1|A:B)
-#'
-#' @param rhs Character string, RHS of random effects formula
-#' @return Expanded character string
-#' @keywords internal
-expand_nesting_syntax <- function(rhs) {
-    # Pattern to match (1|A/B) or (1|A/B/C) etc.
-    nesting_pattern <- "\\(1\\s*\\|\\s*([^)]+)\\)"
 
-    # Find all random effect terms
-    matches <- gregexpr(nesting_pattern, rhs)
-    match_strings <- regmatches(rhs, matches)[[1]]
-
-    if (length(match_strings) == 0) {
-        return(rhs) # No nesting found
-    }
-
-    # Process each matched term
-    for (match_str in match_strings) {
-        # Extract the grouping part (everything after |)
-        group_part <- sub("\\(1\\s*\\|\\s*(.+)\\)", "\\1", match_str)
-
-        # Check if it contains nesting (/)
-        if (grepl("/", group_part)) {
-            # Split by /
-            levels <- trimws(strsplit(group_part, "/")[[1]])
-
-            # Build expanded terms
-            # (1|A/B) -> (1|A) + (1|A:B)
-            # (1|A/B/C) -> (1|A) + (1|A:B) + (1|A:B:C)
-            expanded_terms <- character(length(levels))
-
-            for (i in seq_along(levels)) {
-                if (i == 1) {
-                    expanded_terms[i] <- paste0("(1|", levels[i], ")")
-                } else {
-                    # Create interaction: A:B or A:B:C
-                    interaction <- paste(levels[1:i], collapse = ":")
-                    expanded_terms[i] <- paste0("(1|", interaction, ")")
-                }
-            }
-
-            # Join with +
-            replacement <- paste(expanded_terms, collapse = " + ")
-
-            # Replace in original string (use escaping for special regex chars)
-            match_escaped <- gsub("([\\(\\)\\|\\:])", "\\\\\\1", match_str)
-            rhs <- sub(match_escaped, replacement, rhs)
-        }
-    }
-
-    return(rhs)
-}
 
 # Parse Random Effect Part
 parse_random_part <- function(part) {
@@ -264,8 +210,7 @@ parse_global_random <- function(random_arg, equations, all_vars = NULL) {
         rhs <- as.character(random_arg)
     }
 
-    # Convert nesting syntax (1|A/B) to (1|A) + (1|A:B) to match lme4 behavior
-    rhs <- expand_nesting_syntax(rhs)
+
 
     parts <- trimws(strsplit(rhs, "\\+")[[1]])
     global_terms <- list()

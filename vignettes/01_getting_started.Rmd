@@ -54,11 +54,11 @@ autocorrelation, genetic relatedness etc.).
     -   Poisson (count data)
     -   Negative Binomial (overdispersed count data
     -   Zero inflated Poissson (ZIP) and negative binomial (ZINB)
--   *Advanced Model Specifications:* random
-    effects (mixed models, nested designs), polynomial terms,
-    categorical predictors, measurement error, missing data.
--   *Hierarchical Data:* Multi-level data with variables at
-    different hierarchical levels.
+-   *Advanced Model Specifications:* [random effects](07_multilevel_models.html)
+    (lme4-style `(1|group)` notation, mixed models, nested designs),
+    polynomial terms, categorical predictors, measurement error, missing data.
+-   *[Multilevel & Hierarchical Data](07_multilevel_models.html):* Multi-level data with variables at
+    different hierarchical levels and correct degrees of freedom in d-separation tests.
 -   *Latent Variables and MAG:* Measurement
     error models and causal inference in the presence of latent
     variables using the MAG approach by Shipley & Douda (2021).

@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Achaz von Hardenberg" />
+
+<meta name="date" content="2026-04-28" />
+
+<title>Multilevel Causal Models</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Multilevel Causal Models</h1>
+<h4 class="author">Achaz von Hardenberg</h4>
+<h4 class="date">2026-04-28</h4>
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>Many ecological and evolutionary datasets are inherently multilevel:
+observations of individuals are nested within years, years within sites,
+or individuals within populations. In such settings, variables measured
+at different levels of the hierarchy have fundamentally different sample
+sizes and thus different statistical power. A climate covariate averaged
+over 10 years provides only 10 degrees of freedom for testing its
+effects, regardless of how many individual observations exist within
+those years.</p>
+<p>The <code>because</code> package explicitly handles this structure.
+When data are supplied as a <strong>named list of data frames</strong>,
+one per hierarchical level, the engine:</p>
+<ol style="list-style-type: decimal">
+<li>Correctly maps each variable to its natural level.</li>
+<li>Uses the <strong>appropriate degrees of freedom</strong> for each
+d-separation test: year-level tests use <span class="math inline">\(N_{years}\)</span>, individual-level tests use
+<span class="math inline">\(N_{individuals}\)</span>, and cross-level
+tests are fitted at the lower level using whatever random effects the
+researcher specified in the structural equations.</li>
+<li>Skips tests that are trivially satisfied by the design of the
+hierarchy (e.g., orthogonal branches that share no observations).</li>
+</ol>
+</div>
+<div id="a-motivating-example-climate-resources-and-reproductive-success" class="section level2">
+<h2>A Motivating Example: Climate, Resources, and Reproductive
+Success</h2>
+<p>Consider a long-term monitoring study of a wild ungulate population.
+Over 10 years, ecologists record:</p>
+<ul>
+<li><strong>Year-level</strong> variables (1 row per year): mean winter
+temperature (<code>Temp</code>), annual primary productivity
+(<code>NDVI</code>).</li>
+<li><strong>Individual-level</strong> variables (multiple rows per
+individual per year): body mass (<code>Mass</code>), number of offspring
+(<code>Offspring</code>).</li>
+</ul>
+<p>The causal hypothesis is:</p>
+<ul>
+<li>Winter temperature controls primary productivity
+(<code>Temp → NDVI</code>).</li>
+<li>Productivity and temperature together drive individual body mass
+(<code>NDVI → Mass</code>, <code>Temp → Mass</code>).</li>
+<li>Body mass determines reproductive success
+(<code>Mass → Offspring</code>).</li>
+</ul>
+<p>This is a cross-level causal chain: climate acts at the year level,
+but its ultimate effect on offspring is mediated through individual body
+condition.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(because)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>dag <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>  NDVI       <span class="sc">~</span> Temp,</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>  Mass       <span class="sc">~</span> NDVI <span class="sc">+</span> Temp,</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>  Offspring  <span class="sc">~</span> Mass</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>)</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="fu">plot_dag</span>(dag)</span></code></pre></div>
+</div>
+<div id="simulating-multilevel-data" class="section level2">
+<h2>Simulating Multilevel Data</h2>
+<p>We simulate a realistic dataset with 10 years and 30 individuals each
+year (300 individual-year records total).</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>n_years <span class="ot">&lt;-</span> <span class="dv">10</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>n_ind   <span class="ot">&lt;-</span> <span class="dv">30</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># --- Year-level data ---</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>year_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>  <span class="at">Year =</span> <span class="dv">1</span><span class="sc">:</span>n_years,</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>  <span class="at">Temp =</span> <span class="fu">rnorm</span>(n_years, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> <span class="dv">1</span>),           <span class="co"># standardised temperature</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>  <span class="at">NDVI =</span> <span class="cn">NA_real_</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>)</span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co"># True causal effects at year level</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co"># NDVI increases with temperature (warmer → more productivity)</span></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>beta_NDVI_Temp  <span class="ot">&lt;-</span>  <span class="fl">0.7</span></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>year_df<span class="sc">$</span>NDVI <span class="ot">&lt;-</span> beta_NDVI_Temp <span class="sc">*</span> year_df<span class="sc">$</span>Temp <span class="sc">+</span> <span class="fu">rnorm</span>(n_years, <span class="dv">0</span>, <span class="fl">0.5</span>)</span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="co"># --- Individual-level data ---</span></span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a><span class="co"># Each individual is observed in one year; Year links the two levels.</span></span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>ind_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>  <span class="at">Individual =</span> <span class="dv">1</span><span class="sc">:</span>(n_years <span class="sc">*</span> n_ind),</span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a>  <span class="at">Year       =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>n_years, <span class="at">each =</span> n_ind),    <span class="co"># &lt;-- linking variable</span></span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>  <span class="at">Mass       =</span> <span class="cn">NA_real_</span>,</span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a>  <span class="at">Offspring  =</span> <span class="cn">NA_integer_</span></span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a>)</span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co"># Look up year-level covariates for each individual</span></span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a>ind_df<span class="sc">$</span>Temp <span class="ot">&lt;-</span> year_df<span class="sc">$</span>Temp[ind_df<span class="sc">$</span>Year]</span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a>ind_df<span class="sc">$</span>NDVI <span class="ot">&lt;-</span> year_df<span class="sc">$</span>NDVI[ind_df<span class="sc">$</span>Year]</span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a></span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a><span class="co"># True causal effects at individual level</span></span>
+<span id="cb2-32"><a href="#cb2-32" tabindex="-1"></a><span class="co"># Body mass is driven by NDVI and temperature (via the year-level values)</span></span>
+<span id="cb2-33"><a href="#cb2-33" tabindex="-1"></a>beta_Mass_NDVI  <span class="ot">&lt;-</span>  <span class="fl">1.2</span></span>
+<span id="cb2-34"><a href="#cb2-34" tabindex="-1"></a>beta_Mass_Temp  <span class="ot">&lt;-</span>  <span class="fl">0.4</span></span>
+<span id="cb2-35"><a href="#cb2-35" tabindex="-1"></a>ind_df<span class="sc">$</span>Mass <span class="ot">&lt;-</span> (</span>
+<span id="cb2-36"><a href="#cb2-36" tabindex="-1"></a>  beta_Mass_NDVI <span class="sc">*</span> ind_df<span class="sc">$</span>NDVI <span class="sc">+</span></span>
+<span id="cb2-37"><a href="#cb2-37" tabindex="-1"></a>  beta_Mass_Temp <span class="sc">*</span> ind_df<span class="sc">$</span>Temp <span class="sc">+</span></span>
+<span id="cb2-38"><a href="#cb2-38" tabindex="-1"></a>  <span class="fu">rnorm</span>(n_years <span class="sc">*</span> n_ind, <span class="dv">0</span>, <span class="fl">0.8</span>)</span>
+<span id="cb2-39"><a href="#cb2-39" tabindex="-1"></a>)</span>
+<span id="cb2-40"><a href="#cb2-40" tabindex="-1"></a></span>
+<span id="cb2-41"><a href="#cb2-41" tabindex="-1"></a><span class="co"># Offspring count is a Poisson process driven by mass</span></span>
+<span id="cb2-42"><a href="#cb2-42" tabindex="-1"></a>beta_Off_Mass <span class="ot">&lt;-</span> <span class="fl">0.6</span></span>
+<span id="cb2-43"><a href="#cb2-43" tabindex="-1"></a>log_lambda    <span class="ot">&lt;-</span> <span class="fl">0.5</span> <span class="sc">+</span> beta_Off_Mass <span class="sc">*</span> ind_df<span class="sc">$</span>Mass</span>
+<span id="cb2-44"><a href="#cb2-44" tabindex="-1"></a>ind_df<span class="sc">$</span>Offspring <span class="ot">&lt;-</span> <span class="fu">rpois</span>(n_years <span class="sc">*</span> n_ind, <span class="at">lambda =</span> <span class="fu">exp</span>(log_lambda))</span></code></pre></div>
+</div>
+<div id="supplying-multilevel-data-to-because" class="section level2">
+<h2>Supplying Multilevel Data to <code>because</code></h2>
+<p>Pass the data as a <strong>named list of data frames</strong>. The
+names define the level labels that the engine uses to assign
+variables.</p>
+</div>
+<div id="random-effects-in-because" class="section level2">
+<h2>Random Effects in <code>because</code></h2>
+<p><code>because</code> uses the same <code>(1|grouping_variable)</code>
+notation as <code>lme4</code>’s <code>lmer()</code> /
+<code>glmer()</code> to specify <strong>random intercepts</strong>. This
+will be immediately familiar if you have used mixed-effects models in
+R.</p>
+<p>A random intercept <code>(1|Group)</code> tells <code>because</code>
+that observations sharing the same value of <code>Group</code> are not
+independent — each group gets its own intercept drawn from a common
+Normal distribution:</p>
+<p><span class="math display">\[u_g \sim \text{Normal}(0, \sigma^2_u),
+\quad g = 1, \dots, G\]</span></p>
+<p>with the precision <span class="math inline">\(\tau_u =
+1/\sigma^2_u\)</span> estimated from the data.</p>
+<blockquote>
+<p>[!NOTE] <strong>Random slopes</strong> (e.g. <code>(X|Group)</code>)
+are <strong>not yet implemented</strong>. Only random intercepts
+<code>(1|Group)</code> are currently supported. The syntax deliberately
+mirrors <code>lme4</code> so that random slopes can be added as a
+natural extension in a future release without any change to the user
+interface.</p>
+</blockquote>
+<div id="syntax-inline-in-the-equation" class="section level3">
+<h3>Syntax: inline in the equation</h3>
+<p>Place <code>(1|Group)</code> directly inside any structural equation,
+just as you would in <code>lmer()</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(because)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co"># Individuals nested within Sites — Site gets a random intercept in Y</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>equations <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  Y <span class="sc">~</span> X <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>Site),</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  Z <span class="sc">~</span> Y</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>)</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">because</span>(<span class="at">equations =</span> equations, <span class="at">data =</span> my_data)</span></code></pre></div>
+<p>The random term is <strong>equation-specific</strong>: here only
+<code>Y</code> gets the Site random intercept. <code>Z ~ Y</code> is
+fitted without it (assuming no residual site-level variation in
+<code>Z</code> beyond what is mediated through <code>Y</code>).</p>
+<p>You can specify different grouping structures for different
+responses:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>equations <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  Mass      <span class="sc">~</span> NDVI <span class="sc">+</span> Temp <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>Year),    <span class="co"># Year random intercept for Mass</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  Offspring <span class="sc">~</span> Mass  <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>Year) <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>ID)  <span class="co"># Year AND individual random intercepts</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="syntax-global-random-argument" class="section level3">
+<h3>Syntax: global <code>random</code> argument</h3>
+<p>When the same random effect applies to <strong>all</strong> response
+variables, the <code>random</code> argument is a convenient
+shorthand:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">because</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="at">equations =</span> <span class="fu">list</span>(Y <span class="sc">~</span> X, Z <span class="sc">~</span> Y),</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="at">data      =</span> my_data,</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">random    =</span> <span class="sc">~</span>(<span class="dv">1</span><span class="sc">|</span>Site)          <span class="co"># (1|Site) added to every equation</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>)</span></code></pre></div>
+<p>Internally this is identical to embedding <code>(1|Site)</code> in
+each equation.</p>
+</div>
+<div id="nesting-1ab-syntax" class="section level3">
+<h3>Nesting: <code>(1|A/B)</code> syntax</h3>
+<p>Fully nested designs follow the standard R convention:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># Individuals nested within Sites nested within Regions</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>equations <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  Y <span class="sc">~</span> X <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>Region<span class="sc">/</span>Site)        <span class="co"># expands to (1|Region) + (1|Region:Site)</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="when-to-include-a-random-effect" class="section level3">
+<h3>When to include a random effect</h3>
+<table>
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">Situation</th>
+<th align="left">Include <code>(1|Group)</code>?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Observations share a year-level environment and year
+predictors <strong>do not</strong> fully capture year variation</td>
+<td align="left"><strong>Yes</strong></td>
+</tr>
+<tr class="even">
+<td align="left">Year-level predictors (e.g. Temp, NDVI) fully explain
+year variation</td>
+<td align="left">Not necessary</td>
+</tr>
+<tr class="odd">
+<td align="left">Repeated measures on the same individual across
+time</td>
+<td align="left"><strong>Yes</strong> — <code>(1|ID)</code></td>
+</tr>
+<tr class="even">
+<td align="left">Balanced, fully crossed design with all levels as fixed
+effects</td>
+<td align="left">Not needed</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!IMPORTANT] Random effects specified in the structural equations are
+automatically carried forward into the d-separation sub-tests for all
+equations they apply to. This keeps the independence tests internally
+consistent with the structural model — see the <a href="#cross-level-tests">Cross-level tests</a> section below.</p>
+</blockquote>
+</div>
+<div id="specifying-random-effects" class="section level3">
+<h3>Specifying random effects</h3>
+<p>If you believe there is residual year-level variation beyond what
+<code>Temp</code> and <code>NDVI</code> explain (unmeasured confounders
+such as snow depth or disease pressure), you should include a year-level
+random effect. There are two equivalent syntaxes — choose the one that
+fits your workflow:</p>
+<p><strong>Option A — inline in the equation (recommended for
+equation-specific effects):</strong></p>
+<p>Just as in <code>lme4</code>’s <code>lmer()</code>, you can embed
+<code>(1|Group)</code> terms directly inside the formula. This is the
+most flexible approach when different equations require different
+grouping structures:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>equations_re <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  NDVI      <span class="sc">~</span> Temp,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  Mass      <span class="sc">~</span> NDVI <span class="sc">+</span> Temp <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>Year),    <span class="co"># year random intercept for Mass only</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  Offspring <span class="sc">~</span> Mass  <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>Year)           <span class="co"># year random intercept for Offspring</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>)</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>fit_re <span class="ot">&lt;-</span> <span class="fu">because</span>(</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>  <span class="at">equations  =</span> equations_re,</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>  <span class="at">data       =</span> data_list,</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>  <span class="at">family     =</span> <span class="fu">c</span>(<span class="at">Offspring =</span> <span class="st">&quot;poisson&quot;</span>),</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>  <span class="at">hierarchy  =</span> <span class="st">&quot;year &gt; individual&quot;</span>,</span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>  <span class="at">link_vars  =</span> <span class="fu">c</span>(<span class="at">year =</span> <span class="st">&quot;Year&quot;</span>),</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>  <span class="at">dsep       =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>  <span class="at">n.iter     =</span> <span class="dv">15000</span>,</span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>  <span class="at">n.burnin   =</span> <span class="dv">3000</span></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>)</span></code></pre></div>
+<p><strong>Option B — global <code>random</code> argument (convenient
+when all equations share the same grouping):</strong></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>fit_re2 <span class="ot">&lt;-</span> <span class="fu">because</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="at">equations  =</span> equations,</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="at">data       =</span> data_list,</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="at">family     =</span> <span class="fu">c</span>(<span class="at">Offspring =</span> <span class="st">&quot;poisson&quot;</span>),</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="at">hierarchy  =</span> <span class="st">&quot;year &gt; individual&quot;</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="at">link_vars  =</span> <span class="fu">c</span>(<span class="at">year =</span> <span class="st">&quot;Year&quot;</span>),</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>  <span class="at">random     =</span> <span class="sc">~</span>(<span class="dv">1</span><span class="sc">|</span>Year),               <span class="co"># applied to ALL equations</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>  <span class="at">dsep       =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  <span class="at">n.iter     =</span> <span class="dv">15000</span>,</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="at">n.burnin   =</span> <span class="dv">3000</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>)</span></code></pre></div>
+<p>Both syntaxes are internally parsed into the same JAGS model code.
+The inline version gives you equation-level control; the global version
+is a shorthand when the grouping structure is uniform.</p>
+<blockquote>
+<p>[!NOTE] Random intercepts specified by the user — whether inline or
+global — are propagated into the d-separation sub-tests for all
+equations they apply to. This ensures the independence tests reflect
+exactly the same random structure as the structural model, maintaining
+internal consistency.</p>
+</blockquote>
+<p>For the worked example below we proceed without the year random
+effect, assuming <code>Temp</code> and <code>NDVI</code> fully capture
+year-level variation:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>data_list <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="at">year       =</span> year_df,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="at">individual =</span> ind_df</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>)</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>equations <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>  NDVI      <span class="sc">~</span> Temp,</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  Mass      <span class="sc">~</span> NDVI <span class="sc">+</span> Temp,</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  Offspring <span class="sc">~</span> Mass</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>)</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a></span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">because</span>(</span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>  <span class="at">equations  =</span> equations,</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>  <span class="at">data       =</span> data_list,</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>  <span class="at">family     =</span> <span class="fu">c</span>(<span class="at">Offspring =</span> <span class="st">&quot;poisson&quot;</span>),</span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>  <span class="at">hierarchy  =</span> <span class="st">&quot;year &gt; individual&quot;</span>,</span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>  <span class="at">link_vars  =</span> <span class="fu">c</span>(<span class="at">year =</span> <span class="st">&quot;Year&quot;</span>),</span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>  <span class="at">dsep       =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>  <span class="at">n.iter     =</span> <span class="dv">15000</span>,</span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>  <span class="at">n.burnin   =</span> <span class="dv">3000</span></span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>)</span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a></span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="fu">summary</span>(fit)</span></code></pre></div>
+</div>
+</div>
+<div id="understanding-the-hierarchical-data-structure" class="section level2">
+<h2>Understanding the Hierarchical Data Structure</h2>
+<div id="the-hierarchy-argument" class="section level3">
+<h3>The <code>hierarchy</code> argument</h3>
+<p><code>hierarchy = &quot;year &gt; individual&quot;</code> tells
+<code>because</code> that the <strong>year</strong> level is higher
+(coarser) and the <strong>individual</strong> level is nested within it.
+The <code>&gt;</code> operator means “is a parent of”.</p>
+</div>
+<div id="the-link_vars-argument" class="section level3">
+<h3>The <code>link_vars</code> argument</h3>
+<p><code>link_vars = c(year = &quot;Year&quot;)</code> specifies that the column
+<code>Year</code> in the <strong>individual-level</strong> data frame is
+the index that maps each individual record back to its corresponding row
+in the <strong>year-level</strong> data frame. This is analogous to a
+foreign key in a relational database.</p>
+</div>
+<div id="automatic-level-assignment" class="section level3">
+<h3>Automatic level assignment</h3>
+<p><code>because</code> inspects which data frame each variable belongs
+to:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Variable</th>
+<th align="left">Level</th>
+<th align="left">N (df for d-sep)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>Temp</code></td>
+<td align="left">year</td>
+<td align="left">10</td>
+</tr>
+<tr class="even">
+<td align="left"><code>NDVI</code></td>
+<td align="left">year</td>
+<td align="left">10</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>Mass</code></td>
+<td align="left">individual</td>
+<td align="left">300</td>
+</tr>
+<tr class="even">
+<td align="left"><code>Offspring</code></td>
+<td align="left">individual</td>
+<td align="left">300</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="d-separation-with-correct-degrees-of-freedom" class="section level2">
+<h2>D-Separation with Correct Degrees of Freedom</h2>
+<p>The causal model implies the following basis set of conditional
+independence claims (the minimal set of claims whose failure would
+falsify the model):</p>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">Test</th>
+<th align="left">Level</th>
+<th align="left">Conditioning set</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>NDVI _\|\|_ Mass \| {Temp}</code></td>
+<td align="left"><strong>year</strong> (N=10)</td>
+<td align="left">Temp</td>
+</tr>
+<tr class="even">
+<td align="left"><code>NDVI _\|\|_ Offspring \| {Mass, Temp}</code></td>
+<td align="left"><strong>individual</strong> (N=300)</td>
+<td align="left">Mass, Temp</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>Temp _\|\|_ Offspring \| {Mass, NDVI}</code></td>
+<td align="left"><strong>individual</strong> (N=300)</td>
+<td align="left">Mass, NDVI</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!IMPORTANT] The first test — <code>NDVI _||_ Mass | {Temp}</code> —
+tests a year-level independence claim. Even though 300 individual
+observations exist, <code>because</code> correctly uses
+<strong>N=10</strong> degrees of freedom for this test, because both
+NDVI and Temp (the conditioning set) are year-level variables. Using
+individual-level N here would be pseudoreplication and would
+dramatically inflate statistical power.</p>
+</blockquote>
+<div id="within-level-tests" class="section level3">
+<h3>Within-level tests</h3>
+<p>For tests where <strong>both</strong> the response and the focal
+predictor are at the <strong>same level</strong>, <code>because</code>
+fits the sub-model directly on that level’s data, naturally using the
+correct sample size.</p>
+</div>
+<div id="cross-level-tests" class="section level3">
+<h3>Cross-level tests</h3>
+<p>For tests where the response and focal predictor are at
+<strong>different levels</strong> (e.g., testing whether a year-level
+predictor is independent of an individual-level response, given a
+conditioning set), <code>because</code> fits the sub-model at the
+<strong>lower (individual) level</strong> using the individual-level
+data.</p>
+<p>Crucially, the d-sep tests use <strong>exactly the same random effect
+structure as the structural equations</strong>. If the researcher did
+not specify a year-level random effect in their structural model,
+neither will the d-sep tests. This is by design and scientifically
+coherent:</p>
+<ul>
+<li>The structural equation <code>Offspring ~ Mass</code> (without
+<code>(1|Year)</code>) embodies the scientific assumption that the
+year-level predictors already in the model — <code>Temp</code> and
+<code>NDVI</code> — fully account for year-level variation in the
+response. No residual year-level heterogeneity needs to be
+modelled.</li>
+<li>A d-sep test like <code>Offspring _||_ NDVI | {Mass, Temp}</code>
+conditions on <code>Temp</code>, a year-level variable. Conditioning on
+<code>Temp</code> statistically accounts for the year structure
+<em>within that test</em>, making an additional <code>(1|Year)</code>
+term redundant given the researcher’s modelling assumptions.</li>
+<li>Automatically inserting year random effects into the d-sep tests
+when the researcher deliberately omitted them from the structural model
+would create an <strong>internal inconsistency</strong> — the test would
+be evaluated under stricter assumptions than the model itself.</li>
+</ul>
+<blockquote>
+<p>[!IMPORTANT] If you believe there are <strong>unmeasured year-level
+confounders</strong> beyond <code>Temp</code> and <code>NDVI</code>, you
+should include a year random effect explicitly in your structural
+equations (e.g., <code>random = ~(1|Year)</code> in
+<code>because()</code>). This will then also be correctly propagated
+into all relevant d-sep tests.</p>
+</blockquote>
+</div>
+<div id="orthogonal-branches-automatically-skipped" class="section level3">
+<h3>Orthogonal branches (automatically skipped)</h3>
+<p>If the hierarchy has parallel branches (e.g.,
+<code>site &gt; survey</code> and <code>species &gt; individual</code>)
+and the two variables in a test come from entirely separate branches
+with no conditioning variable bridging them, <code>because</code>
+recognises this as trivially satisfied and skips the test rather than
+attempting an impossible cross-branch regression.</p>
+</div>
+</div>
+<div id="visualising-the-results" class="section level2">
+<h2>Visualising the Results</h2>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># DAG with estimated path coefficients</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="fu">plot_dag</span>(fit)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># Caterpillar plot of all path coefficients</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="fu">plot_coef</span>(fit)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># D-separation results with 95% credible intervals</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="fu">plot_dsep</span>(fit)</span></code></pre></div>
+</div>
+<div id="practical-guidelines" class="section level2">
+<h2>Practical Guidelines</h2>
+<div id="when-to-use-multilevel-data-in-because" class="section level3">
+<h3>When to use multilevel data in <code>because</code></h3>
+<ul>
+<li>Your predictors are measured at a <strong>coarser temporal or
+spatial grain</strong> than your response (e.g., annual climate → daily
+behaviour).</li>
+<li>You have <strong>repeated measures</strong> on the same individuals
+across multiple occasions (years, seasons).</li>
+<li>You want to partition effects into <strong>between-group</strong>
+(year-level) and <strong>within-group</strong> (individual-level)
+components.</li>
+</ul>
+</div>
+<div id="minimal-setup" class="section level3">
+<h3>Minimal setup</h3>
+<p>At minimum, you need:</p>
+<ol style="list-style-type: decimal">
+<li>A <strong>named list</strong> of data frames, one per level.</li>
+<li>A <code>hierarchy</code> string (e.g.,
+<code>&quot;year &gt; individual&quot;</code>).</li>
+<li>A <code>link_vars</code> named vector mapping the linking column to
+its parent level (e.g., <code>c(year = &quot;Year&quot;)</code>).</li>
+</ol>
+<p>If <code>levels</code> is omitted, <code>because</code> will
+automatically assign each variable to the data frame it is found in.</p>
+</div>
+<div id="variable-overlap-between-levels" class="section level3">
+<h3>Variable overlap between levels</h3>
+<p>If the same column name appears in more than one data frame (e.g., a
+site-level mean temperature and an individual-level body temperature
+both named <code>Temp</code>), use distinct column names to avoid
+ambiguity.</p>
+</div>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+<p>Shipley, B. (2016). <em>Cause and Correlation in Biology: A User’s
+Guide to Path Analysis, Structural Equations and Causal Inference with
+R</em> (2nd ed.). Cambridge University Press.</p>
+<p>Gelman, A., &amp; Hill, J. (2007). <em>Data Analysis Using Regression
+and Multilevel/Hierarchical Models</em>. Cambridge University Press.</p>
+<p>Nakagawa, S., &amp; Schielzeth, H. (2013). A general and simple
+method for obtaining R² from generalized linear mixed-effects models.
+<em>Methods in Ecology and Evolution</em>, 4(2), 133–142.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

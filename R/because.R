@@ -166,47 +166,34 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' (phylogenetic, spatial, etc.), missing data imputation, and d-separation
 #' global fit testing.
 #'
-#' @param equations A list of model formulas describing the structural equation model.
-#' @param data A data.frame containing the variables in the model. If using hierarchical
-#'   models, this can also be a list of data frames.
-#' @param id_col Character string specifying the column name containing unit
-#'   identifiers (e.g., species names). If NULL, uses row names.
-#' @param structure Optional structural object (e.g., matrix, tree) for correlated residuals.
-#' @param engine Bayesian engine to use: "jags" (default) or "nimble".
-#' @param monitor Character; "interpretable" (default) or "all" parameters to monitor.
-#' @param nimble_samplers Optional named list of user-specified NIMBLE samplers.
-#' @param n.chains Integer; number of MCMC chains (default = 3).
-#' @param n.iter Integer; total iterations per chain (default = 12500).
-#' @param n.burnin Integer; burn-in iterations (default = 20% of n.iter).
-#' @param n.thin Integer; thinning interval (default = 10).
-#' @param DIC Logical; compute DIC? (default = TRUE).
-#' @param WAIC Logical; compute WAIC? (default = FALSE).
-#' @param n.adapt Integer; adaptation iterations (default = 20% of n.iter).
-#' @param quiet Logical; suppress MCMC progress messages? (default = FALSE).
-#' @param verbose Logical; print verbose debug information? (default = FALSE).
-#' @param dsep Logical; perform d-separation independence tests? (default = FALSE).
-#' @param variability Optional specification for variables with measurement error or within-species variability.
-#' @param family Optional named character vector specifying the family/distribution for response variables.
-#' @param distribution Deprecated alias for \code{family}.
-#' @param latent Optional character vector of latent (unmeasured) variable names.
-#' @param latent_method Method for handling latent variables ("correlations" or "explicit").
-#' @param standardize_latent Logical; standardize latents to unit variance?
-#' @param fix_latent Identification strategy for latent variables ("loading" or "sign").
-#' @param parallel Logical; run chains in parallel? (default = FALSE).
-#' @param n.cores Integer; number of CPU cores to use.
-#' @param cl Optional cluster object for parallel execution.
-#' @param ic_recompile Logical; recompile model after parallel chains for IC?
-#' @param random Optional formula for global random effects (e.g. ~(1|species)).
-#' @param levels (Hierarchical) Named list mapping variables to hierarchy levels.
-#' @param hierarchy (Hierarchical) Topological ordering of levels (e.g., "site > individual").
-#' @param link_vars (Hierarchical) Named vector specifying variables used to link levels.
-#' @param fix_residual_variance Optional named vector for fixing residual variances.
-#' @param priors Optional named list of custom priors.
-#' @param reuse_models List of previously fitted 'because' models to scan for reusable results.
-#' @param expand_ordered Logical; expand ordered factors into polynomial contrasts?
-#' @param structure_multi List of multiple structures for uncertainty.
-#' @param structure_levels Mapping of structures to hierarchy levels.
-#' @param ... Additional arguments passed to because_model.
+#' @param equations A list of R formulas describing the structural model. Each formula represents 
+#'    a causal path (e.g., `Y ~ X1 + X2`). Categorical predictors are automatically handled.
+#' @param data A data frame containing all variables. For **hierarchical models**, 
+#'   this must be a named list of data frames (one per level).
+#' @param family A named character vector specifying the distribution for each response 
+#'   (e.g., `c(Y = "poisson", M = "gaussian")`). Supports "gaussian" (default), "poisson", 
+#'   "binomial", "gamma", "lognormal", "bernoulli", "ordinal", and "occupancy".
+#' @param dsep Logical; if `TRUE`, performs d-separation tests to evaluate the global 
+#'   fit of the DAG against the data. Highly recommended for causal validation.
+#' @param random Optional formula for **global random intercepts** (e.g., `~(1|Site)`). 
+#'   Deprecated in favor of inline specification: `Y ~ X + (1|Site)`.
+#' @param latent Optional character vector of latent (unmeasured) variables.
+#' @param id_col Character string for the column identifying units (e.g. species names).
+#' @param structure Optional covariance structure (e.g., a phylogenetic tree or spatial matrix) 
+#'   for modeling correlated residuals.
+#' @param hierarchy (Hierarchical) A string defining the nesting structure (e.g., `"site > individual"`). 
+#'   Semicolons separate parallel branches (e.g., `"site > obs; species > obs"`).
+#' @param levels (Hierarchical) Optional named list mapping variables to their home levels. 
+#'   If omitted, `because` will attempt to auto-detect levels based on column availability.
+#' @param link_vars (Hierarchical) A named character vector specifying the columns used to 
+#'   link data frames across levels (e.g., `c(site = "SiteID")`).
+#' @param engine Bayesian backend: `"jags"` (default) or `"nimble"`. 
+#' @param n.iter Total MCMC iterations per chain (default = 12500).
+#' @param n.burnin Number of burn-in iterations (default = 20% of `n.iter`).
+#' @param n.chains Number of independent MCMC chains (default = 3).
+#' @param parallel Logical; if `TRUE`, runs MCMC chains in parallel.
+#' @param n.cores Number of CPU cores for parallel execution.
+#' @param ... Additional arguments passed to the underlying model engines.
 #'
 #' @return An object of class \code{"because"} containing:
 #'   \item{samples}{MCMC samples (mcmc.list).}
@@ -219,16 +206,30 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #'
 #' @examples
 #' \dontrun{
-#' # A simple linear regression
-#' df <- data.frame(Y = rnorm(100), X = rnorm(100))
-#' fit <- because(list(Y ~ X), data = df)
+#' # 1. Simple Path Model
+#' df <- data.frame(Y = rnorm(100), M = rnorm(100), X = rnorm(100))
+#' eqs <- list(M ~ X, Y ~ M + X)
+#' fit <- because(eqs, data = df, dsep = TRUE)
+#' summary(fit)
 #'
-#' # A mediation model
-#' equations <- list(
-#'   M ~ X,
-#'   Y ~ M + X
+#' # 2. Hierarchical Model (Auto-detection)
+#' # Suppose we have year-level data and individual-level data
+#' year_df <- data.frame(Year = 1:5, Temp = rnorm(5))
+#' ind_df  <- data.frame(Year = rep(1:5, each=10), Mass = rnorm(50))
+#' data_list <- list(yr = year_df, ind = ind_df)
+#' 
+#' # Mass depends on Temp (cross-level link via Year)
+#' fit_h <- because(
+#'   equations = list(Mass ~ Temp),
+#'   data      = data_list,
+#'   hierarchy = "yr > ind",
+#'   link_vars = c(yr = "Year")
 #' )
-#' fit_med <- because(equations, data = df)
+#'
+#' # 3. Random Intercepts (lme4-style)
+#' # Note: Grouping variables (Site) must be in the data
+#' df$Site <- rep(1:10, each=10)
+#' fit_re <- because(list(Y ~ X + (1|Site)), data = df)
 #' }
 #'
 #' @export
@@ -453,6 +454,7 @@ because <- function(
     if (length(eq) == 3) all.vars(eq[[3]]) else character(0)
   })))
 
+
   # 4. Combine all needed variables
   model_vars <- unique(c(
     all_eq_vars,
@@ -543,13 +545,15 @@ because <- function(
   hierarchical_info <- NULL
 
   if (is_list_data) {
-    # Get all variables from equations for auto-detection
-    eq_vars <- unique(unlist(lapply(equations, all.vars)))
-
+    # Get all variables from fixed equations for auto-detection
+    # We use fixed_eqs_temp (already extracted above) to exclude random grouping variables
+    eq_vars <- unique(unlist(lapply(fixed_eqs_temp, all.vars)))
+    
     # Auto-detect if levels not provided
     if (is.null(levels)) {
       auto_result <- auto_detect_hierarchical(data, eq_vars, quiet = quiet)
       levels <- auto_result$levels
+
 
       # Use auto-detected hierarchy/link_vars if not explicitly provided
       if (is.null(hierarchy)) {
@@ -634,35 +638,46 @@ because <- function(
 
   # Parse global random argument if provided
   if (!is.null(random)) {
+    # --- DEPRECATION WARNING ---
+    # Build the equivalent inline syntax to guide users on how to migrate.
+    resp_vars <- vapply(
+      parsed_random$fixed_equations,
+      function(eq) as.character(eq[[2]]),
+      character(1)
+    )
+    rand_char  <- as.character(random)
+    rand_rhs   <- rand_char[length(rand_char)]
+    rand_parts <- trimws(strsplit(rand_rhs, "\\+")[[1]])
+    rand_parts <- rand_parts[grepl("\\|", rand_parts)]
+    rand_inline <- paste(rand_parts, collapse = " + ")
+    migration_lines <- vapply(
+      resp_vars,
+      function(r) paste0("  ", r, " ~ ... + ", rand_inline),
+      character(1)
+    )
+    warning(
+      "The 'random' argument is deprecated and will be removed in a future ",
+      "version. Embed random effects directly in the equation formulas instead:\n",
+      paste(migration_lines, collapse = "\n"), "\n",
+      "See vignette('07_multilevel_models') for details.",
+      call. = FALSE
+    )
+
     global_random_terms <- parse_global_random(random, equations)
     # Combine with equation-specific terms
     random_terms <- c(random_terms, global_random_terms)
 
-    # Deduplicate terms (avoid adding same (1|Group) twice for same response)
-    # Create unique keys
+    # Deduplicate (avoid adding the same (1|Group) twice for the same response)
     if (length(random_terms) > 0) {
       keys <- vapply(
         random_terms,
-        function(x) {
-          paste(x$response, x$group, sep = "|")
-        },
+        function(x) paste(x$response, x$group, sep = "|"),
         character(1)
       )
-
-      if (!quiet) {
-        if (length(random_terms) > 0) {
-          msg <- vapply(
-            random_terms,
-            function(x) {
-              paste(x$response, x$group, sep = "|")
-            },
-            character(1)
-          )
-        } else {}
-      }
       random_terms <- random_terms[!duplicated(keys)]
     }
   }
+
 
   # --- Polynomial Term Extraction ---
   # Extract I(var^power) terms and expand formulas
