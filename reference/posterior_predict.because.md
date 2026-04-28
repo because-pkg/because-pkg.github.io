@@ -40,3 +40,19 @@ posterior_predict(object, resp = NULL, ndraws = NULL, re_formula = NULL, ...)
 
 A matrix of dimensions `[ndraws x N_obs]` containing simulated response
 values.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+df <- data.frame(Y = rnorm(100), X = rnorm(100))
+fit <- because(list(Y ~ X), data = df)
+
+# Draw 200 posterior predictive samples for Y
+yrep <- posterior_predict(fit, resp = "Y", ndraws = 200)
+dim(yrep)  # [200 x 100]
+
+# Marginal prediction (no random effects)
+yrep_marg <- posterior_predict(fit, resp = "Y", ndraws = 200, re_formula = NA)
+} # }
+```

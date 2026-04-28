@@ -96,6 +96,21 @@ If <code>NA</code>, no random effects are included (marginal prediction).</p></d
     <p>A matrix of dimensions <code>[ndraws x N_obs]</code> containing simulated response values.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>, X <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="because.html">because</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">X</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">df</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Draw 200 posterior predictive samples for Y</span></span></span>
+<span class="r-in"><span><span class="va">yrep</span> <span class="op">&lt;-</span> <span class="fu"><a href="posterior_predict.html">posterior_predict</a></span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Y"</span>, ndraws <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">yrep</span><span class="op">)</span>  <span class="co"># [200 x 100]</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Marginal prediction (no random effects)</span></span></span>
+<span class="r-in"><span><span class="va">yrep_marg</span> <span class="op">&lt;-</span> <span class="fu"><a href="posterior_predict.html">posterior_predict</a></span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Y"</span>, ndraws <span class="op">=</span> <span class="fl">200</span>, re_formula <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

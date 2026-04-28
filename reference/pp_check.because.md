@@ -57,3 +57,21 @@ pp_check(
 ## Value
 
 A `ggplot` object produced by `bayesplot`.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+df <- data.frame(Y = rnorm(100), X = rnorm(100))
+fit <- because(list(Y ~ X), data = df)
+
+# Default density overlay check
+pp_check(fit)
+
+# Histogram check for a specific response
+pp_check(fit, resp = "Y", type = "hist", ndraws = 30)
+
+# Test statistic check (e.g., mean)
+pp_check(fit, type = "stat", stat = "mean")
+} # }
+```

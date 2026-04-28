@@ -30,13 +30,6 @@
   : Family Definition Generics and Default Methods
 - [`get_family()`](https://because-pkg.github.io/because/reference/get_family.md)
   : Create a family object for a given distribution
-- [`get_inherited_random_terms()`](https://because-pkg.github.io/because/reference/get_inherited_random_terms.md)
-  : Get inherited random terms for a variable based on hierarchy
-- [`get_level_depth()`](https://because-pkg.github.io/because/reference/get_level_depth.md)
-  : Get Depth of a Level in Hierarchy
-- [`is_cross_hierarchy_test()`](https://because-pkg.github.io/because/reference/is_cross_hierarchy_test.md)
-  : Check if a d-sep test is a cross-hierarchy test (trivially
-  satisfied)
 - [`marginal_effects()`](https://because-pkg.github.io/because/reference/marginal_effects.md)
   : Calculate Marginal Effects for Because Fit
 - [`plot_coef()`](https://because-pkg.github.io/because/reference/plot_coef.md)

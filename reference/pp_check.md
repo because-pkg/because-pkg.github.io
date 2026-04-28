@@ -1,6 +1,11 @@
 # Posterior Predictive Checks
 
-Posterior Predictive Checks
+Generic function for posterior predictive checks of a fitted model. For
+`because` model objects, see
+[`pp_check.because`](https://because-pkg.github.io/because/reference/pp_check.because.md),
+which wraps `bayesplot` functions (density overlay, histogram, test
+statistics) and supports conditional or marginal prediction via
+`re_formula`.
 
 ## Usage
 
@@ -16,7 +21,7 @@ pp_check(object, ...)
 
 - ...:
 
-  Additional arguments.
+  Additional arguments passed to the method.
 
 ## Value
 

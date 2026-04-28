@@ -47,4 +47,58 @@ marginal_effects(
 
 ## Value
 
-A data frame with marginal effects per path.
+A data frame with marginal effects per path. Each row contains:
+
+- Response:
+
+  Name of the response variable.
+
+- Predictor:
+
+  Name of the predictor variable.
+
+- Category:
+
+  For categorical predictors: the comparison category (vs. reference).
+  `NA` for continuous predictors.
+
+- Effect:
+
+  Posterior mean of the marginal effect.
+
+- Lower:
+
+  Lower bound of the credible interval (at `(1-prob)/2`).
+
+- Upper:
+
+  Upper bound of the credible interval (at `1-(1-prob)/2`).
+
+- Family:
+
+  Distribution family of the response.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Fit a mixed-family SEM
+df <- data.frame(
+  Y = rbinom(100, 1, 0.4),
+  M = rnorm(100),
+  X = rnorm(100)
+)
+fit <- because(list(M ~ X, Y ~ M + X), data = df, family = c(Y = "binomial"))
+
+# Average Marginal Effects (default) — on the response scale for all families
+me <- marginal_effects(fit)
+print(me)
+
+# Marginal Effects at the Mean
+me_mem <- marginal_effects(fit, at = "mean")
+print(me_mem)
+
+# Narrow credible interval
+me_90 <- marginal_effects(fit, prob = 0.90)
+} # }
+```
