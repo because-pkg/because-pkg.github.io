@@ -40,16 +40,20 @@ jobs:
           sudo apt-get install -y jags libjags-dev pkg-config libnlopt-dev libglpk-dev libxml2-dev \
           libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev libfontconfig1-dev \
           libarchive-dev libgit2-dev libssh2-1-dev libssl-dev libfreetype6-dev
+          echo "JAGS_HOME=/usr" >> $GITHUB_ENV
 
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install jags
+        run: |
+          brew install jags
+          echo "JAGS_HOME=$(brew --prefix jags)" >> $GITHUB_ENV
 
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
           curl -L https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/JAGS-4.3.0.exe/download -o jags.exe
           ./jags.exe /S
+          echo "JAGS_HOME=C:\Program Files\JAGS\JAGS-4.3.0" >> $GITHUB_ENV
           echo "C:\Program Files\JAGS\JAGS-4.3.0\x64\bin" >> $GITHUB_PATH
 
       - uses: r-lib/actions/setup-r@v2
