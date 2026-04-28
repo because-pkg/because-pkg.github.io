@@ -40,14 +40,14 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/01_getting_started.html">Getting Started with because</a></li>
     <li><a class="dropdown-item" href="../articles/02_dseparation.html">Causal inference with d-separation</a></li>
-    <li><a class="dropdown-item" href="../articles/03_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
+    <li><a class="dropdown-item" href="../articles/03_model_diagnostics_comparison.html">Model Diagnostics and Comparison</a></li>
     <li><a class="dropdown-item" href="../articles/04_mediation.html">Mediation Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/05_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
-    <li><a class="dropdown-item" href="../articles/06_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
-    <li><a class="dropdown-item" href="../articles/07_multilevel_models.html">Multilevel Causal Models</a></li>
-    <li><a class="dropdown-item" href="../articles/08_non_gaussian_families.html">Non-Gaussian Distribution Families</a></li>
+    <li><a class="dropdown-item" href="../articles/05_non_gaussian_families.html">Non-Gaussian Distribution Families</a></li>
+    <li><a class="dropdown-item" href="../articles/06_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
+    <li><a class="dropdown-item" href="../articles/07_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
+    <li><a class="dropdown-item" href="../articles/08_multilevel_models.html">Multilevel Causal Models</a></li>
     <li><a class="dropdown-item" href="../articles/09_missing_data.html">Bayesian Missing Data Imputation</a></li>
-    <li><a class="dropdown-item" href="../articles/10_model_diagnostics_comparison.html">Model Diagnostics and Comparison</a></li>
+    <li><a class="dropdown-item" href="../articles/10_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
     <li><a class="dropdown-item" href="../articles/11_latent_variables_mag.html">Latent Variables and the MAG Approach</a></li>
     <li><a class="dropdown-item" href="../articles/12_custom_families.html">Creating Custom Distribution Families</a></li>
     <li><a class="dropdown-item" href="../articles/extensions.html">Extensions</a></li>
@@ -100,17 +100,14 @@ structures (eg. spatial autocorrelation, genetic relatedness etc.).</p>
 d-Separation</a>: Testing conditional independencies implied by your
 causal model.</li>
 <li>
-<a href="03_custom_priors.html">Custom Priors and Mechanistic
-Constraints</a>: Incorporating prior knowledge and mechanistic
-constraints.</li>
+<a href="03_model_diagnostics_comparison.html">Model Diagnostics and
+Comparison</a>: Checking convergence, posterior predictive checks,
+comparing models with WAIC and LOO-CV.</li>
 <li>
 <a href="04_mediation.html">Mediation Analysis</a>: Decomposing
 effects into direct and indirect components.</li>
 <li>
-<a href="05_deterministic_nodes.html">Deterministic Nodes</a>:
-Interactions, thresholds and mathematical transformations.</li>
-<li>
-<a href="08_non_gaussian_families.html">Non-Gaussian Distribution
+<a href="05_non_gaussian_families.html">Non-Gaussian Distribution
 Families</a>: Modeling non-Gaussian data.
 <ul>
 <li>Gaussian (continuous data)</li>
@@ -123,13 +120,16 @@ Families</a>: Modeling non-Gaussian data.
 </ul>
 </li>
 <li>
+<a href="06_deterministic_nodes.html">Deterministic Nodes</a>:
+Interactions, thresholds and mathematical transformations.</li>
+<li>
+<a href="07_custom_priors.html">Custom Priors and Mechanistic
+Constraints</a>: Incorporating prior knowledge and mechanistic
+constraints.</li>
+<li>
 <a href="09_missing_data.html">Bayesian Missing Data Imputation</a>:
 Handling missing data through simultaneous Bayesian imputation within
 the SEM.</li>
-<li>
-<a href="10_model_diagnostics_comparison.html">Model Diagnostics and
-Comparison</a>: Checking convergence, posterior predictive checks,
-comparing models with WAIC and LOO-CV.</li>
 <li>
 <a href="11_latent_variables_mag.html">Latent Variables and the MAG
 Approach</a>: Causal inference in the presence of latent variables using
@@ -139,11 +139,11 @@ the MAG approach by Shipley &amp; Douda (2021).</li>
 Families</a>: Extending <code>because</code> with user-defined JAGS
 distributions.</li>
 <li>
-<em>Advanced Model Specifications:</em> <a href="07_multilevel_models.html">random effects</a> (lme4-style
+<em>Advanced Model Specifications:</em> <a href="08_multilevel_models.html">random effects</a> (lme4-style
 <code>(1|group)</code> notation, mixed models, nested designs),
 polynomial terms, categorical predictors, measurement error.</li>
 <li>
-<em><a href="07_multilevel_models.html">Multilevel &amp;
+<em><a href="08_multilevel_models.html">Multilevel &amp;
 Hierarchical Data</a>:</em> Multi-level data with variables at different
 hierarchical levels and correct degrees of freedom in d-separation
 tests.</li>

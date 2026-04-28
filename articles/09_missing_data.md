@@ -43,7 +43,7 @@ With `because`, `IsMature` is a **deterministic node** defined by `Age`.
 The model always calculates `IsMature` as a function of the imputed
 `Age` in every MCMC step, guaranteeing logical coherence throughout the
 posterior. See the [Deterministic Nodes
-vignette](https://because-pkg.github.io/because/articles/05_deterministic_nodes.md)
+vignette](https://because-pkg.github.io/because/articles/06_deterministic_nodes.md)
 for details.
 
 ------------------------------------------------------------------------
@@ -218,7 +218,7 @@ print(imputed2)
 As mentioned in the introduction, Bayesian imputation preserves
 deterministic constraints. Here we demonstrate this with the marmot
 example from the [Deterministic Nodes
-vignette](https://because-pkg.github.io/because/articles/05_deterministic_nodes.md):
+vignette](https://because-pkg.github.io/because/articles/06_deterministic_nodes.md):
 
 ``` r
 set.seed(99)
@@ -292,7 +292,7 @@ avoids any bias from non-random missingness patterns.
 | Predictors have NAs                              | Include them as-is; `because` auto-imputes. Use `monitor = "all"` to extract posteriors.                                                          |
 | Response variable has NAs                        | Same — NAs in any column are handled automatically.                                                                                               |
 | Missingness is informative (MNAR)                | Consider adding covariates that predict missingness to the model.                                                                                 |
-| Deterministic relationships among variables      | Use [Deterministic Nodes](https://because-pkg.github.io/because/articles/05_deterministic_nodes.md); constraints are preserved during imputation. |
+| Deterministic relationships among variables      | Use [Deterministic Nodes](https://because-pkg.github.io/because/articles/06_deterministic_nodes.md); constraints are preserved during imputation. |
 | Very high missingness (\>50%) in a key predictor | Inspect model fit carefully; imputation becomes unreliable without sufficient observed anchor points.                                             |
 
 ### References

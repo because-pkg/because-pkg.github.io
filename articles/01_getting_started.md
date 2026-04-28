@@ -14,17 +14,15 @@ autocorrelation, genetic relatedness etc.).
 - [Causal Inference with
   d-Separation](https://because-pkg.github.io/because/articles/02_dseparation.md):
   Testing conditional independencies implied by your causal model.
-- [Custom Priors and Mechanistic
-  Constraints](https://because-pkg.github.io/because/articles/03_custom_priors.md):
-  Incorporating prior knowledge and mechanistic constraints.
+- [Model Diagnostics and
+  Comparison](https://because-pkg.github.io/because/articles/03_model_diagnostics_comparison.md):
+  Checking convergence, posterior predictive checks, comparing models
+  with WAIC and LOO-CV.
 - [Mediation
   Analysis](https://because-pkg.github.io/because/articles/04_mediation.md):
   Decomposing effects into direct and indirect components.
-- [Deterministic
-  Nodes](https://because-pkg.github.io/because/articles/05_deterministic_nodes.md):
-  Interactions, thresholds and mathematical transformations.
 - [Non-Gaussian Distribution
-  Families](https://because-pkg.github.io/because/articles/08_non_gaussian_families.md):
+  Families](https://because-pkg.github.io/because/articles/05_non_gaussian_families.md):
   Modeling non-Gaussian data.
   - Gaussian (continuous data)
   - Binomial (binary/proportion data)
@@ -33,14 +31,16 @@ autocorrelation, genetic relatedness etc.).
   - Poisson (count data)
   - Negative Binomial (overdispersed count data)
   - Zero-inflated Poisson (ZIP) and Negative Binomial (ZINB)
+- [Deterministic
+  Nodes](https://because-pkg.github.io/because/articles/06_deterministic_nodes.md):
+  Interactions, thresholds and mathematical transformations.
+- [Custom Priors and Mechanistic
+  Constraints](https://because-pkg.github.io/because/articles/07_custom_priors.md):
+  Incorporating prior knowledge and mechanistic constraints.
 - [Bayesian Missing Data
   Imputation](https://because-pkg.github.io/because/articles/09_missing_data.md):
   Handling missing data through simultaneous Bayesian imputation within
   the SEM.
-- [Model Diagnostics and
-  Comparison](https://because-pkg.github.io/because/articles/10_model_diagnostics_comparison.md):
-  Checking convergence, posterior predictive checks, comparing models
-  with WAIC and LOO-CV.
 - [Latent Variables and the MAG
   Approach](https://because-pkg.github.io/because/articles/11_latent_variables_mag.md):
   Causal inference in the presence of latent variables using the MAG
@@ -49,11 +49,11 @@ autocorrelation, genetic relatedness etc.).
   Families](https://because-pkg.github.io/because/articles/12_custom_families.md):
   Extending `because` with user-defined JAGS distributions.
 - *Advanced Model Specifications:* [random
-  effects](https://because-pkg.github.io/because/articles/07_multilevel_models.md)
+  effects](https://because-pkg.github.io/because/articles/08_multilevel_models.md)
   (lme4-style `(1|group)` notation, mixed models, nested designs),
   polynomial terms, categorical predictors, measurement error.
 - *[Multilevel & Hierarchical
-  Data](https://because-pkg.github.io/because/articles/07_multilevel_models.md):*
+  Data](https://because-pkg.github.io/because/articles/08_multilevel_models.md):*
   Multi-level data with variables at different hierarchical levels and
   correct degrees of freedom in d-separation tests.
 - *Phylogenetic Path Analysis*: Using the Phylogenetic Bayesian

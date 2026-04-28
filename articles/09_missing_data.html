@@ -40,14 +40,14 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/01_getting_started.html">Getting Started with because</a></li>
     <li><a class="dropdown-item" href="../articles/02_dseparation.html">Causal inference with d-separation</a></li>
-    <li><a class="dropdown-item" href="../articles/03_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
+    <li><a class="dropdown-item" href="../articles/03_model_diagnostics_comparison.html">Model Diagnostics and Comparison</a></li>
     <li><a class="dropdown-item" href="../articles/04_mediation.html">Mediation Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/05_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
-    <li><a class="dropdown-item" href="../articles/06_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
-    <li><a class="dropdown-item" href="../articles/07_multilevel_models.html">Multilevel Causal Models</a></li>
-    <li><a class="dropdown-item" href="../articles/08_non_gaussian_families.html">Non-Gaussian Distribution Families</a></li>
+    <li><a class="dropdown-item" href="../articles/05_non_gaussian_families.html">Non-Gaussian Distribution Families</a></li>
+    <li><a class="dropdown-item" href="../articles/06_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
+    <li><a class="dropdown-item" href="../articles/07_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
+    <li><a class="dropdown-item" href="../articles/08_multilevel_models.html">Multilevel Causal Models</a></li>
     <li><a class="dropdown-item" href="../articles/09_missing_data.html">Bayesian Missing Data Imputation</a></li>
-    <li><a class="dropdown-item" href="../articles/10_model_diagnostics_comparison.html">Model Diagnostics and Comparison</a></li>
+    <li><a class="dropdown-item" href="../articles/10_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
     <li><a class="dropdown-item" href="../articles/11_latent_variables_mag.html">Latent Variables and the MAG Approach</a></li>
     <li><a class="dropdown-item" href="../articles/12_custom_families.html">Creating Custom Distribution Families</a></li>
     <li><a class="dropdown-item" href="../articles/extensions.html">Extensions</a></li>
@@ -131,7 +131,7 @@ Immature — physically impossible.</li>
 <strong>deterministic node</strong> defined by <code>Age</code>. The
 model always calculates <code>IsMature</code> as a function of the
 imputed <code>Age</code> in every MCMC step, guaranteeing logical
-coherence throughout the posterior. See the <a href="05_deterministic_nodes.html">Deterministic Nodes vignette</a> for
+coherence throughout the posterior. See the <a href="06_deterministic_nodes.html">Deterministic Nodes vignette</a> for
 details.</p>
 <hr>
 </div>
@@ -308,7 +308,7 @@ individuals.</p>
 </h3>
 <p>As mentioned in the introduction, Bayesian imputation preserves
 deterministic constraints. Here we demonstrate this with the marmot
-example from the <a href="05_deterministic_nodes.html">Deterministic
+example from the <a href="06_deterministic_nodes.html">Deterministic
 Nodes vignette</a>:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">99</span><span class="op">)</span></span>
@@ -401,7 +401,7 @@ the model.</td>
 </tr>
 <tr class="even">
 <td align="left">Deterministic relationships among variables</td>
-<td align="left">Use <a href="05_deterministic_nodes.html">Deterministic
+<td align="left">Use <a href="06_deterministic_nodes.html">Deterministic
 Nodes</a>; constraints are preserved during imputation.</td>
 </tr>
 <tr class="odd">

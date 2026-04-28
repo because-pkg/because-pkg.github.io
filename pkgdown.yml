@@ -4,18 +4,18 @@ pkgdown_sha: ~
 articles:
   01_getting_started: 01_getting_started.html
   02_dseparation: 02_dseparation.html
-  03_custom_priors: 03_custom_priors.html
+  03_model_diagnostics_comparison: 03_model_diagnostics_comparison.html
   04_mediation: 04_mediation.html
-  05_deterministic_nodes: 05_deterministic_nodes.html
-  06_nimble_engine: 06_nimble_engine.html
-  07_multilevel_models: 07_multilevel_models.html
-  08_non_gaussian_families: 08_non_gaussian_families.html
+  05_non_gaussian_families: 05_non_gaussian_families.html
+  06_deterministic_nodes: 06_deterministic_nodes.html
+  07_custom_priors: 07_custom_priors.html
+  08_multilevel_models: 08_multilevel_models.html
   09_missing_data: 09_missing_data.html
-  10_model_diagnostics_comparison: 10_model_diagnostics_comparison.html
+  10_nimble_engine: 10_nimble_engine.html
   11_latent_variables_mag: 11_latent_variables_mag.html
   12_custom_families: 12_custom_families.html
   extensions: extensions.html
-last_built: 2026-04-28T20:28Z
+last_built: 2026-04-28T20:36Z
 urls:
   reference: https://because-pkg.github.io/because/reference
   article: https://because-pkg.github.io/because/articles

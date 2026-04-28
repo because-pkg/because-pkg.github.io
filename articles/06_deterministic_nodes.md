@@ -1,0 +1,297 @@
+# Deterministic Nodes: Interactions, tresholds and mathematical transformations
+
+In standard Bayesian regression, variables are typically modeled as
+**Stochastic Nodes**:
+$$Y_{i} \sim \text{Normal}\left( \alpha + \beta X_{i},\sigma \right)$$
+This means $Y$ is *correlated* with $X$, but has its own independent
+“noise”.
+
+However, in many causal models, some variables are **logical
+consequences** of others. For example: **Interactions**:
+`Risk = Exposure * Toxicity` **Thresholds**: `IsAdult = (Age > 2)`
+**Transformations**: `LogSize = log(Size)`
+
+If you treat `IsAdult` as a stochastic node, the model might learn the
+correlation, but it treats the relationship as “soft”. Crucially, if
+`Age` is missing (NA), the model might impute `Age = 5` but
+`IsAdult = 0`. This violates the laws of logic.
+
+`because` solves this with **Deterministic Nodes**. These are variables
+defined by a hard equation (`<-`), ensuring they always stay perfectly
+synchronized with their parents, even during imputation and
+counterfactual interventions.
+
+## Setup
+
+``` r
+library(because)
+set.seed(123)
+```
+
+## Example 1: Interactions (`A * B`)
+
+Standard R formulas (`y ~ A * B`) handle interactions automatically on
+complete data. However, if values of A or B are missing, and unless you
+use the standard procedure of eliminating rows with missing data (with a
+cosequent loss of power), **imputation** introduces a trap. If you
+follow the common workflow of “impute first, then model”, the imputation
+step usually assumes simple linear relationships and ignores the
+interaction. This often biases the interaction estimate towards zero.
+
+With `because`, you just write the formula naturally. The model imputes
+missing values and estimates the interaction **simultaneously**,
+ensuring the interaction structure is preserved in the imputed data.
+
+``` r
+N <- 100
+
+# Predictors
+Rain <- rnorm(N)
+Temp <- rnorm(N)
+
+# Interaction: Growth depends on Rain * Temp
+Growth <- 0.5 * (Rain * Temp) + rnorm(N, sd = 0.1)
+
+# remove some random values in Rain and Temp
+Rain[sample(1:N, 10)] <- NA
+Temp[sample(1:N, 15)] <- NA
+
+
+data <- data.frame(Growth = Growth, Rain = Rain, Temp = Temp)
+
+# Note the formula: Growth ~ Rain * Temp
+fit_int <- because(
+    equations = list(
+        Growth ~ Rain * Temp
+    ),
+    data = data,
+    n.iter = 1000,
+    quiet = TRUE
+)
+# The model creates a deterministic node for the interaction
+
+# Notice the parameter name "beta_Growth_Rain_x_Temp"
+summary(fit_int)
+```
+
+## Example 2: Logic and Thresholds (`Age > 2`)
+
+You can model “tipping points” or categorical definitions. For example,
+a marmot (**Marmota marmota**) is only “Mature” if it is older than 2
+years.
+
+``` r
+# Predictors
+Age <- runif(N, 0, 10)
+
+# Deterministic threshold: 1 if Age > 2, else 0
+IsMature <- as.numeric(Age > 2)
+
+# Outcome: Mating success depends on Maturity
+Mating <- 2 * IsMature + rnorm(N, sd = 0.5)
+
+data_logic <- data.frame(Mating = Mating, Age = Age)
+
+# Use I() to wrap the logic
+fit_logic <- because(
+    equations = list(
+        Mating ~ I(Age > 3)
+    ),
+    data = data_logic,
+    n.iter = 1000,
+    quiet = TRUE
+)
+
+# The model recovers the effect of the threshold
+# Parameter: "beta_Mating_Age_gt_2" where "gt" means "greater than"
+summary(fit_logic)
+```
+
+## Example 3: Multi-Class Definitions
+
+What if you have multiple life stages? \* **Newborn**: Age = 0 \*
+**Juvenile**: Age 1 \* **Subadult**: Age 2-4 \* **Adult**: Age \>= 5
+
+You can define this using a sum of logical conditions:
+
+``` r
+# Define 4-level class: 1=Newborn, 2=Juv, 3=Sub, 4=Adult
+# IMPORTANT: The class must be derived from Age so the model understands the structure.
+Age <- round(runif(N, 0, 10), 0)
+
+AgeClass <- 1 * (Age == 0) +
+    2 * (Age > 0 & Age < 2) +
+    3 * (Age >= 2 & Age < 5) +
+    4 * (Age >= 5)
+
+# Outcome: Social Rank increases with Life Stage
+Rank <- 1.5 * AgeClass + rnorm(N, sd = 0.5)
+
+data_multi <- data.frame(Rank = Rank, Age = Age, AgeClass = AgeClass)
+
+# because() recovers the slope (~1.5) and confirms the causal path Age -> AgeClass -> Rank
+fit_multi <- because(
+    equations = list(
+        # 1. Link AgeClass to Rank (Causal: Class -> Rank)
+        Rank ~ AgeClass
+    ),
+    data = data_multi,
+    n.iter = 1000,
+    quiet = TRUE
+)
+
+# Check effect of AgeClass on Rank
+summary(fit_multi)
+```
+
+## Example 4: Mathematical transformations (`log(A)`)
+
+You can also use mathematical transformations directly in the formula.
+
+``` r
+Mass <- runif(N, 1, 100) # Ensure positive for log
+Metabolism <- 0.75 * log(Mass) + rnorm(N, sd = 0.1)
+
+data_math <- data.frame(Metabolism = Metabolism, Mass = Mass)
+
+fit_math <- because(
+    equations = list(
+        Metabolism ~ log(Mass)
+    ),
+    data = data_math,
+    n.iter = 1000,
+    quiet = TRUE
+)
+
+# Parameter: "beta_Metabolism_log_Mass"
+summary(fit_math)
+```
+
+## When do I need `I()`?
+
+You might notice we used [`I()`](https://rdrr.io/r/base/AsIs.html) for
+logic and thresholds but not for mathematical transformations. The rule
+is:
+
+1.  **Standard Functions**: You interpret things like `log(x)`,
+    `sqrt(x)`, `exp(x)` directly as transformations. No
+    [`I()`](https://rdrr.io/r/base/AsIs.html) needed.
+    - `y ~ log(x)` (OK)
+2.  **Interactions**: Use `*` or `:`.
+    - `y ~ A * B` (OK)
+3.  **Complex Operators**: If you use operators like `>`, `<`, `+`, `-`
+    inside a term, R gets confused. Use
+    [`I()`](https://rdrr.io/r/base/AsIs.html) to wrap them.
+    - `y ~ A + B` (Means “A and B are predictors”)
+    - `y ~ I(A + B)` (Means “The SUM of A and B is the predictor”)
+    - `y ~ I(A > 5)` (Means “True/False is the predictor”)
+
+## Why “Deterministic” Matters (The Imputation Advantage)
+
+You might ask: *“Why not just create a column `IsMature` before loading
+the data?”*
+
+If your data is complete (no NAs), that works fine. But if you have
+**missing data**, pre-calculation is dangerous.
+
+### Scenario: The “Broken Logic” of Standard Imputation
+
+Imagine you have a missing `Age` value. You want to impute it.
+
+1.  **Standard Approach (e.g., MICE)**:
+    - The imputer sees two separate columns: `Age` (NA) and `IsMature`
+      (NA).
+    - It guesses `Age = 6` based on body size.
+    - It independently guesses `IsMature = 0` based on hormone levels.
+    - **Result**: A marmot that is 6 years old but “Immature”.
+      **Impossible!**
+2.  **The `because` Approach**:
+    - `IsMature` is not a variable you impute; it is a **formula**.
+    - In MCMC Step 1, the model guesses `Age = 1`. It automatically
+      calculates `IsMature = 0`.
+    - In MCMC Step 2, the model guesses `Age = 6`. It automatically
+      calculates `IsMature = 1`.
+    - **Result**: Every single sample in your posterior distribution is
+      logically consistent. The “physics” of your model are preserved.
+
+## D-Separation with Deterministic Nodes
+
+How does `because` treat interactions and deterministic nodes in
+d-separation tests?
+
+### 1. Standard Interactions (`A * B`)
+
+If you use a standard interaction in your formula:
+
+``` r
+equations = list(Y ~ A * B)
+```
+
+`because` follows standard DAG theory (Shipley/Pearl). The interaction
+describes the **functional form**, not the topology.
+
+- The DAG contains edges: `A -> Y` and `B -> Y`.
+- There is **no** separate “interaction node” (`A_x_B`).
+- D-separation tests involving `Y` will condition on the parents: `A`
+  and `B`.
+- You do **not** need to condition on the interaction term itself. Once
+  `A` and `B` are known, `A*B` provides no new causal information (it is
+  collinear).
+
+### 2. Explicit Deterministic Nodes (`Compound ~ I(A * B)`)
+
+If you explicitly define the interaction as a separate variable (a
+deterministic node):
+
+``` r
+equations = list(
+    Compound ~ I(A * B),
+    Y ~ Compound
+)
+```
+
+`because` treats `Compound` as a distinct node in the DAG.
+
+- The DAG contains edges: `A -> Compound -> Y` and `B -> Compound -> Y`.
+- This allows you to test for **Mediation**. You can test if `Y` is
+  independent of `A` conditional on `Compound`
+  ($Y\bot A \mid Compound$).
+
+### Use Case: The “Blocking” Test
+
+This “Explicit Node” approach is powerful for testing hypotheses about
+mechanisms. In Example 3 above, we defined `AgeClass` explicitly:
+
+``` r
+AgeClass ~ I(... Age ...)
+Rank ~ AgeClass
+```
+
+Because `AgeClass` is a distinct node, `because` will test if `Age` is
+d-separated from `Rank` given `AgeClass`.
+
+- **Hypothesis**: “Age only affects Rank *through* the Life Stage
+  classification.”
+- **Test**: `I(Rank, Age | AgeClass)`
+- If this test passes, it confirms that `AgeClass` effectively blocks
+  the information from `Age`, validating your structural assumption.
+
+``` r
+fit_multi_dsep <- because(
+    equations = list(
+        AgeClass ~ I(
+            1 * (Age < 1) +
+                2 * (Age >= 1 & Age < 2) +
+                3 * (Age >= 2 & Age < 5) +
+                4 * (Age >= 5)
+        ),
+        Rank ~ AgeClass
+    ),
+    data = data_multi,
+    n.iter = 1000,
+    dsep = TRUE,
+    quiet = TRUE
+)
+
+summary(fit_multi_dsep)
+```
