@@ -3367,6 +3367,16 @@ because_model <- function(
             if (r_name %in% processed_rand_signals) next
             processed_rand_signals <- c(processed_rand_signals, r_name)
 
+            # [STRICT RELEVANCE]
+            is_requested <- FALSE
+            for (rt in random_terms) {
+              if (identical(rt$response, response) && identical(rt$group, r_name)) {
+                is_requested <- TRUE
+                break
+              }
+            }
+            if (!is_requested) next
+
             # [LINEAGE GUARD] Only generate priors for valid hierarchical branches
             if (!is_valid_random_level(response, r_name, hierarchical_info)) next
             
@@ -3520,6 +3530,16 @@ because_model <- function(
             for (r_name in random_structure_names) {
               if (r_name %in% processed_multi_rand) next
               processed_multi_rand <- c(processed_multi_rand, r_name)
+
+              # [STRICT RELEVANCE]
+              is_requested <- FALSE
+              for (rt in random_terms) {
+                if (identical(rt$response, response) && identical(rt$group, r_name)) {
+                  is_requested <- TRUE
+                  break
+                }
+              }
+              if (!is_requested) next
 
               s_suffix <- paste0("_", r_name)
               tau_u <- paste0("tau_u_", response, s_suffix)
