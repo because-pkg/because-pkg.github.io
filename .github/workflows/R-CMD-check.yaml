@@ -48,7 +48,8 @@ jobs:
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install jags --no-progress
+          curl -L https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/JAGS-4.3.0.exe/download -o jags.exe
+          ./jags.exe /S
           echo "C:\Program Files\JAGS\JAGS-4.3.0\x64\bin" >> $GITHUB_PATH
 
       - uses: r-lib/actions/setup-r@v2
