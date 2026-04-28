@@ -14,4 +14,6 @@
   transformations](https://because-pkg.github.io/because/articles/05_deterministic_nodes.md):
 - [High-Performance SEM with the NIMBLE
   Engine](https://because-pkg.github.io/because/articles/06_nimble_engine.md):
+- [Multilevel Causal
+  Models](https://because-pkg.github.io/because/articles/07_multilevel_models.md):
 - [Extensions](https://because-pkg.github.io/because/articles/extensions.md):

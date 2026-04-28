@@ -6,6 +6,7 @@
 <url><loc>https://because-pkg.github.io/because/articles/04_mediation.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/05_deterministic_nodes.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/06_nimble_engine.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/articles/07_multilevel_models.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/extensions.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/index.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/authors.html</loc></url>
@@ -33,7 +34,6 @@
 <url><loc>https://because-pkg.github.io/because/reference/dsep_tree_hook.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/ensure_log_lik.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/equations_to_dag.html</loc></url>
-<url><loc>https://because-pkg.github.io/because/reference/expand_nesting_syntax.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/expand_polynomial_formula.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/extract_bidirected_edges.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/extract_deterministic_terms.html</loc></url>
