@@ -546,9 +546,17 @@ because <- function(
 
   if (is_list_data) {
     # Get all variables from fixed equations for auto-detection
-    # We use fixed_eqs_temp (already extracted above) to exclude random grouping variables
+    # We use fixed_eqs_temp to exclude random grouping variables from being 
+    # assigned to a specific "home" level.
     eq_vars <- unique(unlist(lapply(fixed_eqs_temp, all.vars)))
     
+    # Also explicitly exclude any variables used in random terms or global random arg
+    all_random_groups <- unique(c(
+      vapply(parsed_random_temp$random_terms, function(x) x$group, character(1)),
+      global_random_vars
+    ))
+    eq_vars <- setdiff(eq_vars, all_random_groups)
+
     # Auto-detect if levels not provided
     if (is.null(levels)) {
       auto_result <- auto_detect_hierarchical(data, eq_vars, quiet = quiet)
