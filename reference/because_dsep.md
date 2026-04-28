@@ -119,12 +119,13 @@ equations <- list(LS ~ BM, NL ~ BM + RS, DD ~ NL)
 ind_tests <- because_dsep(equations)
 #> Basis Set for DAG: 
 #> I(X,Y|Z) means X is d-separated from Y given the set Z in the DAG 
-#> I( RS , BM |  ) 
-#> I( DD , RS | NL ) 
-#> I( LS , RS | BM ) 
 #> I( DD , BM | NL ) 
-#> I( NL , LS | BM, RS ) 
-#> I( DD , LS | BM, NL ) 
+#> I( BM , RS |  ) 
+#> I( DD , LS | BM ) 
+#> I( DD , LS | NL ) 
+#> I( DD , RS | NL ) 
+#> I( LS , NL | BM ) 
+#> I( LS , RS |  ) 
 
 # With latent variable
 equations_latent <- list(X ~ Quality, Y ~ Quality)
