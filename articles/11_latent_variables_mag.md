@@ -287,6 +287,7 @@ Richardson, T. S., & Spirtes, P. (2002). Ancestral graph Markov models.
 *The Annals of Statistics*, 30(4), 962–1030.
 <https://doi.org/10.1214/aos/1031689015>
 
-Shipley, B., & Douma, J. C. (2021). A new test for d-separation in
-maximal ancestral graphs. *Structural Equation Modeling*, 28(2),
-167–180. <https://doi.org/10.1080/10705511.2020.1768064>
+Shipley, B., & Douma, J. C. (2021). Testing Piecewise Structural
+Equations Models in the Presence of Latent Variables and Including
+Correlated Errors. Structural Equation Modeling: A Multidisciplinary
+Journal, 28(4), 582–589. <https://doi.org/10.1080/10705511.2020.1871355>
