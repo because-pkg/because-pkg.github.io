@@ -272,7 +272,7 @@ Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A.,
 Hall/CRC.
 
 Kleiber, M. (1932). Body size and metabolism. *Hilgardia*, 6(11),
-315–353. https://doi.org/10.3733/hilg.v06n11p315
+315–353.
 
 McElreath, R. (2020). *Statistical Rethinking: A Bayesian Course with
 Examples in R and Stan* (2nd ed.). CRC Press.
