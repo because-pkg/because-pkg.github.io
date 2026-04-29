@@ -379,12 +379,3 @@ mixing slower. Recommendations:
 4.  **Use the NIMBLE engine** for better mixing on non-Gaussian models:
     `engine = "nimble"` (see the [NIMBLE
     vignette](https://because-pkg.github.io/because/articles/10_nimble_engine.md)).
-
-### References
-
-Zuur, A. F., Ieno, E. N., Walker, N. J., Saveliev, A. A., & Smith, G. M.
-(2009). *Mixed Effects Models and Extensions in Ecology with R*.
-Springer.
-
-Gelman, A., & Hill, J. (2007). *Data Analysis Using Regression and
-Multilevel/Hierarchical Models*. Cambridge University Press.

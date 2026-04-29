@@ -16,7 +16,7 @@ $\left. X\leftrightarrow Y \right.$).
 
 `because` supports latent variables through the `latent` argument, and
 adapts the d-separation basis set accordingly using the MAG framework of
-Shipley & Douda (2021).
+Shipley & Douma (2021).
 
 ------------------------------------------------------------------------
 
@@ -283,13 +283,3 @@ wide credible intervals.
 Shipley, B., & Douma, J. C. (2021). A new test for d-separation in
 maximal ancestral graphs. *Structural Equation Modeling*, 28(2),
 167–180.
-
-Pearl, J. (2009). *Causality: Models, Reasoning, and Inference* (2nd
-ed.). Cambridge University Press.
-
-Richardson, T., & Spirtes, P. (2002). Ancestral graph Markov models.
-*The Annals of Statistics*, 30(4), 962–1030.
-
-von Hardenberg, A., & Gonzalez-Voyer, A. (2025). PhyBaSE: Phylogenetic
-Bayesian Structural Equation modelling. *Methods in Ecology and
-Evolution*.

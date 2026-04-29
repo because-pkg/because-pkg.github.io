@@ -294,16 +294,3 @@ avoids any bias from non-random missingness patterns.
 | Missingness is informative (MNAR)                | Consider adding covariates that predict missingness to the model.                                                                                 |
 | Deterministic relationships among variables      | Use [Deterministic Nodes](https://because-pkg.github.io/because/articles/06_deterministic_nodes.md); constraints are preserved during imputation. |
 | Very high missingness (\>50%) in a key predictor | Inspect model fit carefully; imputation becomes unreliable without sufficient observed anchor points.                                             |
-
-### References
-
-Rubin, D. B. (1987). *Multiple Imputation for Nonresponse in Surveys*.
-Wiley.
-
-Nakagawa, S., & Freckleton, R. P. (2008). Missing inaction: the dangers
-of ignoring missing data. *Trends in Ecology & Evolution*, 23(11),
-592–596.
-
-von Hardenberg, A., & Gonzalez-Voyer, A. (2025). PhyBaSE: Phylogenetic
-Bayesian Structural Equation modelling. *Methods in Ecology and
-Evolution*.

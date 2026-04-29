@@ -323,16 +323,3 @@ use
 | Strictly positive data         | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with `T(0,)` truncation                             | log link                                                                      |
 | Custom covariance structure    | [`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md)                                               | `precision_fn`                                                                |
 | Reusable family for a package  | S3 method for `jags_family_likelihood`                                                                                                      | Register with [`registerS3method()`](https://rdrr.io/r/base/ns-internal.html) |
-
-### References
-
-Lunn, D., Jackson, C., Best, N., Thomas, A., & Spiegelhalter, D. (2012).
-*The BUGS Book: A Practical Introduction to Bayesian Analysis*. Chapman
-& Hall/CRC.
-
-Ferrari, S., & Cribari-Neto, F. (2004). Beta regression for modelling
-rates and proportions. *Journal of Applied Statistics*, 31(7), 799–815.
-
-Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., &
-Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). Chapman &
-Hall/CRC.
