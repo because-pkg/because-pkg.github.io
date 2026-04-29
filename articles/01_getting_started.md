@@ -49,12 +49,12 @@ autocorrelation, genetic relatedness etc.).
   Families](https://because-pkg.github.io/because/articles/12_custom_families.md):
   Extending `because` with user-defined JAGS distributions.
 - *Advanced Model Specifications:* [random
-  effects](https://because-pkg.github.io/because/articles/08_multilevel_models.md)
+  effects](https://because-pkg.github.io/because/articles/08_multiscale_models.md)
   (lme4-style `(1|group)` notation, mixed models, nested designs),
   polynomial terms, categorical predictors, measurement error.
-- *[Multilevel & Hierarchical
-  Data](https://because-pkg.github.io/because/articles/08_multilevel_models.md):*
-  Multi-level data with variables at different hierarchical levels and
+- *[Multiscale & Hierarchical
+  Data](https://because-pkg.github.io/because/articles/08_multiscale_models.md):*
+  Data at different resolutions (e.g. climate and physiology) with
   correct degrees of freedom in d-separation tests.
 - *Phylogenetic Path Analysis*: Using the Phylogenetic Bayesian
   Structural Equation Model approach (PhyBaSE, von Hardenberg &

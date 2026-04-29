@@ -167,8 +167,8 @@ Ubuntu/Debian) or equivalent development tools for your distribution. -
   transformations](https://because-pkg.github.io/because/articles/06_deterministic_nodes.md):
 - [Custom Priors and Mechanistic
   Constraints](https://because-pkg.github.io/because/articles/07_custom_priors.md):
-- [Multilevel Causal
-  Models](https://because-pkg.github.io/because/articles/08_multilevel_models.md):
+- [Multiscale Causal
+  Models](https://because-pkg.github.io/because/articles/08_multiscale_models.md):
 - [Bayesian Missing Data
   Imputation](https://because-pkg.github.io/because/articles/09_missing_data.md):
 - [High-Performance SEM with the NIMBLE
