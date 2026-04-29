@@ -153,4 +153,32 @@ The function handles this decomposition automatically, providing credibility int
 
 The function calculates the indirect effect as the product of coefficients along the path. For example, for the long chain: 
 $$ \text{Indirect}_{\text{chain}} = \beta_{Elev \to Temp} \times \beta_{Temp \to Moist} \times \beta_{Moist \to Abund} $$ 
-This approach is standard for linear models. For non-linear models, this represents an approximation of the average causal effect.
+This product-of-coefficients approach is exact for **linear (Gaussian, identity-link) models** (MacKinnon, 2008; Pearl, 2001).
+
+> **Important warning for non-linear models**: When any equation in the
+> mediation path uses a non-linear link function (log for Poisson,
+> logit for Bernoulli/Binomial, etc.), the product of link-scale
+> coefficients is **not** the natural indirect effect on the outcome
+> scale. The distortion can be substantial and can even reverse the
+> direction of the indirect effect. For non-linear mediation, use
+> counterfactual-based causal mediation methods that operate on the
+> response scale, such as those described in VanderWeele (2015) and
+> Imai et al. (2010). When working with non-linear outcomes, treat the
+> `because_mediation()` results as approximate and interpret them
+> cautiously.
+
+## References
+
+Imai, K., Keele, L., & Tingley, D. (2010). A general approach to
+causal mediation analysis. *Psychological Methods*, 15(4), 309–334.
+https://doi.org/10.1037/a0020761
+
+MacKinnon, D. P. (2008). *Introduction to Statistical Mediation
+Analysis*. Erlbaum.
+
+Pearl, J. (2001). Direct and indirect effects. *Proceedings of the
+17th Conference on Uncertainty in Artificial Intelligence*, pp. 411–420.
+Morgan Kaufmann.
+
+VanderWeele, T. J. (2015). *Explanation in Causal Inference: Methods
+for Mediation and Interaction*. Oxford University Press.
