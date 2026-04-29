@@ -209,6 +209,5 @@ Shipley, B. (2016). *Cause and Correlation in Biology: A User's Guide
 to Path Analysis, Structural Equations and Causal Inference with R*
 (2nd ed.). Cambridge University Press.
 
-von Hardenberg, A., & Gonzalez-Voyer, A. (2025). Bayesian Structural
-Equation Models for causal inference in ecology and evolution.
-*Methods in Ecology and Evolution*. https://doi.org/10.1111/2041-210X.70060
+von Hardenberg, A, Gonzalez-Voyer, A. (2016) PhyBaSE: A Bayesian structural equation model approach to causal inference 
+in phylogenetic comparative analyses *Methods in Ecology and Evolution*. 16(6):1136-1148. https://doi.org/10.1111/2041-210X.70044
