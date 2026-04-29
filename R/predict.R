@@ -79,7 +79,7 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, re_for
       if (idx_var %in% names(object$original_data)) {
           n_obs <- length(unique(object$original_data[[idx_var]]))
       } else if (paste0(idx_var, "_idx") %in% names(data_list)) {
-          n_obs <- max(data_list[[paste0(idx_var, "_idx")]], na.rm=T)
+          n_obs <- max(data_list[[paste0(idx_var, "_idx")]], na.rm=TRUE)
       }
   }
   
