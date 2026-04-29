@@ -187,7 +187,7 @@ integrated into the model:
   parameter between the observed descendants of the latent variable.
   Equivalent to marginalising over the latent and estimating a free
   covariance.
-- **`"factor"`**: Models the latent variable as an explicit factor,
+- **`"explicit"`**: Models the latent variable as an explicit factor,
   estimating loadings and a precision. More interpretable but requires
   identifiability constraints (see `fix_latent`).
 
@@ -280,6 +280,13 @@ wide credible intervals.
 
 ### References
 
+Pearl, J. (2009). *Causality: Models, Reasoning and Inference* (2nd
+ed.). Cambridge University Press.
+
+Richardson, T. S., & Spirtes, P. (2002). Ancestral graph Markov models.
+*The Annals of Statistics*, 30(4), 962–1030.
+<https://doi.org/10.1214/aos/1031689015>
+
 Shipley, B., & Douma, J. C. (2021). A new test for d-separation in
 maximal ancestral graphs. *Structural Equation Modeling*, 28(2),
-167–180.
+167–180. <https://doi.org/10.1080/10705511.2020.1768064>

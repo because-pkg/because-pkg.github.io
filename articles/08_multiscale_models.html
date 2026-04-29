@@ -94,7 +94,9 @@ settings, variables measured at different scales have fundamentally
 different sample sizes and thus different statistical power. A climate
 covariate averaged over 10 years provides only 10 degrees of freedom for
 testing its effects, regardless of how many individual observations
-exist within those years.</p>
+exist within those years. Using more observations than are actually
+available at a given scale is a form of pseudoreplication (Hurlbert,
+1984) that inflates Type I error.</p>
 <p>The <code>because</code> package explicitly handles this structure
 through its multiscale engine. When data are supplied as a <strong>named
 list of data frames</strong>, one per scale, the engine:</p>
@@ -334,8 +336,8 @@ to:</p>
 your variables, you can still use standard random effects to account for
 unmeasured group-level variation. <code>because</code> uses the same
 <code>(1|grouping_variable)</code> notation as <code>lme4</code>’s
-<code>lmer()</code> / <code>glmer()</code> to specify <strong>random
-intercepts</strong>.</p>
+<code>lmer()</code> / <code>glmer()</code> (Bates et al., 2015) to
+specify <strong>random intercepts</strong>.</p>
 <p>A random intercept <code>(1|Group)</code> tells <code>because</code>
 that observations sharing the same value of <code>Group</code> are not
 independent — each group gets its own intercept drawn from a common
@@ -415,7 +417,15 @@ tests a <strong>year-scale</strong> independence claim. Even though 300
 individual observations exist, <code>because</code> correctly uses
 <strong>N=10</strong> degrees of freedom for this test, because both
 NDVI and Temp are year-scale variables. Using individual-level N here
-would be pseudoreplication.</p>
+would be pseudoreplication (Hurlbert, 1984), inflating Type I error and
+producing spurious significance.</p>
+</blockquote>
+<blockquote>
+<p><strong>Note on statistical power</strong>: With only 10 year-scale
+observations, year-level d-separation tests have very limited power to
+detect moderate-to-weak effects. In real long-term studies, more years
+of data substantially improve the reliability of year-scale causal
+inference.</p>
 </blockquote>
 <div class="section level3">
 <h3 id="within-scale-tests">Within-scale tests<a class="anchor" aria-label="anchor" href="#within-scale-tests"></a>
@@ -479,6 +489,18 @@ components.</li>
 its parent scale.</li>
 </ol>
 </div>
+</div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<p>Bates, D., Mächler, M., Bolker, B., &amp; Walker, S. (2015). Fitting
+linear mixed-effects models using lme4. <em>Journal of Statistical
+Software</em>, 67(1), 1–48. <a href="https://doi.org/10.18637/jss.v067.i01" class="external-link uri">https://doi.org/10.18637/jss.v067.i01</a></p>
+<p>Hurlbert, S. H. (1984). Pseudoreplication and the design of
+ecological field experiments. <em>Ecological Monographs</em>, 54(2),
+187–211. <a href="https://doi.org/10.2307/1942661" class="external-link uri">https://doi.org/10.2307/1942661</a></p>
+<p>Millar, R. B., &amp; Anderson, M. J. (2004). Remedies for
+pseudoreplication. <em>Fisheries Research</em>, 70(2–3), 397–407. <a href="https://doi.org/10.1016/j.fishres.2004.08.016" class="external-link uri">https://doi.org/10.1016/j.fishres.2004.08.016</a></p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

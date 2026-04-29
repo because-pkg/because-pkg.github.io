@@ -9,6 +9,8 @@ measured at different scales have fundamentally different sample sizes
 and thus different statistical power. A climate covariate averaged over
 10 years provides only 10 degrees of freedom for testing its effects,
 regardless of how many individual observations exist within those years.
+Using more observations than are actually available at a given scale is
+a form of pseudoreplication (Hurlbert, 1984) that inflates Type I error.
 
 The `because` package explicitly handles this structure through its
 multiscale engine. When data are supplied as a **named list of data
@@ -212,8 +214,8 @@ record back to its corresponding row in the **year-scale** data frame.
 While **multiscale** modeling defines the resolution of your variables,
 you can still use standard random effects to account for unmeasured
 group-level variation. `because` uses the same `(1|grouping_variable)`
-notation as `lme4`’s `lmer()` / `glmer()` to specify **random
-intercepts**.
+notation as `lme4`’s `lmer()` / `glmer()` (Bates et al., 2015) to
+specify **random intercepts**.
 
 A random intercept `(1|Group)` tells `because` that observations sharing
 the same value of `Group` are not independent — each group gets its own
@@ -264,7 +266,15 @@ independence claims:
 > **year-scale** independence claim. Even though 300 individual
 > observations exist, `because` correctly uses **N=10** degrees of
 > freedom for this test, because both NDVI and Temp are year-scale
-> variables. Using individual-level N here would be pseudoreplication.
+> variables. Using individual-level N here would be pseudoreplication
+> (Hurlbert, 1984), inflating Type I error and producing spurious
+> significance.
+
+> **Note on statistical power**: With only 10 year-scale observations,
+> year-level d-separation tests have very limited power to detect
+> moderate-to-weak effects. In real long-term studies, more years of
+> data substantially improve the reliability of year-scale causal
+> inference.
 
 ### Within-scale tests
 
@@ -316,3 +326,17 @@ At minimum, you need:
 2.  A `multiscale` string (e.g., `"year > individual"`).
 3.  A `link_vars` named vector mapping the linking column to its parent
     scale.
+
+## References
+
+Bates, D., Mächler, M., Bolker, B., & Walker, S. (2015). Fitting linear
+mixed-effects models using lme4. *Journal of Statistical Software*,
+67(1), 1–48. <https://doi.org/10.18637/jss.v067.i01>
+
+Hurlbert, S. H. (1984). Pseudoreplication and the design of ecological
+field experiments. *Ecological Monographs*, 54(2), 187–211.
+<https://doi.org/10.2307/1942661>
+
+Millar, R. B., & Anderson, M. J. (2004). Remedies for pseudoreplication.
+*Fisheries Research*, 70(2–3), 397–407.
+<https://doi.org/10.1016/j.fishres.2004.08.016>

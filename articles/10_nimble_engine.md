@@ -3,9 +3,10 @@
 ## Introduction
 
 While **because** uses **JAGS** as its default inference engine, it also
-provides a high-performance alternative through the **NIMBLE** package.
-NIMBLE compiles your BUGS models into C++ and allows for advanced
-optimizations like parallel execution and adaptive slice sampling.
+provides a high-performance alternative through the **NIMBLE** package
+(de Valpine et al., 2017). NIMBLE compiles your BUGS models into C++ and
+allows for advanced optimizations like parallel execution and adaptive
+slice sampling.
 
 This vignette explains how to leverage the NIMBLE engine to speed up
 complex Structural Equation Models, particularly those involving
@@ -203,3 +204,16 @@ NIMBLE defaults to a Random Walk (RW) sampler for most fixed effects,
 Negative Binomial models. This provides significantly more stability in
 the presence of the extreme curvature characteristic of these link
 functions.
+
+### References
+
+de Valpine, P., Turek, D., Paciorek, C. J., Anderson-Bergman, C., Lang,
+D. T., & Bodik, R. (2017). Programming with models: Writing statistical
+algorithms for general model structures with NIMBLE. *Journal of
+Computational and Graphical Statistics*, 26(2), 403–413.
+<https://doi.org/10.1080/10618600.2016.1172487>
+
+Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C.
+(2021). Rank-normalization, folding, and localization: An improved R̂ for
+assessing convergence of MCMC. *Bayesian Analysis*, 16(2), 667–718.
+<https://doi.org/10.1214/20-BA1221>

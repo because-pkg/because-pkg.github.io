@@ -31,12 +31,13 @@ set.seed(123)
 ## Example 1: Interactions (`A * B`)
 
 Standard R formulas (`y ~ A * B`) handle interactions automatically on
-complete data. However, if values of A or B are missing, and unless you
-use the standard procedure of eliminating rows with missing data (with a
-cosequent loss of power), **imputation** introduces a trap. If you
-follow the common workflow of “impute first, then model”, the imputation
-step usually assumes simple linear relationships and ignores the
-interaction. This often biases the interaction estimate towards zero.
+complete data. However, missing values in A or B require a decision.
+Eliminating rows with missing data (list-wise deletion) is statistically
+problematic: it loses power and can introduce bias when missingness is
+not completely at random. The alternative — the common “impute first,
+then model” workflow — also introduces a trap: the imputation step
+usually assumes simple linear relationships and ignores the interaction,
+which biases the interaction estimate towards zero.
 
 With `because`, you just write the formula naturally. The model imputes
 missing values and estimates the interaction **simultaneously**,
@@ -194,17 +195,22 @@ the data?”*
 If your data is complete (no NAs), that works fine. But if you have
 **missing data**, pre-calculation is dangerous.
 
-### Scenario: The “Broken Logic” of Standard Imputation
+### Scenario: The “Broken Logic” of Naive Imputation
 
 Imagine you have a missing `Age` value. You want to impute it.
 
-1.  **Standard Approach (e.g., MICE)**:
+1.  **Naive two-step approach**:
     - The imputer sees two separate columns: `Age` (NA) and `IsMature`
       (NA).
     - It guesses `Age = 6` based on body size.
     - It independently guesses `IsMature = 0` based on hormone levels.
     - **Result**: A marmot that is 6 years old but “Immature”.
       **Impossible!**
+    - Note: modern multiple imputation implementations (e.g., MICE; van
+      Buuren & Groothuis-Oudshoorn, 2011) support *passive imputation*,
+      where derived variables are re-computed from the imputed `Age` at
+      each step. However, this requires explicit analyst setup and is
+      easy to overlook.
 2.  **The `because` Approach**:
     - `IsMature` is not a variable you impute; it is a **formula**.
     - In MCMC Step 1, the model guesses `Age = 1`. It automatically
@@ -295,3 +301,15 @@ fit_multi_dsep <- because(
 
 summary(fit_multi_dsep)
 ```
+
+## References
+
+Pearl, J. (2009). *Causality: Models, Reasoning and Inference* (2nd
+ed.). Cambridge University Press.
+
+Rubin, D. B. (1976). Inference and missing data. *Biometrika*, 63(3),
+581–592. <https://doi.org/10.1093/biomet/63.3.581>
+
+van Buuren, S., & Groothuis-Oudshoorn, K. (2011). mice: Multivariate
+imputation by chained equations in R. *Journal of Statistical Software*,
+45(3), 1–67. <https://doi.org/10.18637/jss.v045.i03>

@@ -233,8 +233,9 @@ frame:</p>
 <span><span class="co"># View results</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
 <p>To check for convergence of the MCMC chains, you can look at the Rhat
-values in the summary output (should be &lt; 1.1). You can also plot the
-trace plots of the MCMC samples:</p>
+values in the summary output (should be &lt; 1.05; values &gt; 1.1
+indicate definite non-convergence). You can also plot the trace plots of
+the MCMC samples:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Plot trace plots</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">samples</span><span class="op">)</span></span></code></pre></div>
@@ -267,6 +268,21 @@ suggests that your model may be misspecified and that you may need to
 add or remove paths. More details on d-separation tests, how to
 interpret them and a full tutorial can be found in the <a href="02_dseparation.html">Causal inference with d-separation</a>
 vignette.</p>
+</div>
+<div class="section level3">
+<h3 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h3>
+<p>Gonzalez-Voyer, A., &amp; von Hardenberg, A. (2014). <strong>An
+introduction to phylogenetic path analysis.</strong> In Modern
+phylogenetic comparative methods and their application in evolutionary
+biology: Concepts and practice (pp. 201–229). Springer Berlin
+Heidelberg.</p>
+<p>Shipley, B. (2016). <em>Cause and Correlation in Biology: A User’s
+Guide to Path Analysis, Structural Equations and Causal Inference with
+R</em> (2nd ed.). Cambridge University Press.</p>
+<p>von Hardenberg, A., &amp; Gonzalez-Voyer, A. (2025). Bayesian
+Structural Equation Models for causal inference in ecology and
+evolution. <em>Methods in Ecology and Evolution</em>. <a href="https://doi.org/10.1111/2041-210X.70060" class="external-link uri">https://doi.org/10.1111/2041-210X.70060</a></p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

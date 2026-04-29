@@ -57,20 +57,25 @@ summary(fit)
 #### 1.1 The Rhat Statistic
 
 The [`summary()`](https://rdrr.io/r/base/summary.html) output includes
-**Rhat** (the Gelman-Rubin convergence diagnostic) and **n.eff** (the
-effective sample size) for each parameter.
+**Rhat** (the Gelman-Rubin convergence diagnostic; Gelman & Rubin, 1992)
+and **n.eff** (the effective sample size) for each parameter.
 
-- **Rhat \< 1.05**: Excellent convergence.
-
-- **Rhat 1.05–1.1**: Acceptable for most parameters; consider running
-  more iterations.
-
+- **Rhat \< 1.05**: Good convergence; parameter estimates are reliable.
+- **Rhat 1.05–1.1**: Borderline. Consider running more iterations or
+  thinning more aggressively before interpreting results.
 - **Rhat \> 1.1**: Non-convergence. The chains have not mixed. Do not
   interpret these estimates.
 
-- **n.eff \> 100**: Generally sufficient for reliable posterior
-  summaries.
+> **Note on modern thresholds**: Vehtari et al. (2021) showed that the
+> classical Rhat \< 1.1 criterion can miss non-convergence in
+> heavy-tailed posteriors and recommend Rhat \< 1.01 for high-quality
+> inference. We adopt Rhat \< 1.05 as a practical intermediate target;
+> aim for \< 1.01 when possible.
 
+- **n.eff \> 400**: Recommended for reliable 95% credible interval
+  bounds (tail quantiles). Values of n.eff \> 100 are sufficient for
+  posterior means and medians, but tail estimates are sensitive to low
+  effective sample sizes.
 - **n.eff \< 100**: Estimates may be unstable. Increase `n.iter` or
   `n.thin`.
 
@@ -234,7 +239,11 @@ plot_posterior(
 
 #### 4.1 WAIC (Watanabe-Akaike Information Criterion)
 
-WAIC is the Bayesian analogue of AIC. Lower WAIC indicates better
+WAIC (Watanabe, 2010) is a fully Bayesian information criterion for
+estimating out-of-sample predictive performance. Unlike AIC, which
+relies on a point estimate of the likelihood, WAIC integrates over the
+entire posterior predictive distribution and is valid even for singular
+or hierarchical models. Like AIC, lower WAIC indicates better
 out-of-sample predictive performance. Enable it at fit time with
 `WAIC = TRUE`:
 
@@ -396,7 +405,8 @@ fit_variant <- because(
 
 Before interpreting your results, work through this checklist:
 
-**Rhat \< 1.05** for all parameters.
+**Rhat \< 1.05** for all parameters (aim for \< 1.01 for high-stakes
+inference).
 
 **n.eff \> 100** for all parameters of interest.
 
@@ -412,6 +422,10 @@ plausible alternatives.
 
 ### References
 
+Gelman, A., & Rubin, D. B. (1992). Inference from iterative simulation
+using multiple sequences. *Statistical Science*, 7(4), 457–472.
+<https://doi.org/10.1214/ss/1177011136>
+
 Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., &
 Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). Chapman &
 Hall/CRC.
@@ -419,3 +433,13 @@ Hall/CRC.
 Vehtari, A., Gelman, A., & Gabry, J. (2017). Practical Bayesian model
 evaluation using leave-one-out cross-validation and WAIC. *Statistics
 and Computing*, 27(5), 1413–1432.
+<https://doi.org/10.1007/s11222-016-9696-4>
+
+Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C.
+(2021). Rank-normalization, folding, and localization: An improved R̂ for
+assessing convergence of MCMC. *Bayesian Analysis*, 16(2), 667–718.
+<https://doi.org/10.1214/20-BA1221>
+
+Watanabe, S. (2010). Asymptotic equivalence of Bayes cross validation
+and Widely Applicable Information Criterion in singular learning theory.
+*Journal of Machine Learning Research*, 11, 3571–3594.

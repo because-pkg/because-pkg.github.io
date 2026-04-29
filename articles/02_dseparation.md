@@ -351,6 +351,7 @@ Multidisciplinary Journal**, 7(2), 206–218.
 
 Shipley, B. (2003). Testing recursive path models with correlated errors
 using d-separation. **Structural Equation Modeling**, 10(2), 214-221.
+<https://doi.org/10.1207/S15328007SEM1002_5>
 
 Shipley, B. (2016). Cause and Correlation in Biology: A User’s Guide to
 Path Analysis, Structural Equations and Causal Inference with R (2nd

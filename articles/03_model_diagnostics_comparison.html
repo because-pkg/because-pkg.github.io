@@ -144,18 +144,37 @@ throughout.</p>
 <h4 id="the-rhat-statistic">1.1 The Rhat Statistic<a class="anchor" aria-label="anchor" href="#the-rhat-statistic"></a>
 </h4>
 <p>The <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> output includes <strong>Rhat</strong> (the
-Gelman-Rubin convergence diagnostic) and <strong>n.eff</strong> (the
-effective sample size) for each parameter.</p>
+Gelman-Rubin convergence diagnostic; Gelman &amp; Rubin, 1992) and
+<strong>n.eff</strong> (the effective sample size) for each
+parameter.</p>
 <ul>
-<li><p><strong>Rhat &lt; 1.05</strong>: Excellent convergence.</p></li>
-<li><p><strong>Rhat 1.05–1.1</strong>: Acceptable for most parameters;
-consider running more iterations.</p></li>
-<li><p><strong>Rhat &gt; 1.1</strong>: Non-convergence. The chains have
-not mixed. Do not interpret these estimates.</p></li>
-<li><p><strong>n.eff &gt; 100</strong>: Generally sufficient for
-reliable posterior summaries.</p></li>
-<li><p><strong>n.eff &lt; 100</strong>: Estimates may be unstable.
-Increase <code>n.iter</code> or <code>n.thin</code>.</p></li>
+<li>
+<strong>Rhat &lt; 1.05</strong>: Good convergence; parameter
+estimates are reliable.</li>
+<li>
+<strong>Rhat 1.05–1.1</strong>: Borderline. Consider running more
+iterations or thinning more aggressively before interpreting
+results.</li>
+<li>
+<strong>Rhat &gt; 1.1</strong>: Non-convergence. The chains have not
+mixed. Do not interpret these estimates.</li>
+</ul>
+<blockquote>
+<p><strong>Note on modern thresholds</strong>: Vehtari et al. (2021)
+showed that the classical Rhat &lt; 1.1 criterion can miss
+non-convergence in heavy-tailed posteriors and recommend Rhat &lt; 1.01
+for high-quality inference. We adopt Rhat &lt; 1.05 as a practical
+intermediate target; aim for &lt; 1.01 when possible.</p>
+</blockquote>
+<ul>
+<li>
+<strong>n.eff &gt; 400</strong>: Recommended for reliable 95%
+credible interval bounds (tail quantiles). Values of n.eff &gt; 100 are
+sufficient for posterior means and medians, but tail estimates are
+sensitive to low effective sample sizes.</li>
+<li>
+<strong>n.eff &lt; 100</strong>: Estimates may be unstable. Increase
+<code>n.iter</code> or <code>n.thin</code>.</li>
 </ul>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># The stored summary object has $statistics containing Rhat and n.eff</span></span>
@@ -307,7 +326,11 @@ multiple models:</p>
 <div class="section level4">
 <h4 id="waic-watanabe-akaike-information-criterion">4.1 WAIC (Watanabe-Akaike Information Criterion)<a class="anchor" aria-label="anchor" href="#waic-watanabe-akaike-information-criterion"></a>
 </h4>
-<p>WAIC is the Bayesian analogue of AIC. Lower WAIC indicates better
+<p>WAIC (Watanabe, 2010) is a fully Bayesian information criterion for
+estimating out-of-sample predictive performance. Unlike AIC, which
+relies on a point estimate of the likelihood, WAIC integrates over the
+entire posterior predictive distribution and is valid even for singular
+or hierarchical models. Like AIC, lower WAIC indicates better
 out-of-sample predictive performance. Enable it at fit time with
 <code>WAIC = TRUE</code>:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
@@ -486,7 +509,8 @@ redundant JAGS runs:</p>
 <p>Before interpreting your results, work through this checklist:</p>
 <ul class="task-list">
 <li><label><input type="checkbox"><strong>Rhat &lt; 1.05</strong> for
-all parameters.</label></li>
+all parameters (aim for &lt; 1.01 for high-stakes
+inference).</label></li>
 <li><label><input type="checkbox"><strong>n.eff &gt; 100</strong> for
 all parameters of interest.</label></li>
 <li><label><input type="checkbox"><strong>Trace plots</strong> show
@@ -504,12 +528,22 @@ alternatives.</label></li>
 <div class="section level3">
 <h3 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h3>
+<p>Gelman, A., &amp; Rubin, D. B. (1992). Inference from iterative
+simulation using multiple sequences. <em>Statistical Science</em>, 7(4),
+457–472. <a href="https://doi.org/10.1214/ss/1177011136" class="external-link uri">https://doi.org/10.1214/ss/1177011136</a></p>
 <p>Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A.,
 &amp; Rubin, D. B. (2013). <em>Bayesian Data Analysis</em> (3rd ed.).
 Chapman &amp; Hall/CRC.</p>
 <p>Vehtari, A., Gelman, A., &amp; Gabry, J. (2017). Practical Bayesian
 model evaluation using leave-one-out cross-validation and WAIC.
-<em>Statistics and Computing</em>, 27(5), 1413–1432.</p>
+<em>Statistics and Computing</em>, 27(5), 1413–1432. <a href="https://doi.org/10.1007/s11222-016-9696-4" class="external-link uri">https://doi.org/10.1007/s11222-016-9696-4</a></p>
+<p>Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., &amp; Bürkner,
+P.-C. (2021). Rank-normalization, folding, and localization: An improved
+R̂ for assessing convergence of MCMC. <em>Bayesian Analysis</em>, 16(2),
+667–718. <a href="https://doi.org/10.1214/20-BA1221" class="external-link uri">https://doi.org/10.1214/20-BA1221</a></p>
+<p>Watanabe, S. (2010). Asymptotic equivalence of Bayes cross validation
+and Widely Applicable Information Criterion in singular learning theory.
+<em>Journal of Machine Learning Research</em>, 11, 3571–3594.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -323,3 +323,19 @@ use
 | Strictly positive data         | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with `T(0,)` truncation                             | log link                                                                      |
 | Custom covariance structure    | [`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md)                                               | `precision_fn`                                                                |
 | Reusable family for a package  | S3 method for `jags_family_likelihood`                                                                                                      | Register with [`registerS3method()`](https://rdrr.io/r/base/ns-internal.html) |
+
+### References
+
+Ferrari, S., & Cribari-Neto, F. (2004). Beta regression for modelling
+rates and proportions. *Journal of Applied Statistics*, 31(7), 799–815.
+<https://doi.org/10.1080/0266476042000214501>
+
+Lange, K. L., Little, R. J. A., & Taylor, J. M. G. (1989). Robust
+statistical modeling using the t distribution. *Journal of the American
+Statistical Association*, 84(408), 881–896.
+<https://doi.org/10.1080/01621459.1989.10478852>
+
+Smithson, M., & Verkuilen, J. (2006). A better lemon squeezer?
+Maximum-likelihood regression with beta-distributed dependent variables.
+*Psychological Methods*, 11(1), 54–71.
+<https://doi.org/10.1037/1082-989X.11.1.54>

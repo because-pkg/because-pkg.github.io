@@ -275,8 +275,36 @@ credibility intervals for each specific mechanism.</p>
 <p>The function calculates the indirect effect as the product of
 coefficients along the path. For example, for the long chain:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mtext mathvariant="normal">Indirect</mtext><mtext mathvariant="normal">chain</mtext></msub><mo>=</mo><msub><mi>β</mi><mrow><mi>E</mi><mi>l</mi><mi>e</mi><mi>v</mi><mo>→</mo><mi>T</mi><mi>e</mi><mi>m</mi><mi>p</mi></mrow></msub><mo>×</mo><msub><mi>β</mi><mrow><mi>T</mi><mi>e</mi><mi>m</mi><mi>p</mi><mo>→</mo><mi>M</mi><mi>o</mi><mi>i</mi><mi>s</mi><mi>t</mi></mrow></msub><mo>×</mo><msub><mi>β</mi><mrow><mi>M</mi><mi>o</mi><mi>i</mi><mi>s</mi><mi>t</mi><mo>→</mo><mi>A</mi><mi>b</mi><mi>u</mi><mi>n</mi><mi>d</mi></mrow></msub></mrow><annotation encoding="application/x-tex"> \text{Indirect}_{\text{chain}} = \beta_{Elev \to Temp} \times \beta_{Temp \to Moist} \times \beta_{Moist \to Abund} </annotation></semantics></math>
-This approach is standard for linear models. For non-linear models, this
-represents an approximation of the average causal effect.</p>
+This product-of-coefficients approach is exact for <strong>linear
+(Gaussian, identity-link) models</strong> (MacKinnon, 2008; Pearl,
+2001).</p>
+<blockquote>
+<p><strong>Important warning for non-linear models</strong>: When any
+equation in the mediation path uses a non-linear link function (log for
+Poisson, logit for Bernoulli/Binomial, etc.), the product of link-scale
+coefficients is <strong>not</strong> the natural indirect effect on the
+outcome scale. The distortion can be substantial and can even reverse
+the direction of the indirect effect. For non-linear mediation, use
+counterfactual-based causal mediation methods that operate on the
+response scale, such as those described in VanderWeele (2015) and Imai
+et al. (2010). When working with non-linear outcomes, treat the
+<code><a href="../reference/because_mediation.html">because_mediation()</a></code> results as approximate and interpret
+them cautiously.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h3>
+<p>Imai, K., Keele, L., &amp; Tingley, D. (2010). A general approach to
+causal mediation analysis. <em>Psychological Methods</em>, 15(4),
+309–334. <a href="https://doi.org/10.1037/a0020761" class="external-link uri">https://doi.org/10.1037/a0020761</a></p>
+<p>MacKinnon, D. P. (2008). <em>Introduction to Statistical Mediation
+Analysis</em>. Erlbaum.</p>
+<p>Pearl, J. (2001). Direct and indirect effects. <em>Proceedings of the
+17th Conference on Uncertainty in Artificial Intelligence</em>,
+pp. 411–420. Morgan Kaufmann.</p>
+<p>VanderWeele, T. J. (2015). <em>Explanation in Causal Inference:
+Methods for Mediation and Interaction</em>. Oxford University Press.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

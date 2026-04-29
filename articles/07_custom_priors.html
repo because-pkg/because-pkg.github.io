@@ -225,10 +225,11 @@ effect of our informative priors.</p>
 <p>In many biological contexts, a negative effect is not just unlikely,
 it is <strong>physically impossible</strong>.</p>
 <p>For example, consider the relationship between <strong>Body
-Mass</strong> and <strong>Metabolic Rate</strong> (Kleiber’s Law). A
-larger animal simply cannot consume <em>less</em> energy than a smaller
-one (a negative slope), all else equal. The physics of life requires
-costs to scale positively with mass.</p>
+Mass</strong> and <strong>Metabolic Rate</strong> (Kleiber’s Law;
+Kleiber, 1932). A larger animal simply cannot consume <em>less</em>
+energy than a smaller one (a negative slope), all else equal. The
+physics of life requires costs to scale positively with mass (West et
+al., 1997).</p>
 <p>However, if our sample size is small and measurement error is huge,
 we might accidentally estimate a negative slope. We can prevent this by
 enforcing a positive prior.</p>
@@ -485,7 +486,20 @@ generated model code:</p>
 <span></span>
 <span><span class="co"># Print the JAGS model</span></span>
 <span><span class="va">fit_check</span><span class="op">$</span><span class="va">model</span></span></code></pre></div>
-<p>```</p>
+</div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<p>Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A.,
+&amp; Rubin, D. B. (2013). <em>Bayesian Data Analysis</em> (3rd ed.).
+Chapman &amp; Hall/CRC.</p>
+<p>Kleiber, M. (1932). Body size and metabolism. <em>Hilgardia</em>,
+6(11), 315–353. <a href="https://doi.org/10.3733/hilg.v06n11p315" class="external-link uri">https://doi.org/10.3733/hilg.v06n11p315</a></p>
+<p>McElreath, R. (2020). <em>Statistical Rethinking: A Bayesian Course
+with Examples in R and Stan</em> (2nd ed.). CRC Press.</p>
+<p>West, G. B., Brown, J. H., &amp; Enquist, B. J. (1997). A general
+model for the origin of allometric scaling laws in biology.
+<em>Science</em>, 276(5309), 122–126. <a href="https://doi.org/10.1126/science.276.5309.122" class="external-link uri">https://doi.org/10.1126/science.276.5309.122</a></p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

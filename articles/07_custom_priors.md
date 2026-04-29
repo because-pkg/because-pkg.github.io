@@ -141,9 +141,10 @@ In many biological contexts, a negative effect is not just unlikely, it
 is **physically impossible**.
 
 For example, consider the relationship between **Body Mass** and
-**Metabolic Rate** (Kleiber’s Law). A larger animal simply cannot
-consume *less* energy than a smaller one (a negative slope), all else
-equal. The physics of life requires costs to scale positively with mass.
+**Metabolic Rate** (Kleiber’s Law; Kleiber, 1932). A larger animal
+simply cannot consume *less* energy than a smaller one (a negative
+slope), all else equal. The physics of life requires costs to scale
+positively with mass (West et al., 1997).
 
 However, if our sample size is small and measurement error is huge, we
 might accidentally estimate a negative slope. We can prevent this by
@@ -323,4 +324,18 @@ fit_check <- because(
 fit_check$model
 ```
 
-\`\`\`
+## References
+
+Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., &
+Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). Chapman &
+Hall/CRC.
+
+Kleiber, M. (1932). Body size and metabolism. *Hilgardia*, 6(11),
+315–353. <https://doi.org/10.3733/hilg.v06n11p315>
+
+McElreath, R. (2020). *Statistical Rethinking: A Bayesian Course with
+Examples in R and Stan* (2nd ed.). CRC Press.
+
+West, G. B., Brown, J. H., & Enquist, B. J. (1997). A general model for
+the origin of allometric scaling laws in biology. *Science*, 276(5309),
+122–126. <https://doi.org/10.1126/science.276.5309.122>

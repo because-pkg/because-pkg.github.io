@@ -92,12 +92,37 @@ Traits may not be measurable for all individuals, observations may be
 lost, or certain variables may be systematically unavailable for a
 subset of observations. How missing data are handled can profoundly
 affect the quality of causal inference.</p>
+<div class="section level3">
+<h3 id="missing-data-mechanisms">Missing Data Mechanisms<a class="anchor" aria-label="anchor" href="#missing-data-mechanisms"></a>
+</h3>
+<p>Before choosing an imputation strategy, it is important to understand
+<em>why</em> data are missing (Rubin, 1976; Little &amp; Rubin,
+2002):</p>
+<ul>
+<li>
+<strong>MCAR (Missing Completely At Random)</strong>: Missingness is
+unrelated to any variable in the study, observed or unobserved. The
+missing rows are a random subsample. List-wise deletion is unbiased
+under MCAR but wasteful.</li>
+<li>
+<strong>MAR (Missing At Random)</strong>: Missingness depends on
+observed variables but not on the unobserved values themselves. For
+example, heavier animals may be harder to weigh, but once body length is
+accounted for, the probability of a missing mass value does not depend
+on the true mass. Model-based imputation (including Bayesian imputation)
+is valid under MAR.</li>
+<li>
+<strong>MNAR (Missing Not At Random)</strong>: Missingness depends
+on the unobserved values themselves (e.g., extremely light animals die
+before weighing). No standard imputation method can fully correct for
+MNAR without external information about the missing-data mechanism.</li>
+</ul>
 <p><code>because</code> handles missing data through <strong>full
 Bayesian imputation</strong>: missing values are treated as unknown
 parameters and estimated simultaneously with all other model parameters
-during MCMC sampling. This approach has two important advantages over
-common alternatives such as list-wise deletion or multiple imputation
-(MICE):</p>
+during MCMC sampling. This approach has important advantages over common
+alternatives such as list-wise deletion or two-step multiple imputation
+(van Buuren &amp; Groothuis-Oudshoorn, 2011):</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>No loss of power</strong>: All observations contribute to
@@ -107,11 +132,18 @@ parameter estimation, even rows with missing predictors.</li>
 inside the model, imputed values always respect the causal structure
 (e.g., deterministic relationships between variables are preserved in
 every MCMC draw).</li>
+<li>
+<strong>Valid under MAR</strong>: Like other model-based approaches,
+Bayesian joint-model imputation provides unbiased estimates when data
+are MCAR or MAR. Under MNAR, bias can remain; consider adding covariates
+that predict missingness to reduce (but not eliminate) this bias
+(Nakagawa &amp; Freckleton, 2008).</li>
 </ol>
 <p>This vignette demonstrates how to use <code>because</code>’s built-in
 imputation and the <code><a href="../reference/extract_imputed.html">extract_imputed()</a></code> function to recover
 the posterior distribution of imputed values.</p>
 <hr>
+</div>
 <div class="section level3">
 <h3 id="why-bayesian-imputation-within-the-sem">Why Bayesian Imputation Within the SEM?<a class="anchor" aria-label="anchor" href="#why-bayesian-imputation-within-the-sem"></a>
 </h3>
@@ -367,8 +399,11 @@ the same model using only complete cases:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_listwise</span><span class="op">)</span> <span class="co"># Uses only complete cases</span></span></code></pre></div>
 <p>The imputation model typically produces <strong>narrower credible
 intervals</strong> for the path coefficients because it uses more
-information, and it avoids any bias from non-random missingness
-patterns.</p>
+information. Under MAR (the standard assumption), it also avoids the
+bias from non-random missingness that would arise with list-wise
+deletion on predictors. Under MNAR, however, both list-wise deletion and
+Bayesian imputation can be biased; the Bayesian approach is still
+preferred because it retains power and allows sensitivity analyses.</p>
 <hr>
 </div>
 <div class="section level3">
@@ -395,22 +430,42 @@ Use <code>monitor = "all"</code> to extract posteriors.</td>
 automatically.</td>
 </tr>
 <tr class="odd">
-<td align="left">Missingness is informative (MNAR)</td>
-<td align="left">Consider adding covariates that predict missingness to
-the model.</td>
+<td align="left">Missingness is MCAR or MAR</td>
+<td align="left">Bayesian joint imputation provides valid, efficient
+inference.</td>
 </tr>
 <tr class="even">
+<td align="left">Missingness is informative (MNAR)</td>
+<td align="left">Consider adding covariates that predict missingness to
+the model; conduct sensitivity analyses. No standard method fully
+removes MNAR bias.</td>
+</tr>
+<tr class="odd">
 <td align="left">Deterministic relationships among variables</td>
 <td align="left">Use <a href="06_deterministic_nodes.html">Deterministic
 Nodes</a>; constraints are preserved during imputation.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Very high missingness (&gt;50%) in a key predictor</td>
 <td align="left">Inspect model fit carefully; imputation becomes
 unreliable without sufficient observed anchor points.</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section level3">
+<h3 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h3>
+<p>Little, R. J. A., &amp; Rubin, D. B. (2002). <em>Statistical Analysis
+with Missing Data</em> (2nd ed.). Wiley.</p>
+<p>Nakagawa, S., &amp; Freckleton, R. P. (2008). Missing inaction: the
+dangers of ignoring missing data. <em>Trends in Ecology &amp;
+Evolution</em>, 23(11), 592–596. <a href="https://doi.org/10.1016/j.tree.2008.06.014" class="external-link uri">https://doi.org/10.1016/j.tree.2008.06.014</a></p>
+<p>Rubin, D. B. (1976). Inference and missing data. <em>Biometrika</em>,
+63(3), 581–592. <a href="https://doi.org/10.1093/biomet/63.3.581" class="external-link uri">https://doi.org/10.1093/biomet/63.3.581</a></p>
+<p>van Buuren, S., &amp; Groothuis-Oudshoorn, K. (2011). mice:
+Multivariate imputation by chained equations in R. <em>Journal of
+Statistical Software</em>, 45(3), 1–67. <a href="https://doi.org/10.18637/jss.v045.i03" class="external-link uri">https://doi.org/10.18637/jss.v045.i03</a></p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
