@@ -331,7 +331,7 @@ Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). Chapman &
 Hall/CRC.
 
 Kleiber, M. (1932). Body size and metabolism. *Hilgardia*, 6(11),
-315–353. <https://doi.org/10.3733/hilg.v06n11p315>
+315–353.
 
 McElreath, R. (2020). *Statistical Rethinking: A Bayesian Course with
 Examples in R and Stan* (2nd ed.). CRC Press.
