@@ -238,7 +238,7 @@ equations_re <- list(
 
 ``` r
 fit_re2 <- because(
-  equations  = equations_re2,
+  equations  = equations_re,
   data       = data_list,
   family     = c(Offspring = "poisson"),
   multiscale = "year > individual",

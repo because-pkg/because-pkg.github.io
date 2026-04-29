@@ -196,7 +196,7 @@ fit_factor <- because(
   equations  = equations_latent,
   data       = bird_data,
   latent     = "Individual_Quality",
-  latent_method = "factor",       # Explicit factor model
+  latent_method = "explicit",     # Explicit factor model
   fix_latent    = "loading",      # Fix first loading to 1 for identifiability
   standardize_latent = TRUE,      # Standardise the latent factor (SD = 1)
   n.iter     = 20000,
@@ -208,7 +208,7 @@ summary(fit_factor)
 
 #### `fix_latent`
 
-When using `latent_method = "factor"`, the factor scale is not
+When using `latent_method = "explicit"`, the factor scale is not
 identified without a constraint. `fix_latent = "loading"` fixes the
 first loading (the first equation’s latent effect) to 1, anchoring the
 latent scale.
