@@ -1,6 +1,6 @@
 # Parse Hierarchy from Random Effects
 
-Extract hierarchical nesting structure from random effects formula
+Extract multiscale nesting structure from random effects formula
 
 ## Usage
 

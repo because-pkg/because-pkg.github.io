@@ -1,4 +1,4 @@
-# Convert because equations to ggm DAG adjacency matrix
+# Convert because equations to dagitty-style adjacency matrix
 
 When `deterministic_terms` is supplied (a list returned by
 `extract_deterministic_terms`), interaction and
@@ -33,7 +33,7 @@ equations_to_dag(equations, exclude_vars = NULL, deterministic_terms = NULL)
 
 ## Value
 
-Named adjacency matrix in ggm format
+Named adjacency matrix in binary format
 
 ## References
 

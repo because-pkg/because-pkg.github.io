@@ -1,6 +1,6 @@
-# Auto-Detect Hierarchical Data Structure
+# Auto-Detect Multiscale Data Structure
 
-Infers levels, hierarchy, and link variables from a list of data.frames
+Infers scales, hierarchy, and link variables from a list of data.frames
 
 ## Usage
 
@@ -12,7 +12,7 @@ auto_detect_hierarchical(data, eq_vars, quiet = FALSE)
 
 - data:
 
-  List of data.frames at different hierarchical levels
+  List of data.frames at different scales
 
 - eq_vars:
 

@@ -59,7 +59,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/because-pkg/because/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/because-pkg/because-pkg.github.io/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -78,7 +78,7 @@ Hardenberg</h4>
             
             <h4 data-toc-skip class="date">2026-04-29</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because/blob/master/vignettes/02_dseparation.Rmd" class="external-link"><code>vignettes/02_dseparation.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/vignettes/02_dseparation.Rmd" class="external-link"><code>vignettes/02_dseparation.Rmd</code></a></small>
       <div class="d-none name"><code>02_dseparation.Rmd</code></div>
     </div>
 
@@ -121,7 +121,7 @@ number of babies born in different European countries (in thousands per
 year):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># load data</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://because-pkg.github.io/because/">because</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://because-pkg.github.io" class="external-link">because</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">storks</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">storks</span><span class="op">$</span><span class="va">Storks</span>, <span class="va">storks</span><span class="op">$</span><span class="va">Birth</span>,</span>
 <span>  xlab <span class="op">=</span> <span class="st">"Number of Stork Pairs"</span>,</span>
@@ -193,7 +193,7 @@ regression, the effect of Storks on Births becomes non-significant:</p>
 variables and their causal relationships using a Directed Acyclic Graph
 (DAG):</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://because-pkg.github.io/because/">because</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://because-pkg.github.io" class="external-link">because</a></span><span class="op">)</span></span>
 <span><span class="va">dag_storks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="va">Storks</span> <span class="op">~</span> <span class="va">Area</span>,</span>
 <span>  <span class="va">Birth</span> <span class="op">~</span> <span class="va">Area</span><span class="op">)</span></span>

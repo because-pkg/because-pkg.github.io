@@ -1,6 +1,6 @@
-# Prepare Hierarchical Data for JAGS
+# Prepare Multiscale Data for JAGS
 
-Transforms hierarchical dataframes into a flat list of vectors and ID
+Transforms multiscale dataframes into a flat list of vectors and ID
 indices suitable for JAGS
 
 ## Usage

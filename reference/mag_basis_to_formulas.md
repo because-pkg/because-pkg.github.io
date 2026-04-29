@@ -1,6 +1,6 @@
-# Convert MAG basis set to because formula format
+# Convert basis set to because formula format
 
-Convert MAG basis set to because formula format
+Convert basis set to because formula format
 
 ## Usage
 
@@ -20,7 +20,7 @@ mag_basis_to_formulas(
 
 - basis_set:
 
-  Basis set from basiSet.mag() or ggm::basiSet()
+  Basis set from dagitty
 
 - latent_children:
 

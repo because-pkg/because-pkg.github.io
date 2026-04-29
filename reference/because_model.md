@@ -128,7 +128,8 @@ because_model(
 
 - hierarchical_info:
 
-  Optional list containing data hierarchy (levels, link_vars).
+  Optional list containing multiscale data hierarchy (levels,
+  link_vars).
 
 - engine:
 

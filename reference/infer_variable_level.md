@@ -1,6 +1,6 @@
 # Infer Variable Level
 
-Determine which hierarchical level a variable belongs to
+Determine which multiscale level a variable belongs to
 
 ## Usage
 

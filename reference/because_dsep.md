@@ -42,9 +42,8 @@ because_dsep(
 - hierarchical_info:
 
   Internal argument used to pass data hierarchy information (levels,
-  grouping variables) for future implementation of multilevel
-  d-separation tests (following Shipley 2009). Currently unused by the
-  d-separation logic.
+  grouping variables) for multiscale d-separation tests (following
+  Shipley 2009).
 
 - poly_terms:
 

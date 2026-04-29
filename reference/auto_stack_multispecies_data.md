@@ -1,8 +1,7 @@
 # Auto-Stack Multispecies Data
 
 Converts a list of matrices (Wide) into a stacked dataframe (Long) for
-hierarchical analysis. Replicates site and species covariates
-accordingly.
+multiscale analysis. Replicates site and species covariates accordingly.
 
 ## Usage
 

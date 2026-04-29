@@ -1,7 +1,7 @@
 # Run a Bayesian Structural Equation Model (Because)
 
 Fits a Bayesian Structural Equation Model (SEM) using JAGS or NIMBLE.
-Supports multi-level (hierarchical) data, custom covariance structures
+Supports multiscale (hierarchical) data, custom covariance structures
 (phylogenetic, spatial, etc.), missing data imputation, and d-separation
 global fit testing.
 
@@ -39,6 +39,7 @@ because(
   ic_recompile = FALSE,
   random = NULL,
   levels = NULL,
+  multiscale = NULL,
   hierarchy = NULL,
   link_vars = NULL,
   fix_residual_variance = NULL,
@@ -61,8 +62,8 @@ because(
 
 - data:
 
-  A data frame containing all variables. For **hierarchical models**,
-  this must be a named list of data frames (one per level).
+  A data frame containing all variables. For **multiscale models**, this
+  must be a named list of data frames (one per scale/level).
 
 - id_col:
 
@@ -78,6 +79,14 @@ because(
 
   Bayesian backend: `"jags"` (default) or `"nimble"`.
 
+- monitor:
+
+  Monitoring mode (e.g. "interpretable", "all", or "minimal").
+
+- nimble_samplers:
+
+  Optional named list of user-specified samplers for NIMBLE.
+
 - n.chains:
 
   Number of independent MCMC chains (default = 3).
@@ -90,11 +99,42 @@ because(
 
   Number of burn-in iterations (default = 20% of `n.iter`).
 
+- n.thin:
+
+  Thinning interval for MCMC chains (default = 10).
+
+- DIC:
+
+  Logical; if `TRUE`, calculates the Deviance Information Criterion
+  (JAGS only).
+
+- WAIC:
+
+  Logical; if `TRUE`, calculates the Watanabe-Akaike Information
+  Criterion.
+
+- n.adapt:
+
+  Number of iterations for the adaptation phase.
+
+- quiet:
+
+  Logical; if `TRUE`, suppresses status messages and progress bars.
+
+- verbose:
+
+  Logical; if `TRUE`, prints detailed debugging information.
+
 - dsep:
 
   Logical; if `TRUE`, performs d-separation tests to evaluate the global
   fit of the DAG against the data. Highly recommended for causal
   validation.
+
+- variability:
+
+  Optional named character vector specifying the type of residual
+  variance (e.g., "fixed", "random").
 
 - family:
 
@@ -103,9 +143,26 @@ because(
   (default), "poisson", "binomial", "gamma", "lognormal", "bernoulli",
   "ordinal", and "occupancy".
 
+- distribution:
+
+  Alias for `family` (deprecated).
+
 - latent:
 
   Optional character vector of latent (unmeasured) variables.
+
+- latent_method:
+
+  Method for handling latent variables ("correlations" for MAG or
+  "explicit").
+
+- standardize_latent:
+
+  Logical; if `TRUE`, standardizes latent variables to unit variance.
+
+- fix_latent:
+
+  How to fix the scale of latent variables ("loading" or "variance").
 
 - parallel:
 
@@ -114,6 +171,14 @@ because(
 - n.cores:
 
   Number of CPU cores for parallel execution.
+
+- cl:
+
+  Optional pre-existing cluster for parallel execution.
+
+- ic_recompile:
+
+  Logical; if `TRUE`, recompiles the model for DIC/WAIC calculation.
 
 - random:
 
@@ -126,16 +191,45 @@ because(
   levels. If omitted, `because` will attempt to auto-detect levels based
   on column availability.
 
+- multiscale:
+
+  (Multiscale/Hierarchical) A string defining the nesting structure
+  (e.g., `"site > individual"`). Semicolons separate parallel branches
+  (e.g., `"site > obs; species > obs"`). Formerly called `hierarchy`.
+
 - hierarchy:
 
-  (Hierarchical) A string defining the nesting structure (e.g.,
-  `"site > individual"`). Semicolons separate parallel branches (e.g.,
-  `"site > obs; species > obs"`).
+  Alias for `multiscale` (deprecated).
 
 - link_vars:
 
   (Hierarchical) A named character vector specifying the columns used to
   link data frames across levels (e.g., `c(site = "SiteID")`).
+
+- fix_residual_variance:
+
+  Optional named vector fixing residual variances to known values.
+
+- priors:
+
+  Optional list of custom priors for model parameters.
+
+- reuse_models:
+
+  Optional list of previously fitted models to speed up d-separation
+  tests.
+
+- expand_ordered:
+
+  Logical; if `TRUE`, expands ordered factors using monotonic effects.
+
+- structure_multi:
+
+  Logical; if `TRUE`, handles multiple covariance structures.
+
+- structure_levels:
+
+  Mapping of variables to covariance structure levels.
 
 - ...:
 
@@ -183,18 +277,18 @@ eqs <- list(M ~ X, Y ~ M + X)
 fit <- because(eqs, data = df, dsep = TRUE)
 summary(fit)
 
-# 2. Hierarchical Model (Auto-detection)
+# 2. Multiscale Model (Auto-detection)
 # Suppose we have year-level data and individual-level data
 year_df <- data.frame(Year = 1:5, Temp = rnorm(5))
 ind_df  <- data.frame(Year = rep(1:5, each=10), Mass = rnorm(50))
 data_list <- list(yr = year_df, ind = ind_df)
 
-# Mass depends on Temp (cross-level link via Year)
+# Mass depends on Temp (cross-scale link via Year)
 fit_h <- because(
-  equations = list(Mass ~ Temp),
-  data      = data_list,
-  hierarchy = "yr > ind",
-  link_vars = c(yr = "Year")
+  equations  = list(Mass ~ Temp),
+  data       = data_list,
+  multiscale = "yr > ind",
+  link_vars  = c(yr = "Year")
 )
 
 # 3. Random Intercepts (lme4-style)

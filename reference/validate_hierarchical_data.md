@@ -1,6 +1,6 @@
-# Validate Hierarchical Data Structure
+# Validate Multiscale Data Structure
 
-Validate Hierarchical Data Structure
+Validate Multiscale Data Structure
 
 ## Usage
 
@@ -19,7 +19,7 @@ validate_hierarchical_data(
 
 - data:
 
-  List of data.frames at different hierarchical levels
+  List of data.frames at different scales
 
 - levels:
 

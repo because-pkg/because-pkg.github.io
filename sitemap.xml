@@ -16,6 +16,7 @@
 <url><loc>https://because-pkg.github.io/because/articles/index.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/authors.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/index.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/aggregate_multiscale_data.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/auto_detect_hierarchical.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/auto_stack_multispecies_data.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because.html</loc></url>
@@ -29,6 +30,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/because_model.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_structure.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_waic.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/dag_matrix_to_dagitty.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/dsep_equations_hook.default.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/dsep_equations_hook.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/dsep_potential_latent_hook.default.html</loc></url>
@@ -40,7 +42,6 @@
 <url><loc>https://because-pkg.github.io/because/reference/ensure_log_lik.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/equations_to_dag.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/expand_polynomial_formula.html</loc></url>
-<url><loc>https://because-pkg.github.io/because/reference/extract_bidirected_edges.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/extract_deterministic_terms.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/extract_imputed.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/extract_polynomial_terms.html</loc></url>
