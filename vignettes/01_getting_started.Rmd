@@ -154,7 +154,8 @@ summary(fit)
 ```
 
 To check for convergence of the MCMC chains, you can look at the Rhat
-values in the summary output (should be \< 1.1). You can also plot the
+values in the summary output (should be \< 1.05; values \> 1.1 indicate
+definite non-convergence). You can also plot the
 trace plots of the MCMC samples:
 
 ```{r}
@@ -196,3 +197,18 @@ model hold in the data (Shipley, 2016). If they do not, this suggests
 that your model may be misspecified and that you may need to add or
 remove paths. More details on d-separation tests, how to interpret them
 and a full tutorial can be found in the [Causal inference with d-separation](02_dseparation.html) vignette.
+
+## References
+
+Gonzalez-Voyer, A., & von Hardenberg, A. (2014). **An introduction to
+phylogenetic path analysis.** In Modern phylogenetic comparative methods
+and their application in evolutionary biology: Concepts and practice
+(pp. 201–229). Springer Berlin Heidelberg.
+
+Shipley, B. (2016). *Cause and Correlation in Biology: A User's Guide
+to Path Analysis, Structural Equations and Causal Inference with R*
+(2nd ed.). Cambridge University Press.
+
+von Hardenberg, A., & Gonzalez-Voyer, A. (2025). Bayesian Structural
+Equation Models for causal inference in ecology and evolution.
+*Methods in Ecology and Evolution*. https://doi.org/10.1111/2041-210X.70060

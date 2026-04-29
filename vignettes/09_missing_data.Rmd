@@ -28,17 +28,43 @@ lost, or certain variables may be systematically unavailable for a
 subset of observations. How missing data are handled can profoundly
 affect the quality of causal inference.
 
+## Missing Data Mechanisms
+
+Before choosing an imputation strategy, it is important to understand
+*why* data are missing (Rubin, 1976; Little & Rubin, 2002):
+
+- **MCAR (Missing Completely At Random)**: Missingness is unrelated to
+  any variable in the study, observed or unobserved. The missing rows
+  are a random subsample. List-wise deletion is unbiased under MCAR but
+  wasteful.
+- **MAR (Missing At Random)**: Missingness depends on observed
+  variables but not on the unobserved values themselves. For example,
+  heavier animals may be harder to weigh, but once body length is
+  accounted for, the probability of a missing mass value does not
+  depend on the true mass. Model-based imputation (including Bayesian
+  imputation) is valid under MAR.
+- **MNAR (Missing Not At Random)**: Missingness depends on the
+  unobserved values themselves (e.g., extremely light animals die
+  before weighing). No standard imputation method can fully correct for
+  MNAR without external information about the missing-data mechanism.
+
 `because` handles missing data through **full Bayesian imputation**:
 missing values are treated as unknown parameters and estimated
 simultaneously with all other model parameters during MCMC sampling.
-This approach has two important advantages over common alternatives
-such as list-wise deletion or multiple imputation (MICE):
+This approach has important advantages over common alternatives
+such as list-wise deletion or two-step multiple imputation (van Buuren
+& Groothuis-Oudshoorn, 2011):
 
 1. **No loss of power**: All observations contribute to parameter
    estimation, even rows with missing predictors.
 2. **Logical consistency**: Because imputation happens inside the model,
    imputed values always respect the causal structure (e.g., deterministic
    relationships between variables are preserved in every MCMC draw).
+3. **Valid under MAR**: Like other model-based approaches, Bayesian
+   joint-model imputation provides unbiased estimates when data are
+   MCAR or MAR. Under MNAR, bias can remain; consider adding covariates
+   that predict missingness to reduce (but not eliminate) this bias
+   (Nakagawa & Freckleton, 2008).
 
 This vignette demonstrates how to use `because`'s built-in imputation
 and the `extract_imputed()` function to recover the posterior
@@ -291,8 +317,12 @@ summary(fit_listwise) # Uses only complete cases
 ```
 
 The imputation model typically produces **narrower credible intervals**
-for the path coefficients because it uses more information, and it avoids
-any bias from non-random missingness patterns.
+for the path coefficients because it uses more information. Under MAR
+(the standard assumption), it also avoids the bias from non-random
+missingness that would arise with list-wise deletion on predictors.
+Under MNAR, however, both list-wise deletion and Bayesian imputation
+can be biased; the Bayesian approach is still preferred because it
+retains power and allows sensitivity analyses.
 
 ---
 
@@ -302,7 +332,23 @@ any bias from non-random missingness patterns.
 |:---|:---|
 | Predictors have NAs | Include them as-is; `because` auto-imputes. Use `monitor = "all"` to extract posteriors. |
 | Response variable has NAs | Same — NAs in any column are handled automatically. |
-| Missingness is informative (MNAR) | Consider adding covariates that predict missingness to the model. |
+| Missingness is MCAR or MAR | Bayesian joint imputation provides valid, efficient inference. |
+| Missingness is informative (MNAR) | Consider adding covariates that predict missingness to the model; conduct sensitivity analyses. No standard method fully removes MNAR bias. |
 | Deterministic relationships among variables | Use [Deterministic Nodes](06_deterministic_nodes.html); constraints are preserved during imputation. |
 | Very high missingness (>50%) in a key predictor | Inspect model fit carefully; imputation becomes unreliable without sufficient observed anchor points. |
 
+## References
+
+Little, R. J. A., & Rubin, D. B. (2002). *Statistical Analysis with
+Missing Data* (2nd ed.). Wiley.
+
+Nakagawa, S., & Freckleton, R. P. (2008). Missing inaction: the
+dangers of ignoring missing data. *Trends in Ecology & Evolution*,
+23(11), 592–596. https://doi.org/10.1016/j.tree.2008.06.014
+
+Rubin, D. B. (1976). Inference and missing data. *Biometrika*, 63(3),
+581–592. https://doi.org/10.1093/biomet/63.3.581
+
+van Buuren, S., & Groothuis-Oudshoorn, K. (2011). mice: Multivariate
+imputation by chained equations in R. *Journal of Statistical
+Software*, 45(3), 1–67. https://doi.org/10.18637/jss.v045.i03
