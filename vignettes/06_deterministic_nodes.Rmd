@@ -88,7 +88,7 @@ data_logic <- data.frame(Mating = Mating, Age = Age)
 # Use I() to wrap the logic
 fit_logic <- because(
     equations = list(
-        Mating ~ I(Age > 3)
+        Mating ~ I(Age > 2)
     ),
     data = data_logic,
     n.iter = 1000,
