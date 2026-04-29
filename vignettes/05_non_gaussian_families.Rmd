@@ -393,11 +393,3 @@ mixing slower. Recommendations:
 3. **Check Rhat**: all parameters should have Rhat < 1.1.
 4. **Use the NIMBLE engine** for better mixing on non-Gaussian models: `engine = "nimble"` (see the [NIMBLE vignette](10_nimble_engine.html)).
 
-## References
-
-Zuur, A. F., Ieno, E. N., Walker, N. J., Saveliev, A. A., & Smith, G.
-M. (2009). *Mixed Effects Models and Extensions in Ecology with R*.
-Springer.
-
-Gelman, A., & Hill, J. (2007). *Data Analysis Using Regression and
-Multilevel/Hierarchical Models*. Cambridge University Press.

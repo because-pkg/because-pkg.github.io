@@ -272,10 +272,3 @@ At minimum, you need:
 2.  A `multiscale` string (e.g., `"year > individual"`).
 3.  A `link_vars` named vector mapping the linking column to its parent scale.
 
-## References
-
-Shipley, B. (2016). *Cause and Correlation in Biology: A User's Guide to Path Analysis, Structural Equations and Causal Inference with R* (2nd ed.). Cambridge University Press.
-
-Gelman, A., & Hill, J. (2007). *Data Analysis Using Regression and Multilevel/Hierarchical Models*. Cambridge University Press.
-
-Nakagawa, S., & Schielzeth, H. (2013). A general and simple method for obtaining R² from generalized linear mixed-effects models. *Methods in Ecology and Evolution*, 4(2), 133–142.
