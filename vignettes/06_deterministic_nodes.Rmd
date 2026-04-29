@@ -38,7 +38,7 @@ set.seed(123)
 
 ## Example 1: Interactions (`A * B`)
 
-Standard R formulas (`y ~ A * B`) handle interactions automatically on complete data. However, if values of A or B are missing, and unless you use the statistically problematic approach of eliminating rows with missing data (with a consequent loss of power and potential bias if missingness is not completely at random), **imputation** introduces a trap. If you follow the common workflow of "impute first, then model", the imputation step usually assumes simple linear relationships and ignores the interaction. This often biases the interaction estimate towards zero.
+Standard R formulas (`y ~ A * B`) handle interactions automatically on complete data. However, missing values in A or B require a decision. Eliminating rows with missing data (list-wise deletion) is statistically problematic: it loses power and can introduce bias when missingness is not completely at random. The alternative — the common "impute first, then model" workflow — also introduces a trap: the imputation step usually assumes simple linear relationships and ignores the interaction, which biases the interaction estimate towards zero.
 
 With `because`, you just write the formula naturally. The model imputes missing values and estimates the interaction **simultaneously**, ensuring the interaction structure is preserved in the imputed data.
 
