@@ -31,17 +31,19 @@ extract_random_effects <- function(equations) {
         fixed_parts <- c()
 
         for (part in rhs_parts) {
-            # Use helper to extract term
-            term <- parse_random_part(part)
+            # Use helper to extract terms (handles expansion of A/B)
+            terms <- parse_random_part(part)
 
-            if (!is.null(term)) {
+            if (!is.null(terms)) {
                 # Add to random terms
-                random_terms[[length(random_terms) + 1]] <- list(
-                    response = lhs,
-                    group = term$group,
-                    type = term$type,
-                    source = "manual"
-                )
+                for (term in terms) {
+                    random_terms[[length(random_terms) + 1]] <- list(
+                        response = lhs,
+                        group = term$group,
+                        type = term$type,
+                        source = "manual"
+                    )
+                }
             } else {
                 fixed_parts <- c(fixed_parts, part)
             }
@@ -176,16 +178,23 @@ parse_random_part <- function(part) {
                 "|",
                 group_var,
                 ") are not yet implemented. ",
-                "Defaulting to random intercept (1|",
+                "Defaulting to random intercept(s) (1|",
                 group_var,
                 ")."
             )
         }
 
-        return(list(
+        # Handle nested random effects: (1|A/B) -> (1|A) + (1|B)
+        # This aligns with how hierarchy is auto-detected from random effects.
+        if (grepl("/", group_var)) {
+            sub_groups <- trimws(strsplit(group_var, "/")[[1]])
+            return(lapply(sub_groups, function(g) list(group = g, type = "intercept")))
+        }
+
+        return(list(list(
             group = group_var,
             type = "intercept"
-        ))
+        )))
     }
     return(NULL)
 }
@@ -216,9 +225,9 @@ parse_global_random <- function(random_arg, equations, all_vars = NULL) {
     global_terms <- list()
 
     for (part in parts) {
-        term <- parse_random_part(part)
-        if (!is.null(term)) {
-            global_terms[[length(global_terms) + 1]] <- term
+        terms <- parse_random_part(part)
+        if (!is.null(terms)) {
+            global_terms <- c(global_terms, terms)
         }
     }
 

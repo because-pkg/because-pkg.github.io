@@ -58,7 +58,7 @@
 #' @param random_terms Optional list of random effects (response, group).
 #' @param categorical_vars Optional character vector of categorical variable names.
 #' @param priors Optional named list of custom priors.
-#' @param hierarchical_info Optional list containing data hierarchy (levels, link_vars).
+#' @param hierarchical_info Optional list containing multiscale data hierarchy (levels, link_vars).
 #' @param engine Bayesian engine to use ("jags" or "nimble").
 #' @param fix_latent Variable to fix for latent identification.
 #' @param quiet Logical; suppress status messages.
@@ -186,7 +186,7 @@ because_model <- function(
     return(jags_family_precision_prior(fam_obj, param_name))
   }
 
-  # Helper: Get hierarchical level for a variable
+  # Helper: Get multiscale level for a variable
   get_var_level <- function(var, h_info) {
     if (is.null(h_info)) return(NULL)
     

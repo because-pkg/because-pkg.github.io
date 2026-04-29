@@ -49,6 +49,7 @@ summary.because <- function(
             UpperCI = numeric(),
             Rhat = numeric(),
             n.eff = numeric(),
+            Scale = character(),
             stringsAsFactors = FALSE
         )
 
@@ -159,6 +160,8 @@ summary.because <- function(
                     " | {} "
                 }
             )
+            
+            test_scale <- attr(test_formula, "scale")
 
             # Process each matched parameter and return a data frame for this test
             test_results <- lapply(matched_params, function(param_name) {
@@ -233,6 +236,7 @@ summary.because <- function(
                         UpperCI = round(upper, 3),
                         Rhat = round(p_rhat, 3),
                         n.eff = round(p_neff, 0),
+                        Scale = if (!is.null(test_scale)) test_scale else NA_character_,
                         stringsAsFactors = FALSE
                     ))
                 }
@@ -422,9 +426,14 @@ print.summary.because <- function(x, ...) {
 
         # Print each test on a separate block
         for (i in seq_len(nrow(results))) {
-            cat(paste0("Test: ", results$Test[i]), "\n")
-            # Print stats row without the Test column
-            print(results[i, -1], row.names = FALSE)
+            header <- paste0("Test: ", results$Test[i])
+            if ("Scale" %in% names(results) && !is.na(results$Scale[i])) {
+               header <- paste0(header, " [Scale: ", results$Scale[i], "]")
+            }
+            cat(header, "\n")
+            # Print stats row without the Test and Scale columns
+            cols_to_hide <- c("Test", "Scale")
+            print(results[i, !(names(results) %in% cols_to_hide)], row.names = FALSE)
             cat("\n")
             cat("\n")
         }

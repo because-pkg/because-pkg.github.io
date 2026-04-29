@@ -1,8 +1,8 @@
-#' Auto-Detect Hierarchical Data Structure
+#' Auto-Detect Multiscale Data Structure
 #'
-#' Infers levels, hierarchy, and link variables from a list of data.frames
+#' Infers scales, hierarchy, and link variables from a list of data.frames
 #'
-#' @param data List of data.frames at different hierarchical levels
+#' @param data List of data.frames at different scales
 #' @param eq_vars Character vector of variable names used in equations
 #' @param quiet Logical, if TRUE suppress messages
 #' @return List with 'levels', 'hierarchy', 'link_vars'
@@ -51,12 +51,12 @@ auto_detect_hierarchical <- function(data, eq_vars, quiet = FALSE) {
     hierarchy <- paste(ordered_levels, collapse = " > ")
 
     if (!quiet) {
-        message("Auto-detected hierarchical structure:")
+        message("Auto-detected multiscale structure:")
         for (lvl in ordered_levels) {
             vars <- levels[[lvl]]
             n <- nrow(data[[lvl]])
             message(sprintf(
-                "  Level '%s' (N=%d): %s",
+                "  Scale '%s' (N=%d): %s",
                 lvl,
                 n,
                 paste(vars, collapse = ", ")
@@ -93,9 +93,9 @@ auto_detect_hierarchical <- function(data, eq_vars, quiet = FALSE) {
 }
 
 
-#' Validate Hierarchical Data Structure
+#' Validate Multiscale Data Structure
 #'
-#' @param data List of data.frames at different hierarchical levels
+#' @param data List of data.frames at different scales
 #' @param levels List mapping variable names to level names
 #' @param hierarchy Character string specifying nesting (e.g., "site_year > individual")
 #' @param link_vars Character vector of variables that link levels
@@ -219,7 +219,7 @@ validate_hierarchical_data <- function(
 
 #' Infer Variable Level
 #'
-#' Determine which hierarchical level a variable belongs to
+#' Determine which multiscale level a variable belongs to
 #'
 #' @param equations Optional list of model formulas for context
 #' @param latent Character vector of latent variables
@@ -426,7 +426,7 @@ get_data_for_variables <- function(
 
 #' Parse Hierarchy from Random Effects
 #'
-#' Extract hierarchical nesting structure from random effects formula
+#' Extract multiscale nesting structure from random effects formula
 #'
 #' @param random Formula specifying random effects
 #' @param data List of data.frames at different hierarchical levels (optional, currently unused)
@@ -466,7 +466,7 @@ parse_hierarchy_from_random <- function(random, data = NULL) {
 
 #' Auto-Stack Multispecies Data
 #'
-#' Converts a list of matrices (Wide) into a stacked dataframe (Long) for hierarchical analysis.
+#' Converts a list of matrices (Wide) into a stacked dataframe (Long) for multiscale analysis.
 #' Replicates site and species covariates accordingly.
 #'
 #' @param data Input list of data (e.g. list(Y=list(Sp1=mat...), Hab=vec, Trait=vec))
@@ -671,6 +671,79 @@ auto_stack_multispecies_data <- function(data, equations, quiet = FALSE) {
         is_stacked = TRUE
     ))
 }
+#' Aggregate Multiscale Data to a Target Resolution
+#'
+#' Collapses finer-level variables to a coarser grain by taking the mean.
+#' Used for cross-scale d-separation tests where tests must be locked to the
+#' resolution of the coarsest variable involved.
+#'
+#' @param data List of dataframes
+#' @param levels List mapping variables to levels
+#' @param hierarchy Hierarchy string (e.g. "Year > Individual")
+#' @param target_lvl The resolution to aggregate everything to
+#' @return List of dataframes truncated/aggregated to stop at target_lvl
+#' @keywords internal
+aggregate_multiscale_data <- function(data, levels, hierarchy, target_lvl) {
+  if (is.null(data) || is.null(target_lvl)) return(data)
+  if (is.data.frame(data)) return(data) # Handle flat case (no-op or error?)
+
+  # 1. Identify levels to keep and levels to aggregate
+  all_lvls <- unique(unlist(lapply(strsplit(hierarchy, "\\s*[>;]\\s*"), trimws)))
+  t_depth <- get_level_depth(target_lvl, hierarchy)
+  if (is.na(t_depth)) return(data)
+
+  keep_lvls <- Filter(function(l) {
+      d <- get_level_depth(l, hierarchy)
+      !is.na(d) && d <= t_depth
+  }, all_lvls)
+  agg_lvls <- Filter(function(l) {
+      d <- get_level_depth(l, hierarchy)
+      !is.na(d) && d > t_depth
+  }, all_lvls)
+
+  if (length(agg_lvls) == 0) return(data[names(data) %in% keep_lvls])
+
+  # 2. Start with keep levels
+  new_data <- data[names(data) %in% keep_lvls]
+  target_df <- new_data[[target_lvl]]
+
+  # 3. Aggregate each finer level to the target level
+  for (lvl in agg_lvls) {
+    vars_to_agg <- levels[[lvl]]
+    if (length(vars_to_agg) == 0) next
+
+    # Find link column (ID of target_lvl in lvl dataframe)
+    link_col <- target_lvl
+    if (!(link_col %in% names(data[[lvl]]))) {
+        # Fallback to shared columns
+        common <- intersect(names(data[[lvl]]), names(target_df))
+        if (length(common) > 0) link_col <- common[1]
+    }
+
+    if (!(link_col %in% names(data[[lvl]]))) next
+
+    # Only aggregate numeric variables
+    is_numeric <- vapply(data[[lvl]][, vars_to_agg, drop=FALSE], is.numeric, logical(1))
+    numeric_vars <- vars_to_agg[is_numeric]
+
+    if (length(numeric_vars) > 0) {
+        agg_df <- stats::aggregate(
+          data[[lvl]][, numeric_vars, drop = FALSE],
+          by = list(ID = data[[lvl]][[link_col]]),
+          FUN = mean,
+          na.rm = TRUE
+        )
+        names(agg_df)[1] <- link_col
+
+        # Merge into target_df
+        target_df <- merge(target_df, agg_df, by = link_col, all.x = TRUE)
+    }
+  }
+
+  new_data[[target_lvl]] <- target_df
+  return(new_data)
+}
+
 #' Get Depth of a Level in Hierarchy
 #'
 #' Correctly handles multi-chain hierarchies (semicolons).

@@ -59,11 +59,12 @@ autocorrelation, genetic relatedness etc.).
      approach by Shipley & Douda (2021).
 -   [Creating Custom Distribution Families](12_custom_families.html):
      Extending `because` with user-defined JAGS distributions.
--   *Advanced Model Specifications:* [random effects](08_multilevel_models.html)
+-   *Advanced Model Specifications:* [random effects](08_multiscale_models.html)
     (lme4-style `(1|group)` notation, mixed models, nested designs),
     polynomial terms, categorical predictors, measurement error.
--   *[Multilevel & Hierarchical Data](08_multilevel_models.html):* Multi-level data with variables at
-    different hierarchical levels and correct degrees of freedom in d-separation tests.
+-   *[Multiscale & Hierarchical Data](08_multiscale_models.html):* Data at 
+    different resolutions (e.g. climate and physiology) with correct degrees of 
+    freedom in d-separation tests.
 -   *Phylogenetic Path Analysis*: Using the Phylogenetic Bayesian Structural Equation Model approach
     (PhyBaSE, von Hardenberg & Gonzalez-Voyer, 2025) through the `because.phybase` extension.
 

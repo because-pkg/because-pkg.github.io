@@ -72,8 +72,8 @@
 #'   If TRUE, suppress informational output.
 #' @param random_terms Optional list of random effects (group, type) parsed from equations.
 #' @param hierarchical_info Internal argument used to pass data hierarchy information
-#'   (levels, grouping variables) for future implementation of multilevel d-separation
-#'   tests (following Shipley 2009). Currently unused by the d-separation logic.
+#'   (levels, grouping variables) for multiscale d-separation
+#'   tests (following Shipley 2009).
 #' @export
 #' @importFrom stats formula terms as.formula
 because_dsep <- function(

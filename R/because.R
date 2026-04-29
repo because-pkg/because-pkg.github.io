@@ -162,14 +162,14 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #'
 #' @description
 #' Fits a Bayesian Structural Equation Model (SEM) using JAGS or NIMBLE.
-#' Supports multi-level (hierarchical) data, custom covariance structures
+#' Supports multiscale (hierarchical) data, custom covariance structures
 #' (phylogenetic, spatial, etc.), missing data imputation, and d-separation
 #' global fit testing.
 #'
 #' @param equations A list of R formulas describing the structural model. Each formula represents 
 #'    a causal path (e.g., `Y ~ X1 + X2`). Categorical predictors are automatically handled.
-#' @param data A data frame containing all variables. For **hierarchical models**, 
-#'   this must be a named list of data frames (one per level).
+#' @param data A data frame containing all variables. For **multiscale models**, 
+#'   this must be a named list of data frames (one per scale/level).
 #' @param family A named character vector specifying the distribution for each response 
 #'   (e.g., `c(Y = "poisson", M = "gaussian")`). Supports "gaussian" (default), "poisson", 
 #'   "binomial", "gamma", "lognormal", "bernoulli", "ordinal", and "occupancy".
@@ -181,8 +181,9 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @param id_col Character string for the column identifying units (e.g. species names).
 #' @param structure Optional covariance structure (e.g., a phylogenetic tree or spatial matrix) 
 #'   for modeling correlated residuals.
-#' @param hierarchy (Hierarchical) A string defining the nesting structure (e.g., `"site > individual"`). 
-#'   Semicolons separate parallel branches (e.g., `"site > obs; species > obs"`).
+#' @param multiscale (Multiscale/Hierarchical) A string defining the nesting structure 
+#'   (e.g., `"site > individual"`). Semicolons separate parallel branches 
+#'   (e.g., `"site > obs; species > obs"`). Formerly called `hierarchy`.
 #' @param levels (Hierarchical) Optional named list mapping variables to their home levels. 
 #'   If omitted, `because` will attempt to auto-detect levels based on column availability.
 #' @param link_vars (Hierarchical) A named character vector specifying the columns used to 
@@ -212,18 +213,18 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' fit <- because(eqs, data = df, dsep = TRUE)
 #' summary(fit)
 #'
-#' # 2. Hierarchical Model (Auto-detection)
+#' # 2. Multiscale Model (Auto-detection)
 #' # Suppose we have year-level data and individual-level data
 #' year_df <- data.frame(Year = 1:5, Temp = rnorm(5))
 #' ind_df  <- data.frame(Year = rep(1:5, each=10), Mass = rnorm(50))
 #' data_list <- list(yr = year_df, ind = ind_df)
 #' 
-#' # Mass depends on Temp (cross-level link via Year)
+#' # Mass depends on Temp (cross-scale link via Year)
 #' fit_h <- because(
-#'   equations = list(Mass ~ Temp),
-#'   data      = data_list,
-#'   hierarchy = "yr > ind",
-#'   link_vars = c(yr = "Year")
+#'   equations  = list(Mass ~ Temp),
+#'   data       = data_list,
+#'   multiscale = "yr > ind",
+#'   link_vars  = c(yr = "Year")
 #' )
 #'
 #' # 3. Random Intercepts (lme4-style)
@@ -270,6 +271,7 @@ because <- function(
   ic_recompile = FALSE,
   random = NULL,
   levels = NULL,
+  multiscale = NULL,
   hierarchy = NULL,
   link_vars = NULL,
   fix_residual_variance = NULL,
@@ -281,6 +283,11 @@ because <- function(
   ...
 ) {
   args <- list(...)
+  
+  # --- Handle Terminology Aliases (Backward Compatibility) ---
+  # hierarchy -> multiscale
+  if (is.null(multiscale) && !is.null(hierarchy)) multiscale <- hierarchy
+  if (is.null(hierarchy) && !is.null(multiscale)) hierarchy <- multiscale
   
   # --- Handle Deprecated Arguments ---
   # tree -> structure
@@ -562,10 +569,9 @@ because <- function(
       auto_result <- auto_detect_hierarchical(data, eq_vars, quiet = quiet)
       levels <- auto_result$levels
 
-
-      # Use auto-detected hierarchy/link_vars if not explicitly provided
-      if (is.null(hierarchy)) {
-        hierarchy <- auto_result$hierarchy
+      # Use auto-detected multiscale hierarchy/link_vars if not explicitly provided
+      if (is.null(multiscale)) {
+        multiscale <- auto_result$hierarchy
       }
       if (is.null(link_vars)) {
         link_vars <- auto_result$link_vars
@@ -575,32 +581,36 @@ because <- function(
     # Now validate (with either provided or auto-detected values)
     if (!is.null(levels) && length(levels) > 0) {
       is_hierarchical <- TRUE
+      
+      # Handle alias
+      if (is.null(multiscale) && !is.null(hierarchy)) multiscale <- hierarchy
+      
       validate_hierarchical_data(
         data,
         levels,
-        hierarchy,
+        multiscale,
         link_vars,
         latent_vars = latent,
         equations = equations
       )
       # Try to infer hierarchy from random effects if still not set
-      if (is.null(hierarchy)) {
-        hierarchy <- parse_hierarchy_from_random(random, data)
-        if (is.null(hierarchy)) {
+      if (is.null(multiscale)) {
+        multiscale <- parse_hierarchy_from_random(random, data)
+        if (is.null(multiscale)) {
           stop(
-            "Hierarchical data detected but 'hierarchy' not specified. ",
+            "Multiscale data detected but 'multiscale' not specified. ",
             "Provide either:\n",
-            "  1. 'hierarchy' argument (e.g., \"site_year > individual\"), or\n",
+            "  1. 'multiscale' argument (e.g., \"site_year > individual\"), or\n",
             "  2. Nested random effects (e.g., ~(1|site/individual))"
           )
         }
       }
 
-      # Store hierarchical info for later use
+      # Store multiscale info for later use
       hierarchical_info <- list(
         data = data,
         levels = levels,
-        hierarchy = hierarchy,
+        hierarchy = multiscale,
         link_vars = link_vars
       )
 
@@ -613,17 +623,17 @@ because <- function(
       }
 
       if (!quiet) {
-        message("Hierarchical data structure detected: ", hierarchy)
+        message("Multiscale causal structure detected: ", multiscale)
       }
     }
   } else {
-    # Single-level data - check if hierarchical metadata was provided anyway (e.g. for d-sep tests)
-    if (!is.null(levels) && !is.null(hierarchy)) {
-      is_hierarchical <- FALSE # Data is flat, so NOT hierarchical for prep purposes
+    # Data is not a data.frame (likely a list of dataframes or a standard JAGS list)
+    if (!is.null(levels) && (!is.null(multiscale) || !is.null(hierarchy))) {
+      is_hierarchical <- TRUE
       hierarchical_info <- list(
         data = data,
         levels = levels,
-        hierarchy = hierarchy,
+        hierarchy = if (!is.null(multiscale)) multiscale else hierarchy,
         link_vars = link_vars
       )
       
@@ -667,7 +677,7 @@ because <- function(
       "The 'random' argument is deprecated and will be removed in a future ",
       "version. Embed random effects directly in the equation formulas instead:\n",
       paste(migration_lines, collapse = "\n"), "\n",
-      "See vignette('07_multilevel_models') for details.",
+      "See vignette('08_multiscale_models') for details.",
       call. = FALSE
     )
 
@@ -2343,6 +2353,7 @@ because <- function(
             "hierarchical_info",
             "levels",
             "hierarchy",
+            "multiscale",
             "link_vars",
             "fix_residual_variance",
             "run_single_dsep_test_v2",
@@ -2393,6 +2404,7 @@ because <- function(
                 structure = structure,
                 levels = levels,
                 hierarchy = hierarchy,
+                multiscale = multiscale,
                 link_vars = link_vars,
                 fix_residual_variance = fix_residual_variance,
                 latent = latent,
@@ -2443,8 +2455,10 @@ because <- function(
                   structure = structure,
                   levels = levels,
                   hierarchy = hierarchy,
+                  multiscale = multiscale,
                   link_vars = link_vars,
                   fix_residual_variance = fix_residual_variance,
+                  latent = latent,
                   latent_method = latent_method,
                   n.chains = n.chains,
                   n.iter = n.iter,
@@ -2519,6 +2533,7 @@ because <- function(
               structure = structure,
               levels = levels,
               hierarchy = hierarchy,
+              multiscale = multiscale,
               link_vars = link_vars,
               fix_residual_variance = fix_residual_variance,
               latent = latent,
@@ -2953,6 +2968,7 @@ because <- function(
   model_string <- model_output$model
   parameter_map <- model_output$parameter_map
 
+
   # Prune unused tactical variables to avoid JAGS warnings
   for (v in c("N", "zeros", "zero_vec")) {
     if (v %in% names(data) && !grepl(paste0("\\b", v, "\\b"), model_string)) {
@@ -2997,7 +3013,11 @@ because <- function(
     message("---------------------------------------")
   }
 
-  # Monitor parameters
+  if (!quiet) {
+    message("Generated JAGS model:\n", model_string)
+  }
+
+  # --- Monitor Parameters ---
   # Handle monitor mode
   monitor_mode <- NULL
   custom_monitors <- character(0)
@@ -4116,6 +4136,7 @@ run_single_dsep_test_v2 <- function(
   structure = NULL,
   levels = NULL,
   hierarchy = NULL,
+  multiscale = NULL,
   link_vars = NULL,
   fix_residual_variance = NULL,
   latent = NULL,
@@ -4363,6 +4384,50 @@ run_single_dsep_test_v2 <- function(
   # Extension Hook: Filter structure
   sub_structure <- dsep_tree_hook(structure, test_eq, hierarchical_info, levels)
 
+  # [NEW] Multiscale Resolution Locking: Truncate hierarchy for d-sep sub-models.
+  # If the test is performed at a coarse level (e.g. Year), the sub-model should
+  # not expect or look for Individual-level data/loops.
+  sub_multiscale <- multiscale
+  sub_levels <- levels
+  if (!is.null(hierarchical_info)) {
+    test_scale <- attr(test_eq, "scale")
+    if (!is.null(test_scale)) {
+      # Truncate hierarchy string to stop at test_scale
+      h_paths <- strsplit(multiscale, "\\s*;\\s*")[[1]]
+      new_h_paths <- sapply(h_paths, function(path) {
+        lvls <- trimws(strsplit(path, "\\s*>\\s*")[[1]])
+        idx <- match(test_scale, lvls)
+        if (!is.na(idx)) {
+          paste(lvls[1:idx], collapse = " > ")
+        } else {
+          path
+        }
+      })
+      sub_multiscale <- paste(unique(new_h_paths), collapse = " ; ")
+
+      # Filter levels to only include those present in the truncated hierarchy
+      all_keep_lvls <- unique(unlist(lapply(strsplit(sub_multiscale, "\\s*[>;]\\s*"), trimws)))
+      sub_levels <- levels[names(levels) %in% all_keep_lvls]
+
+      # [AGGREGATION] Actually aggregate the data to the test scale.
+      # This ensures that variables from finer levels are available in the
+      # dataframe of the test scale, so validate_hierarchical_data doesn't fail.
+      sub_data_list <- aggregate_multiscale_data(original_data, levels, multiscale, test_scale)
+      dsep_data_to_pass <- sub_data_list
+      
+      # Now re-assign variables from finer levels into the coarser test scale level
+      vars_in_test <- all.vars(test_eq)
+      for (v in vars_in_test) {
+        # Remove from any existing levels
+        sub_levels <- lapply(sub_levels, function(l) setdiff(l, v))
+        # Add to the effective test scale level
+        if (test_scale %in% names(sub_levels)) {
+          sub_levels[[test_scale]] <- unique(c(sub_levels[[test_scale]], v))
+        }
+      }
+    }
+  }
+
   # Call because recursively
   # Use do.call and filtering to handle potential version conflicts on worker nodes
   bec_args <- names(formals(because))
@@ -4378,7 +4443,7 @@ run_single_dsep_test_v2 <- function(
     DIC = FALSE,
     WAIC = FALSE,
     n.adapt = n.adapt,
-    quiet = TRUE,
+    quiet = quiet,
     dsep = FALSE,
     family = sub_family,
     fix_residual_variance = fix_residual_variance,
@@ -4389,8 +4454,9 @@ run_single_dsep_test_v2 <- function(
     cl = NULL,
     ic_recompile = ic_recompile,
     random = random,
-    levels = levels,
-    hierarchy = hierarchy,
+    levels = sub_levels,
+    hierarchy = sub_multiscale,
+    multiscale = sub_multiscale,
     link_vars = link_vars,
     structure_multi = hierarchical_info$structure_multi,
     structure_levels = hierarchical_info$structure_levels,
@@ -4409,6 +4475,11 @@ run_single_dsep_test_v2 <- function(
   # Extract samples, map, and model
   samples <- fit$samples
   model_string <- fit$model
+  
+  # DEBUG: Print model string if it failed (it won't get here if it failed in do.call)
+  # Actually, let's print it BEFORE do.call by looking at what because() would generate.
+  # Or just let it fail and I'll add a print in because() itself if quiet=FALSE.
+
   param_map <- fit$parameter_map
 
   # Update equation index in parameter map to match the d-sep test index

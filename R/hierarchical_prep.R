@@ -1,6 +1,6 @@
-#' Prepare Hierarchical Data for JAGS
+#' Prepare Multiscale Data for JAGS
 #'
-#' Transforms hierarchical dataframes into a flat list of vectors and ID indices suitable for JAGS
+#' Transforms multiscale dataframes into a flat list of vectors and ID indices suitable for JAGS
 #'
 #' @param hierarchical_info List containing 'data', 'levels', 'hierarchy', 'link_vars'
 #' @param vars_needed Character vector of all variable names needed for the model
