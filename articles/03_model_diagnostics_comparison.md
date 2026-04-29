@@ -430,10 +430,9 @@ Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., &
 Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). Chapman &
 Hall/CRC.
 
-Vehtari, A., Gelman, A., & Gabry, J. (2017). Practical Bayesian model
-evaluation using leave-one-out cross-validation and WAIC. *Statistics
-and Computing*, 27(5), 1413–1432.
-<https://doi.org/10.1007/s11222-016-9696-4>
+Vehtari, A., Gelman, A. & Gabry, J. (2017) Practical Bayesian model
+evaluation using leave-one-out cross-validation and WAIC. Stat Comput
+27, 1413–1432. <https://doi.org/10.1007/s11222-016-9696-4>
 
 Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C.
 (2021). Rank-normalization, folding, and localization: An improved R̂ for
