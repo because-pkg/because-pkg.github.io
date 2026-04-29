@@ -2,7 +2,7 @@
 % Please edit documentation in R/mag_helpers.R
 \name{equations_to_dag}
 \alias{equations_to_dag}
-\title{Convert because equations to ggm DAG adjacency matrix}
+\title{Convert because equations to dagitty-style adjacency matrix}
 \usage{
 equations_to_dag(equations, exclude_vars = NULL, deterministic_terms = NULL)
 }
@@ -18,7 +18,7 @@ grouping variables)}
 \code{$internal_name} (the JAGS-safe node name, e.g. \code{"BM_x_M"}).}
 }
 \value{
-Named adjacency matrix in ggm format
+Named adjacency matrix in binary format
 }
 \description{
 When \code{deterministic_terms} is supplied (a list returned by

@@ -2,7 +2,7 @@
 % Please edit documentation in R/mag_helpers.R
 \name{mag_basis_to_formulas}
 \alias{mag_basis_to_formulas}
-\title{Convert MAG basis set to because formula format}
+\title{Convert basis set to because formula format}
 \usage{
 mag_basis_to_formulas(
   basis_set,
@@ -15,7 +15,7 @@ mag_basis_to_formulas(
 )
 }
 \arguments{
-\item{basis_set}{Basis set from basiSet.mag() or ggm::basiSet()}
+\item{basis_set}{Basis set from dagitty}
 
 \item{latent_children}{Optional character vector of variables that are direct children of latents}
 
@@ -38,6 +38,6 @@ always be predictors rather than responses in independence tests.}
 List of formulas with test_var attribute
 }
 \description{
-Convert MAG basis set to because formula format
+Convert basis set to because formula format
 }
 \keyword{internal}

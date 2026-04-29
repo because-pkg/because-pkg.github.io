@@ -194,6 +194,28 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @param n.chains Number of independent MCMC chains (default = 3).
 #' @param parallel Logical; if `TRUE`, runs MCMC chains in parallel.
 #' @param n.cores Number of CPU cores for parallel execution.
+#' @param monitor Monitoring mode (e.g. "interpretable", "all", or "minimal").
+#' @param nimble_samplers Optional named list of user-specified samplers for NIMBLE.
+#' @param n.thin Thinning interval for MCMC chains (default = 10).
+#' @param DIC Logical; if `TRUE`, calculates the Deviance Information Criterion (JAGS only).
+#' @param WAIC Logical; if `TRUE`, calculates the Watanabe-Akaike Information Criterion.
+#' @param n.adapt Number of iterations for the adaptation phase.
+#' @param quiet Logical; if `TRUE`, suppresses status messages and progress bars.
+#' @param verbose Logical; if `TRUE`, prints detailed debugging information.
+#' @param variability Optional named character vector specifying the type of residual variance (e.g., "fixed", "random").
+#' @param distribution Alias for `family` (deprecated).
+#' @param latent_method Method for handling latent variables ("correlations" for MAG or "explicit").
+#' @param standardize_latent Logical; if `TRUE`, standardizes latent variables to unit variance.
+#' @param fix_latent How to fix the scale of latent variables ("loading" or "variance").
+#' @param cl Optional pre-existing cluster for parallel execution.
+#' @param ic_recompile Logical; if `TRUE`, recompiles the model for DIC/WAIC calculation.
+#' @param hierarchy Alias for `multiscale` (deprecated).
+#' @param fix_residual_variance Optional named vector fixing residual variances to known values.
+#' @param priors Optional list of custom priors for model parameters.
+#' @param reuse_models Optional list of previously fitted models to speed up d-separation tests.
+#' @param expand_ordered Logical; if `TRUE`, expands ordered factors using monotonic effects.
+#' @param structure_multi Logical; if `TRUE`, handles multiple covariance structures.
+#' @param structure_levels Mapping of variables to covariance structure levels.
 #' @param ... Additional arguments passed to the underlying model engines.
 #'
 #' @return An object of class \code{"because"} containing:
@@ -2466,7 +2488,6 @@ because <- function(
                   n.thin = n.thin,
                   n.adapt = n.adapt,
                   ic_recompile = ic_recompile,
-                  latent = latent,
                   random = random,
                   id_col = id_col,
                   variability = variability

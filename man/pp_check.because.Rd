@@ -53,4 +53,5 @@ pp_check(fit, resp = "Y", type = "hist", ndraws = 30)
 # Test statistic check (e.g., mean)
 pp_check(fit, type = "stat", stat = "mean")
 }
+
 }

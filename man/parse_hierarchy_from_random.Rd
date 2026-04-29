@@ -15,6 +15,6 @@ parse_hierarchy_from_random(random, data = NULL)
 Character string hierarchy (e.g., "site_year > individual") or NULL
 }
 \description{
-Extract hierarchical nesting structure from random effects formula
+Extract multiscale nesting structure from random effects formula
 }
 \keyword{internal}

@@ -20,7 +20,7 @@ List with components:
 \item{is_stacked}{Logical, whether stacking occurred}
 }
 \description{
-Converts a list of matrices (Wide) into a stacked dataframe (Long) for hierarchical analysis.
+Converts a list of matrices (Wide) into a stacked dataframe (Long) for multiscale analysis.
 Replicates site and species covariates accordingly.
 }
 \keyword{internal}

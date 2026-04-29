@@ -2,12 +2,12 @@
 % Please edit documentation in R/hierarchical_data.R
 \name{auto_detect_hierarchical}
 \alias{auto_detect_hierarchical}
-\title{Auto-Detect Hierarchical Data Structure}
+\title{Auto-Detect Multiscale Data Structure}
 \usage{
 auto_detect_hierarchical(data, eq_vars, quiet = FALSE)
 }
 \arguments{
-\item{data}{List of data.frames at different hierarchical levels}
+\item{data}{List of data.frames at different scales}
 
 \item{eq_vars}{Character vector of variable names used in equations}
 
@@ -17,6 +17,6 @@ auto_detect_hierarchical(data, eq_vars, quiet = FALSE)
 List with 'levels', 'hierarchy', 'link_vars'
 }
 \description{
-Infers levels, hierarchy, and link variables from a list of data.frames
+Infers scales, hierarchy, and link variables from a list of data.frames
 }
 \keyword{internal}

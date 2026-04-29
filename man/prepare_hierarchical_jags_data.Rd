@@ -2,7 +2,7 @@
 % Please edit documentation in R/hierarchical_prep.R
 \name{prepare_hierarchical_jags_data}
 \alias{prepare_hierarchical_jags_data}
-\title{Prepare Hierarchical Data for JAGS}
+\title{Prepare Multiscale Data for JAGS}
 \usage{
 prepare_hierarchical_jags_data(hierarchical_info, vars_needed)
 }
@@ -15,6 +15,6 @@ prepare_hierarchical_jags_data(hierarchical_info, vars_needed)
 List with 'data_list' (for jags) and 'n_vec' (named vector of sample sizes)
 }
 \description{
-Transforms hierarchical dataframes into a flat list of vectors and ID indices suitable for JAGS
+Transforms multiscale dataframes into a flat list of vectors and ID indices suitable for JAGS
 }
 \keyword{internal}

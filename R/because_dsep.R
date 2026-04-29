@@ -779,8 +779,18 @@ dsep_with_latents <- function(
   }
 
   # Extract bidirected edges (induced correlations)
-  # Induced correlations in dagitty are handled via d-connection
+  # Induced correlations in dagitty are handled via bidirected edges in the MAG
+  mag_obj <- dagitty::toMAG(d_obj)
+  mag_edges <- dagitty::edges(mag_obj)
   correlations <- list()
+  if (nrow(mag_edges) > 0) {
+    bidirected <- mag_edges[mag_edges$e == "<->", ]
+    if (nrow(bidirected) > 0) {
+      for (i in seq_len(nrow(bidirected))) {
+        correlations[[length(correlations) + 1]] <- c(bidirected$v[i], bidirected$w[i])
+      }
+    }
+  }
 
   # Print basis set if not quiet
   if (!quiet) {

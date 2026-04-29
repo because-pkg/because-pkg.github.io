@@ -2,7 +2,7 @@
 
 ### Bayesian Estimation of Causal Effects
 
-`because` provides a unified framework for specifying and fitting Bayesian structural equation models in `R` using [JAGS](http://mcmc-jags.sourceforge.net) or [NIMBLE](https://r-nimble.org).
+`because` provides a unified framework for specifying and fitting Bayesian structural equation models in `R` using [JAGS](https://mcmc-jags.sourceforge.io) or [NIMBLE](https://r-nimble.org).
 The focus of `because` is on causal inference, providing tools to facilitate the correct estimation and testing of direct and indirect causal effects in complex systems and quantify uncertainty in the estimates.
 
 > **Note on the logo**: The package hexagon sticker features the mathematical symbol for "because", represented as three dots in an inverted triangle ($\because$).
@@ -46,8 +46,8 @@ remotes::install_github("because-pkg/because", build_vignettes = TRUE)
 Before using `because`, you need to have an inference engine installed.
 
 ### JAGS (Primary Engine)
--   **macOS**: `brew install jags` or download from [SourceForge](http://mcmc-jags.sourceforge.net).
--   **Windows**: Download installer from [SourceForge](http://mcmc-jags.sourceforge.net).
+-   **macOS**: `brew install jags` or download from [SourceForge](https://mcmc-jags.sourceforge.io).
+-   **Windows**: Download installer from [SourceForge](https://mcmc-jags.sourceforge.io).
 -   **Linux**: `sudo apt-get install jags`.
 
 ### NIMBLE (High-Performance Engine)

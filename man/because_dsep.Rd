@@ -25,8 +25,8 @@ If provided, the function converts the DAG to a MAG and returns m-separation tes
 \item{random_terms}{Optional list of random effects (group, type) parsed from equations.}
 
 \item{hierarchical_info}{Internal argument used to pass data hierarchy information
-(levels, grouping variables) for future implementation of multilevel d-separation
-tests (following Shipley 2009). Currently unused by the d-separation logic.}
+(levels, grouping variables) for multiscale d-separation
+tests (following Shipley 2009).}
 
 \item{poly_terms}{Internal list of polynomial terms.}
 

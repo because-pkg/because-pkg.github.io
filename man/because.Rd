@@ -35,6 +35,7 @@ because(
   ic_recompile = FALSE,
   random = NULL,
   levels = NULL,
+  multiscale = NULL,
   hierarchy = NULL,
   link_vars = NULL,
   fix_residual_variance = NULL,
@@ -50,8 +51,8 @@ because(
 \item{equations}{A list of R formulas describing the structural model. Each formula represents
 a causal path (e.g., \code{Y ~ X1 + X2}). Categorical predictors are automatically handled.}
 
-\item{data}{A data frame containing all variables. For \strong{hierarchical models},
-this must be a named list of data frames (one per level).}
+\item{data}{A data frame containing all variables. For \strong{multiscale models},
+this must be a named list of data frames (one per scale/level).}
 
 \item{id_col}{Character string for the column identifying units (e.g. species names).}
 
@@ -60,24 +61,54 @@ for modeling correlated residuals.}
 
 \item{engine}{Bayesian backend: \code{"jags"} (default) or \code{"nimble"}.}
 
+\item{monitor}{Monitoring mode (e.g. "interpretable", "all", or "minimal").}
+
+\item{nimble_samplers}{Optional named list of user-specified samplers for NIMBLE.}
+
 \item{n.chains}{Number of independent MCMC chains (default = 3).}
 
 \item{n.iter}{Total MCMC iterations per chain (default = 12500).}
 
 \item{n.burnin}{Number of burn-in iterations (default = 20\% of \code{n.iter}).}
 
+\item{n.thin}{Thinning interval for MCMC chains (default = 10).}
+
+\item{DIC}{Logical; if \code{TRUE}, calculates the Deviance Information Criterion (JAGS only).}
+
+\item{WAIC}{Logical; if \code{TRUE}, calculates the Watanabe-Akaike Information Criterion.}
+
+\item{n.adapt}{Number of iterations for the adaptation phase.}
+
+\item{quiet}{Logical; if \code{TRUE}, suppresses status messages and progress bars.}
+
+\item{verbose}{Logical; if \code{TRUE}, prints detailed debugging information.}
+
 \item{dsep}{Logical; if \code{TRUE}, performs d-separation tests to evaluate the global
 fit of the DAG against the data. Highly recommended for causal validation.}
+
+\item{variability}{Optional named character vector specifying the type of residual variance (e.g., "fixed", "random").}
 
 \item{family}{A named character vector specifying the distribution for each response
 (e.g., \code{c(Y = "poisson", M = "gaussian")}). Supports "gaussian" (default), "poisson",
 "binomial", "gamma", "lognormal", "bernoulli", "ordinal", and "occupancy".}
 
+\item{distribution}{Alias for \code{family} (deprecated).}
+
 \item{latent}{Optional character vector of latent (unmeasured) variables.}
+
+\item{latent_method}{Method for handling latent variables ("correlations" for MAG or "explicit").}
+
+\item{standardize_latent}{Logical; if \code{TRUE}, standardizes latent variables to unit variance.}
+
+\item{fix_latent}{How to fix the scale of latent variables ("loading" or "variance").}
 
 \item{parallel}{Logical; if \code{TRUE}, runs MCMC chains in parallel.}
 
 \item{n.cores}{Number of CPU cores for parallel execution.}
+
+\item{cl}{Optional pre-existing cluster for parallel execution.}
+
+\item{ic_recompile}{Logical; if \code{TRUE}, recompiles the model for DIC/WAIC calculation.}
 
 \item{random}{Optional formula for \strong{global random intercepts} (e.g., \code{~(1|Site)}).
 Deprecated in favor of inline specification: \code{Y ~ X + (1|Site)}.}
@@ -85,11 +116,26 @@ Deprecated in favor of inline specification: \code{Y ~ X + (1|Site)}.}
 \item{levels}{(Hierarchical) Optional named list mapping variables to their home levels.
 If omitted, \code{because} will attempt to auto-detect levels based on column availability.}
 
-\item{hierarchy}{(Hierarchical) A string defining the nesting structure (e.g., \code{"site > individual"}).
-Semicolons separate parallel branches (e.g., \code{"site > obs; species > obs"}).}
+\item{multiscale}{(Multiscale/Hierarchical) A string defining the nesting structure
+(e.g., \code{"site > individual"}). Semicolons separate parallel branches
+(e.g., \code{"site > obs; species > obs"}). Formerly called \code{hierarchy}.}
+
+\item{hierarchy}{Alias for \code{multiscale} (deprecated).}
 
 \item{link_vars}{(Hierarchical) A named character vector specifying the columns used to
 link data frames across levels (e.g., \code{c(site = "SiteID")}).}
+
+\item{fix_residual_variance}{Optional named vector fixing residual variances to known values.}
+
+\item{priors}{Optional list of custom priors for model parameters.}
+
+\item{reuse_models}{Optional list of previously fitted models to speed up d-separation tests.}
+
+\item{expand_ordered}{Logical; if \code{TRUE}, expands ordered factors using monotonic effects.}
+
+\item{structure_multi}{Logical; if \code{TRUE}, handles multiple covariance structures.}
+
+\item{structure_levels}{Mapping of variables to covariance structure levels.}
 
 \item{...}{Additional arguments passed to the underlying model engines.}
 }
@@ -105,7 +151,7 @@ An object of class \code{"because"} containing:
 }
 \description{
 Fits a Bayesian Structural Equation Model (SEM) using JAGS or NIMBLE.
-Supports multi-level (hierarchical) data, custom covariance structures
+Supports multiscale (hierarchical) data, custom covariance structures
 (phylogenetic, spatial, etc.), missing data imputation, and d-separation
 global fit testing.
 }
@@ -117,18 +163,18 @@ eqs <- list(M ~ X, Y ~ M + X)
 fit <- because(eqs, data = df, dsep = TRUE)
 summary(fit)
 
-# 2. Hierarchical Model (Auto-detection)
+# 2. Multiscale Model (Auto-detection)
 # Suppose we have year-level data and individual-level data
 year_df <- data.frame(Year = 1:5, Temp = rnorm(5))
 ind_df  <- data.frame(Year = rep(1:5, each=10), Mass = rnorm(50))
 data_list <- list(yr = year_df, ind = ind_df)
 
-# Mass depends on Temp (cross-level link via Year)
+# Mass depends on Temp (cross-scale link via Year)
 fit_h <- because(
-  equations = list(Mass ~ Temp),
-  data      = data_list,
-  hierarchy = "yr > ind",
-  link_vars = c(yr = "Year")
+  equations  = list(Mass ~ Temp),
+  data       = data_list,
+  multiscale = "yr > ind",
+  link_vars  = c(yr = "Year")
 )
 
 # 3. Random Intercepts (lme4-style)

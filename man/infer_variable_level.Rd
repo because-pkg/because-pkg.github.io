@@ -24,6 +24,6 @@ infer_variable_level(
 Character, level name
 }
 \description{
-Determine which hierarchical level a variable belongs to
+Determine which multiscale level a variable belongs to
 }
 \keyword{internal}

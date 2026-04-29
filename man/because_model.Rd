@@ -73,7 +73,7 @@ For "binomial" variables, the model uses a logit link and a Bernoulli likelihood
 
 \item{priors}{Optional named list of custom priors.}
 
-\item{hierarchical_info}{Optional list containing data hierarchy (levels, link_vars).}
+\item{hierarchical_info}{Optional list containing multiscale data hierarchy (levels, link_vars).}
 
 \item{engine}{Bayesian engine to use ("jags" or "nimble").}
 

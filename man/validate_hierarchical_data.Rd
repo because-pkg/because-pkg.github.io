@@ -2,7 +2,7 @@
 % Please edit documentation in R/hierarchical_data.R
 \name{validate_hierarchical_data}
 \alias{validate_hierarchical_data}
-\title{Validate Hierarchical Data Structure}
+\title{Validate Multiscale Data Structure}
 \usage{
 validate_hierarchical_data(
   data,
@@ -14,7 +14,7 @@ validate_hierarchical_data(
 )
 }
 \arguments{
-\item{data}{List of data.frames at different hierarchical levels}
+\item{data}{List of data.frames at different scales}
 
 \item{levels}{List mapping variable names to level names}
 
@@ -23,6 +23,6 @@ validate_hierarchical_data(
 \item{link_vars}{Character vector of variables that link levels}
 }
 \description{
-Validate Hierarchical Data Structure
+Validate Multiscale Data Structure
 }
 \keyword{internal}

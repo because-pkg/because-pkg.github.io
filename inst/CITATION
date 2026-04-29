@@ -1,6 +1,6 @@
 citHeader("To cite 'because' in publications use:")
 
-citEntry(entry = "Manual",
+bibentry(bibtype = "Manual",
   title = "because: Bayesian Estimation of Causal Effects",
   author = person("Achaz", "von Hardenberg", email = "achaz.hardenberg@unipv.it", role = c("aut", "cre")),
   year = "2026",

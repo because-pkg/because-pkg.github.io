@@ -48,6 +48,6 @@ Suggests:
     MASS
 Config/Needs/website: pkgdown, ggm, nimble, ape, MASS
 VignetteBuilder: knitr, rmarkdown
-URL: https://because-pkg.github.io/because/, https://github.com/because-pkg/because
-BugReports: https://github.com/because-pkg/because/issues
+URL: https://because-pkg.github.io, https://github.com/because-pkg/because-pkg.github.io
+BugReports: https://github.com/because-pkg/because-pkg.github.io/issues
 Config/testthat/edition: 3
