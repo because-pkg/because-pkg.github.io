@@ -110,8 +110,7 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
   
   # B. Fixed Effects (Slopes)
   # Basic check excluding intercept and random effects
-  beta_rows <- pm_resp[!pm_resp$predictor %in% c("(Intercept)"), ]
-  beta_rows <- beta_rows[!grepl("\\|", beta_rows$predictor) & !grepl("^u_", beta_rows$parameter), ]
+  beta_rows <- pm_resp[pm_resp$type == "coefficient" & pm_resp$predictor != "(Intercept)", ]
   
   for (i in seq_len(nrow(beta_rows))) {
     p_name <- beta_rows$parameter[i]
@@ -196,19 +195,17 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
       }
       
       if (!is.null(x_vals) && len_x == n_obs) {
-        if (is.matrix(x_vals)) {
-            # x_vals is a matrix [n_s x n_obs] (from a previous intervention or simulation)
-            # b_samples is [n_s x 1]. We do element-wise multiplication by broadcasting b_samples.
-            eta <- eta + (as.numeric(b_samples) * x_vals)
+        contribution <- if (is.matrix(x_vals)) {
+            (as.numeric(b_samples) * x_vals)
         } else {
-            # x_vals is a vector of length n_obs
-            eta <- eta + (b_samples %*% t(as.matrix(x_vals)))
+            (b_samples %*% t(as.matrix(x_vals)))
         }
+        eta <- eta + contribution
       }
     }
   }
   
-  # C. Random Effects & Structures (Conditional on re_formula)
+  message("DEBUG [", resp, "]: eta range: ", paste(round(range(eta), 3), collapse = " to "))
   # We track RE variances for marginal checks (re_formula = NA)
   re_variances <- matrix(0, nrow = n_s, ncol = 1)
 

@@ -239,6 +239,16 @@ do.because <- function(object, ..., ndraws = NULL, re_formula = NULL, raw_scale 
         # If it's neither intervened nor endogenous, it's a root node, keep original values.
     }
     
+    # --- Final Unscaling ---
+    if (raw_scale) {
+        for (var in names(results)) {
+            if (!is.null(object$scale_info[[var]])) {
+                s_info <- object$scale_info[[var]]
+                results[[var]] <- (results[[var]] * s_info$scale) + s_info$center
+            }
+        }
+    }
+    
     class(results) <- c("because_counterfactual", "list")
     return(results)
 }
