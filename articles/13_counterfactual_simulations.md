@@ -149,10 +149,10 @@ summary(res_raw)
 #> Estimates represent the global expectation (averaged across all observations)
 #> under the intervened causal structure.
 #> 
-#>   Variable   Mean     SD     2.5%    50%  97.5%
-#>       Temp 0.4801 0.0000  0.48014 0.4801 0.4801
-#>   Resource 0.2201 0.1351 -0.09035 0.2271 0.4480
-#>  Abundance 1.6550 0.5526  1.00925 1.5250 2.6010
+#>   Variable   Mean     SD   2.5%    50%  97.5%
+#>       Temp 22.130 0.0000 22.130 22.130 22.130
+#>   Resource 21.047 0.5629 19.754 21.076 21.996
+#>  Abundance  1.655 0.5526  1.009  1.525  2.601
 ```
 
 > **Important Note:** Base R’s `data.frame(Temp = scale(raw_temp))`
@@ -183,10 +183,10 @@ summary(res_perc)
 #> Estimates represent the global expectation (averaged across all observations)
 #> under the intervened causal structure.
 #> 
-#>   Variable   Mean     SD    2.5%    50%  97.5%
-#>       Temp 0.4833 0.0000  0.4833 0.4833 0.4833
-#>   Resource 0.2091 0.1156 -0.0106 0.2235 0.4215
-#>  Abundance 1.6011 0.4172  1.0097 1.5200 2.6962
+#>   Variable   Mean     SD  2.5%   50%  97.5%
+#>       Temp 22.143 0.0000 22.14 22.14 22.143
+#>   Resource 21.001 0.4816 20.09 21.06 21.886
+#>  Abundance  1.601 0.4172  1.01  1.52  2.696
 ```
 
 *(Note: Under the hood, the `%` string syntax is a convenient shortcut
