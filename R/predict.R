@@ -28,7 +28,7 @@
 #' yrep_marg <- posterior_predict(fit, resp = "Y", ndraws = 200, re_formula = NA)
 #' }
 #' @export
-posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, re_formula = NULL, ...) {
+posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, re_formula = NULL, ...) {
   # 1. Selection & Identification
   if (is.null(resp)) {
     resp <- as.character(all.vars(object$equations[[1]][[2]])[1])
@@ -55,7 +55,22 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, re_for
   }
   
   data_list <- object$data
-  obs_y <- object$original_data[[resp]]
+  obs_y <- if (!is.null(newdata)) {
+     if (is.data.frame(newdata)) newdata[[resp]] else if (is.list(newdata) && !is.data.frame(newdata)) {
+         # Find the data frame containing the response
+         found <- NULL
+         for (df_name in names(newdata)) {
+             if (is.data.frame(newdata[[df_name]]) && resp %in% names(newdata[[df_name]])) {
+                 found <- newdata[[df_name]][[resp]]
+                 break
+             }
+         }
+         found
+     } else newdata[[resp]]
+  } else {
+     object$original_data[[resp]]
+  }
+  
   if (is.null(obs_y)) {
      obs_y <- data_list[[resp]]
   }
@@ -72,12 +87,13 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, re_for
     }
   }
 
-  n_obs <- length(obs_y)
+  n_obs <- if (is.matrix(obs_y)) ncol(obs_y) else length(obs_y)
   if (target_level != "obs" && !is.null(h_info$link_vars[[target_level]])) {
       idx_var <- h_info$link_vars[[target_level]]
       # Search original_data or data for unique entities
-      if (idx_var %in% names(object$original_data)) {
-          n_obs <- length(unique(object$original_data[[idx_var]]))
+      search_data <- if (!is.null(newdata)) newdata else object$original_data
+      if (idx_var %in% names(search_data)) {
+          n_obs <- length(unique(search_data[[idx_var]]))
       } else if (paste0(idx_var, "_idx") %in% names(data_list)) {
           n_obs <- max(data_list[[paste0(idx_var, "_idx")]], na.rm=TRUE)
       }
@@ -106,13 +122,15 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, re_for
       
       # [Smart Lookup] Search top-level or sub-lists for predictor
       x_vals <- NULL
-      if (v_name %in% names(object$original_data)) {
-          x_vals <- object$original_data[[v_name]]
-      } else if (is.list(object$original_data) && !is.data.frame(object$original_data)) {
+      search_data <- if (!is.null(newdata)) newdata else object$original_data
+      
+      if (v_name %in% names(search_data)) {
+          x_vals <- search_data[[v_name]]
+      } else if (is.list(search_data) && !is.data.frame(search_data)) {
           # Search inside site, survey, etc.
-          for (df_name in names(object$original_data)) {
-              if (is.data.frame(object$original_data[[df_name]]) && v_name %in% names(object$original_data[[df_name]])) {
-                  x_vals <- object$original_data[[df_name]][[v_name]]
+          for (df_name in names(search_data)) {
+              if (is.data.frame(search_data[[df_name]]) && v_name %in% names(search_data[[df_name]])) {
+                  x_vals <- search_data[[df_name]][[v_name]]
                   break
               }
           }
@@ -124,33 +142,68 @@ posterior_predict.because <- function(object, resp = NULL, ndraws = NULL, re_for
       # [Hierarchical Resolution Alignment]
       if (!is.null(x_vals)) {
           # Case 1: x_vals is observation-level but we need higher level (e.g. species traits)
-          if (length(x_vals) > n_obs && target_level != "obs") {
+          # Check length of x_vals; if it's a matrix, check ncol
+          len_x <- if (is.matrix(x_vals)) ncol(x_vals) else length(x_vals)
+          
+          if (len_x > n_obs && target_level != "obs") {
               idx_var <- h_info$link_vars[[target_level]]
-              # Search for links in original_data
+              # Search for links in search_data
               links <- NULL
-              for (df_name in names(object$original_data)) {
-                  if (is.data.frame(object$original_data[[df_name]]) && idx_var %in% names(object$original_data[[df_name]])) {
-                      links <- object$original_data[[df_name]][[idx_var]]
+              for (df_name in names(search_data)) {
+                  if (is.data.frame(search_data[[df_name]]) && idx_var %in% names(search_data[[df_name]])) {
+                      links <- search_data[[df_name]][[idx_var]]
                       # Ensure links has same length as x_vals
-                      if (length(links) == length(x_vals)) break else links <- NULL
+                      if (length(links) == len_x) break else links <- NULL
                   }
               }
-              if (!is.null(links)) x_vals <- x_vals[!duplicated(links)]
+              if (!is.null(links)) {
+                  unique_idx <- !duplicated(links)
+                  if (is.matrix(x_vals)) x_vals <- x_vals[, unique_idx, drop = FALSE] else x_vals <- x_vals[unique_idx]
+                  len_x <- sum(unique_idx)
+              }
           }
           
           # Case 2: x_vals is site-level but response is survey-level (Elevation_s -> Temperature)
-          if (length(x_vals) < n_obs && target_level != "obs") {
-              # Find the link between target_level and predictor level
-              # This usually is handled by indexing in BUGS, here we assume order if lengths match entities
-              # or we fallback to simpler truncation/replication.
-              if (n_obs %% length(x_vals) == 0) {
-                  x_vals <- rep(x_vals, each = n_obs / length(x_vals))
+          # We need to map len_x to n_obs
+          if (len_x < n_obs) {
+              # Look for a JAGS index variable that maps these entities
+              idx_candidate <- NULL
+              for (idx_name in grep("_idx$", names(data_list), value = TRUE)) {
+                  if (length(data_list[[idx_name]]) == n_obs && max(data_list[[idx_name]], na.rm = TRUE) == len_x) {
+                      idx_candidate <- data_list[[idx_name]]
+                      break
+                  }
+              }
+              
+              if (!is.null(idx_candidate)) {
+                  if (is.matrix(x_vals)) {
+                      x_vals <- x_vals[, idx_candidate, drop = FALSE]
+                  } else {
+                      x_vals <- x_vals[idx_candidate]
+                  }
+                  len_x <- n_obs
+              } else if (n_obs %% len_x == 0) {
+                  # Fallback for perfectly balanced implicit hierarchies
+                  rep_times <- n_obs / len_x
+                  if (is.matrix(x_vals)) {
+                      x_vals <- x_vals[, rep(1:len_x, each = rep_times), drop = FALSE]
+                  } else {
+                      x_vals <- rep(x_vals, each = rep_times)
+                  }
+                  len_x <- n_obs
               }
           }
       }
       
-      if (!is.null(x_vals) && length(x_vals) == n_obs) {
-        eta <- eta + (b_samples %*% t(as.matrix(x_vals)))
+      if (!is.null(x_vals) && len_x == n_obs) {
+        if (is.matrix(x_vals)) {
+            # x_vals is a matrix [n_s x n_obs] (from a previous intervention or simulation)
+            # b_samples is [n_s x 1]. We do element-wise multiplication by broadcasting b_samples.
+            eta <- eta + (as.numeric(b_samples) * x_vals)
+        } else {
+            # x_vals is a vector of length n_obs
+            eta <- eta + (b_samples %*% t(as.matrix(x_vals)))
+        }
       }
     }
   }

@@ -1,0 +1,168 @@
+══ Documenting ═════════════════════════════════════════════════════════════════
+ℹ Updating because documentation
+Writing 'NAMESPACE'
+ℹ Loading because
+Writing 'nimble_distributions.Rd'
+Writing 'plot_coef.Rd'
+Writing 'posterior_predict.Rd'
+Writing 'pp_check.Rd'
+
+══ Building ════════════════════════════════════════════════════════════════════
+Setting env vars:
+• CFLAGS    : -Wall -pedantic
+• CXXFLAGS  : -Wall -pedantic
+• CXX11FLAGS: -Wall -pedantic
+• CXX14FLAGS: -Wall -pedantic
+• CXX17FLAGS: -Wall -pedantic
+• CXX20FLAGS: -Wall -pedantic
+── R CMD build ─────────────────────────────────────────────────────────────────
+* checking for file ‘/Users/achazhardenberg/Library/CloudStorage/Dropbox/Repos/because/DESCRIPTION’ ... OK
+* preparing ‘because’:
+* checking DESCRIPTION meta-information ... OK
+* installing the package to build vignettes
+* creating vignettes ... OK
+* checking for LF line-endings in source and make files and shell scripts
+* checking for empty or unneeded directories
+  NB: this package now depends on R (>= 4.1.0)
+  WARNING: Added dependency on R >= 4.1.0 because package code uses the
+  pipe |> or function shorthand \(...) syntax added in R 4.1.0.
+  File(s) using such syntax:
+    ‘plot_dag.R’
+* building ‘because_1.2.7.tar.gz’
+
+══ Checking ════════════════════════════════════════════════════════════════════
+Setting env vars:
+• _R_CHECK_CRAN_INCOMING_REMOTE_               : FALSE
+• _R_CHECK_CRAN_INCOMING_                      : FALSE
+• _R_CHECK_FORCE_SUGGESTS_                     : FALSE
+• _R_CHECK_PACKAGES_USED_IGNORE_UNUSED_IMPORTS_: FALSE
+• NOT_CRAN                                     : true
+── R CMD check ─────────────────────────────────────────────────────────────────
+* using log directory ‘/private/var/folders/03/4zxc9frn11n7g8tr_95jg0p00000gn/T/RtmpaLUdbV/file97743a7c1d2/because.Rcheck’
+* using R version 4.5.2 (2025-10-31)
+* using platform: aarch64-apple-darwin20
+* R was compiled by
+    Apple clang version 16.0.0 (clang-1600.0.26.6)
+    GNU Fortran (GCC) 14.2.0
+* running under: macOS Tahoe 26.2
+* using session charset: UTF-8
+* using options ‘--no-manual --no-build-vignettes --as-cran’
+* checking for file ‘because/DESCRIPTION’ ... OK
+* checking extension type ... Package
+* this is package ‘because’ version ‘1.2.7’
+* package encoding: UTF-8
+* checking package namespace information ... OK
+* checking package dependencies ... OK
+* checking if this is a source package ... OK
+* checking if there is a namespace ... OK
+* checking for executable files ... OK
+* checking for hidden files and directories ... OK
+* checking for portable file names ... OK
+* checking for sufficient/correct file permissions ... OK
+* checking whether package ‘because’ can be installed ... OK
+* checking installed package size ... OK
+* checking package directory ... OK
+* checking for future file timestamps ... NOTE
+unable to verify current time
+* checking DESCRIPTION meta-information ... OK
+* checking top-level files ... OK
+* checking for left-over files ... OK
+* checking index information ... OK
+* checking package subdirectories ... OK
+* checking code files for non-ASCII characters ... OK
+* checking R files for syntax errors ... OK
+* checking whether the package can be loaded ... OK
+* checking whether the package can be loaded with stated dependencies ... OK
+* checking whether the package can be unloaded cleanly ... OK
+* checking whether the namespace can be loaded with stated dependencies ... OK
+* checking whether the namespace can be unloaded cleanly ... OK
+* checking dependencies in R code ... OK
+* checking S3 generic/method consistency ... OK
+* checking replacement functions ... OK
+* checking foreign function calls ... OK
+* checking R code for possible problems ... OK
+* checking Rd files ... OK
+* checking Rd metadata ... OK
+* checking Rd line widths ... OK
+* checking Rd cross-references ... OK
+* checking for missing documentation entries ... OK
+* checking for code/documentation mismatches ... OK
+* checking Rd \usage sections ... OK
+* checking Rd contents ... OK
+* checking for unstated dependencies in examples ... OK
+* checking contents of ‘data’ directory ... OK
+* checking data for non-ASCII characters ... OK
+* checking LazyData ... OK
+* checking data for ASCII and uncompressed saves ... OK
+* checking installed files from ‘inst/doc’ ... OK
+* checking files in ‘vignettes’ ... OK
+* checking examples ... OK
+* checking for unstated dependencies in ‘tests’ ... OK
+* checking tests ...
+  Running ‘testthat.R’ [28s/36s]
+ [28s/36s] OK
+* checking for unstated dependencies in vignettes ... OK
+* checking package vignettes ... OK
+* checking running R code from vignettes ...
+  ‘01_getting_started.Rmd’ using ‘UTF-8’... [33s/67s] OK
+  ‘02_dseparation.Rmd’ using ‘UTF-8’... OK
+  ‘03_custom_priors.Rmd’ using ‘UTF-8’... OK
+  ‘04_mediation.Rmd’ using ‘UTF-8’... OK
+  ‘05_deterministic_nodes.Rmd’ using ‘UTF-8’... OK
+  ‘06_nimble_engine.Rmd’ using ‘UTF-8’... failed
+  ‘extensions.Rmd’ using ‘UTF-8’... OK
+ [58s/97s] ERROR
+Errors in running code in vignettes:
+when running code in ‘06_nimble_engine.Rmd’
+  ...
+NIMBLE: RW_block Core Block for 'Mass' (4 nodes: alpha_Mass, etc.)
+  [Note] Assigning an RW_block sampler to nodes with very different scales can result in low MCMC efficiency.  If all nodes assigned to RW_block are not on a similar scale, we recommend providing an informed value for the "propCov" control list argument, or using the "barker" sampler instead.
+NIMBLE: RW_block Core Block for 'Lifespan' (4 nodes: alpha_Lifespan, etc.)
+NIMBLE: Sampler hardening complete. ESS + AF_slice + Hybrid strategy applied.
+Building and compiling NIMBLE MCMC (this may take a moment)...
+Running 4 NIMBLE chains in parallel on 4 cores...
+  When sourcing ‘06_nimble_engine.R’:
+Error: 4 simultaneous processes spawned
+Execution halted
+* checking re-building of vignette outputs ... SKIPPED
+* checking for non-standard things in the check directory ... OK
+* checking for detritus in the temp directory ... OK
+* DONE
+
+Status: 1 ERROR, 1 NOTE
+See
+  ‘/private/var/folders/03/4zxc9frn11n7g8tr_95jg0p00000gn/T/RtmpaLUdbV/file97743a7c1d2/because.Rcheck/00check.log’
+for details.
+
+── R CMD check results ────────────────────────────────────── because 1.2.7 ────
+Duration: 3m 47.3s
+
+❯ checking running R code from vignettes ...
+    ‘01_getting_started.Rmd’ using ‘UTF-8’... [33s/67s] OK
+    ‘02_dseparation.Rmd’ using ‘UTF-8’... OK
+    ‘03_custom_priors.Rmd’ using ‘UTF-8’... OK
+    ‘04_mediation.Rmd’ using ‘UTF-8’... OK
+    ‘05_deterministic_nodes.Rmd’ using ‘UTF-8’... OK
+    ‘06_nimble_engine.Rmd’ using ‘UTF-8’... failed
+    ‘extensions.Rmd’ using ‘UTF-8’... OK
+   [58s/97s] ERROR
+  Errors in running code in vignettes:
+  when running code in ‘06_nimble_engine.Rmd’
+    ...
+  NIMBLE: RW_block Core Block for 'Mass' (4 nodes: alpha_Mass, etc.)
+    [Note] Assigning an RW_block sampler to nodes with very different scales can result in low MCMC efficiency.  If all nodes assigned to RW_block are not on a similar scale, we recommend providing an informed value for the "propCov" control list argument, or using the "barker" sampler instead.
+  NIMBLE: RW_block Core Block for 'Lifespan' (4 nodes: alpha_Lifespan, etc.)
+  NIMBLE: Sampler hardening complete. ESS + AF_slice + Hybrid strategy applied.
+  Building and compiling NIMBLE MCMC (this may take a moment)...
+  Running 4 NIMBLE chains in parallel on 4 cores...
+  
+    When sourcing ‘06_nimble_engine.R’:
+  Error: 4 simultaneous processes spawned
+  Execution halted
+
+❯ checking for future file timestamps ... NOTE
+  unable to verify current time
+
+1 error ✖ | 0 warnings ✔ | 1 note ✖
+Error: R CMD check found ERRORs
+Execution halted

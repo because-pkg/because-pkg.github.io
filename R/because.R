@@ -379,12 +379,35 @@ because <- function(
   }
 
   # --- Clean Data: Coerce 1D matrices (e.g., from scale()) to vectors ---
+  scale_info <- list()
   if (is.data.frame(data)) {
     for (nm in names(data)) {
+      if (!is.null(attr(data[[nm]], "scaled:center"))) {
+          scale_info[[nm]] <- list(
+              center = attr(data[[nm]], "scaled:center"),
+              scale = attr(data[[nm]], "scaled:scale")
+          )
+      }
       if (is.matrix(data[[nm]]) && ncol(data[[nm]]) == 1) {
         data[[nm]] <- as.numeric(data[[nm]])
       }
     }
+  } else if (is.list(data)) {
+      for (df_name in names(data)) {
+          if (is.data.frame(data[[df_name]])) {
+              for (nm in names(data[[df_name]])) {
+                  if (!is.null(attr(data[[df_name]][[nm]], "scaled:center"))) {
+                      scale_info[[nm]] <- list(
+                          center = attr(data[[df_name]][[nm]], "scaled:center"),
+                          scale = attr(data[[df_name]][[nm]], "scaled:scale")
+                      )
+                  }
+                  if (is.matrix(data[[df_name]][[nm]]) && ncol(data[[df_name]][[nm]]) == 1) {
+                      data[[df_name]][[nm]] <- as.numeric(data[[df_name]][[nm]])
+                  }
+              }
+          }
+      }
   }
 
   # --- Backward Compatibility: distribution -> family ---
@@ -489,6 +512,7 @@ because <- function(
     all_eq_vars,
     global_random_vars,
     id_col,
+    link_vars, # [HIERARCHY FIX] Keep link variables for hierarchical data prep
     if (!is.null(family)) names(family),
     if (!is.null(variability) && !is.character(variability)) names(variability),
     "N" # Explicitly keep N if provided
@@ -524,7 +548,9 @@ because <- function(
       if (is.data.frame(data)) {
         data <- data[, available_vars, drop = FALSE]
       } else {
-        data <- data[available_vars]
+        # [HIERARCHY FIX] If list data (hierarchical), do not subset the list by variable names.
+        # Instead, filter columns within each dataframe in the list if needed.
+        # For now, safe to keep the full list to avoid breaking level-to-level links.
       }
 
       # [NEW] Restore the attribute if it was present
@@ -666,7 +692,13 @@ because <- function(
       if (!is.null(structure_levels)) {
         hierarchical_info$structure_levels <- structure_levels
       }
+      
     }
+  }
+
+  # [AUTO-DETECTION] Infer structure levels if not provided
+  if (is_hierarchical && !is.null(structure) && is.null(hierarchical_info$structure_levels)) {
+      hierarchical_info$structure_levels <- auto_detect_structure_levels(structure, hierarchical_info, quiet = quiet)
   }
 
   # --- Random Effects Parsing ---
@@ -4017,6 +4049,7 @@ because <- function(
     dsep_results = dsep_results,
     parameter_map = parameter_map,
     induced_correlations = induced_cors,
+    scale_info = scale_info,
     stacked_data = if (exists("stack_res") && stack_res$is_stacked) {
       stack_res$data
     } else {
@@ -4112,8 +4145,8 @@ because <- function(
     }
   } else {
     # Sequential execution - use standard approach
-    if (DIC) {
-      if (engine == "jags") {
+  if (DIC) {
+    if (engine == "jags") {
         if (n.iter > n.burnin) {
           result$DIC <- rjags::dic.samples(model, n.iter = n.iter - n.burnin)
         } else {

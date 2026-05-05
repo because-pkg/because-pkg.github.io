@@ -352,7 +352,15 @@ because_model <- function(
   is_valid_structure_mapping <- function(s_lvl, r_lvl, h_info, allow_identity = FALSE) {
     # [HIERARCHY FIX] Block random effects at the SAME level as response (Identifiability)
     # UNLESS they are structured covariance components (Phylo/Spatial) where partitioning is valid.
-    if (is.null(s_lvl) || is.null(r_lvl)) {
+    if (is.null(r_lvl)) {
+      return(TRUE)
+    }
+    if (is.null(s_lvl)) {
+      # [STRICT HIERARCHY] If we have a hierarchy, don't guess. 
+      # Structures with unknown levels are blocked to prevent dimension mismatches.
+      if (!is.null(h_info) && !is.null(h_info$hierarchy)) {
+        return(FALSE)
+      }
       return(TRUE)
     }
     if (s_lvl == r_lvl && !allow_identity) {

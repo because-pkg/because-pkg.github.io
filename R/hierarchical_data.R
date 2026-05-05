@@ -93,6 +93,110 @@ auto_detect_hierarchical <- function(data, eq_vars, quiet = FALSE) {
 }
 
 
+#' Auto-Detect Structure Levels
+#'
+#' Maps covariance structures (e.g. phylo, spatial) to hierarchical levels
+#' by matching dimensions and ID values.
+#'
+#' @param structure List of structure objects
+#' @param hierarchical_info List containing 'data', 'levels', etc.
+#' @param quiet Logical
+#' @return Named list mapping structure names to level names
+#' @keywords internal
+auto_detect_structure_levels <- function(structure, hierarchical_info, quiet = FALSE) {
+    if (is.null(structure) || is.null(hierarchical_info)) {
+        return(NULL)
+    }
+
+    levels <- hierarchical_info$levels
+    data_list <- hierarchical_info$data
+    s_levels <- list()
+
+    for (s_name in names(structure)) {
+        s_obj <- structure[[s_name]]
+
+        # 1. Try to detect dimension of structure
+        n_struct <- 0
+        names_struct <- NULL
+
+        if (inherits(s_obj, "phylo")) {
+            n_struct <- length(s_obj$tip.label)
+            names_struct <- s_obj$tip.label
+        } else if (is.matrix(s_obj)) {
+            n_struct <- nrow(s_obj)
+            names_struct <- rownames(s_obj)
+        } else if (inherits(s_obj, "multiPhylo")) {
+            n_struct <- length(s_obj[[1]]$tip.label)
+            names_struct <- s_obj[[1]]$tip.label
+        }
+
+        if (n_struct == 0) {
+            next
+        }
+        
+        # 2. Match against levels
+        best_lvl <- NULL
+        for (lvl_name in names(data_list)) {
+            df <- data_list[[lvl_name]]
+            if (!is.data.frame(df)) next
+            n_lvl <- nrow(df)
+            
+            # Match by sample size
+            if (n_lvl == n_struct) {
+                # Match by names if possible
+                if (!is.null(names_struct)) {
+                    # Find potential ID columns in this level
+                    id_cols <- names(df)[sapply(df, function(x) !is.numeric(x) || all(x %% 1 == 0, na.rm = TRUE))]
+                    
+                    match_found <- FALSE
+                    cat_meta <- attr(data_list, "categorical_vars")
+                    
+                    for (col in id_cols) {
+                        df_vals <- as.character(df[[col]])
+                        
+                        # [CATEGORICAL MAPPING] If encoded as integers, map back to labels
+                        if (!is.null(cat_meta) && col %in% names(cat_meta)) {
+                            lvls <- cat_meta[[col]]$levels
+                            df_vals <- lvls[as.integer(df_vals)]
+                        }
+
+                        if (all(names_struct %in% df_vals)) {
+                            match_found <- TRUE
+                            break
+                        }
+                    }
+                    
+                    if (match_found) {
+                        best_lvl <- lvl_name
+                        break
+                    }
+                } else {
+                    # Fallback to just sample size if no names provided in structure (e.g. anonymous distance matrix)
+                    # We only accept this if it's the ONLY level with this sample size to avoid ambiguity.
+                    all_n <- sapply(data_list, nrow)
+                    if (sum(all_n == n_struct) == 1) {
+                        best_lvl <- lvl_name
+                        break
+                    }
+                }
+            }
+        }
+
+        if (!is.null(best_lvl)) {
+            s_levels[[s_name]] <- best_lvl
+            if (!quiet) {
+                message(sprintf("Auto-detected structure level: '%s' -> '%s'", s_name, best_lvl))
+            }
+        }
+    }
+
+    if (length(s_levels) == 0) {
+        return(NULL)
+    }
+    return(s_levels)
+}
+
+
 #' Validate Multiscale Data Structure
 #'
 #' @param data List of data.frames at different scales

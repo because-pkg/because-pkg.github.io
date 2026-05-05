@@ -36,6 +36,8 @@ autocorrelation, genetic relatedness etc.).
 -   [Model Diagnostics and Comparison](03_model_diagnostics_comparison.html):
      Checking convergence, posterior predictive checks, comparing
      models with WAIC and LOO-CV.
+-   [Counterfactual Simulations with the do() Operator](13_counterfactual_simulations.html):
+     Simulating causal interventions and policy impacts using Pearl's do-calculus.
 -   [Mediation Analysis](04_mediation.html):
      Decomposing effects into direct and indirect components.
 -   [Non-Gaussian Distribution Families](05_non_gaussian_families.html):

@@ -22,6 +22,7 @@ The focus of `because` is on causal inference, providing tools to facilitate the
 -   **Hierachical Models**: Support for random effects and multi-level structures.
 -   **Latent Variables**: Support for explicitly including Latent variables or modelling induced correlations from latent common causes with the Maximum Acyclic Graph (MAG) method.
 -   **Causal inference tools**: Native support for d-separation and m-separation testing, mediation analysis, and **unified marginal effects** for comparing cross-family coefficients.
+-   **Counterfactual Simulations**: A fully featured \code{do()} operator to simulate structural policy interventions (atomic, shifts, percentage, stochastic) using Pearl's do-calculus.
 -   **Marginal Effects**: New `marginal_effects(fit)` function converts log-odds/latent scales to "Expected Change" units (0-1 probabilities or unit values) for easy comparison across different variable types.
 -   **Parallel Computing**: Run MCMC chains in parallel on multi-core systems for faster computation.
 -   **Visualisation tools**: Functions for visualizing model structures and posterior distributions.
