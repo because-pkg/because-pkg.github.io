@@ -205,7 +205,7 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
     }
   }
   
-  message("DEBUG [", resp, "]: eta range: ", paste(round(range(eta), 3), collapse = " to "))
+
   # We track RE variances for marginal checks (re_formula = NA)
   re_variances <- matrix(0, nrow = n_s, ncol = 1)
 
