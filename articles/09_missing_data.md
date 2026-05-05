@@ -83,6 +83,7 @@ for 20% of individuals.
 #### Simulate Data with Missing Values
 
 ``` r
+
 library(because)
 
 set.seed(42)
@@ -121,6 +122,7 @@ during model fitting. **No special syntax is required** — just include
 the column with NAs as usual:
 
 ``` r
+
 equations <- list(
   Mass     ~ Age + Site_Quality,  # Mass depends on Age and Site quality
   Offspring ~ Mass                # Offspring depends on Mass (count outcome)
@@ -149,6 +151,7 @@ summary(fit_imp)
 #### Extract Imputed Values
 
 ``` r
+
 # Extract posterior summaries for all imputed Mass values
 imputed <- extract_imputed(fit_imp)
 
@@ -174,6 +177,7 @@ We can plot the imputed values with their credible intervals alongside
 the observed data to assess imputation quality:
 
 ``` r
+
 # Add a column indicating which rows were imputed
 eco_data$imputed <- is.na(eco_data$Mass)
 
@@ -214,6 +218,7 @@ is useful when you want to infer the likely values of an unmeasured
 outcome for particular individuals.
 
 ``` r
+
 set.seed(7)
 
 # Some Offspring values are missing (field data collection gaps)
@@ -247,6 +252,7 @@ example from the [Deterministic Nodes
 vignette](https://because-pkg.github.io/because/articles/06_deterministic_nodes.md):
 
 ``` r
+
 set.seed(99)
 N <- 80
 
@@ -286,6 +292,7 @@ To illustrate the cost of discarding incomplete observations, we fit the
 same model using only complete cases:
 
 ``` r
+
 # List-wise deletion
 complete_data <- eco_data[!is.na(eco_data$Mass), ]
 cat("Remaining observations:", nrow(complete_data), "of", N, "\n")
@@ -317,14 +324,14 @@ power and allows sensitivity analyses.
 
 ### Practical Guidelines
 
-| Situation                                        | Recommendation                                                                                                                                    |
-|:-------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------|
-| Predictors have NAs                              | Include them as-is; `because` auto-imputes. Use `monitor = "all"` to extract posteriors.                                                          |
-| Response variable has NAs                        | Same — NAs in any column are handled automatically.                                                                                               |
-| Missingness is MCAR or MAR                       | Bayesian joint imputation provides valid, efficient inference.                                                                                    |
-| Missingness is informative (MNAR)                | Consider adding covariates that predict missingness to the model; conduct sensitivity analyses. No standard method fully removes MNAR bias.       |
-| Deterministic relationships among variables      | Use [Deterministic Nodes](https://because-pkg.github.io/because/articles/06_deterministic_nodes.md); constraints are preserved during imputation. |
-| Very high missingness (\>50%) in a key predictor | Inspect model fit carefully; imputation becomes unreliable without sufficient observed anchor points.                                             |
+| Situation | Recommendation |
+|:---|:---|
+| Predictors have NAs | Include them as-is; `because` auto-imputes. Use `monitor = "all"` to extract posteriors. |
+| Response variable has NAs | Same — NAs in any column are handled automatically. |
+| Missingness is MCAR or MAR | Bayesian joint imputation provides valid, efficient inference. |
+| Missingness is informative (MNAR) | Consider adding covariates that predict missingness to the model; conduct sensitivity analyses. No standard method fully removes MNAR bias. |
+| Deterministic relationships among variables | Use [Deterministic Nodes](https://because-pkg.github.io/because/articles/06_deterministic_nodes.md); constraints are preserved during imputation. |
+| Very high missingness (\>50%) in a key predictor | Inspect model fit carefully; imputation becomes unreliable without sufficient observed anchor points. |
 
 ### References
 

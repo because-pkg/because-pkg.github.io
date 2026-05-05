@@ -27,6 +27,7 @@ day (g/day)** for hypothetical juvenile birds responding to ambient
 temperature.
 
 ``` r
+
 library(because)
 
 set.seed(42)
@@ -54,7 +55,7 @@ informative** Gaussian priors (`dnorm(0, 0.01)`) to intercepts (`alpha`)
 and slopes (`beta`). This corresponds to a Standard Deviation of 10.
 These anchors are broad enough to be uninformative for scientific data
 while preventing the numerical instability and convergence failure
-($Rhat > 1.1$) often seen with extremely “flat” priors in complex
+($`Rhat > 1.1`$) often seen with extremely “flat” priors in complex
 hierarchical models.
 
 For Gaussian response variables, the **residual standard deviation**
@@ -64,6 +65,7 @@ scale-invariant and works safely whether data are standardised or on
 their original (raw) scale.
 
 ``` r
+
 fit_default <- because(
     equations = list(Growth_g_day ~ Temp_Centered),
     data = df
@@ -96,6 +98,7 @@ from `sigma_e`; do not set directly unless you need a legacy dgamma
 override.
 
 ``` r
+
 # Define our custom priors
 my_priors <- list(
     # Strong prior on intercept: Mean 10, Precision 100 (SD = 0.1)
@@ -124,6 +127,7 @@ We can plot the posterior estimates together to see the “shrinkage”
 effect of our informative priors.
 
 ``` r
+
 # We can use the helper function plot_posterior() to compare models.
 # By passing a list of models, they are overlaid on the same plot.
 # The 'parameter' argument uses partial matching (regex), so "Growth_g_day"
@@ -151,6 +155,7 @@ might accidentally estimate a negative slope. We can prevent this by
 enforcing a positive prior.
 
 ``` r
+
 # Simulate data following Kleiber's Law: MR = a * Mass^0.75
 # Taking logs: log(MR) = log(a) + 0.75 * log(Mass)
 set.seed(42)
@@ -225,6 +230,7 @@ noise in growth measurements is typically 1–3 g/day, you can constrain
 the prior on `sigma_e` accordingly:
 
 ``` r
+
 # Simulate small, noisy dataset
 set.seed(42)
 N_small <- 15
@@ -275,22 +281,22 @@ It is important to know what you are overriding. `because` aims to use
 **weakly informative** defaults that provide minimal regularization
 while allowing the data to dominate the posterior.
 
-| Parameter Type                    | Parameter Name | Default Prior        | Description                                                                                                    |
-|:----------------------------------|:---------------|:---------------------|:---------------------------------------------------------------------------------------------------------------|
-| **Intercepts**                    | `alpha_*`      | `dnorm(0, 0.01)`     | Weakly Informative SD = 10                                                                                     |
-| **Coefficients**                  | `beta_*`       | `dnorm(0, 0.01)`     | Weakly Informative SD = 10                                                                                     |
-| **Residual SD (Gaussian)**        | `sigma_e_*`    | `dunif(0, 100)`      | Half-uniform on σ; scale-invariant, robust to raw or standardised data. Override with `sigma_e_*` in `priors`. |
-| **Residual Precision (Gaussian)** | `tau_e_*`      | *derived*            | Set deterministically as `1/(sigma_e * sigma_e)`. Not assigned a prior directly.                               |
-| **Precision (other families)**    | `tau_*`        | `dgamma(1, 1)`       | Gamma(1,1) for non-Gaussian precision components (random effects).                                             |
-| **Phylo Signal**                  | `lambda_*`     | `dunif(0, 1)`        | Uniform on \[0,1\]                                                                                             |
-| **Zero-Inflation**                | `psi_*`        | `dbeta(1, 1)`        | Beta(1,1) (Uniform on \[0,1\])                                                                                 |
-| **Ordinal Cutpoints**             | `cutpoint_*`   | `dnorm(0, 0.01)`     | SD = 10                                                                                                        |
-| **NegBinomial Size**              | `r_*`          | `dgamma(0.01, 0.01)` | Wide Gamma for dispersion parameter                                                                            |
+| Parameter Type | Parameter Name | Default Prior | Description |
+|:---|:---|:---|:---|
+| **Intercepts** | `alpha_*` | `dnorm(0, 0.01)` | Weakly Informative SD = 10 |
+| **Coefficients** | `beta_*` | `dnorm(0, 0.01)` | Weakly Informative SD = 10 |
+| **Residual SD (Gaussian)** | `sigma_e_*` | `dunif(0, 100)` | Half-uniform on σ; scale-invariant, robust to raw or standardised data. Override with `sigma_e_*` in `priors`. |
+| **Residual Precision (Gaussian)** | `tau_e_*` | *derived* | Set deterministically as `1/(sigma_e * sigma_e)`. Not assigned a prior directly. |
+| **Precision (other families)** | `tau_*` | `dgamma(1, 1)` | Gamma(1,1) for non-Gaussian precision components (random effects). |
+| **Phylo Signal** | `lambda_*` | `dunif(0, 1)` | Uniform on \[0,1\] |
+| **Zero-Inflation** | `psi_*` | `dbeta(1, 1)` | Beta(1,1) (Uniform on \[0,1\]) |
+| **Ordinal Cutpoints** | `cutpoint_*` | `dnorm(0, 0.01)` | SD = 10 |
+| **NegBinomial Size** | `r_*` | `dgamma(0.01, 0.01)` | Wide Gamma for dispersion parameter |
 
-> **Precision vs Variance**: JAGS uses precision $\tau = 1/\sigma^{2}$.
+> **Precision vs Variance**: JAGS uses precision $`\tau = 1/\sigma^2`$.
 > A prior of `dnorm(0, 0.01)` means a normal distribution with mean 0
-> and precision $0.01$, which corresponds to a variance of $100$ (SD =
-> 10). This is uninformative for most standardized biological effects
+> and precision $`0.01`$, which corresponds to a variance of $`100`$ (SD
+> = 10). This is uninformative for most standardized biological effects
 > but remains numerically stable during adaptation.
 
 ## Parameter Names Reference
@@ -314,6 +320,7 @@ If you are unsure, run a quick model with `n.adapt=0, n.iter=0` (just
 compilation) and check the generated model code:
 
 ``` r
+
 fit_check <- because(
     equations = list(Growth_g_day ~ Temp_Centered),
     data = df,

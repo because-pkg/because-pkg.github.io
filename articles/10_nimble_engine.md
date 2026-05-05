@@ -22,6 +22,7 @@ Command Line Tools** on macOS, or **build-essential** on Linux).
 You can install NIMBLE directly from CRAN:
 
 ``` r
+
 install.packages("nimble")
 ```
 
@@ -36,6 +37,7 @@ in the
 function:
 
 ``` r
+
 library(because)
 
 # Define your SEM
@@ -84,6 +86,7 @@ CPU cores, significantly reducing the total “wait time” before sampling
 begins.
 
 ``` r
+
 fit <- because(
     equations = equations,
     data = my_data,
@@ -102,6 +105,7 @@ node in your model. While `because` sets high-performance defaults (like
 can manually override these using the `nimble_samplers` argument.
 
 ``` r
+
 # Override the default RW-MH sampler for a specific coefficient
 fit <- because(
     equations = equations,
@@ -121,13 +125,13 @@ algorithm is perfect for every dataset. You should consider using
 
 1.  **Low Effective Sample Size (ESS)**: One or two parameters have very
     few independent samples compared to the rest of the model.
-2.  **High R-hat ($> 1.05$)**: A parameter fails to converge even with a
-    long burn-in and many iterations.
+2.  **High R-hat ($`>1.05`$)**: A parameter fails to converge even with
+    a long burn-in and many iterations.
 3.  **“Fuzzy” Traceplots**: The traceplot looks like a “snake” or has
     long-term trends rather than looking like a consistent
     “caterpillar.”
 
-**Pro-Tip**: If a specific regression coefficient ($\beta$) is mixing
+**Pro-Tip**: If a specific regression coefficient ($`\beta`$) is mixing
 poorly, swapping the default `RW` for a `slice` sampler is often the
 most effective fix.
 
@@ -162,14 +166,14 @@ optimizations to match or exceed JAGS’s mixing quality. The following
 table documents how samplers are assigned when using
 `engine = "nimble"`:
 
-| Parameter Type                                | NIMBLE Sampler (default)        | JAGS Sampler      | Why?                                                                                        |
-|:----------------------------------------------|:--------------------------------|:------------------|:--------------------------------------------------------------------------------------------|
-| **Linear coefficients** (`alpha_*`, `beta_*`) | **Slice** (if non-Gaussian)     | **Slice**         | Swapped from default `RW` to **Slice** for Poisson/Binomial to handle steep link curvature. |
-| **Structured REs** (`u_std_.*[1:N]`)          | **Adaptive Slice** (`AF_slice`) | **Slice**         | Swapped from default `RW_block` to match JAGS’s robust mixing for correlated vectors.       |
-| **Precision parameters** (`tau_u_.*`)         | **Slice** (`slice`)             | **Slice**         | Swapped from default `RW` to ensure stable convergence for variance components.             |
-| **Dispersion / Inflation** (`r_*`, `psi_*`)   | **Slice** (`slice`)             | **Slice**         | Swapped from default `RW` to match JAGS’s robust mixing and handle boundary constraints.    |
-| **Multinomial / Ordinal**                     | **Categorical** (`categorical`) | **Gibbs / Slice** | Specialized discrete sampler. Extremely fast and efficient.                                 |
-| **Binomial / Poisson**                        | **Slice** (hardened)            | **Slice**         | Automatic hardening swaps the default `RW` for `slice` to prevent divergent transitions.    |
+| Parameter Type | NIMBLE Sampler (default) | JAGS Sampler | Why? |
+|:---|:---|:---|:---|
+| **Linear coefficients** (`alpha_*`, `beta_*`) | **Slice** (if non-Gaussian) | **Slice** | Swapped from default `RW` to **Slice** for Poisson/Binomial to handle steep link curvature. |
+| **Structured REs** (`u_std_.*[1:N]`) | **Adaptive Slice** (`AF_slice`) | **Slice** | Swapped from default `RW_block` to match JAGS’s robust mixing for correlated vectors. |
+| **Precision parameters** (`tau_u_.*`) | **Slice** (`slice`) | **Slice** | Swapped from default `RW` to ensure stable convergence for variance components. |
+| **Dispersion / Inflation** (`r_*`, `psi_*`) | **Slice** (`slice`) | **Slice** | Swapped from default `RW` to match JAGS’s robust mixing and handle boundary constraints. |
+| **Multinomial / Ordinal** | **Categorical** (`categorical`) | **Gibbs / Slice** | Specialized discrete sampler. Extremely fast and efficient. |
+| **Binomial / Poisson** | **Slice** (hardened) | **Slice** | Automatic hardening swaps the default `RW` for `slice` to prevent divergent transitions. |
 
 ## Automatic Initialization and Stability
 

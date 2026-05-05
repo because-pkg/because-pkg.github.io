@@ -3,16 +3,16 @@
 ## Introduction
 
 Causal inference often requires investigating *how* an effect occurs.
-Does $X$ affect $Y$ directly, or does it work through a mediator $M$?
+Does $`X`$ affect $`Y`$ directly, or does it work through a mediator
+$`M`$?
 
 The `because` package provides a fully automated Bayesian mediation
 analysis tool,
 [`because_mediation()`](https://because-pkg.github.io/because/reference/because_mediation.md),
 which decomposes the Total Effect of an exposure on an outcome into: 1.
-**Direct Effect**: The effect of $\left. X\rightarrow Y \right.$ not
-mediated by other variables in the graph. 2. **Indirect Effect(s)**: The
-effect propagated through intermediate variables
-($\left. X\rightarrow M\rightarrow Y \right.$).
+**Direct Effect**: The effect of $`X \to Y`$ not mediated by other
+variables in the graph. 2. **Indirect Effect(s)**: The effect propagated
+through intermediate variables ($`X \to M \to Y`$).
 
 This is calculated by multiplying the posterior distributions of
 coefficients along each path, preserving full uncertainty
@@ -24,19 +24,20 @@ In this example, we investigate how **Elevation** affects **Plant
 Abundance**. We hypothesize that Elevation acts through a causal chain
 involving Temperature and Soil Moisture:
 
-1.  **Elevation** determines **Temperature** (higher elevation
-    $\rightarrow$ lower temperature).
+1.  **Elevation** determines **Temperature** (higher elevation $`\to`$
+    lower temperature).
 2.  **Temperature** influences **Soil Moisture** (lower temperature
-    $\rightarrow$ lower evaporation $\rightarrow$ higher moisture).
+    $`\to`$ lower evaporation $`\to`$ higher moisture).
 3.  **Abundance** is driven by **Moisture**, **Temperature**, and
     potentially a direct effect of **Elevation** (e.g., due to UV
     radiation or partial pressure of gases).
 
 ### 1. Simulate Data
 
-We simulate $N = 200$ plots along an elevation gradient.
+We simulate $`N=200`$ plots along an elevation gradient.
 
 ``` r
+
 library(because)
 
 set.seed(42)
@@ -80,6 +81,7 @@ Effect. 3. **Convergence**: MCMC sampling often behaves better with
 standardized scales.
 
 ``` r
+
 # Standardize all variables
 eco_data_std <- scale(eco_data)
 head(eco_data_std)
@@ -91,6 +93,7 @@ We define the structural equations reflecting our causal DAG. Notice the
 chain: `Elevation -> Temp -> Moisture -> Abundance`.
 
 ``` r
+
 # Define the structural equations
 eco_eqs <- list(
   Temp ~ Elevation,
@@ -111,6 +114,7 @@ summary(fit)
 We can also plot the fitted causal model with its standardised paths:
 
 ``` r
+
 plot_dag(fit)
 ```
 
@@ -120,6 +124,7 @@ We want to understand the Total Effect of **Elevation** on
 **Abundance**, and decompose it into its direct and indirect components.
 
 ``` r
+
 # Run Mediation Analysis for Elevation -> Abundance
 med_results <- because_mediation(fit, exposure = "Elevation", outcome = "Abundance")
 ```
@@ -127,6 +132,7 @@ med_results <- because_mediation(fit, exposure = "Elevation", outcome = "Abundan
 #### Inspect the Summary
 
 ``` r
+
 med_results$summary
 ```
 
@@ -142,6 +148,7 @@ The `because_mediation` function automatically traces all valid paths
 from exposure to outcome in the DAG.
 
 ``` r
+
 med_results$paths
 ```
 
@@ -155,8 +162,8 @@ We expect to see three distinct paths:
 3.  **Long Indirect (Chain)**:
     `Elevation -> Temp -> Moisture -> Abundance`
     - Elevation lowers Temp (negative).
-    - Lower Temp raises Moisture (negative relationship $\rightarrow$
-      positive change in moisture).
+    - Lower Temp raises Moisture (negative relationship $`\to`$ positive
+      change in moisture).
     - Higher Moisture raises Abundance (positive).
     - The chain involves two negative links and one positive link,
       resulting in a **Positive** indirect effect.
@@ -168,7 +175,9 @@ credibility intervals for each specific mechanism.
 
 The function calculates the indirect effect as the product of
 coefficients along the path. For example, for the long chain:
-$$\text{Indirect}_{\text{chain}} = \beta_{Elev\rightarrow Temp} \times \beta_{Temp\rightarrow Moist} \times \beta_{Moist\rightarrow Abund}$$
+``` math
+ \text{Indirect}_{\text{chain}} = \beta_{Elev \to Temp} \times \beta_{Temp \to Moist} \times \beta_{Moist \to Abund} 
+```
 This product-of-coefficients approach is exact for **linear (Gaussian,
 identity-link) models** (MacKinnon, 2008; Pearl, 2001).
 

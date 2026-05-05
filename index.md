@@ -12,7 +12,7 @@ quantify uncertainty in the estimates.
 
 > **Note on the logo**: The package hexagon sticker features the
 > mathematical symbol for “because”, represented as three dots in an
-> inverted triangle ($\because$).
+> inverted triangle ($`\because`$).
 
 ## Features
 
@@ -46,6 +46,9 @@ code from standard R formulas. Key features include:
 - **Causal inference tools**: Native support for d-separation and
   m-separation testing, mediation analysis, and **unified marginal
   effects** for comparing cross-family coefficients.
+- **Counterfactual Simulations**: A fully featured operator to simulate
+  structural policy interventions (atomic, shifts, percentage,
+  stochastic) using Pearl’s do-calculus.
 - **Marginal Effects**: New `marginal_effects(fit)` function converts
   log-odds/latent scales to “Expected Change” units (0-1 probabilities
   or unit values) for easy comparison across different variable types.
@@ -61,12 +64,14 @@ code from standard R formulas. Key features include:
 To install the **stable release** (`v1.2.7`), run:
 
 ``` r
+
 remotes::install_github("because-pkg/because@v1.2.7", build_vignettes = TRUE)
 ```
 
 To install the **latest development version** (unstable), run:
 
 ``` r
+
 remotes::install_github("because-pkg/because", build_vignettes = TRUE)
 ```
 

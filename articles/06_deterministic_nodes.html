@@ -50,6 +50,7 @@
     <li><a class="dropdown-item" href="../articles/10_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
     <li><a class="dropdown-item" href="../articles/11_latent_variables_mag.html">Latent Variables and the MAG Approach</a></li>
     <li><a class="dropdown-item" href="../articles/12_custom_families.html">Creating Custom Distribution Families</a></li>
+    <li><a class="dropdown-item" href="../articles/13_counterfactual_simulations.html">Counterfactual Simulations with the do() Operator</a></li>
     <li><a class="dropdown-item" href="../articles/extensions.html">Extensions</a></li>
   </ul>
 </li>
@@ -85,7 +86,7 @@ Hardenberg</h4>
     
 <p>In standard Bayesian regression, variables are typically modeled as
 <strong>Stochastic Nodes</strong>:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mi>i</mi></msub><mo>∼</mo><mtext mathvariant="normal">Normal</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>α</mi><mo>+</mo><mi>β</mi><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mi>σ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Y_i \sim \text{Normal}(\alpha + \beta X_i, \sigma)</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mi>i</mi></msub><mo>∼</mo><mtext mathvariant="normal">Normal</mtext><mo stretchy="false" form="prefix">(</mo><mi>α</mi><mo>+</mo><mi>β</mi><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mi>σ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">Y_i \sim \text{Normal}(\alpha + \beta X_i, \sigma)</annotation></semantics></math>
 This means
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math>
 is <em>correlated</em> with
@@ -386,7 +387,7 @@ in the DAG.</p>
 <li>This allows you to test for <strong>Mediation</strong>. You can test
 if <code>Y</code> is independent of <code>A</code> conditional on
 <code>Compound</code>
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>⊥</mo><mi>A</mi><mo>∣</mo><mi>C</mi><mi>o</mi><mi>m</mi><mi>p</mi><mi>o</mi><mi>u</mi><mi>n</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">Y \perp A \mid Compound</annotation></semantics></math>).</li>
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>⟂</mo><mi>A</mi><mo>∣</mo><mi>C</mi><mi>o</mi><mi>m</mi><mi>p</mi><mi>o</mi><mi>u</mi><mi>n</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">Y \perp A \mid Compound</annotation></semantics></math>).</li>
 </ul>
 </div>
 <div class="section level3">

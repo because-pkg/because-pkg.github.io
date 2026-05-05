@@ -11,8 +11,7 @@ causal effects.
 The standard DAG framework assumes all common causes are observed. When
 there are unmeasured common causes, the appropriate graphical model is a
 **Maximal Ancestral Graph (MAG)**, which represents unobserved common
-causes with **bidirected edges** (e.g.,
-$\left. X\leftrightarrow Y \right.$).
+causes with **bidirected edges** (e.g., $`X \leftrightarrow Y`$).
 
 `because` supports latent variables through the `latent` argument, and
 adapts the d-separation basis set accordingly using the MAG framework of
@@ -23,15 +22,14 @@ Shipley & Douma (2021).
 ### Background: DAGs, MAGs, and Bidirected Edges
 
 In a standard Directed Acyclic Graph (DAG), every causal relationship is
-represented by a directed edge ($\left. X\rightarrow Y \right.$). All
-variables — observed and unobserved — appear as nodes.
+represented by a directed edge ($`X \to Y`$). All variables — observed
+and unobserved — appear as nodes.
 
 In a **Maximal Ancestral Graph (MAG)**, latent variables are
 **marginalized out**, leaving only the observed variables. The effect of
-a latent common cause $L$ of two observed variables $X$ and $Y$ is
-represented by a **bidirected edge**
-$\left. X\leftrightarrow Y \right.$, indicating that the residuals of
-$X$ and $Y$ are correlated.
+a latent common cause $`L`$ of two observed variables $`X`$ and $`Y`$ is
+represented by a **bidirected edge** $`X \leftrightarrow Y`$, indicating
+that the residuals of $`X`$ and $`Y`$ are correlated.
 
 This matters for d-separation: conditioning on different variables has
 different consequences in a MAG compared to a DAG, and the basis set of
@@ -89,6 +87,7 @@ bidirected edge:
 #### Simulate Data
 
 ``` r
+
 library(because)
 
 set.seed(42)
@@ -122,6 +121,7 @@ bird_data <- data.frame(
 #### Fit the Model with a Latent Variable
 
 ``` r
+
 # Structural equations: the latent variable appears on the RHS of both equations.
 # because() detects that Individual_Quality is not in the data and treats it as latent.
 equations_latent <- list(
@@ -168,6 +168,7 @@ the MAG representation, this test is dropped from the basis set
 observed parents), giving an honest assessment of model fit.
 
 ``` r
+
 # Inspect d-separation results (MAG-based basis set)
 # The tests shown reflect the independence claims implied by the MAG,
 # not the original full DAG.
@@ -192,6 +193,7 @@ integrated into the model:
   identifiability constraints (see `fix_latent`).
 
 ``` r
+
 fit_factor <- because(
   equations  = equations_latent,
   data       = bird_data,
@@ -224,6 +226,7 @@ easier to interpret as standardised path coefficients.
 ### Comparing Models: With and Without the Latent Variable
 
 ``` r
+
 # Model 1: No latent variable (misspecified — direct path between outcomes)
 fit_no_latent <- because(
   equations = list(
@@ -273,8 +276,8 @@ identified.
 #### Sample size
 
 Estimating latent variables requires more data than purely observed
-models. With small samples ($N < 50$), the latent loadings may have very
-wide credible intervals.
+models. With small samples ($`N < 50`$), the latent loadings may have
+very wide credible intervals.
 
 ------------------------------------------------------------------------
 

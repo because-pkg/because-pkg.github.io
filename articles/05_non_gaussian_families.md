@@ -21,6 +21,7 @@ The `family` argument accepts a **named character vector**, where names
 are the response variables and values are the distribution names:
 
 ``` r
+
 library(because)
 
 # Minimal example data
@@ -66,6 +67,7 @@ disease incidence.
 **Link function**: log — `log(mu) = alpha + beta * X`
 
 ``` r
+
 set.seed(42)
 N <- 150
 
@@ -85,6 +87,7 @@ count_data <- data.frame(
 ```
 
 ``` r
+
 # Fit Poisson SEM
 fit_poisson <- because(
   equations = list(Offspring ~ Body_Mass + Habitat_Quality),
@@ -99,7 +102,7 @@ summary(fit_poisson)
 The summary output gives `alpha_Offspring` (log-scale intercept) and
 `beta_Offspring_*` (log-scale slopes). A slope of 0.5 on the log scale
 means that a one-unit increase in the predictor multiplies the expected
-count by $e^{0.5} \approx 1.65$.
+count by $`e^{0.5} \approx 1.65`$.
 
 #### Marginal Effects
 
@@ -108,6 +111,7 @@ one-SD increase in each predictor), use
 [`marginal_effects()`](https://because-pkg.github.io/because/reference/marginal_effects.md):
 
 ``` r
+
 me_poisson <- marginal_effects(fit_poisson)
 print(me_poisson)
 ```
@@ -129,6 +133,7 @@ Use `"bernoulli"` for 0/1 binary data and `"binomial"` when you have
 proportion data with known totals.
 
 ``` r
+
 set.seed(42)
 N <- 200
 
@@ -148,6 +153,7 @@ presence_data <- data.frame(
 ```
 
 ``` r
+
 fit_bern <- because(
   equations = list(Presence ~ Temperature + Precipitation),
   data = presence_data,
@@ -158,6 +164,7 @@ summary(fit_bern)
 ```
 
 ``` r
+
 # Marginal effects: expected change in *probability* of presence per 1-SD increase
 me_bern <- marginal_effects(fit_bern)
 print(me_bern)
@@ -170,13 +177,14 @@ print(me_bern)
 **Use case**: Count data with variance that greatly exceeds the mean
 (e.g., parasite loads, number of plant seeds, abundance data).
 
-A Poisson model assumes $\text{Var}(Y) = E(Y)$. Ecological count data
-often show **overdispersion** ($\text{Var}(Y) > E(Y)$), which can
+A Poisson model assumes $`\text{Var}(Y) = E(Y)`$. Ecological count data
+often show **overdispersion** ($`\text{Var}(Y) > E(Y)`$), which can
 inflate Type I error in Poisson models. The Negative Binomial adds a
-dispersion parameter $r$ (estimated from the data) to accommodate this
+dispersion parameter $`r`$ (estimated from the data) to accommodate this
 extra variance.
 
 ``` r
+
 set.seed(123)
 N <- 150
 
@@ -194,6 +202,7 @@ nb_data <- data.frame(
 ```
 
 ``` r
+
 # Compare Poisson vs. Negative Binomial
 fit_pois <- because(
   equations = list(Parasite_Load ~ Resource),
@@ -233,6 +242,7 @@ zeros and a Poisson process. The ZINB adds Negative Binomial
 overdispersion.
 
 ``` r
+
 set.seed(99)
 N <- 200
 
@@ -253,6 +263,7 @@ zip_data <- data.frame(
 ```
 
 ``` r
+
 fit_zip <- because(
   equations = list(Abundance ~ Habitat),
   data = zip_data,
@@ -265,6 +276,7 @@ summary(fit_zip)
 ```
 
 ``` r
+
 # Use ZINB when counts are also overdispersed
 fit_zinb <- because(
   equations = list(Abundance ~ Habitat),
@@ -288,6 +300,7 @@ assumption means a single slope parameter describes the effect on all
 adjacent-category boundaries.
 
 ``` r
+
 set.seed(7)
 N <- 200
 
@@ -310,6 +323,7 @@ ord_data <- data.frame(
 ```
 
 ``` r
+
 fit_ord <- because(
   equations = list(Behaviour ~ Dominance_Rank),
   data = ord_data,
@@ -329,6 +343,7 @@ single slope for all category boundaries. If you want
 assumption), set `expand_ordered = TRUE`:
 
 ``` r
+
 fit_ord_expanded <- because(
   equations = list(Behaviour ~ Dominance_Rank),
   data = ord_data,
@@ -345,6 +360,7 @@ each cutpoint boundary.
 #### Marginal Effects for Ordinal Responses
 
 ``` r
+
 # Expected category (1–4) per 1-unit increase in Dominance_Rank
 me_ord <- marginal_effects(fit_ord)
 print(me_ord)
@@ -354,17 +370,17 @@ print(me_ord)
 
 ### Summary: Choosing a Family
 
-| Data Type                     | Family                 | Link               | Key Parameter             |
-|:------------------------------|:-----------------------|:-------------------|:--------------------------|
-| Continuous, symmetric         | `"gaussian"` (default) | identity           | `sigma_e_*`               |
-| Counts, mean ≈ variance       | `"poisson"`            | log                | —                         |
-| Counts, variance \>\> mean    | `"negbinomial"`        | log                | `r_*`                     |
-| Counts with excess zeros      | `"zip"`                | log (count part)   | `psi_*`                   |
-| Counts, overdispersed + zeros | `"zinb"`               | log (count part)   | `r_*`, `psi_*`            |
-| Binary (0/1)                  | `"bernoulli"`          | logit              | —                         |
-| Proportions with totals       | `"binomial"`           | logit              | —                         |
-| Ordered categories            | `"ordinal"`            | logit (cumulative) | `cutpoint_*[k]`           |
-| Unordered categories          | `"multinomial"`        | log (softmax)      | `alpha_*[k]`, `beta_*[k]` |
+| Data Type | Family | Link | Key Parameter |
+|:---|:---|:---|:---|
+| Continuous, symmetric | `"gaussian"` (default) | identity | `sigma_e_*` |
+| Counts, mean ≈ variance | `"poisson"` | log | — |
+| Counts, variance \>\> mean | `"negbinomial"` | log | `r_*` |
+| Counts with excess zeros | `"zip"` | log (count part) | `psi_*` |
+| Counts, overdispersed + zeros | `"zinb"` | log (count part) | `r_*`, `psi_*` |
+| Binary (0/1) | `"bernoulli"` | logit | — |
+| Proportions with totals | `"binomial"` | logit | — |
+| Ordered categories | `"ordinal"` | logit (cumulative) | `cutpoint_*[k]` |
+| Unordered categories | `"multinomial"` | log (softmax) | `alpha_*[k]`, `beta_*[k]` |
 
 ### A Note on Convergence for Non-Gaussian Models
 

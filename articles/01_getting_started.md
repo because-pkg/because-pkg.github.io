@@ -18,6 +18,10 @@ autocorrelation, genetic relatedness etc.).
   Comparison](https://because-pkg.github.io/because/articles/03_model_diagnostics_comparison.md):
   Checking convergence, posterior predictive checks, comparing models
   with WAIC and LOO-CV.
+- [Counterfactual Simulations with the do()
+  Operator](https://because-pkg.github.io/because/articles/13_counterfactual_simulations.md):
+  Simulating causal interventions and policy impacts using Pearl’s
+  do-calculus.
 - [Mediation
   Analysis](https://because-pkg.github.io/because/articles/04_mediation.md):
   Decomposing effects into direct and indirect components.
@@ -78,18 +82,21 @@ After installing JAGS, you can install `because` from GitHub.
 To install the **stable release** (`v1.2.7`):
 
 ``` r
+
 remotes::install_github("because-pkg/because@v1.2.7", build_vignettes = TRUE)
 ```
 
 To install the **latest development version**:
 
 ``` r
+
 remotes::install_github("because-pkg/because", build_vignettes = TRUE)
 ```
 
 Finally, load the package:
 
 ``` r
+
 library(because)
 ```
 
@@ -109,6 +116,7 @@ it serves to illustrate the basic usage of the package.
 Let’s start simulating two variables X and Y where Y is correlated to X:
 
 ``` r
+
 # set seed for reproducibility
 set.seed(67)
 
@@ -135,6 +143,7 @@ and then call
 passing the equation and the data frame:
 
 ``` r
+
 # Define the equations
 equations <- list(Y ~ X)
 
@@ -154,6 +163,7 @@ definite non-convergence). You can also plot the trace plots of the MCMC
 samples:
 
 ``` r
+
 # Plot trace plots
 plot(fit$samples)
 ```
@@ -170,6 +180,7 @@ fitting it, using
 [`because_model()`](https://because-pkg.github.io/because/reference/because_model.md):
 
 ``` r
+
 # Generate JAGS model code
 jags_model_code <- because_model(
   equations = equations

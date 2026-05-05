@@ -26,6 +26,7 @@ replacement with no need to modify the core package.
 ### The `because_family()` Constructor
 
 ``` r
+
 because_family(
   name,           # A short name (e.g., "student_t", "beta_prop")
   jags_likelihood,# JAGS likelihood code with placeholders
@@ -55,11 +56,12 @@ freedom or dispersion.
 
 ### Example 1: Student-*t* Family (Robust Regression)
 
-The Student-*t* distribution with $\nu$ degrees of freedom has heavier
+The Student-*t* distribution with $`\nu`$ degrees of freedom has heavier
 tails than a Gaussian, making it robust to outliers. JAGS provides it as
 `dt(mu, tau, nu)`.
 
 ``` r
+
 library(because)
 
 student_t <- because_family(
@@ -83,6 +85,7 @@ arguments to create the family object to pass to
 [`because()`](https://because-pkg.github.io/because/reference/because.md):
 
 ``` r
+
 set.seed(42)
 N <- 80
 
@@ -115,6 +118,7 @@ summary(fit_robust)
 #### Comparing Fit
 
 ``` r
+
 fit_gaussian_waic <- because(
   equations = list(Y ~ X), data = robust_data, WAIC = TRUE, quiet = TRUE
 )
@@ -138,15 +142,19 @@ rates, dietary proportions — are bounded between 0 and 1. A Gaussian
 model can predict values outside this range; the **Beta distribution**
 is the natural choice.
 
-The Beta distribution is parameterised here by its mean $\mu \in (0,1)$
-and a precision (concentration) parameter $\phi > 0$:
+The Beta distribution is parameterised here by its mean
+$`\mu \in (0,1)`$ and a precision (concentration) parameter
+$`\phi > 0`$:
 
-$$Y \sim \text{Beta}\left( \mu\phi,(1 - \mu)\phi \right)$$
+``` math
+Y \sim \text{Beta}(\mu \phi, (1-\mu)\phi)
+```
 
-With this parameterisation, the variance is $\mu(1 - \mu)/(\phi + 1)$:
-larger $\phi$ means less variance around $\mu$.
+With this parameterisation, the variance is $`\mu(1-\mu)/(\phi + 1)`$:
+larger $`\phi`$ means less variance around $`\mu`$.
 
 ``` r
+
 beta_prop <- because_family(
   name = "beta_prop",
 
@@ -168,6 +176,7 @@ beta_prop <- because_family(
 ```
 
 ``` r
+
 set.seed(7)
 N <- 100
 
@@ -196,6 +205,7 @@ summary(fit_beta)
 ```
 
 ``` r
+
 # Convert from logit scale to probability scale using marginal effects
 me_beta <- marginal_effects(fit_beta)
 print(me_beta)
@@ -212,6 +222,7 @@ positive probability to negative values. JAGS supports truncation
 notation `T(lower, upper)`.
 
 ``` r
+
 pos_gaussian <- because_family(
   name = "pos_gaussian",
   jags_likelihood = "{response}[{i}] ~ dnorm({mu}[{i}], {tau}) T(0, )",
@@ -245,6 +256,7 @@ family to verify the substitution is correct before running a full
 model:
 
 ``` r
+
 model_code <- because_model(
   equations = list(Cover ~ Grazing),
   family    = c(Cover = beta_prop())
@@ -266,14 +278,14 @@ packages to add full support for new families or covariance structures.
 
 The key generics are documented in `R/generics.R`:
 
-| Generic                       | Purpose                                                                                                                                         |
-|:------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------|
-| `jags_family_definition`      | Defines the JAGS likelihood block for a response variable                                                                                       |
-| `jags_family_likelihood`      | Generates the per-observation likelihood code (used by [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md)) |
-| `jags_family_precision_prior` | Sets the prior on the precision/dispersion parameter                                                                                            |
-| `prepare_structure_data`      | Prepares custom covariance structures (e.g., trees, distance matrices) for JAGS                                                                 |
-| `get_inits_hook`              | Provides specialised MCMC starting values                                                                                                       |
-| `normalize_equations_hook`    | Handles specialised variable aliases                                                                                                            |
+| Generic | Purpose |
+|:---|:---|
+| `jags_family_definition` | Defines the JAGS likelihood block for a response variable |
+| `jags_family_likelihood` | Generates the per-observation likelihood code (used by [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md)) |
+| `jags_family_precision_prior` | Sets the prior on the precision/dispersion parameter |
+| `prepare_structure_data` | Prepares custom covariance structures (e.g., trees, distance matrices) for JAGS |
+| `get_inits_hook` | Provides specialised MCMC starting values |
+| `normalize_equations_hook` | Handles specialised variable aliases |
 
 #### Registering a Family from an Extension Package
 
@@ -281,6 +293,7 @@ If you are building an extension package (e.g., `because.mytrait`), you
 can register a custom family method using standard S3 registration:
 
 ``` r
+
 # In your package's R/ directory, define the S3 method:
 jags_family_likelihood.because_family_my_dist <- function(
     family, response, predictors = NULL, suffix = "", ...
@@ -315,14 +328,14 @@ use
 
 ### Summary
 
-| Scenario                       | Tool                                                                                                                                        | Key argument                                                                  |
-|:-------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------|
-| One-off custom distribution    | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md)                                                     | `jags_likelihood`, `extra_priors`                                             |
-| Heavy-tailed robust regression | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with [`dt()`](https://rdrr.io/r/stats/TDist.html)   | `df_{response}` extra prior                                                   |
-| Proportions in (0,1)           | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with [`dbeta()`](https://rdrr.io/r/stats/Beta.html) | logit link, `phi_{response}`                                                  |
-| Strictly positive data         | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with `T(0,)` truncation                             | log link                                                                      |
-| Custom covariance structure    | [`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md)                                               | `precision_fn`                                                                |
-| Reusable family for a package  | S3 method for `jags_family_likelihood`                                                                                                      | Register with [`registerS3method()`](https://rdrr.io/r/base/ns-internal.html) |
+| Scenario | Tool | Key argument |
+|:---|:---|:---|
+| One-off custom distribution | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) | `jags_likelihood`, `extra_priors` |
+| Heavy-tailed robust regression | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with [`dt()`](https://rdrr.io/r/stats/TDist.html) | `df_{response}` extra prior |
+| Proportions in (0,1) | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with [`dbeta()`](https://rdrr.io/r/stats/Beta.html) | logit link, `phi_{response}` |
+| Strictly positive data | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with `T(0,)` truncation | log link |
+| Custom covariance structure | [`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md) | `precision_fn` |
+| Reusable family for a package | S3 method for `jags_family_likelihood` | Register with [`registerS3method()`](https://rdrr.io/r/base/ns-internal.html) |
 
 ### References
 

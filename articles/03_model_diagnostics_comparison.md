@@ -21,6 +21,7 @@ available in `because`.
 We use a three-variable causal chain as a running example throughout.
 
 ``` r
+
 library(because)
 
 set.seed(42)
@@ -34,6 +35,7 @@ sim_data <- data.frame(Temperature, NDVI, Abundance)
 ```
 
 ``` r
+
 # Causal model: Temperature -> NDVI -> Abundance, Temperature -> Abundance
 fit <- because(
   equations = list(
@@ -80,6 +82,7 @@ and **n.eff** (the effective sample size) for each parameter.
   `n.thin`.
 
 ``` r
+
 # The stored summary object has $statistics containing Rhat and n.eff
 sum_stats <- fit$summary$statistics
 
@@ -104,11 +107,13 @@ chain looks like a “fuzzy caterpillar”: dense, stationary, and without
 long-term trends.
 
 ``` r
+
 # Plot traces for all monitored parameters
 plot(fit$samples)
 ```
 
 ``` r
+
 # Focus on a specific parameter
 library(coda)
 plot(fit$samples[, "beta_Abundance_NDVI"])
@@ -123,6 +128,7 @@ overlapping completely. - No visible trend, drift, or “stickiness”
 High autocorrelation within chains reduces the effective sample size.
 
 ``` r
+
 autocorr.plot(fit$samples[, "beta_Abundance_NDVI"])
 ```
 
@@ -144,6 +150,7 @@ a wrapper around the `bayesplot` package.
 #### 2.1 Density Overlay
 
 ``` r
+
 # Overlay posterior predictive densities on the observed density
 pp_check(fit, resp = "Abundance", type = "dens_overlay", ndraws = 50)
 ```
@@ -156,6 +163,7 @@ extreme values) indicate model misspecification.
 #### 2.2 Test Statistics
 
 ``` r
+
 # Compare the observed mean and SD to the posterior predictive distribution
 pp_check(fit, resp = "Abundance", type = "stat", stat = "mean")
 pp_check(fit, resp = "Abundance", type = "stat", stat = "sd")
@@ -170,6 +178,7 @@ of the data.
 #### 2.3 Histogram
 
 ``` r
+
 pp_check(fit, resp = "Abundance", type = "hist", ndraws = 10)
 ```
 
@@ -180,6 +189,7 @@ pp_check(fit, resp = "Abundance", type = "hist", ndraws = 10)
 #### 3.1 DAG with Path Coefficients
 
 ``` r
+
 # Plot the causal DAG with estimated standardised path coefficients
 plot_dag(fit)
 ```
@@ -191,6 +201,7 @@ strength of each causal effect.
 #### 3.2 Coefficient Plot
 
 ``` r
+
 # Caterpillar plot of all path coefficients with 95% credible intervals
 plot_coef(fit)
 ```
@@ -202,6 +213,7 @@ directionality.
 #### 3.3 D-Separation Results
 
 ``` r
+
 # Visualize d-separation test results (requires dsep = TRUE at fit time)
 plot_dsep(fit)
 ```
@@ -213,6 +225,7 @@ that the model’s independence assumptions hold in the data.
 #### 3.4 Posterior Distributions
 
 ``` r
+
 # Compare posterior distributions for specific parameters
 plot_posterior(fit, parameter = "beta_Abundance")
 ```
@@ -222,6 +235,7 @@ The `parameter` argument accepts partial matching (regex), so
 the response variable. You can overlay multiple models:
 
 ``` r
+
 fit_alt <- because(
   equations = list(Abundance ~ Temperature),  # Simpler model
   data = sim_data, WAIC = TRUE, quiet = TRUE
@@ -248,6 +262,7 @@ out-of-sample predictive performance. Enable it at fit time with
 `WAIC = TRUE`:
 
 ``` r
+
 # WAIC is reported in the summary
 summary(fit)
 
@@ -268,6 +283,7 @@ number of observations are highly influential. It uses Pareto Smoothed
 Importance Sampling (PSIS-LOO) from the `loo` package.
 
 ``` r
+
 loo_result <- because_loo(fit)
 print(loo_result)
 ```
@@ -284,6 +300,7 @@ Each observation receives a Pareto-k value:
 | k ≥ 1.0        | Very problematic — refit without these observations |
 
 ``` r
+
 # Plot Pareto-k values per observation
 plot(loo_result)
 ```
@@ -302,6 +319,7 @@ tools to rank them by predictive performance.
 #### 5.1 Comparing Two Fitted Models
 
 ``` r
+
 # Full model: Temperature -> NDVI -> Abundance, Temperature -> Abundance
 fit_full <- because(
   equations = list(
@@ -336,6 +354,7 @@ can run multiple model specifications in parallel and return the
 comparison table directly:
 
 ``` r
+
 model_specs <- list(
   full_mediation = list(
     equations = list(NDVI ~ Temperature, Abundance ~ NDVI + Temperature)
@@ -364,6 +383,7 @@ print(comparison_result$comparison)
 For a more rigorous comparison, use LOO-CV:
 
 ``` r
+
 loo1 <- because_loo(fit_full)
 loo2 <- because_loo(fit_mediated)
 
@@ -384,6 +404,7 @@ independence claims, `because` can reuse already-computed d-separation
 tests via the `reuse_models` argument, avoiding redundant JAGS runs:
 
 ``` r
+
 fit_base <- because(
   equations = list(NDVI ~ Temperature, Abundance ~ NDVI + Temperature),
   data = sim_data, dsep = TRUE, quiet = TRUE

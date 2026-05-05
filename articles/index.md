@@ -26,4 +26,6 @@
   Approach](https://because-pkg.github.io/because/articles/11_latent_variables_mag.md):
 - [Creating Custom Distribution
   Families](https://because-pkg.github.io/because/articles/12_custom_families.md):
+- [Counterfactual Simulations with the do()
+  Operator](https://because-pkg.github.io/because/articles/13_counterfactual_simulations.md):
 - [Extensions](https://because-pkg.github.io/because/articles/extensions.md):

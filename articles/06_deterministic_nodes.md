@@ -2,8 +2,10 @@
 
 In standard Bayesian regression, variables are typically modeled as
 **Stochastic Nodes**:
-$$Y_{i} \sim \text{Normal}\left( \alpha + \beta X_{i},\sigma \right)$$
-This means $Y$ is *correlated* with $X$, but has its own independent
+``` math
+Y_i \sim \text{Normal}(\alpha + \beta X_i, \sigma)
+```
+This means $`Y`$ is *correlated* with $`X`$, but has its own independent
 “noise”.
 
 However, in many causal models, some variables are **logical
@@ -24,6 +26,7 @@ counterfactual interventions.
 ## Setup
 
 ``` r
+
 library(because)
 set.seed(123)
 ```
@@ -44,6 +47,7 @@ missing values and estimates the interaction **simultaneously**,
 ensuring the interaction structure is preserved in the imputed data.
 
 ``` r
+
 N <- 100
 
 # Predictors
@@ -82,6 +86,7 @@ a marmot (**Marmota marmota**) is only “Mature” if it is older than 2
 years.
 
 ``` r
+
 # Predictors
 Age <- runif(N, 0, 10)
 
@@ -116,6 +121,7 @@ What if you have multiple life stages? \* **Newborn**: Age = 0 \*
 You can define this using a sum of logical conditions:
 
 ``` r
+
 # Define 4-level class: 1=Newborn, 2=Juv, 3=Sub, 4=Adult
 # IMPORTANT: The class must be derived from Age so the model understands the structure.
 Age <- round(runif(N, 0, 10), 0)
@@ -150,6 +156,7 @@ summary(fit_multi)
 You can also use mathematical transformations directly in the formula.
 
 ``` r
+
 Mass <- runif(N, 1, 100) # Ensure positive for log
 Metabolism <- 0.75 * log(Mass) + rnorm(N, sd = 0.1)
 
@@ -230,6 +237,7 @@ d-separation tests?
 If you use a standard interaction in your formula:
 
 ``` r
+
 equations = list(Y ~ A * B)
 ```
 
@@ -250,6 +258,7 @@ If you explicitly define the interaction as a separate variable (a
 deterministic node):
 
 ``` r
+
 equations = list(
     Compound ~ I(A * B),
     Y ~ Compound
@@ -261,7 +270,7 @@ equations = list(
 - The DAG contains edges: `A -> Compound -> Y` and `B -> Compound -> Y`.
 - This allows you to test for **Mediation**. You can test if `Y` is
   independent of `A` conditional on `Compound`
-  ($Y\bot A \mid Compound$).
+  ($`Y \perp A \mid Compound`$).
 
 ### Use Case: The “Blocking” Test
 
@@ -283,6 +292,7 @@ d-separated from `Rank` given `AgeClass`.
   the information from `Age`, validating your structural assumption.
 
 ``` r
+
 fit_multi_dsep <- because(
     equations = list(
         AgeClass ~ I(

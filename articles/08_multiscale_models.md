@@ -19,8 +19,8 @@ frames**, one per scale, the engine:
 1.  Correctly maps each variable to its natural scale.
 
 2.  Uses the **appropriate degrees of freedom** for each d-separation
-    test: year-scale tests use $N_{years}$, individual-scale tests use
-    $N_{individuals}$, and cross-scale tests are fitted at the lower
+    test: year-scale tests use $`N_{years}`$, individual-scale tests use
+    $`N_{individuals}`$, and cross-scale tests are fitted at the lower
     scale using whatever random effects the researcher specified in the
     structural equations.
 
@@ -50,6 +50,7 @@ but its ultimate effect on offspring is mediated through individual body
 condition.
 
 ``` r
+
 library(because)
 
 dag <- list(
@@ -95,6 +96,7 @@ causal model.
 ## Simulate Multiscale Example Data
 
 ``` r
+
 set.seed(42)
 
 n_years <- 10
@@ -148,6 +150,7 @@ Pass the data as a **named list of data frames**. The names define the
 scale labels that `because` uses to assign variables.
 
 ``` r
+
 data_list <- list(
   year       = year_df,
   individual = ind_df
@@ -157,6 +160,7 @@ data_list <- list(
 We specify the structural equations as usual:
 
 ``` r
+
 equations <- list(
   NDVI      ~ Temp,
   Mass      ~ NDVI + Temp,
@@ -170,6 +174,7 @@ specifying the `multiscale` structure and the variable linking the
 datasets with the `link_vars` argument.
 
 ``` r
+
 fit <- because(
   equations  = equations,
   data       = data_list,
@@ -229,6 +234,7 @@ intercept drawn from a common Normal distribution.
 ### Syntax option A: inline in the equation
 
 ``` r
+
 equations_re <- list(
   NDVI      ~ Temp,  
   Mass ~ NDVI + Temp + (1|Year) + (1|ID),    # Year random intercept for Mass
@@ -239,6 +245,7 @@ equations_re <- list(
 ### Syntax option B: global `random` argument
 
 ``` r
+
 fit_re2 <- because(
   equations  = equations_re,
   data       = data_list,
@@ -256,11 +263,11 @@ fit_re2 <- because(
 The causal model implies the following basis set of conditional
 independence claims:
 
-| Test                                    | Scale                  | Conditioning set |
-|:----------------------------------------|:-----------------------|:-----------------|
-| `NDVI _\|\|_ Mass \| {Temp}`            | **year** (N=10)        | Temp             |
-| `NDVI _\|\|_ Offspring \| {Mass, Temp}` | **individual** (N=300) | Mass, Temp       |
-| `Temp _\|\|_ Offspring \| {Mass, NDVI}` | **individual** (N=300) | Mass, NDVI       |
+| Test | Scale | Conditioning set |
+|:---|:---|:---|
+| `NDVI _\|\|_ Mass \| {Temp}` | **year** (N=10) | Temp |
+| `NDVI _\|\|_ Offspring \| {Mass, Temp}` | **individual** (N=300) | Mass, Temp |
+| `Temp _\|\|_ Offspring \| {Mass, NDVI}` | **individual** (N=300) | Mass, NDVI |
 
 > \[!IMPORTANT\] The first test — `NDVI _||_ Mass | {Temp}` — tests a
 > **year-scale** independence claim. Even though 300 individual
@@ -298,11 +305,13 @@ variation at that scale.
 ## Visualising the Results
 
 ``` r
+
 # DAG with estimated path coefficients
 plot_dag(fit)
 ```
 
 ``` r
+
 # D-separation results with 95% credible intervals
 plot_dsep(fit)
 ```

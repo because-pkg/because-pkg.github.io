@@ -33,6 +33,7 @@ at the relationship between the number of stork pairs and the number of
 babies born in different European countries (in thousands per year):
 
 ``` r
+
 # load data
 library(because)
 data(storks)
@@ -49,6 +50,7 @@ number of stork pairs and the number of babies born and we can confirm
 this with a simple linear regression:
 
 ``` r
+
 lm_storks <- lm(Birth ~ Storks, data = storks)
 summary(lm_storks)
 ```
@@ -81,6 +83,7 @@ third variable, such as Country Area? Let’s check if Area correlates
 with Births and Storks:
 
 ``` r
+
 birth_area.lm <- lm(Birth ~ Area, data = storks)
 summary(birth_area.lm)
 # Coefficients:
@@ -105,6 +108,7 @@ Indeed, when controlling statistically for Area in a multiple
 regression, the effect of Storks on Births becomes non-significant:
 
 ``` r
+
 lm_birth_storks_area <- lm(Birth ~ Storks + Area,
   data = storks
 )
@@ -121,6 +125,7 @@ In a causal inference framework, we can represent these three variables
 and their causal relationships using a Directed Acyclic Graph (DAG):
 
 ``` r
+
 library(because)
 dag_storks <- list(
   Storks ~ Area,
@@ -154,6 +159,7 @@ tutorial](https://github.com/achazhardenberg/mpcm-OPM) if you want to
 replicate that analysis).
 
 ``` r
+
 dag_storks2 <- list(Storks ~ Area,
                     Birth ~ Area,
                     Humans ~ Birth)
@@ -167,6 +173,7 @@ Let’s now see how to test this causal model with `because`. First, we
 have to specify the structural equations implied by this DAG:
 
 ``` r
+
 equations_storks <- list(
   Storks ~ Area,
   Birth ~ Area,
@@ -180,6 +187,7 @@ standardized effects (and it also helps with convergence of the mcmc
 chains):
 
 ``` r
+
 storks <- scale(storks[2:5])
 ```
 
@@ -188,6 +196,7 @@ Now we can fit the model with
 enabling d-separation tests with the `dsep = TRUE` argument:
 
 ``` r
+
 fit_storks <- because(
   equations = equations_storks,
   data = storks,
@@ -271,6 +280,7 @@ We can now fit the model without d-separation tests to obtain the
 parameter estimates:
 
 ``` r
+
 fit_storks_final <- because(
   equations = equations_storks,
   data = storks
@@ -315,6 +325,7 @@ We can now use the function `plot_dag` to plot the DAG of the fitted
 model with the estimated path coefficients:
 
 ``` r
+
 plot_dag(fit_storks_final)
 ```
 
