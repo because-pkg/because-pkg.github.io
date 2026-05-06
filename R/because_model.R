@@ -549,6 +549,13 @@ because_model <- function(
     return(FALSE)
   }
 
+  # [FIX] Populate random_structure_names from random_terms if not already provided
+  # This ensures that inline random effects like (1|Site) are recognized as structures
+  if (length(random_terms) > 0) {
+    rt_groups <- unique(sapply(random_terms, function(rt) rt$group))
+    random_structure_names <- unique(c(random_structure_names, rt_groups))
+  }
+
   # [HARD GATE] Uncompromising Deduplication: Purge random effects handled by structures
   if (!is.null(random_structure_names) && length(structure_names) > 0) {
     # 1. Block by Name (Immediate collision)
@@ -570,8 +577,8 @@ because_model <- function(
   }
 
   has_structure <- !is.null(structure_names) && length(structure_names) > 0
-  has_random <- !is.null(random_structure_names) &&
-    length(random_structure_names) > 0
+  has_random <- (!is.null(random_structure_names) && length(random_structure_names) > 0) ||
+                (!is.null(random_terms) && length(random_terms) > 0)
   independent <- !has_structure && !has_random
 
   # Flag for multi-structure (e.g., 3D precision arrays)
@@ -1037,7 +1044,7 @@ because_model <- function(
       p <- paste0("p_", response, suffix)
       
       err_term <- ""
-      if (err_name %in% names(vars_error_terms)) {
+      if (!independent || err_name %in% names(vars_error_terms)) {
         err_term <- paste0(" + ", err_name, "[i]")
       }
 
@@ -1224,7 +1231,7 @@ because_model <- function(
       eta <- paste0("eta_", response, suffix)
 
       err_term <- ""
-      if (err_name %in% names(vars_error_terms)) {
+      if (!independent || err_name %in% names(vars_error_terms)) {
         err_term <- paste0(" + ", err_name, "[i]")
       }
 
@@ -1354,8 +1361,8 @@ because_model <- function(
       err_term <- ""
       err_name <- paste0("err_", response, suffix)
       
-      # [IDENTITY GUARD] Only include additive error if it's been registered
-      if (err_name %in% names(vars_error_terms)) {
+      # [IDENTITY GUARD] Include additive error if registered OR if model has structures/REs
+      if (!independent || err_name %in% names(vars_error_terms)) {
         err_term <- paste0(" + ", err_name, "[i]")
       }
 
@@ -1398,8 +1405,8 @@ because_model <- function(
       err_term <- ""
       err_name <- paste0("err_", response, suffix)
       
-      # [IDENTITY GUARD] Only include additive error if it's been registered
-      if (err_name %in% names(vars_error_terms)) {
+      # [IDENTITY GUARD] Include additive error if registered OR if model has structures/REs
+      if (!independent || err_name %in% names(vars_error_terms)) {
         err_term <- paste0(" + ", err_name, "[i]")
       }
 

@@ -822,33 +822,35 @@ dsep_with_latents <- function(
 
 # Helper to format a d-sep test for printing
 format_dsep_test <- function(test) {
-  # Extract variables from formula
-  # Use regex to strip out random terms like (1 | Group) before extracting vars
-  test_str <- deparse(test)
-  fixed_str <- gsub(
-    "\\s*\\+\\s*\\(.*?\\|.*?\\)",
-    "",
-    paste(test_str, collapse = " ")
-  )
-
-  test_fixed <- stats::as.formula(fixed_str)
-  vars <- all.vars(test_fixed)
-
-  response <- as.character(test_fixed)[2]
-  predictors <- setdiff(vars, response)
-
-  if (length(predictors) == 0) {
-    return(paste0("I( ", response, " , INVALID |  )"))
+  # Extract response and test variable
+  resp <- as.character(test)[2]
+  test_var <- attr(test, "test_var")
+  
+  # Use deparse to get full RHS
+  rhs_str <- paste(deparse(test[[3]]), collapse = " ")
+  # Split by + and trim
+  rhs_parts <- trimws(strsplit(rhs_str, "\\+")[[1]])
+  
+  # The conditioning set is everything in the RHS except the test_var
+  cond_set <- rhs_parts[rhs_parts != test_var]
+  
+  if (is.null(test_var)) {
+     # Fallback for old tests without attribute
+     vars <- all.vars(test)
+     test_var <- setdiff(vars, resp)[1]
+     cond_set <- setdiff(vars, c(resp, test_var))
   }
-
-  test_var <- predictors[1]
-
-  if (length(predictors) == 1) {
-    return(paste0("I( ", response, " , ", test_var, " |  )"))
+  
+  if (length(cond_set) == 0) {
+    return(paste0("I( ", resp, " , ", test_var, " |  )"))
   } else {
-    # Sort for canonical representation
-    cond_set <- paste(sort(predictors[-1]), collapse = ", ")
-    return(paste0("I( ", response, " , ", test_var, " | ", cond_set, " )"))
+    # Sort for canonical representation (fixed terms first, then random)
+    is_rand <- grepl("\\|", cond_set)
+    fixed_cond <- sort(cond_set[!is_rand])
+    rand_cond <- sort(cond_set[is_rand])
+    
+    full_cond <- paste(c(fixed_cond, rand_cond), collapse = ", ")
+    return(paste0("I( ", resp, " , ", test_var, " | ", full_cond, " )"))
   }
 }
 
