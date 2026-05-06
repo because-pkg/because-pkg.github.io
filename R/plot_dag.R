@@ -17,7 +17,8 @@
 #'     \item \code{"nicely"} — automatic choice based on graph properties.
 #'     \item \code{"circle"} — nodes arranged in a circle.
 #'   }
-#'   Override node positions entirely with the \code{coords} argument.
+#'   Override node positions entirely with the \code{coords} argument. Use \code{"multiscale"} 
+#'   to automatically arrange nodes in vertical tiers based on their hierarchical level.
 #' @param latent Character vector of latent variable names. Overrides the model's
 #'   latent variables if provided. If \code{NULL} (default) and plotting from formulas, 
 #'   latent variables are **automatically detected** if they follow the SEM 
@@ -95,6 +96,9 @@
 #' plot_dag(eq, coords = my_coords)
 #' }
 #'
+# Internal helper %||%
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+
 plot_dag <- function(
     x,
     layout = "kk",
@@ -237,7 +241,71 @@ plot_dag <- function(
         }
 
         # 3. Tidy it up using ggdag
-        tidy_dag <- ggdag::tidy_dagitty(dag_obj, layout = layout)
+        # Handle multiscale layout if requested
+        if (layout == "multiscale" && inherits(obj, "because") && !is.null(obj$hierarchical_info)) {
+            # Compute coordinates manually
+            h_info <- obj$hierarchical_info
+            h_paths <- strsplit(h_info$hierarchy, "\\s*;\\s*")[[1]]
+            all_levels <- unique(trimws(unlist(strsplit(h_paths, "\\s*>\\s*"))))
+            
+            # Map variables to levels
+            var_to_lvl <- list()
+            for (lvl in names(h_info$levels)) {
+                for (v in h_info$levels[[lvl]]) {
+                    var_to_lvl[[v]] <- lvl
+                }
+            }
+            
+            # Identify all nodes in the DAG
+            all_nodes_in_dag <- dagitty::names.dagitty(dag_obj)
+            new_coords <- list()
+            
+            # Calculate Y for each level based on depth (inverted for top-down)
+            lvl_depths <- vapply(all_levels, function(l) get_level_depth(l, h_info$hierarchy), numeric(1))
+            
+            # For each level, find nodes belonging to it
+            for (lvl in all_levels) {
+                lvl_nodes <- all_nodes_in_dag[vapply(all_nodes_in_dag, function(n) {
+                    # Handle interaction nodes (use first parent found in h_info as proxy)
+                    clean_n <- if (!is.null(interaction_nodes) && n %in% names(interaction_nodes)) {
+                        pvars <- all.vars(parse(text=n))
+                        if (length(pvars) > 0) pvars[[1]] else n
+                    } else n
+                    (var_to_lvl[[clean_n]] %||% "unknown") == lvl
+                }, logical(1))]
+                
+                if (length(lvl_nodes) > 0) {
+                    y_val <- -lvl_depths[lvl] # Top level at 0, next at -1, etc.
+                    # Spread nodes along X
+                    x_vals <- seq(-1, 1, length.out = length(lvl_nodes))
+                    if (length(lvl_nodes) == 1) x_vals <- 0
+                    for (j in seq_along(lvl_nodes)) {
+                        new_coords[[lvl_nodes[j]]] <- c(x_vals[j], y_val)
+                    }
+                }
+            }
+            
+            # If any nodes weren't assigned a level, put them at the very bottom
+            unassigned <- setdiff(all_nodes_in_dag, names(new_coords))
+            if (length(unassigned) > 0) {
+                y_bottom <- min(sapply(new_coords, function(v) v[2])) - 1
+                x_vals <- seq(-1, 1, length.out = length(unassigned))
+                for (j in seq_along(unassigned)) {
+                    new_coords[[unassigned[j]]] <- c(x_vals[j], y_bottom)
+                }
+            }
+
+            # Inject these coords into the call logic
+            if (is.null(coords)) coords <- list()
+            for (n in names(new_coords)) {
+                if (is.null(coords[[n]])) coords[[n]] <- new_coords[[n]]
+            }
+            
+            # Use a dummy layout that we will override immediately
+            tidy_dag <- ggdag::tidy_dagitty(dag_obj, layout = "nicely")
+        } else {
+            tidy_dag <- ggdag::tidy_dagitty(dag_obj, layout = layout)
+        }
 
         # Extract data frame for plotting (nodes + edges flattened)
         dag_data <- as.data.frame(dplyr::as_tibble(tidy_dag))

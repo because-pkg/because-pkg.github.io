@@ -175,6 +175,10 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #'   "binomial", "gamma", "lognormal", "bernoulli", "ordinal", and "occupancy".
 #' @param dsep Logical; if `TRUE`, performs d-separation tests to evaluate the global 
 #'   fit of the DAG against the data. Highly recommended for causal validation.
+#' @param dsep_max_obs (Diagnostic Optimization) Maximum number of observations used 
+#'   for any single d-separation test (default = 10,000). For massive datasets, 
+#'   this provides a significant speedup without losing structural diagnostic 
+#'   power. Set to \code{Inf} to disable subsampling.
 #' @param random Optional formula for **global random intercepts** (e.g., `~(1|Site)`). 
 #'   Deprecated in favor of inline specification: `Y ~ X + (1|Site)`.
 #' @param latent Optional character vector of latent (unmeasured) variables.
