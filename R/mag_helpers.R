@@ -447,12 +447,16 @@ mag_basis_to_formulas <- function(
         attr(f, "test_var") <- var2_r # The variable being tested for independence
         
         # Attach multiscale resolution (level/scale) to the test.
-        # The scale MUST ALWAYS be the home level of the response variable (var1).
-        # Predictors from coarser levels are broadcasted down to this resolution.
-        if (!is.null(hierarchical_info)) {
-            if (!is.null(var1_lvl)) {
-                attr(f, "scale") <- var1_lvl
-            }
+        # [RESOLVED 2026-05-06] To prevent DOF inflation and massive slowdowns, 
+        # the test resolution is locked to the FINEST level among the predictors 
+        # (including conditioning variables). If the response is finer, 
+        # it will be aggregated up to this scale.
+        # Attach multiscale resolution (level/scale) to the test.
+        # [RESOLVED 2026-05-06] The test resolution is locked to the level of 
+        # the Dependent Variable (Response). This ensures appropriate sample sizes 
+        # and prevents DOF inflation for coarser-level tests.
+        if (!is.null(hierarchical_info) && !is.null(var1_lvl)) {
+            attr(f, "scale") <- var1_lvl
         }
 
         formulas[[length(formulas) + 1]] <- f

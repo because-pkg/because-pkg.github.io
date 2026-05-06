@@ -280,6 +280,7 @@ because <- function(
   quiet = FALSE,
   verbose = FALSE,
   dsep = FALSE,
+  dsep_max_obs = 10000,
   variability = NULL,
   family = NULL,
   distribution = NULL,
@@ -2487,7 +2488,8 @@ because <- function(
                 ic_recompile = ic_recompile,
                 random = random,
                 id_col = id_col,
-                variability = variability
+                variability = variability,
+                dsep_max_obs = dsep_max_obs
               )
             }, error = function(e) {
               # Return error info to parent session for reporting
@@ -4219,7 +4221,8 @@ run_single_dsep_test_v2 <- function(
   ic_recompile = FALSE,
   random = NULL,
   id_col = NULL,
-  variability = NULL
+  variability = NULL,
+  dsep_max_obs = 10000
 ) {
   if (!quiet) {
     message(paste("D-sep test eq:", deparse(test_eq)))
@@ -4442,13 +4445,37 @@ run_single_dsep_test_v2 <- function(
   }
 
   # Choose what data to pass to the dsep sub-fit:
-  # [FIX] Never pass the flattened joint table (hierarchical_info$data) to sub-models!
-  # This avoids inheriting the observation-level resolution and prevents inflation.
-  # We pass original_data (the raw list) to trigger resolution-locked assembly.
   dsep_data_to_pass <- if (!is.null(original_data)) {
     original_data
   } else {
     test_data
+  }
+
+  # [OPTIMIZATION] Down-sample for d-sep if data is massive (Diagnostic Performance)
+  if (!is.null(hierarchical_info)) {
+    # Down-sample the finest grain(s) in the list
+    h_paths <- strsplit(multiscale, "\\s*;\\s*")[[1]]
+    finest_lvls <- unique(sapply(h_paths, function(path) {
+      lvls <- trimws(strsplit(path, "\\s*>\\s*")[[1]])
+      lvls[length(lvls)]
+    }))
+    for (fl in finest_lvls) {
+      if (fl %in% names(dsep_data_to_pass) && is.data.frame(dsep_data_to_pass[[fl]])) {
+        n_obs <- nrow(dsep_data_to_pass[[fl]])
+        if (n_obs > dsep_max_obs) {
+          set.seed(i + 42) # Reproducible diagnostic sample
+          dsep_data_to_pass[[fl]] <- dsep_data_to_pass[[fl]][sample(1:n_obs, dsep_max_obs), ]
+          if (!quiet) message(sprintf("  (Optimized d-sep: subsampled '%s' scale to %d rows)", fl, dsep_max_obs))
+        }
+      }
+    }
+  } else if (is.data.frame(dsep_data_to_pass)) {
+    n_obs <- nrow(dsep_data_to_pass)
+    if (n_obs > dsep_max_obs) {
+      set.seed(i + 42)
+      dsep_data_to_pass <- dsep_data_to_pass[sample(1:n_obs, dsep_max_obs), ]
+      if (!quiet) message(sprintf("  (Optimized d-sep: subsampled to %d rows)", dsep_max_obs))
+    }
   }
 
   # Extension Hook: Filter structure
@@ -4462,6 +4489,19 @@ run_single_dsep_test_v2 <- function(
   if (!is.null(hierarchical_info)) {
     test_scale <- attr(test_eq, "scale")
     if (!is.null(test_scale)) {
+      # [RESOLUTION LOCKING] Aggregate finer variables up to the test scale.
+      # This prevents DOF inflation by ensuring we don't treat fine-grained
+      # observations as independent points when the test is at a coarser scale.
+      if (!is.null(dsep_data_to_pass) && is.list(dsep_data_to_pass) && !is.data.frame(dsep_data_to_pass)) {
+          dsep_data_to_pass <- aggregate_multiscale_data(
+              dsep_data_to_pass,
+              sub_levels,
+              multiscale, # Use original multiscale for depth checking
+              test_scale
+          )
+          if (!quiet) message(sprintf("  (Resolution Locked: Aggregated test to '%s' scale)", test_scale))
+      }
+
       # Truncate hierarchy string to stop at test_scale
       h_paths <- strsplit(multiscale, "\\s*;\\s*")[[1]]
       new_h_paths <- sapply(h_paths, function(path) {
@@ -4529,6 +4569,7 @@ run_single_dsep_test_v2 <- function(
   # Call because recursively
   # Use do.call and filtering to handle potential version conflicts on worker nodes
   bec_args <- names(formals(because))
+
   call_args <- list(
     data = dsep_data_to_pass,
     structure = sub_structure,
