@@ -7,22 +7,42 @@
 #' @return List of deterministic term definitions
 #' @keywords internal
 extract_deterministic_terms <- function(equations) {
+    # Pre-scan equations for deterministic assignments (e.g. X ~ I(A+B))
+    # If a variable is defined purely by a deterministic term, we use the variable
+    # name as the internal name for the node to avoid redundant intermediate nodes.
+    assignments <- list()
+    for (eq in equations) {
+        resp <- as.character(formula(eq))[2]
+        # Get RHS terms strictly (no random effects)
+        rhs_terms <- attr(terms(formula(eq)), "term.labels")
+        # Check for random effects in the formula itself to be safe
+        has_random <- grepl("\\|", as.character(formula(eq))[3])
+        
+        if (!has_random && length(rhs_terms) == 1 && (grepl(":", rhs_terms) || grepl("\\(", rhs_terms))) {
+            assignments[[rhs_terms]] <- resp
+        }
+    }
+
     terms_list <- list()
 
     for (eq in equations) {
         # Get all terms including interactions
-        # We use strict width.cutoff to prevent line wrapping
         eq_terms <- attr(terms(formula(eq)), "term.labels")
 
         for (term in eq_terms) {
+            # Skip random effects
+            if (grepl("\\|", term)) next
+
             # Check if term needs deterministic handling
-            # 1. Interaction (contains :)
-            # 2. Function call (contains ( and ))
             if (
                 grepl(":", term) || (grepl("\\(", term) && grepl("\\)", term))
             ) {
-                # Create sanitized internal name
-                internal_name <- sanitize_term_name(term)
+                # Use assigned variable name if this term is a pure assignment
+                if (term %in% names(assignments)) {
+                    internal_name <- assignments[[term]]
+                } else {
+                    internal_name <- sanitize_term_name(term)
+                }
 
                 if (!internal_name %in% names(terms_list)) {
                     terms_list[[internal_name]] <- list(

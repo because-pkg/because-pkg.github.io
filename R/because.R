@@ -640,8 +640,8 @@ because <- function(
           raw_eq <- formula(eq)
           if (length(raw_eq) >= 3) {
               resp <- as.character(raw_eq[[2]])
-              rhs_str <- deparse(raw_eq[[3]])
-              if (grepl("^I\\(", rhs_str)) det_responses <- c(det_responses, resp)
+              rhs_str <- paste(deparse(raw_eq[[3]]), collapse = " ")
+              if (grepl("^I\\(", trimws(rhs_str))) det_responses <- c(det_responses, resp)
           }
       }
 
@@ -4523,6 +4523,8 @@ run_single_dsep_test_v2 <- function(
       }
     }
   }
+
+  if (!exists("sub_link_vars", inherits = FALSE)) sub_link_vars <- link_vars
 
   # Call because recursively
   # Use do.call and filtering to handle potential version conflicts on worker nodes

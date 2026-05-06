@@ -122,8 +122,10 @@ equations_to_dag <- function(
                 det_name <- det_lookup[[term]]
 
                 if (det_name %in% all_vars) {
-                    # Edge: det_node -> child
-                    dag[det_name, child] <- 1
+                    # Edge: det_node -> child (only if they are distinct nodes)
+                    if (det_name != child) {
+                        dag[det_name, child] <- 1
+                    }
 
                     # Edges: each component variable -> det_node
                     comp_vars <- setdiff(
@@ -238,9 +240,41 @@ mag_basis_to_formulas <- function(
         return(v)
     }
 
-    if (is.null(basis_set) || length(basis_set) == 0) {
-        return(list())
+    # --- REDUNDANCY FILTER ---
+    # impliedConditionalIndependencies can return redundant non-minimal sets 
+    # (e.g. {A} and {A, B}). For SEM d-separation testing, we only need the 
+    # minimal set(s) for each pair.
+    
+    # Group tests by undirected pair (X, Y)
+    pair_tests <- list()
+    for (i in seq_along(basis_set)) {
+        test <- basis_set[[i]]
+        # Canonical key for the pair
+        pk <- paste(sort(test[1:2]), collapse = " <-> ")
+        if (is.null(pair_tests[[pk]])) pair_tests[[pk]] <- list()
+        pair_tests[[pk]][[length(pair_tests[[pk]]) + 1]] <- test
     }
+    
+    # Filter each group for minimality
+    basis_set <- unlist(lapply(pair_tests, function(pts) {
+        if (length(pts) <= 1) return(pts)
+        
+        is_minimal <- rep(TRUE, length(pts))
+        for (i in seq_along(pts)) {
+            for (j in seq_along(pts)) {
+                if (i == j) next
+                zi <- if (length(pts[[i]]) > 2) pts[[i]][3:length(pts[[i]])] else character(0)
+                zj <- if (length(pts[[j]]) > 2) pts[[j]][3:length(pts[[j]])] else character(0)
+                
+                # If zj is a proper subset of zi, then zi is not minimal
+                if (length(zj) < length(zi) && all(zj %in% zi)) {
+                    is_minimal[i] <- FALSE
+                    break
+                }
+            }
+        }
+        return(pts[is_minimal])
+    }), recursive = FALSE)
 
     formulas <- list()
 
