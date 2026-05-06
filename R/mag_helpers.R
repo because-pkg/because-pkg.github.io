@@ -412,22 +412,11 @@ mag_basis_to_formulas <- function(
         f <- stats::as.formula(formula_str)
         attr(f, "test_var") <- var2_r # The variable being tested for independence
         
-        # Attach multiscale resolution (level/scale) to the test for reporting.
-        # We report the COARSEST level among variables in the test, as this
-        # defines the effective resolution (and degrees of freedom) of the test.
+        # Attach multiscale resolution (level/scale) to the test.
+        # The scale MUST ALWAYS be the home level of the response variable (var1).
+        # Predictors from coarser levels are broadcasted down to this resolution.
         if (!is.null(hierarchical_info)) {
-            if (!is.null(var1_lvl) && !is.null(var2_lvl)) {
-                v1_depth <- get_level_depth(var1_lvl, hierarchical_info$hierarchy)
-                v2_depth <- get_level_depth(var2_lvl, hierarchical_info$hierarchy)
-
-                if (!is.na(v1_depth) && !is.na(v2_depth)) {
-                    # Smaller depth = coarser level (e.g., 1 is root)
-                    effective_lvl <- if (v1_depth <= v2_depth) var1_lvl else var2_lvl
-                    attr(f, "scale") <- effective_lvl
-                } else {
-                    attr(f, "scale") <- var1_lvl
-                }
-            } else if (!is.null(var1_lvl)) {
+            if (!is.null(var1_lvl)) {
                 attr(f, "scale") <- var1_lvl
             }
         }

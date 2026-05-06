@@ -240,6 +240,10 @@ validate_hierarchical_data <- function(
     # Check that level names in 'levels' match dataset names in 'data'
     if (!all(names(levels) %in% names(data))) {
         missing <- setdiff(names(levels), names(data))
+        cat("\n[DEBUG] validate_hierarchical_data failing!\n")
+        cat("  names(levels): ", paste(names(levels), collapse = ", "), "\n")
+        cat("  names(data): ", paste(names(data), collapse = ", "), "\n")
+        cat("  missing: ", paste(missing, collapse = ", "), "\n\n")
         stop("Level names not found in data: ", paste(missing, collapse = ", "))
     }
 

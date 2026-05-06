@@ -1385,7 +1385,7 @@ because <- function(
     structures <- structure
     # Check for multi-objects in the list
     for (s in structures) {
-      if (is.list(s) && length(s) > 1 && !is.matrix(s) && !inherits(s, "phylo")) {
+      if (is.list(s) && length(s) > 1 && !is.matrix(s) && !inherits(s, "phylo") && !inherits(s, "because_structure")) {
         # Generic list with multiple items (likely replicates or multiPhylo)
         is_multiple <- TRUE
         if (!exists("N_trees")) N_trees <- length(structures)
@@ -4470,9 +4470,10 @@ run_single_dsep_test_v2 <- function(
         if (!is.na(idx)) {
           paste(lvls[1:idx], collapse = " > ")
         } else {
-          path
+          NA # Drop the path completely if it doesn't contain the test scale!
         }
       })
+      new_h_paths <- new_h_paths[!is.na(new_h_paths)]
       sub_multiscale <- paste(unique(new_h_paths), collapse = " ; ")
 
       # Filter levels to only include those present in the truncated hierarchy
@@ -4486,14 +4487,39 @@ run_single_dsep_test_v2 <- function(
       dsep_data_to_pass <- sub_data_list
       
       # Now re-assign variables from finer levels into the coarser test scale level
+      # ONLY if they were actually aggregated (i.e., their original depth was > test_scale depth).
+      # Coarser predictors are broadcasted downwards via indices and should remain in their original levels.
+      t_depth <- get_level_depth(test_scale, multiscale)
       vars_in_test <- all.vars(test_eq)
       for (v in vars_in_test) {
-        # Remove from any existing levels
-        sub_levels <- lapply(sub_levels, function(l) setdiff(l, v))
-        # Add to the effective test scale level
-        if (test_scale %in% names(sub_levels)) {
-          sub_levels[[test_scale]] <- unique(c(sub_levels[[test_scale]], v))
+        # Find original level of this variable
+        orig_lvl <- NULL
+        for (lvl in names(levels)) {
+          if (v %in% levels[[lvl]]) {
+            orig_lvl <- lvl
+            break
+          }
         }
+        
+        if (!is.null(orig_lvl)) {
+          v_depth <- get_level_depth(orig_lvl, multiscale)
+          # If the variable was aggregated upwards from a finer level
+          if (!is.na(v_depth) && !is.na(t_depth) && v_depth > t_depth) {
+            # Remove from any existing levels
+            sub_levels <- lapply(sub_levels, function(l) setdiff(l, v))
+            # Add to the effective test scale level
+            if (test_scale %in% names(sub_levels)) {
+              sub_levels[[test_scale]] <- unique(c(sub_levels[[test_scale]], v))
+            }
+          }
+        }
+      }
+
+      # [FIX] Subset link_vars to only include levels present in the truncated hierarchy
+      if (!is.null(link_vars)) {
+        sub_link_vars <- link_vars[names(link_vars) %in% names(sub_levels)]
+      } else {
+        sub_link_vars <- NULL
       }
     }
   }
@@ -4527,7 +4553,7 @@ run_single_dsep_test_v2 <- function(
     levels = sub_levels,
     hierarchy = sub_multiscale,
     multiscale = sub_multiscale,
-    link_vars = link_vars,
+    link_vars = sub_link_vars,
     structure_multi = hierarchical_info$structure_multi,
     structure_levels = hierarchical_info$structure_levels,
     id_col = id_col,

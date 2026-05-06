@@ -121,7 +121,7 @@ prepare_hierarchical_jags_data <- function(hierarchical_info, vars_needed) {
                     if (length(link_col) > 0) {
                         link_col <- link_col[1]
                     } else {
-                        link_col <- NULL
+                        link_col <- if (length(common_cols) > 0) common_cols[1] else NULL
                     }
                 } else {
                     link_col <- if (length(common_cols) > 0) {

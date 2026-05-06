@@ -258,12 +258,14 @@ get_inherited_random_terms <- function(var, hierarchical_info) {
 
   inherited <- list()
   for (anc in ancestors) {
-    group_var <- hierarchical_info$link_vars[[anc]]
-    if (!is.null(group_var)) {
-      inherited[[length(inherited) + 1]] <- list(
-        group = group_var,
-        type = "intercept"
-      )
+    if (anc %in% names(hierarchical_info$link_vars)) {
+      group_var <- hierarchical_info$link_vars[[anc]]
+      if (!is.null(group_var)) {
+        inherited[[length(inherited) + 1]] <- list(
+          group = group_var,
+          type = "intercept"
+        )
+      }
     }
   }
 
@@ -581,7 +583,10 @@ dsep_with_latents <- function(
   dag_str <- dag_matrix_to_dagitty(dag)
   d_obj <- dagitty::dagitty(dag_str)
   if (!is.null(latent)) {
-    dagitty::latents(d_obj) <- latent
+    valid_latents <- intersect(latent, names(d_obj))
+    if (length(valid_latents) > 0) {
+      dagitty::latents(d_obj) <- valid_latents
+    }
   }
   
   ici <- dagitty::impliedConditionalIndependencies(d_obj)
