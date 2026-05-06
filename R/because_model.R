@@ -943,15 +943,23 @@ because_model <- function(
     eq_loop_N <- get_loop_bound(response, hierarchical_info)
     model_lines <- safe_add_lines(model_lines, paste0("  for (i in 1:", eq_loop_N, ") {"))
 
-    # Check if this is a deterministic identity equation (e.g., dummy ~ I(parent == k))
+    # Check if this is a deterministic identity equation (e.g., dummy ~ I(parent == k) or Var ~ I(A - B))
     is_identity <- FALSE
-    if (length(predictors) == 1 && !is.null(categorical_vars)) {
-      # Is response a dummy variable?
-      is_dummy <- any(sapply(categorical_vars, function(cv) {
-        response %in% cv$dummies
-      }))
-      if (is_dummy) {
-        is_identity <- TRUE
+    if (length(predictors) == 1) {
+      # 1. Is it a categorical dummy?
+      if (!is.null(categorical_vars)) {
+          is_dummy <- any(sapply(categorical_vars, function(cv) {
+            response %in% cv$dummies
+          }))
+          if (is_dummy) is_identity <- TRUE
+      }
+      
+      # 2. Is it explicitly wrapped in I(...) on the RHS?
+      # We check the formula string to be sure
+      raw_eq <- formula(equations[[j]])
+      rhs_str <- deparse(raw_eq[[3]])
+      if (grepl("^I\\(", rhs_str)) {
+          is_identity <- TRUE
       }
     }
 
@@ -3350,23 +3358,35 @@ because_model <- function(
             s_name <- structure_names[1]
             s_suffix <- paste0("_", s_name)
 
-            tau_u_name <- paste0("tau_u_", response, suffix, s_suffix)
-            model_lines <- safe_add_lines(
-              model_lines,
-              paste0(
-                "  lambda",
-                response,
-                suffix,
-                " <- (1/",
-                tau_u_name,
-                ") / ((1/",
-                tau_u_name,
-                ") + (1/tau_res_",
-                response,
-                suffix,
-                "))"
-              )
-            )
+            # [UNIFICATION FIX] Use the same naming logic as the priors block
+            is_unified_l <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
+            
+            # [STRICT MAPPING FIX] Only generate lambda if this structure actually applies to this variable
+            # Otherwise we get "Unknown variable tau_u_..." errors in JAGS for orthogonal levels.
+            if (is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), response, hierarchical_info, allow_identity = TRUE)) {
+                if (is_unified_l) {
+                    tau_u_name <- paste0("tau_u_", s_name, "_", response)
+                } else {
+                    tau_u_name <- paste0("tau_u_", response, suffix, s_suffix)
+                }
+
+                model_lines <- safe_add_lines(
+                  model_lines,
+                  paste0(
+                    "  lambda",
+                    response,
+                    suffix,
+                    " <- (1/",
+                    tau_u_name,
+                    ") / ((1/",
+                    tau_u_name,
+                    ") + (1/tau_res_",
+                    response,
+                    suffix,
+                    "))"
+                  )
+                )
+            }
           }
 
           # Random Effects Priors

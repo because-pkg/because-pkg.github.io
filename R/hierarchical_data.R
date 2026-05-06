@@ -210,7 +210,8 @@ validate_hierarchical_data <- function(
     hierarchy,
     link_vars,
     latent_vars = NULL,
-    equations = NULL
+    equations = NULL,
+    deterministic_vars = NULL
 ) {
     # Check data is a named list of data.frames
     if (!is.list(data) || is.data.frame(data)) {
@@ -242,8 +243,12 @@ validate_hierarchical_data <- function(
         stop("Level names not found in data: ", paste(missing, collapse = ", "))
     }
 
+    # Combine provided latent variables with deterministic variables
+    # for the validation skip list.
+    latent_vars <- unique(c(latent_vars, deterministic_vars))
+
     # Check that all variables in levels exist in corresponding datasets
-    # (Unless they are marked as latent)
+    # (Unless they are marked as latent or deterministic)
     for (level_name in names(levels)) {
         vars <- levels[[level_name]]
         dataset <- data[[level_name]]

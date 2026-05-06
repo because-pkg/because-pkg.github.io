@@ -231,10 +231,79 @@ do.because <- function(object, ..., ndraws = NULL, re_formula = NULL, raw_scale 
             
         } else if (var %in% names(adj)) {
             # Not intervened, but it is an endogenous variable (has an equation)
-            # Predict it using current upstream newdata
-            pred <- posterior_predict(object, resp = var, newdata = newdata, ndraws = ndraws, re_formula = re_formula)
-            newdata[[var]] <- pred
-            results[[var]] <- pred
+            # Check if it's a deterministic I() node
+            is_det <- FALSE
+            det_expr <- NULL
+            for (eq in eqs) {
+                if (as.character(eq[[2]]) == var) {
+                    rhs_str <- deparse(eq[[3]])
+                    if (grepl("^I\\(", rhs_str)) {
+                        is_det <- TRUE
+                        # Extract inner expression from I(...)
+                        inner_str <- sub("^I\\((.*)\\)$", "\\1", rhs_str)
+                        det_expr <- parse(text = inner_str)[[1]]
+                    }
+                    break
+                }
+            }
+            
+            if (is_det && !is.null(det_expr)) {
+                # Compute deterministically from parent values.
+                # Use object$data as the base (contains index vectors + obs-level aligned data),
+                # then overlay any intervened/propagated values from newdata, 
+                # expanding higher-level variables to obs-level via index vectors.
+                eval_env <- as.list(object$data)  # Has idx vectors + N_obs aligned data
+                n_obs_full <- object$data$N_obs %||% length(object$data$Abundance)
+
+                for (pv in all.vars(det_expr)) {
+                    if (pv %in% names(newdata)) {
+                        pv_val <- newdata[[pv]]
+                        # Handle matrix (ndraws x N_level) from upstream intervention
+                        if (is.matrix(pv_val)) {
+                            # Try to expand via index vector if not at obs level
+                            pv_len <- ncol(pv_val)
+                            if (!is.null(n_obs_full) && pv_len != n_obs_full) {
+                                # Find matching index vector
+                                for (idx_nm in names(object$data)) {
+                                    if (grepl("_idx_obs$", idx_nm)) {
+                                        idx_vec <- object$data[[idx_nm]]
+                                        if (length(unique(idx_vec)) == pv_len || max(idx_vec) == pv_len) {
+                                            pv_val <- pv_val[, idx_vec, drop = FALSE]
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+                            eval_env[[pv]] <- pv_val
+                        } else if (is.numeric(pv_val)) {
+                            # Vector: expand if not obs-level
+                            if (!is.null(n_obs_full) && length(pv_val) != n_obs_full) {
+                                for (idx_nm in names(object$data)) {
+                                    if (grepl("_idx_obs$", idx_nm)) {
+                                        idx_vec <- object$data[[idx_nm]]
+                                        if (length(unique(idx_vec)) == length(pv_val) || max(idx_vec) == length(pv_val)) {
+                                            pv_val <- pv_val[idx_vec]
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+                            eval_env[[pv]] <- pv_val
+                        }
+                    }
+                }
+
+                val <- tryCatch(eval(det_expr, envir = eval_env), error = function(e) NULL)
+                if (!is.null(val)) {
+                    newdata[[var]] <- val
+                    results[[var]] <- val
+                }
+            } else {
+                # Predict it using current upstream newdata
+                pred <- posterior_predict(object, resp = var, newdata = newdata, ndraws = ndraws, re_formula = re_formula)
+                newdata[[var]] <- pred
+                results[[var]] <- pred
+            }
         }
         # If it's neither intervened nor endogenous, it's a root node, keep original values.
     }

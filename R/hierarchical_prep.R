@@ -54,6 +54,14 @@ prepare_hierarchical_jags_data <- function(hierarchical_info, vars_needed) {
             }
 
             if (!v %in% names(df)) {
+                # Skip if variable is latent or deterministic (internally generated)
+                is_virtual <- v %in% hierarchical_info$latent_vars || 
+                             v %in% hierarchical_info$deterministic_vars
+                             
+                if (!is.null(is_virtual) && any(is_virtual)) {
+                    next
+                }
+                
                 # Only error if it was EXPECTED here (i.e. this IS the assigned level)
                 # If unassigned (e.g. sex_m), we expect it where found.
                 if (!is.null(v_level) && v_level == lvl_name) {

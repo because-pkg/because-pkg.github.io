@@ -632,14 +632,27 @@ because <- function(
       
       # Handle alias
       if (is.null(multiscale) && !is.null(hierarchy)) multiscale <- hierarchy
-      
+
+      # [AUTO-DETECTION] Identify deterministic responses (LHS of I() equations)
+      # Must happen BEFORE validation so the validator can skip them.
+      det_responses <- character(0)
+      for (eq in equations) {
+          raw_eq <- formula(eq)
+          if (length(raw_eq) >= 3) {
+              resp <- as.character(raw_eq[[2]])
+              rhs_str <- deparse(raw_eq[[3]])
+              if (grepl("^I\\(", rhs_str)) det_responses <- c(det_responses, resp)
+          }
+      }
+
       validate_hierarchical_data(
         data,
         levels,
         multiscale,
         link_vars,
         latent_vars = latent,
-        equations = equations
+        equations = equations,
+        deterministic_vars = det_responses
       )
       # Try to infer hierarchy from random effects if still not set
       if (is.null(multiscale)) {
@@ -654,12 +667,15 @@ because <- function(
         }
       }
 
+
       # Store multiscale info for later use
       hierarchical_info <- list(
         data = data,
         levels = levels,
         hierarchy = multiscale,
-        link_vars = link_vars
+        link_vars = link_vars,
+        latent_vars = latent,
+        deterministic_vars = det_responses # [NEW] Track deterministic responses
       )
 
       # Internal: Inject structural metadata if provided in sub-calls (e.g. from d-sep tests)
@@ -3066,7 +3082,7 @@ because <- function(
     message("---------------------------------------")
   }
 
-  if (!quiet) {
+  if (verbose) {
     message("Generated JAGS model:\n", model_string)
   }
 
