@@ -1820,8 +1820,24 @@ because <- function(
   predictor_vars_with_na <- character(0)
 
   for (var in all_vars) {
-    if (var %in% names(data)) {
-      var_data <- data[[var]]
+    # [MULTISCALE FIX] Check inside list of datasets if data is multiscale
+    var_data <- if (var %in% names(data)) {
+      data[[var]]
+    } else if (is.list(data) && !is.data.frame(data)) {
+      # Search through levels to find the variable
+      found_val <- NULL
+      for (lvl_name in names(data)) {
+        if (is.data.frame(data[[lvl_name]]) && var %in% colnames(data[[lvl_name]])) {
+          found_val <- data[[lvl_name]][[var]]
+          break
+        }
+      }
+      found_val
+    } else {
+      NULL
+    }
+
+    if (!is.null(var_data)) {
       if (
         !is.matrix(var_data) && any(is.na(var_data)) && !all(is.na(var_data))
       ) {
@@ -4601,6 +4617,7 @@ run_single_dsep_test_v2 <- function(
     hierarchy = sub_multiscale,
     multiscale = sub_multiscale,
     link_vars = sub_link_vars,
+    hierarchical_info = hierarchical_info,
     structure_multi = hierarchical_info$structure_multi,
     structure_levels = hierarchical_info$structure_levels,
     id_col = id_col,
