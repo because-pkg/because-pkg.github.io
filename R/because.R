@@ -1499,7 +1499,7 @@ because <- function(
     # Use S3 Generic for Processing
     for (s_name in structure_names) {
       structure_obj <- structures[[s_name]]
-      prep_res <- prepare_structure_data(structure_obj, data = data, optimize = TRUE, quiet = quiet)
+      prep_res <- prepare_structure_data(structure_obj, data = data, optimize = TRUE, quiet = quiet, engine = engine)
 
       if (!is.null(prep_res$data_list)) {
         for (d_name in names(prep_res$data_list)) {
@@ -3454,9 +3454,21 @@ because <- function(
         nimble_string <- sub("^\\s*model\\s*\\{", "{", nimble_string)
         nimble_code <- parse(text = nimble_string)[[1]]
 
+        nimble_constants <- data
+        nimble_data <- list()
+        if (!is.null(data[["L_multiPhylo"]])) {
+            nimble_data[["L_multiPhylo"]] <- data[["L_multiPhylo"]]
+            nimble_constants[["L_multiPhylo"]] <- NULL
+        }
+        if (!is.null(data[["Prec_multiPhylo"]])) {
+            nimble_data[["Prec_multiPhylo"]] <- data[["Prec_multiPhylo"]]
+            nimble_constants[["Prec_multiPhylo"]] <- NULL
+        }
+
         m_obj <- nimble::nimbleModel(
           code = nimble_code,
-          constants = data,
+          constants = nimble_constants,
+          data = nimble_data,
           inits = nimble_inits
         )
         
@@ -3643,9 +3655,21 @@ because <- function(
           suppressPackageStartupMessages(attachNamespace("nimble"))
         }
 
+        nimble_constants <- data
+        nimble_data <- list()
+        if (!is.null(data[["L_multiPhylo"]])) {
+            nimble_data[["L_multiPhylo"]] <- data[["L_multiPhylo"]]
+            nimble_constants[["L_multiPhylo"]] <- NULL
+        }
+        if (!is.null(data[["Prec_multiPhylo"]])) {
+            nimble_data[["Prec_multiPhylo"]] <- data[["Prec_multiPhylo"]]
+            nimble_constants[["Prec_multiPhylo"]] <- NULL
+        }
+
         worker_model <- nimble::nimbleModel(
           code = nimble_code,
-          constants = data,
+          constants = nimble_constants,
+          data = nimble_data,
           inits = curr_inits
         )
 
