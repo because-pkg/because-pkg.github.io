@@ -823,7 +823,7 @@ dsep_with_latents <- function(
 }
 
 # Helper to format a d-sep test for printing
-format_dsep_test <- function(test) {
+format_dsep_test <- function(test, random_terms = list()) {
   # Extract response and test variable
   resp <- as.character(test)[2]
   test_var <- attr(test, "test_var")
