@@ -351,13 +351,22 @@ dsep_standard <- function(
   # Use dagitty to get the correct d-separation basis set
   dag_str <- dag_matrix_to_dagitty(dag)
   d_obj <- dagitty::dagitty(dag_str)
-  ici <- dagitty::impliedConditionalIndependencies(d_obj)
+  ici <- dagitty::impliedConditionalIndependencies(d_obj, type = "basis.set")
   
-  # Convert dagitty output to the format expected by mag_basis_to_formulas
-  basis <- lapply(ici, function(x) {
-    c(as.character(x$X), as.character(x$Y), as.character(x$Z))
-  })
-
+  # Convert dagitty output to the pairwise format expected by mag_basis_to_formulas
+  # dagitty's basis.set can return multivariate tests (e.g. Y = c("A", "B"))
+  basis <- list()
+  if (length(ici) > 0) {
+    for (i in seq_along(ici)) {
+      x <- ici[[i]]
+      z_vars <- as.character(x$Z)
+      for (xi in as.character(x$X)) {
+        for (yi in as.character(x$Y)) {
+          basis[[length(basis) + 1]] <- c(xi, yi, z_vars)
+        }
+      }
+    }
+  }
   # Build combined exclusion list:
   #   1. Deterministic interaction/I() nodes from extract_deterministic_terms.
   #   2. Poly term internal names (e.g. age_pow2) — needed when because() has
@@ -590,10 +599,19 @@ dsep_with_latents <- function(
     }
   }
   
-  ici <- dagitty::impliedConditionalIndependencies(d_obj)
-  basis <- lapply(ici, function(x) {
-    c(as.character(x$X), as.character(x$Y), as.character(x$Z))
-  })
+  ici <- dagitty::impliedConditionalIndependencies(d_obj, type = "basis.set")
+  basis <- list()
+  if (length(ici) > 0) {
+    for (i in seq_along(ici)) {
+      x <- ici[[i]]
+      z_vars <- as.character(x$Z)
+      for (xi in as.character(x$X)) {
+        for (yi in as.character(x$Y)) {
+          basis[[length(basis) + 1]] <- c(xi, yi, z_vars)
+        }
+      }
+    }
+  }
 
   # Build combined exclusion list (same logic as dsep_standard)
   excl_names <- unique(c(
