@@ -22,6 +22,7 @@ because(
   quiet = FALSE,
   verbose = FALSE,
   dsep = FALSE,
+  dsep_max_obs = 10000,
   variability = NULL,
   family = NULL,
   distribution = NULL,
@@ -85,6 +86,11 @@ for modeling correlated residuals.}
 
 \item{dsep}{Logical; if \code{TRUE}, performs d-separation tests to evaluate the global
 fit of the DAG against the data. Highly recommended for causal validation.}
+
+\item{dsep_max_obs}{(Diagnostic Optimization) Maximum number of observations used
+for any single d-separation test (default = 10,000). For massive datasets,
+this provides a significant speedup without losing structural diagnostic
+power. Set to \code{Inf} to disable subsampling.}
 
 \item{variability}{Optional named character vector specifying the type of residual variance (e.g., "fixed", "random").}
 

@@ -10,7 +10,8 @@ validate_hierarchical_data(
   hierarchy,
   link_vars,
   latent_vars = NULL,
-  equations = NULL
+  equations = NULL,
+  deterministic_vars = NULL
 )
 }
 \arguments{

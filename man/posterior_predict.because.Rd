@@ -4,7 +4,14 @@
 \alias{posterior_predict.because}
 \title{Generate Posterior Predictive Draws for Because Models}
 \usage{
-\method{posterior_predict}{because}(object, resp = NULL, ndraws = NULL, re_formula = NULL, ...)
+\method{posterior_predict}{because}(
+  object,
+  resp = NULL,
+  newdata = NULL,
+  ndraws = NULL,
+  re_formula = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{A \code{because} fit object.}

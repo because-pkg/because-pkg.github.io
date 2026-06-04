@@ -35,7 +35,17 @@ summary.because <- function(
     ...
 ) {
     # If this was a d-sep run, we want to format the output specifically
-    if (!is.null(object$dsep) && object$dsep) {
+    if (!is.null(object$dsep) && (isTRUE(object$dsep) || is.list(object$dsep))) {
+        # Check if dsep results were pre-computed by a backend engine (e.g., numpyro)
+        if (is.list(object$dsep) && !is.null(object$dsep$results)) {
+            out <- list(
+                type = "dsep",
+                results = object$dsep$results
+            )
+            class(out) <- "summary.because"
+            return(out)
+        }
+        
         tests <- object$dsep_tests
         map <- object$parameter_map
         dsep_results <- object$dsep_results

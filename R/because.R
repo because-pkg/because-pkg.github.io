@@ -345,7 +345,17 @@ because <- function(
     equations <- list(equations)
   }
 
-  engine <- match.arg(tolower(engine), c("jags", "nimble"))
+  engine <- match.arg(tolower(engine), c("jags", "nimble", "numpyro"))
+  if (engine == "numpyro") {
+    if (!requireNamespace("reticulate", quietly = TRUE)) {
+      stop("The 'reticulate' package is required when engine = 'numpyro'.")
+    }
+    tryCatch({
+      because_py <- reticulate::import("because.api")
+    }, error = function(e) {
+      stop("Failed to import python module 'because.api'. Ensure because_py is installed in the current reticulate environment.")
+    })
+  }
 
   # --- Robust Parameter Initialization (Handle NULL inputs from recursive calls) ---
   if (is.null(n.chains)) n.chains <- 3
@@ -2151,6 +2161,47 @@ because <- function(
   induced_cors <- NULL
 
   if (dsep) {
+    if (engine == "numpyro") {
+      eq_strings <- sapply(equations, function(eq) paste(deparse(eq), collapse=" "))
+      flat_data <- flatten_for_python(data)
+      py_result <- because_py$fit(
+        equations = eq_strings,
+        data = flat_data,
+        family = family,
+        latent = latent,
+        dsep = TRUE,
+        dsep_only = TRUE,
+        calculate_waic = FALSE,
+        num_samples = as.integer(n.iter - n.burnin),
+        num_warmup = as.integer(n.burnin),
+        num_chains = as.integer(n.chains),
+        dsep_max_obs = as.integer(dsep_max_obs),
+        quiet = quiet
+      )
+      dsep_df <- NULL
+      if (!is.null(py_result$dsep_results)) {
+        dsep_df <- do.call(rbind, lapply(py_result$dsep_results, function(x) as.data.frame(x, stringsAsFactors = FALSE)))
+        if (nrow(dsep_df) > 0) {
+          names(dsep_df)[names(dsep_df) == "claim"] <- "Test"
+          names(dsep_df)[names(dsep_df) == "coefficient"] <- "Parameter"
+          names(dsep_df)[names(dsep_df) == "mean"] <- "Estimate"
+          names(dsep_df)[names(dsep_df) == "ci_2.5"] <- "LowerCI"
+          names(dsep_df)[names(dsep_df) == "ci_97.5"] <- "UpperCI"
+          dsep_df$Rhat <- NA; dsep_df$n.eff <- NA; dsep_df$Scale <- NA
+        }
+      }
+      result <- list(
+        dsep = if (!is.null(dsep_df)) list(results = dsep_df) else NULL,
+        equations = equations,
+        data = data,
+        original_data = original_data,
+        family = family,
+        categorical_vars = attr(data, "categorical_vars"),
+        poly_terms = all_poly_terms
+      )
+      class(result) <- "because"
+      return(result)
+    }
     # Extension Hook: Remove specialized variables from potential latents
 
     # Force WAIC and DIC off for d-separation testing (not needed for conditional independence tests)
@@ -3058,6 +3109,67 @@ because <- function(
 
   model_string <- model_output$model
   parameter_map <- model_output$parameter_map
+  if (engine == "numpyro") {
+    eq_strings <- sapply(equations, function(eq) paste(deparse(eq), collapse=" "))
+    flat_data <- flatten_for_python(data)
+    py_result <- because_py$fit(
+      equations = eq_strings,
+      data = flat_data,
+      family = family,
+      latent = latent,
+      dsep = FALSE,
+      dsep_only = FALSE,
+      calculate_waic = WAIC,
+      num_samples = as.integer(n.iter - n.burnin),
+      num_warmup = as.integer(n.burnin),
+      num_chains = as.integer(n.chains),
+      dsep_max_obs = as.integer(dsep_max_obs),
+      quiet = quiet
+    )
+    
+    # Convert numpyro group_by_chain samples into an mcmc.list
+    raw_samples <- py_result$samples
+    num_chains <- dim(raw_samples[[1]])[1]
+    num_iters <- dim(raw_samples[[1]])[2]
+    
+    chain_list <- list()
+    for (ch in 1:num_chains) {
+      chain_mat <- NULL
+      for (param_name in names(raw_samples)) {
+        param_data <- raw_samples[[param_name]]
+        if (length(dim(param_data)) == 2) {
+          col <- matrix(param_data[ch, ], ncol = 1)
+          colnames(col) <- param_name
+          chain_mat <- if (is.null(chain_mat)) col else cbind(chain_mat, col)
+        } else if (length(dim(param_data)) == 3) {
+          param_len <- dim(param_data)[3]
+          cols <- matrix(param_data[ch, , ], ncol = param_len)
+          colnames(cols) <- paste0(param_name, "[", 1:param_len, "]")
+          chain_mat <- if (is.null(chain_mat)) cols else cbind(chain_mat, cols)
+        }
+      }
+      chain_list[[ch]] <- coda::mcmc(chain_mat)
+    }
+    mcmc_samples <- coda::mcmc.list(chain_list)
+    
+    result <- list(
+      equations = equations,
+      model = model_string,
+      parameter_map = parameter_map,
+      samples = mcmc_samples,
+      data = data,
+      dsep = NULL,
+      priors = priors,
+      hierarchical_info = if (is_hierarchical) hierarchical_info else NULL,
+      engine = engine,
+      quiet = quiet
+    )
+    if (WAIC && !is.null(py_result$waic)) {
+       result$WAIC <- py_result$waic
+    }
+    class(result) <- "because"
+    return(result)
+  }
 
 
   # Prune unused tactical variables to avoid JAGS warnings
