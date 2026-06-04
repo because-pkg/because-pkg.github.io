@@ -1,3 +1,6 @@
+# Internal helper %||%
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+
 #' Plot DAG from Equations or Fitted Model
 #'
 #' Visualizes the Directed Acyclic Graph (DAG) implied by a set of equations
@@ -95,10 +98,7 @@
 #' )
 #' plot_dag(eq, coords = my_coords)
 #' }
-#'
-# Internal helper %||%
-`%||%` <- function(a, b) if (!is.null(a)) a else b
-
+#' @export
 plot_dag <- function(
     x,
     layout = "kk",
