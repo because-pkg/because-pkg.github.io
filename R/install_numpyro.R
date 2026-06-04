@@ -4,7 +4,9 @@
 #' and the companion Python package (`because_py`) required to run the `numpyro` engine in `because()`.
 #'
 #' @param envname The name, or full path, of the Python environment in which the Python packages 
-#'   are to be installed. Defaults to `"r-reticulate"`.
+#'   are to be installed. If \code{NULL} (the default), it automatically detects whether RStudio 
+#'   or \code{reticulate} has forced a specific environment (e.g. via \code{VIRTUAL_ENV}) and 
+#'   uses that. Otherwise, it defaults to `"r-reticulate"`.
 #' @param method Installation method. By default, `"auto"` automatically finds a method that will work 
 #'   in the local environment. Change the default to force a specific installation method 
 #'   (e.g., `"virtualenv"`, `"conda"`, or `"pip"`).
@@ -13,13 +15,25 @@
 #' @param ... Additional arguments passed to \code{reticulate::py_install()}.
 #'
 #' @export
-install_because_numpyro <- function(envname = "r-reticulate", 
+install_because_numpyro <- function(envname = NULL, 
                                     method = "auto",
                                     because_py_url = "git+https://github.com/because-pkg/because_py.git",
                                     ...) {
   
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     stop("The 'reticulate' package is required to install Python dependencies. Please install it with: install.packages('reticulate')")
+  }
+  
+  if (is.null(envname)) {
+    if (Sys.getenv("VIRTUAL_ENV") != "") {
+      envname <- Sys.getenv("VIRTUAL_ENV")
+    } else if (Sys.getenv("RETICULATE_PYTHON") != "") {
+      envname <- dirname(dirname(Sys.getenv("RETICULATE_PYTHON")))
+    } else if (reticulate::py_available(initialize = FALSE)) {
+      envname <- dirname(dirname(reticulate::py_config()$python))
+    } else {
+      envname <- "r-reticulate"
+    }
   }
   
   message("Preparing to install Python dependencies for the 'because' numpyro engine...")

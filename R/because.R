@@ -359,7 +359,11 @@ because <- function(
     tryCatch({
       because_py <- reticulate::import("because.api")
     }, error = function(e) {
-      stop("Failed to import python module 'because.api'. Ensure because_py is installed in the current reticulate environment (default is 'r-reticulate'). Try running: install_because_numpyro()")
+      current_env <- "unknown"
+      tryCatch({
+        current_env <- reticulate::py_config()$python
+      }, error = function(e) {})
+      stop(sprintf("Failed to import python module 'because.api'. \nPython is currently running from: %s\nEnsure because_py is installed in this exact environment. Try running: install_because_numpyro()", current_env))
     })
   }
 
