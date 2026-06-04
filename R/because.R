@@ -161,7 +161,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @title Run a Bayesian Structural Equation Model (Because)
 #'
 #' @description
-#' Fits a Bayesian Structural Equation Model (SEM) using JAGS or NIMBLE.
+#' Fits a Bayesian Structural Equation Model (SEM) using JAGS, NIMBLE, or NumPyro.
 #' Supports multiscale (hierarchical) data, custom covariance structures
 #' (phylogenetic, spatial, etc.), missing data imputation, and d-separation
 #' global fit testing.
@@ -192,7 +192,9 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #'   If omitted, `because` will attempt to auto-detect levels based on column availability.
 #' @param link_vars (Hierarchical) A named character vector specifying the columns used to 
 #'   link data frames across levels (e.g., `c(site = "SiteID")`).
-#' @param engine Bayesian backend: `"jags"` (default) or `"nimble"`. 
+#' @param engine Bayesian backend: `"jags"` (default), `"nimble"`, or `"numpyro"`. 
+#'   Note: For Gaussian models, JAGS/NIMBLE use a legacy `dgamma(0.01, 0.01)` prior on precision, 
+#'   while NumPyro uses a modern robust `HalfCauchy(5)` prior on the standard deviation.
 #' @param n.iter Total MCMC iterations per chain (default = 12500).
 #' @param n.burnin Number of burn-in iterations (default = 20% of `n.iter`).
 #' @param n.chains Number of independent MCMC chains (default = 3).

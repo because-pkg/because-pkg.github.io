@@ -5,7 +5,7 @@
 \title{Install NumPyro and Python dependencies for because}
 \usage{
 install_because_numpyro(
-  envname = "r-reticulate",
+  envname = NULL,
   method = "auto",
   because_py_url = "git+https://github.com/because-pkg/because_py.git",
   ...
@@ -13,7 +13,9 @@ install_because_numpyro(
 }
 \arguments{
 \item{envname}{The name, or full path, of the Python environment in which the Python packages
-are to be installed. Defaults to \code{"r-reticulate"}.}
+are to be installed. If \code{NULL} (the default), it automatically detects whether RStudio
+or \code{reticulate} has forced a specific environment (e.g. via \code{VIRTUAL_ENV}) and
+uses that. Otherwise, it defaults to \code{"r-reticulate"}.}
 
 \item{method}{Installation method. By default, \code{"auto"} automatically finds a method that will work
 in the local environment. Change the default to force a specific installation method

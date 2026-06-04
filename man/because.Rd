@@ -60,7 +60,9 @@ this must be a named list of data frames (one per scale/level).}
 \item{structure}{Optional covariance structure (e.g., a phylogenetic tree or spatial matrix)
 for modeling correlated residuals.}
 
-\item{engine}{Bayesian backend: \code{"jags"} (default) or \code{"nimble"}.}
+\item{engine}{Bayesian backend: \code{"jags"} (default), \code{"nimble"}, or \code{"numpyro"}.
+Note: For Gaussian models, JAGS/NIMBLE use a legacy \code{dgamma(0.01, 0.01)} prior on precision,
+while NumPyro uses a modern robust \code{HalfCauchy(5)} prior on the standard deviation.}
 
 \item{monitor}{Monitoring mode (e.g. "interpretable", "all", or "minimal").}
 
@@ -156,7 +158,7 @@ An object of class \code{"because"} containing:
 \item{WAIC}{Watanabe-Akaike Information Criterion (if WAIC=TRUE).}
 }
 \description{
-Fits a Bayesian Structural Equation Model (SEM) using JAGS or NIMBLE.
+Fits a Bayesian Structural Equation Model (SEM) using JAGS, NIMBLE, or NumPyro.
 Supports multiscale (hierarchical) data, custom covariance structures
 (phylogenetic, spatial, etc.), missing data imputation, and d-separation
 global fit testing.
