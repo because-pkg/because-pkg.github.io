@@ -2185,6 +2185,8 @@ because <- function(
         num_samples = as.integer(n.iter - n.burnin),
         num_warmup = as.integer(n.burnin),
         num_chains = as.integer(n.chains),
+        thinning = as.integer(n.thin),
+        n_cores = as.integer(if (parallel) min(n.cores, n.chains) else 1),
         dsep_max_obs = as.integer(dsep_max_obs),
         quiet = quiet
       )
@@ -2197,7 +2199,13 @@ because <- function(
           names(dsep_df)[names(dsep_df) == "mean"] <- "Estimate"
           names(dsep_df)[names(dsep_df) == "ci_2.5"] <- "LowerCI"
           names(dsep_df)[names(dsep_df) == "ci_97.5"] <- "UpperCI"
-          dsep_df$Rhat <- NA; dsep_df$n.eff <- NA; dsep_df$Scale <- NA
+          names(dsep_df)[names(dsep_df) == "rhat"] <- "Rhat"
+          names(dsep_df)[names(dsep_df) == "n_eff"] <- "n.eff"
+          dsep_df$Scale <- NA
+          
+          # Remove internal Python keys that JAGS doesn't output
+          dsep_df$is_independent <- NULL
+          dsep_df$equation <- NULL
         }
       }
       result <- list(
@@ -3133,6 +3141,8 @@ because <- function(
       num_samples = as.integer(n.iter - n.burnin),
       num_warmup = as.integer(n.burnin),
       num_chains = as.integer(n.chains),
+      thinning = as.integer(n.thin),
+      n_cores = as.integer(if (parallel) min(n.cores, n.chains) else 1),
       dsep_max_obs = as.integer(dsep_max_obs),
       quiet = quiet
     )
@@ -3175,7 +3185,22 @@ because <- function(
       quiet = quiet
     )
     if (WAIC && !is.null(py_result$waic)) {
-       result$WAIC <- py_result$waic
+      waic_df <- data.frame(
+        Estimate = c(py_result$waic$elpd_waic$Estimate, py_result$waic$p_waic$Estimate, py_result$waic$waic$Estimate),
+        SE = c(py_result$waic$elpd_waic$SE, py_result$waic$p_waic$SE, py_result$waic$waic$SE),
+        row.names = c("elpd_waic", "p_waic", "waic")
+      )
+      
+      attr(waic_df, "pointwise") <- data.frame(
+        elpd_waic = as.numeric(py_result$waic$pointwise$elpd_waic_i),
+        p_waic = as.numeric(py_result$waic$pointwise$p_waic_i),
+        waic = as.numeric(py_result$waic$pointwise$waic_i)
+      )
+      
+      attr(waic_df, "dims") <- c(n_obs = py_result$waic$n_obs, n_samples = py_result$waic$n_samples)
+      class(waic_df) <- c("because_waic", "data.frame")
+      
+      result$WAIC <- waic_df
     }
     class(result) <- "because"
     return(result)
