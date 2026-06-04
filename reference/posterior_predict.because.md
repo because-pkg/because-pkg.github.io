@@ -8,7 +8,14 @@ posterior predictive checks (PPC) and model validation.
 
 ``` r
 # S3 method for class 'because'
-posterior_predict(object, resp = NULL, ndraws = NULL, re_formula = NULL, ...)
+posterior_predict(
+  object,
+  resp = NULL,
+  newdata = NULL,
+  ndraws = NULL,
+  re_formula = NULL,
+  ...
+)
 ```
 
 ## Arguments

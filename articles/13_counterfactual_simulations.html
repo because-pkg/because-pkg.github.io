@@ -98,7 +98,7 @@ you are essentially forcing that variable to take a specific value,
 “severing” it from its natural causes. The effect of this intervention
 then ripples downstream through the causal graph.</p>
 <p>The <code>because</code> package natively supports Bayesian
-counterfactual simulations via the <code>do()</code> operator. Because
+counterfactual simulations via the <code><a href="../reference/do.html">do()</a></code> operator. Because
 the engine understands the structural equations and the topology of your
 DAG, it automatically propagates interventions correctly while carrying
 forward the full posterior uncertainty of the model.</p>
@@ -147,7 +147,7 @@ physiological effect of Temperature on Abundance.</p>
 <div class="section level2">
 <h2 id="the-do-operator">The <code>do()</code> Operator<a class="anchor" aria-label="anchor" href="#the-do-operator"></a>
 </h2>
-<p>The <code>do()</code> function takes a fitted <code>because</code>
+<p>The <code><a href="../reference/do.html">do()</a></code> function takes a fitted <code>because</code>
 model and a set of targeted interventions. It returns a
 <code>because_counterfactual</code> object containing matrices of
 simulated posterior draws for every variable in the graph.</p>
@@ -160,7 +160,7 @@ across all observations. Because we scaled our data,
 standard deviations above the historical mean for every single site.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Force Temperature to +2 SD at all sites</span></span>
-<span><span class="va">res_atomic</span> <span class="op">&lt;-</span> <span class="fu">do</span><span class="op">(</span><span class="va">fit</span>, Temp <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">res_atomic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/do.html">do</a></span><span class="op">(</span><span class="va">fit</span>, Temp <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Summarize the counterfactual predictions globally</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">res_atomic</span><span class="op">)</span></span>
@@ -187,7 +187,7 @@ where <code>.</code> represents the historical/natural values of the
 variable.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Increase historical temperature by 1 standard deviation at every site</span></span>
-<span><span class="va">res_shift</span> <span class="op">&lt;-</span> <span class="fu">do</span><span class="op">(</span><span class="va">fit</span>, Temp <span class="op">=</span> <span class="op">~</span> <span class="va">.</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">res_shift</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/do.html">do</a></span><span class="op">(</span><span class="va">fit</span>, Temp <span class="op">=</span> <span class="op">~</span> <span class="va">.</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">res_shift</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Counterfactual Simulation Summary</span></span>
 <span><span class="co">#&gt; ---------------------------------</span></span>
@@ -209,14 +209,14 @@ data means adding 1 standard deviation, not 1 real-world unit.</p>
 <p>If you assigned your scaled data safely
 (<code>df$Temp &lt;- scale(raw_Temp)</code>), <code>because</code>
 secretly saved the original raw mean and standard deviation. By using
-<code>raw_scale = TRUE</code>, you can tell the <code>do()</code>
+<code>raw_scale = TRUE</code>, you can tell the <code><a href="../reference/do.html">do()</a></code>
 operator to temporarily unscale the data, apply your intervention on the
 <strong>raw biological metric</strong> (like +2°C), and then re-scale it
 back before running the simulation!</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Increase the RAW temperature by exactly 2 degrees Celsius</span></span>
 <span><span class="co"># (The model handles the standard deviation math for you)</span></span>
-<span><span class="va">res_raw</span> <span class="op">&lt;-</span> <span class="fu">do</span><span class="op">(</span><span class="va">fit</span>, Temp <span class="op">=</span> <span class="op">~</span> <span class="va">.</span> <span class="op">+</span> <span class="fl">2</span>, raw_scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">res_raw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/do.html">do</a></span><span class="op">(</span><span class="va">fit</span>, Temp <span class="op">=</span> <span class="op">~</span> <span class="va">.</span> <span class="op">+</span> <span class="fl">2</span>, raw_scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">res_raw</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Counterfactual Simulation Summary</span></span>
@@ -249,7 +249,7 @@ automatically rescale it back before simulation.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Increase the RAW historical temperature by 10% </span></span>
 <span><span class="co"># (e.g., if it was 20C, it becomes 22C)</span></span>
-<span><span class="va">res_perc</span> <span class="op">&lt;-</span> <span class="fu">do</span><span class="op">(</span><span class="va">fit</span>, Temp <span class="op">=</span> <span class="st">"+10%"</span>, raw_scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">res_perc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/do.html">do</a></span><span class="op">(</span><span class="va">fit</span>, Temp <span class="op">=</span> <span class="st">"+10%"</span>, raw_scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">res_perc</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Counterfactual Simulation Summary</span></span>
 <span><span class="co">#&gt; ---------------------------------</span></span>
@@ -273,7 +273,7 @@ into your intervention using standard R random number generators. Use
 points.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Shift temperature by +1 SD, but add observation noise to the intervention</span></span>
-<span><span class="va">res_stoch</span> <span class="op">&lt;-</span> <span class="fu">do</span><span class="op">(</span><span class="va">fit</span>, Temp <span class="op">=</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, mean <span class="op">=</span> <span class="va">.</span> <span class="op">+</span> <span class="fl">1</span>, sd <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">res_stoch</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/do.html">do</a></span><span class="op">(</span><span class="va">fit</span>, Temp <span class="op">=</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, mean <span class="op">=</span> <span class="va">.</span> <span class="op">+</span> <span class="fl">1</span>, sd <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">res_stoch</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Counterfactual Simulation Summary</span></span>
 <span><span class="co">#&gt; ---------------------------------</span></span>
@@ -293,7 +293,7 @@ points.</p>
 <strong>global expected value</strong> (averaged across all sites). But
 often, you want to map or analyze how specific sites responded to the
 intervention.</p>
-<p>The <code>do()</code> operator returns the full
+<p>The <code><a href="../reference/do.html">do()</a></code> operator returns the full
 <code>[ndraws x N_obs]</code> matrices.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Extract the posterior matrix for Abundance under the raw shift</span></span>

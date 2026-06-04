@@ -13,10 +13,12 @@ a specific value, “severing” it from its natural causes. The effect of
 this intervention then ripples downstream through the causal graph.
 
 The `because` package natively supports Bayesian counterfactual
-simulations via the `do()` operator. Because the engine understands the
-structural equations and the topology of your DAG, it automatically
-propagates interventions correctly while carrying forward the full
-posterior uncertainty of the model.
+simulations via the
+[`do()`](https://because-pkg.github.io/because/reference/do.md)
+operator. Because the engine understands the structural equations and
+the topology of your DAG, it automatically propagates interventions
+correctly while carrying forward the full posterior uncertainty of the
+model.
 
 ``` r
 
@@ -69,7 +71,8 @@ fit <- because(eqs, data = df,
 
 ## The `do()` Operator
 
-The `do()` function takes a fitted `because` model and a set of targeted
+The [`do()`](https://because-pkg.github.io/because/reference/do.md)
+function takes a fitted `because` model and a set of targeted
 interventions. It returns a `because_counterfactual` object containing
 matrices of simulated posterior draws for every variable in the graph.
 
@@ -132,8 +135,9 @@ standard deviation, not 1 real-world unit.
 
 If you assigned your scaled data safely (`df$Temp <- scale(raw_Temp)`),
 `because` secretly saved the original raw mean and standard deviation.
-By using `raw_scale = TRUE`, you can tell the `do()` operator to
-temporarily unscale the data, apply your intervention on the **raw
+By using `raw_scale = TRUE`, you can tell the
+[`do()`](https://because-pkg.github.io/because/reference/do.md) operator
+to temporarily unscale the data, apply your intervention on the **raw
 biological metric** (like +2°C), and then re-scale it back before
 running the simulation!
 
@@ -222,7 +226,8 @@ for looking at the **global expected value** (averaged across all
 sites). But often, you want to map or analyze how specific sites
 responded to the intervention.
 
-The `do()` operator returns the full `[ndraws x N_obs]` matrices.
+The [`do()`](https://because-pkg.github.io/because/reference/do.md)
+operator returns the full `[ndraws x N_obs]` matrices.
 
 ``` r
 

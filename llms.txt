@@ -123,20 +123,27 @@ Ubuntu/Debian) or equivalent development tools for your distribution. -
   : Create a Custom Covariance Structure for use with because
 - [`because_waic()`](https://because-pkg.github.io/because/reference/because_waic.md)
   : Calculate WAIC with Standard Errors for a Because Model
+- [`do()`](https://because-pkg.github.io/because/reference/do.md)
+  [`because_do()`](https://because-pkg.github.io/because/reference/do.md)
+  : Causal Interventions for Structural Equation Models
+- [`do(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/do.because.md)
+  : Causal Interventions for Because Models
 - [`extract_imputed()`](https://because-pkg.github.io/because/reference/extract_imputed.md)
   : Extract Imputed Values for Missing Data
 - [`.nimble_fn_cache`](https://because-pkg.github.io/because/reference/family_definitions.md)
   : Family Definition Generics and Default Methods
 - [`get_family()`](https://because-pkg.github.io/because/reference/get_family.md)
   : Create a family object for a given distribution
+- [`` `%||%` ``](https://because-pkg.github.io/because/reference/grapes-or-or-grapes.md)
+  : Plot DAG from Equations or Fitted Model
+- [`install_because_numpyro()`](https://because-pkg.github.io/because/reference/install_because_numpyro.md)
+  : Install NumPyro and Python dependencies for because
 - [`marginal_effects()`](https://because-pkg.github.io/because/reference/marginal_effects.md)
   : Calculate Marginal Effects for Because Fit
 - [`plot_coef()`](https://because-pkg.github.io/because/reference/plot_coef.md)
   : Plot Path Coefficients
 - [`plot_coef(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/plot_coef.because.md)
   : Plot Path Coefficients (Caterpillar Plot)
-- [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
-  : Plot DAG from Equations or Fitted Model
 - [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md)
   : plot_dsep
 - [`plot_posterior()`](https://because-pkg.github.io/because/reference/plot_posterior.md)
@@ -153,6 +160,8 @@ Ubuntu/Debian) or equivalent development tools for your distribution. -
   : Data on Stork Populations and Human Birth Rates
 - [`summary(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/summary.because.md)
   : Summary for Because Model
+- [`summary(`*`<because_counterfactual>`*`)`](https://because-pkg.github.io/because/reference/summary.because_counterfactual.md)
+  : Summarize a Because Counterfactual Object
 
 # Articles
 

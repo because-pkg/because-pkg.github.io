@@ -82,6 +82,7 @@ global fit testing.</p>
 <span>  quiet <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  dsep <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  dsep_max_obs <span class="op">=</span> <span class="fl">10000</span>,</span>
 <span>  variability <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  family <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  distribution <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -182,6 +183,13 @@ for modeling correlated residuals.</p></dd>
 <dt id="arg-dsep">dsep<a class="anchor" aria-label="anchor" href="#arg-dsep"></a></dt>
 <dd><p>Logical; if <code>TRUE</code>, performs d-separation tests to evaluate the global
 fit of the DAG against the data. Highly recommended for causal validation.</p></dd>
+
+
+<dt id="arg-dsep-max-obs">dsep_max_obs<a class="anchor" aria-label="anchor" href="#arg-dsep-max-obs"></a></dt>
+<dd><p>(Diagnostic Optimization) Maximum number of observations used
+for any single d-separation test (default = 10,000). For massive datasets,
+this provides a significant speedup without losing structural diagnostic
+power. Set to <code>Inf</code> to disable subsampling.</p></dd>
 
 
 <dt id="arg-variability">variability<a class="anchor" aria-label="anchor" href="#arg-variability"></a></dt>
