@@ -350,10 +350,16 @@ because <- function(
     if (!requireNamespace("reticulate", quietly = TRUE)) {
       stop("The 'reticulate' package is required when engine = 'numpyro'.")
     }
+    # Automatically try to bind to the default r-reticulate virtual environment
+    # before attempting to import the module, to save the user from doing it manually.
+    tryCatch({
+      reticulate::use_virtualenv("r-reticulate", required = FALSE)
+    }, error = function(e) NULL)
+    
     tryCatch({
       because_py <- reticulate::import("because.api")
     }, error = function(e) {
-      stop("Failed to import python module 'because.api'. Ensure because_py is installed in the current reticulate environment.")
+      stop("Failed to import python module 'because.api'. Ensure because_py is installed in the current reticulate environment (default is 'r-reticulate'). Try running: install_because_numpyro()")
     })
   }
 
