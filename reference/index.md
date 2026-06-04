@@ -35,8 +35,6 @@
   : Family Definition Generics and Default Methods
 - [`get_family()`](https://because-pkg.github.io/because/reference/get_family.md)
   : Create a family object for a given distribution
-- [`` `%||%` ``](https://because-pkg.github.io/because/reference/grapes-or-or-grapes.md)
-  : Plot DAG from Equations or Fitted Model
 - [`install_because_numpyro()`](https://because-pkg.github.io/because/reference/install_because_numpyro.md)
   : Install NumPyro and Python dependencies for because
 - [`marginal_effects()`](https://because-pkg.github.io/because/reference/marginal_effects.md)
@@ -45,6 +43,8 @@
   : Plot Path Coefficients
 - [`plot_coef(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/plot_coef.because.md)
   : Plot Path Coefficients (Caterpillar Plot)
+- [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
+  : Plot DAG from Equations or Fitted Model
 - [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md)
   : plot_dsep
 - [`plot_posterior()`](https://because-pkg.github.io/because/reference/plot_posterior.md)

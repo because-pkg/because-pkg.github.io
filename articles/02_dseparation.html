@@ -79,7 +79,7 @@ Hardenberg</h4>
             
             <h4 data-toc-skip class="date">2026-06-04</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/v1.2.8/vignettes/02_dseparation.Rmd" class="external-link"><code>vignettes/02_dseparation.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/vignettes/02_dseparation.Rmd" class="external-link"><code>vignettes/02_dseparation.Rmd</code></a></small>
       <div class="d-none name"><code>02_dseparation.Rmd</code></div>
     </div>
 
@@ -199,7 +199,7 @@ variables and their causal relationships using a Directed Acyclic Graph
 <span>  <span class="va">Storks</span> <span class="op">~</span> <span class="va">Area</span>,</span>
 <span>  <span class="va">Birth</span> <span class="op">~</span> <span class="va">Area</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">plot_dag</span><span class="op">(</span><span class="va">dag_storks</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/plot_dag.html">plot_dag</a></span><span class="op">(</span><span class="va">dag_storks</span><span class="op">)</span></span></code></pre></div>
 <p><img src="figures/dag_storks.png"></p>
 <p>Directed Acyclic Graphs (DAGs) explicitly state your causal
 assumptions, and with the multiple regression above we have effectively
@@ -227,7 +227,7 @@ tutorial</a> if you want to replicate that analysis).</p>
 <span>                    <span class="va">Birth</span> <span class="op">~</span> <span class="va">Area</span>,</span>
 <span>                    <span class="va">Humans</span> <span class="op">~</span> <span class="va">Birth</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">plot_dag</span><span class="op">(</span><span class="va">dag_storks2</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/plot_dag.html">plot_dag</a></span><span class="op">(</span><span class="va">dag_storks2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="figures/dag_storks2.png"></p>
 <p>Let’s now see how to test this causal model with
 <code>because</code>. First, we have to specify the structural equations
@@ -367,7 +367,7 @@ directly).</p>
 <p>We can now use the function <code>plot_dag</code> to plot the DAG of
 the fitted model with the estimated path coefficients:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">plot_dag</span><span class="op">(</span><span class="va">fit_storks_final</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_dag.html">plot_dag</a></span><span class="op">(</span><span class="va">fit_storks_final</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="a-note-on-the-notation-used-for-the-parameter-names-in-the-summary-output">A note on the notation used for the parameter names in the summary

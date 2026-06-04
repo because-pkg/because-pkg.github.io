@@ -21,7 +21,7 @@ Edge thickness scales with the absolute effect size.
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -108,7 +108,8 @@ Any layout name accepted by <code><a href="https://ggraph.data-imaginist.com/ref
 <li><p><code>"fr"</code> — Fruchterman-Reingold spring layout.</p></li>
 <li><p><code>"nicely"</code> — automatic choice based on graph properties.</p></li>
 <li><p><code>"circle"</code> — nodes arranged in a circle.</p></li>
-</ul><p>Override node positions entirely with the <code>coords</code> argument.</p></dd>
+</ul><p>Override node positions entirely with the <code>coords</code> argument. Use <code>"multiscale"</code>
+to automatically arrange nodes in vertical tiers based on their hierarchical level.</p></dd>
 
 
 <dt id="arg-latent">latent<a class="anchor" aria-label="anchor" href="#arg-latent"></a></dt>
@@ -228,7 +229,6 @@ interaction and effect modification using DAGs.
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">plot_dag</span><span class="op">(</span><span class="va">eq</span>, coords <span class="op">=</span> <span class="va">my_coords</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
-<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

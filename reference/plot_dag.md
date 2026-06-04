@@ -61,7 +61,9 @@ plot_dag(
 
   - `"circle"` — nodes arranged in a circle.
 
-  Override node positions entirely with the `coords` argument.
+  Override node positions entirely with the `coords` argument. Use
+  `"multiscale"` to automatically arrange nodes in vertical tiers based
+  on their hierarchical level.
 
 - latent:
 

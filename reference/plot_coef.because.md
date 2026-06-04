@@ -2,9 +2,10 @@
 
 Creates a 'caterpillar plot' (point and whisker) of all path
 coefficients from a `because` model. This visualization provides a
-precise statistical complement to the `plot_dag()` overview, allowing
-for a side-by-side comparison of effect sizes and their Bayesian
-credibility intervals.
+precise statistical complement to the
+[`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
+overview, allowing for a side-by-side comparison of effect sizes and
+their Bayesian credibility intervals.
 
 ## Usage
 

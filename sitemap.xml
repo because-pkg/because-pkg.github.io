@@ -72,7 +72,6 @@
 <url><loc>https://because-pkg.github.io/because/reference/get_tree_hook.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_variability_type_hook.default.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_variability_type_hook.html</loc></url>
-<url><loc>https://because-pkg.github.io/because/reference/grapes-or-or-grapes.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/index.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/infer_variable_level.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/install_because_numpyro.html</loc></url>
@@ -98,6 +97,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/parse_hierarchy_from_random.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/plot_coef.because.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/plot_coef.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/plot_dag.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/plot_dsep.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/plot_posterior.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/posterior_predict.because.html</loc></url>
