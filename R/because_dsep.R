@@ -365,7 +365,8 @@ dsep_standard <- function(
       non_parents <- setdiff(predecessors, parents_vi)
       
       for (v_j in non_parents) {
-        basis[[length(basis) + 1]] <- c(v_i, v_j, parents_vi)
+        parents_vj <- dagitty::parents(d_obj, v_j)
+        basis[[length(basis) + 1]] <- c(v_i, v_j, unique(c(parents_vi, parents_vj)))
       }
     }
   }
@@ -615,7 +616,8 @@ dsep_with_latents <- function(
       non_parents <- setdiff(predecessors, parents_vi)
       
       for (v_j in non_parents) {
-        basis[[length(basis) + 1]] <- c(v_i, v_j, parents_vi)
+        parents_vj <- dagitty::parents(d_obj, v_j)
+        basis[[length(basis) + 1]] <- c(v_i, v_j, unique(c(parents_vi, parents_vj)))
       }
     }
   }
