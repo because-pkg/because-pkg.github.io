@@ -357,6 +357,14 @@ because <- function(
     tryCatch({
       reticulate::use_virtualenv("r-reticulate", required = FALSE)
     }, error = function(e) NULL)
+    # Set XLA device count BEFORE importing jax/because_py so that JAX picks it up
+    target_cores <- as.integer(if (parallel) min(n.cores, n.chains) else 1)
+    if (target_cores > 1) {
+      current_flags <- Sys.getenv("XLA_FLAGS")
+      if (!grepl("--xla_force_host_platform_device_count", current_flags)) {
+         Sys.setenv(XLA_FLAGS = paste0(current_flags, " --xla_force_host_platform_device_count=", target_cores))
+      }
+    }
     
     tryCatch({
       because_py <- reticulate::import("because.api")
@@ -3131,7 +3139,80 @@ because <- function(
   parameter_map <- model_output$parameter_map
   if (engine == "numpyro") {
     eq_strings <- sapply(equations, function(eq) paste(deparse(eq), collapse=" "))
+    
+    # Process structures for NumPyro
+    py_structures <- list()
+    for (s_name in names(structures)) {
+      s_obj <- structures[[s_name]]
+      
+      # Determine matrix name in the prepared data
+      custom_s_name <- get_structure_name_hook(s_obj)
+      mat_name <- if (!is.null(custom_s_name)) paste0(custom_s_name, "_", s_name) else paste0("VCV_", s_name)
+      if (is.null(data[[mat_name]]) && !is.null(data[[paste0("Prec_", s_name)]])) {
+        mat_name <- paste0("Prec_", s_name)
+      }
+      
+      if (!is.null(data[[mat_name]])) {
+        # Ask the extension package for the Python JAX code
+        py_code <- numpyro_structure_definition(s_obj, engine = "numpyro")
+        if (!is.null(py_code)) {
+          # Compile into a Python function using reticulate
+          env <- reticulate::py_run_string(py_code)
+          funcs <- names(env)
+          expected_name <- paste0(s_name, "_transform")
+          func_name <- if (expected_name %in% funcs) expected_name else funcs[!funcs %in% c("numpyro", "jnp", "jax", "dist", "np", "r")][1]
+          if (!is.null(func_name) && (func_name %in% names(env))) {
+            py_structures[[s_name]] <- list(
+              matrix = data[[mat_name]],
+              transform_func = env[[func_name]]
+            )
+          }
+        } else {
+          # Fallback to pure matrix
+          py_structures[[s_name]] <- data[[mat_name]]
+        }
+        
+        # Append + (1 | s_name) to valid endogenous equations
+        for (i in seq_along(equations)) {
+           eq <- equations[[i]]
+           response <- trimws(strsplit(deparse(eq), "~")[[1]][1])
+           
+           # Apply if dimension matches or valid level
+           is_valid <- TRUE
+           if (!is.null(hierarchical_info)) {
+               # Add proper hierarchical check here if needed in future
+               is_valid <- TRUE
+           }
+           
+           if (is_valid) {
+               eq_str <- eq_strings[i]
+               if (!grepl(paste0("\\(1\\s*\\|\\s*", s_name, "\\)"), eq_str)) {
+                   eq_strings[i] <- paste0(eq_str, " + (1|", s_name, ")")
+               }
+           }
+        }
+      }
+    }
+    
     flat_data <- flatten_for_python(data)
+    
+    # Ensure zero-indexing for Python categorical variables
+    for (s_name in names(structures)) {
+        # If indexing array is missing (e.g. 1-to-1 row mapping like JAGS), generate it!
+        if (is.null(flat_data[[s_name]])) {
+            N_val <- if (!is.null(flat_data[["N"]])) flat_data[["N"]] else length(flat_data[[1]])
+            flat_data[[s_name]] <- 0:(N_val - 1)
+        } else {
+            # In R, grouping variables start at 1. NumPyro expects 0-indexed arrays
+            if (min(flat_data[[s_name]], na.rm=TRUE) == 1) {
+                flat_data[[s_name]] <- flat_data[[s_name]] - 1
+            }
+        }
+    }
+    
+    print("FLAT DATA NAMES:")
+    print(names(flat_data))
+
     py_result <- because_py$fit(
       equations = eq_strings,
       data = flat_data,
@@ -3146,9 +3227,9 @@ because <- function(
       thinning = as.integer(n.thin),
       n_cores = as.integer(if (parallel) min(n.cores, n.chains) else 1),
       dsep_max_obs = as.integer(dsep_max_obs),
-      quiet = quiet
+      quiet = quiet,
+      cor_matrices = py_structures
     )
-    
     # Convert numpyro group_by_chain samples into an mcmc.list
     raw_samples <- py_result$samples
     num_chains <- dim(raw_samples[[1]])[1]

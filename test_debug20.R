@@ -1,0 +1,5 @@
+devtools::load_all("/Users/achazhardenberg/Library/CloudStorage/Dropbox/Repos/because")
+devtools::load_all("/Users/achazhardenberg/Library/CloudStorage/Dropbox/Repos/because.phybase")
+data(rhino.dat, package="because.phybase")
+print("rhino.dat columns:")
+print(names(rhino.dat))

@@ -623,3 +623,34 @@ jags_structure_definition.matrix <- function(
         ...
     )
 }
+
+#' NumPyro Structure Definition
+#'
+#' @description
+#' Defines the Python code (JAX logic) to inject for a custom structure when using
+#' \code{engine = "numpyro"}. Extension packages (e.g. \code{because.phybase})
+#' should implement this S3 generic to support their structures natively in Python.
+#'
+#' @param structure The structural object.
+#' @param variable_name The name of the variable.
+#' @param ... Additional arguments.
+#' @return A character string of valid JAX Python code.
+#' @keywords internal
+#' @export
+numpyro_structure_definition <- function(structure, variable_name = "err", ...) {
+    UseMethod("numpyro_structure_definition")
+}
+
+#' Default Method for NumPyro Structure Definition
+#' @keywords internal
+#' @export
+numpyro_structure_definition.default <- function(structure, variable_name = "err", ...) {
+    return(NULL)
+}
+
+#' @keywords internal
+#' @export
+numpyro_structure_definition.matrix <- function(structure, variable_name = "err", ...) {
+    # Default for matrices is fixed correlation handled natively by NumPyroBuilder
+    return(NULL)
+}

@@ -1,0 +1,6 @@
+devtools::load_all("/Users/achazhardenberg/Library/CloudStorage/Dropbox/Repos/because")
+data(rhino.dat, package="because.phybase")
+h_info <- because:::process_hierarchical_data(rhino.dat, id_col="SP")
+cat(names(h_info$data$SP), "\n")
+prep_jags <- because:::prepare_hierarchical_jags_data(h_info, c("LS", "DD"))
+cat(names(prep_jags$data_list), "\n")

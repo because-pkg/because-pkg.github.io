@@ -1,0 +1,6 @@
+devtools::load_all("/Users/achazhardenberg/Library/CloudStorage/Dropbox/Repos/because")
+devtools::load_all("/Users/achazhardenberg/Library/CloudStorage/Dropbox/Repos/because.phybase")
+py_def <- numpyro_structure_definition.phylo()
+env <- reticulate::py_run_string(py_def)
+print(exists("phylo_transform", envir = env))
+print("phylo_transform" %in% names(env))
