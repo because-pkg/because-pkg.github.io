@@ -1,0 +1,5 @@
+devtools::load_all("/Users/achazhardenberg/Library/CloudStorage/Dropbox/Repos/because")
+data(storks, package="because")
+equations_storks <- list(Storks ~ Area, Birth ~ Area, Humans ~ Birth)
+fit <- because(equations_storks, storks, engine="numpyro", dsep=FALSE, n.iter=200, n.burnin=100)
+str(fit$summary$statistics)

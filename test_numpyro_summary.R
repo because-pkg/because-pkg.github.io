@@ -1,0 +1,5 @@
+library(because)
+data(storks, package="because")
+equations_storks <- list(Storks ~ Area, Birth ~ Area, Humans ~ Birth)
+fit <- because(equations_storks, storks, engine="numpyro", dsep=FALSE)
+print(rownames(fit$summary$statistics))

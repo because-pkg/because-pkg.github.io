@@ -2179,7 +2179,7 @@ because <- function(
       py_result <- because_py$fit(
         equations = eq_strings,
         data = flat_data,
-        family = family,
+        family = if (!is.null(family)) as.list(family) else NULL,
         latent = latent,
         dsep = TRUE,
         dsep_only = TRUE,
@@ -2215,7 +2215,7 @@ because <- function(
         equations = equations,
         data = data,
         original_data = original_data,
-        family = family,
+        family = if (!is.null(family)) as.list(family) else NULL,
         categorical_vars = attr(data, "categorical_vars"),
         poly_terms = all_poly_terms
       )
@@ -2316,7 +2316,7 @@ because <- function(
       } else {
         NULL
       },
-      family = family,
+      family = if (!is.null(family)) as.list(family) else NULL,
       poly_terms = all_poly_terms,
       quiet = quiet,
       hierarchical_info = hierarchical_info
@@ -2413,7 +2413,7 @@ because <- function(
         equations,
         reuse_models,
         data,
-        family = family,
+        family = if (!is.null(family)) as.list(family) else NULL,
         quiet = quiet
       )
       reused_results <- incremental_check$found # List with results at matching indices, NULL otherwise
@@ -2562,7 +2562,7 @@ because <- function(
                 hierarchical_info = hierarchical_info,
                 random_terms = random_terms,
                 equations = equations,
-                family = family,
+                family = if (!is.null(family)) as.list(family) else NULL,
                 structure = structure,
                 levels = levels,
                 hierarchy = hierarchy,
@@ -2614,7 +2614,7 @@ because <- function(
                   hierarchical_info = hierarchical_info,
                   random_terms = random_terms,
                   equations = equations,
-                  family = family,
+                  family = if (!is.null(family)) as.list(family) else NULL,
                   structure = structure,
                   levels = levels,
                   hierarchy = hierarchy,
@@ -2691,7 +2691,7 @@ because <- function(
               hierarchical_info = hierarchical_info,
               random_terms = random_terms,
               equations = equations,
-              family = family,
+              family = if (!is.null(family)) as.list(family) else NULL,
               structure = structure,
               levels = levels,
               hierarchy = hierarchy,
@@ -2831,7 +2831,7 @@ because <- function(
       equations = equations,
       data = data,
       original_data = original_data,
-      family = family,
+      family = if (!is.null(family)) as.list(family) else NULL,
       categorical_vars = attr(data, "categorical_vars"),
       poly_terms = all_poly_terms
     )
@@ -2863,7 +2863,7 @@ because <- function(
           latent = latent,
           random_terms = random_terms,
           hierarchical_info = hierarchical_info,
-          family = family,
+          family = if (!is.null(family)) as.list(family) else NULL,
           quiet = !dsep
         )
         induced_cors <- dsep_result$correlations
@@ -3106,7 +3106,7 @@ because <- function(
     equations = equations,
     is_multi_structure = is_multiple,
     variability = variability_list,
-    family = family,
+    family = if (!is.null(family)) as.list(family) else NULL,
     vars_with_na = response_vars_with_na,
     induced_correlations = induced_cors,
     latent = latent,
@@ -3135,7 +3135,7 @@ because <- function(
     py_result <- because_py$fit(
       equations = eq_strings,
       data = flat_data,
-      family = family,
+      family = if (!is.null(family)) as.list(family) else NULL,
       latent = latent,
       dsep = FALSE,
       dsep_only = FALSE,
@@ -3204,6 +3204,39 @@ because <- function(
       
       result$WAIC <- waic_df
     }
+    # Compute summary statistics
+    sum_stats <- if (!is.null(mcmc_samples)) summary(mcmc_samples) else NULL
+    if (!is.null(mcmc_samples) && n.chains > 1) {
+      tryCatch({
+        n_ch <- length(mcmc_samples)
+        first_chain <- as.matrix(mcmc_samples[[1]])
+        pnames <- colnames(first_chain)
+        n_params <- length(pnames)
+        rhat_vals <- numeric(n_params)
+        n_iter <- nrow(first_chain)
+        for (p in 1:n_params) {
+          chain_means <- numeric(n_ch)
+          chain_vars <- numeric(n_ch)
+          for (c in 1:n_ch) {
+            vals <- as.matrix(mcmc_samples[[c]])[, p]
+            chain_means[c] <- mean(vals)
+            chain_vars[c] <- var(vals)
+          }
+          grand_mean <- mean(chain_means)
+          B <- n_iter * var(chain_means)
+          W <- mean(chain_vars)
+          if (W > 0) {
+            var_plus <- ((n_iter - 1) / n_iter) * W + (1 / n_iter) * B
+            rhat_vals[p] <- sqrt(var_plus / W)
+          } else {
+            rhat_vals[p] <- 1.0
+          }
+        }
+        sum_stats$statistics <- cbind(sum_stats$statistics, Rhat = rhat_vals)
+      }, error = function(e) {})
+    }
+    result$summary <- sum_stats
+
     class(result) <- "because"
     return(result)
   }
@@ -3892,7 +3925,7 @@ because <- function(
           chain_id = i,
           model_string = model_string,
           data = data,
-          family = family,
+          family = if (!is.null(family)) as.list(family) else NULL,
           nimble_inits = nimble_inits,
           monitor = monitor,
           n.iter = n.iter,
@@ -4247,7 +4280,7 @@ because <- function(
       data = original_data, # Store original data too for safety
       latent = latent,
       distribution = distribution,
-      family = family,
+      family = if (!is.null(family)) as.list(family) else NULL,
       variability = variability,
       poly_terms = all_poly_terms # Needed by plot_dag to reconstruct diamond nodes
     ),
