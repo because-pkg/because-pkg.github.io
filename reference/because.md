@@ -1,9 +1,9 @@
 # Run a Bayesian Structural Equation Model (Because)
 
-Fits a Bayesian Structural Equation Model (SEM) using JAGS or NIMBLE.
-Supports multiscale (hierarchical) data, custom covariance structures
-(phylogenetic, spatial, etc.), missing data imputation, and d-separation
-global fit testing.
+Fits a Bayesian Structural Equation Model (SEM) using JAGS, NIMBLE, or
+NumPyro. Supports multiscale (hierarchical) data, custom covariance
+structures (phylogenetic, spatial, etc.), missing data imputation, and
+d-separation global fit testing.
 
 ## Usage
 
@@ -78,7 +78,10 @@ because(
 
 - engine:
 
-  Bayesian backend: `"jags"` (default) or `"nimble"`.
+  Bayesian backend: `"jags"` (default), `"nimble"`, or `"numpyro"`.
+  Note: For Gaussian models, JAGS/NIMBLE use a legacy
+  `dgamma(0.01, 0.01)` prior on precision, while NumPyro uses a modern
+  robust `HalfCauchy(5)` prior on the standard deviation.
 
 - monitor:
 

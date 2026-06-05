@@ -9,7 +9,7 @@ required to run the `numpyro` engine in
 
 ``` r
 install_because_numpyro(
-  envname = "r-reticulate",
+  envname = NULL,
   method = "auto",
   because_py_url = "git+https://github.com/because-pkg/because_py.git",
   ...
@@ -21,7 +21,10 @@ install_because_numpyro(
 - envname:
 
   The name, or full path, of the Python environment in which the Python
-  packages are to be installed. Defaults to `"r-reticulate"`.
+  packages are to be installed. If `NULL` (the default), it
+  automatically detects whether RStudio or `reticulate` has forced a
+  specific environment (e.g. via `VIRTUAL_ENV`) and uses that.
+  Otherwise, it defaults to `"r-reticulate"`.
 
 - method:
 

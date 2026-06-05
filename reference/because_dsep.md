@@ -118,11 +118,17 @@ equations <- list(LS ~ BM, NL ~ BM + RS, DD ~ NL)
 ind_tests <- because_dsep(equations)
 #> Basis Set for DAG: 
 #> I(X,Y|Z) means X is d-separated from Y given the set Z in the DAG 
-#> Error in format_dsep_test(test, random_terms = random_terms): unused argument (random_terms = random_terms)
+#> I( BM , RS |  ) 
+#> I( DD , RS | NL ) 
+#> I( DD , BM | NL ) 
+#> I( LS , RS | BM ) 
+#> I( LS , NL | BM, RS ) 
+#> I( LS , DD | BM, NL ) 
 
 # With latent variable
 equations_latent <- list(X ~ Quality, Y ~ Quality)
 result <- because_dsep(equations_latent, latent = "Quality")
+#> Removed 1 untestable m-separation claim(s) where latent variable(s) appear in the conditioning set (Shipley & Douma 2021).
 #> Basis Set for MAG: 
 #> I(X,Y|Z) means X is m-separated from Y given the set Z in the MAG 
 #> No elements in the basis set 
