@@ -4018,6 +4018,14 @@ because <- function(
         if (!("package:nimble" %in% search())) {
           suppressPackageStartupMessages(attachNamespace("nimble"))
         }
+        
+        # If HMC is requested, ensure nimbleHMC is attached so samplers are registered
+        if (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC") {
+          requireNamespace("nimbleHMC", quietly = TRUE)
+          if (!("package:nimbleHMC" %in% search())) {
+            suppressPackageStartupMessages(attachNamespace("nimbleHMC"))
+          }
+        }
 
         nimble_constants <- data
         nimble_data <- list()
