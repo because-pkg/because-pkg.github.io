@@ -9,6 +9,8 @@ Authors@R: c(
       role = c("aut", "cre")
     )
   )
+Author: Achaz von Hardenberg [aut, cre]
+Maintainer: Achaz von Hardenberg <achaz.hardenberg@unipv.it>
 Description: Provides tools for specifying and fitting Bayesian Structural Equation Models
     using JAGS or NIMBLE. The 'because' package allows causal inference in complex ecological and 
     evolutionary analyses, accounting for phylogenetic uncertainty (through the because.phybase extension), spatial autocorrelation, 

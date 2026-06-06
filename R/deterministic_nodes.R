@@ -19,7 +19,8 @@ extract_deterministic_terms <- function(equations) {
         has_random <- grepl("\\|", as.character(formula(eq))[3])
         
         if (!has_random && length(rhs_terms) == 1 && (grepl(":", rhs_terms) || grepl("\\(", rhs_terms))) {
-            assignments[[rhs_terms]] <- resp
+            # Removed assignment tracking: let the deterministic node use the RHS name
+            # so the structural equation can map response <- RHS_name.
         }
     }
 

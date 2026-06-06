@@ -7,6 +7,7 @@
 #' @param object A \code{because} fit object.
 #' @param resp Character string; the name of the response variable to predict.
 #'   If \code{NULL}, takes the first response variable in the model.
+#' @param newdata Optional new data frame for prediction. Currently ignored.
 #' @param ndraws Integer; number of posterior draws to use. Defaults to all draws.
 #' @param re_formula Formula or \code{NA}; determines which random effects to include.
 #'   If \code{NULL} (default), all random effects are included (conditional prediction).

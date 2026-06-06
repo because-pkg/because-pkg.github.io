@@ -348,6 +348,13 @@ because <- function(
   }
 
   engine <- match.arg(tolower(engine), c("jags", "nimble", "numpyro"))
+  
+  # Auto-adjust MCMC defaults for NUTS sampler (NumPyro) if not explicitly provided
+  if (engine == "numpyro") {
+    if (missing(n.iter)) n.iter <- 2000
+    if (missing(n.thin)) n.thin <- 1
+    if (missing(n.burnin)) n.burnin <- floor(n.iter / 2)
+  }
   if (engine == "numpyro") {
     if (!requireNamespace("reticulate", quietly = TRUE)) {
       stop("The 'reticulate' package is required when engine = 'numpyro'.")
@@ -2183,43 +2190,128 @@ because <- function(
   if (dsep) {
     if (engine == "numpyro") {
       eq_strings <- sapply(equations, function(eq) paste(deparse(eq), collapse=" "))
-      flat_data <- flatten_for_python(data)
-      py_result <- because_py$fit(
-        equations = eq_strings,
-        data = flat_data,
-        family = if (!is.null(family)) as.list(family) else NULL,
-        latent = latent,
-        dsep = TRUE,
-        dsep_only = TRUE,
-        calculate_waic = FALSE,
-        num_samples = as.integer(n.iter - n.burnin),
-        num_warmup = as.integer(n.burnin),
-        num_chains = as.integer(n.chains),
-        thinning = as.integer(n.thin),
-        n_cores = as.integer(if (parallel) min(n.cores, n.chains) else 1),
-        dsep_max_obs = as.integer(dsep_max_obs),
-        quiet = quiet
-      )
-      dsep_df <- NULL
-      if (!is.null(py_result$dsep_results)) {
-        dsep_df <- do.call(rbind, lapply(py_result$dsep_results, function(x) as.data.frame(x, stringsAsFactors = FALSE)))
-        if (nrow(dsep_df) > 0) {
-          names(dsep_df)[names(dsep_df) == "claim"] <- "Test"
-          names(dsep_df)[names(dsep_df) == "coefficient"] <- "Parameter"
-          names(dsep_df)[names(dsep_df) == "mean"] <- "Estimate"
-          names(dsep_df)[names(dsep_df) == "ci_2.5"] <- "LowerCI"
-          names(dsep_df)[names(dsep_df) == "ci_97.5"] <- "UpperCI"
-          names(dsep_df)[names(dsep_df) == "rhat"] <- "Rhat"
-          names(dsep_df)[names(dsep_df) == "n_eff"] <- "n.eff"
-          dsep_df$Scale <- NA
-          
-          # Remove internal Python keys that JAGS doesn't output
-          dsep_df$is_independent <- NULL
-          dsep_df$equation <- NULL
+      
+      # Process structures for NumPyro (early evaluation for dsep)
+      py_structures <- list()
+      for (s_name in names(structures)) {
+        s_obj <- structures[[s_name]]
+        custom_s_name <- get_structure_name_hook(s_obj)
+        mat_name <- if (!is.null(custom_s_name)) paste0(custom_s_name, "_", s_name) else paste0("VCV_", s_name)
+        if (is.null(data[[mat_name]]) && !is.null(data[[paste0("Prec_", s_name)]])) {
+          mat_name <- paste0("Prec_", s_name)
+        }
+        if (!is.null(data[[mat_name]])) {
+          py_code <- numpyro_structure_definition(s_obj, engine = "numpyro")
+          if (!is.null(py_code)) {
+            env <- reticulate::py_run_string(py_code)
+            funcs <- names(env)
+            expected_name <- paste0(s_name, "_transform")
+            func_name <- if (expected_name %in% funcs) expected_name else funcs[!funcs %in% c("numpyro", "jnp", "jax", "dist", "np", "r")][1]
+            if (!is.null(func_name) && (func_name %in% names(env))) {
+              py_structures[[s_name]] <- list(matrix = data[[mat_name]], transform_func = env[[func_name]])
+            }
+          } else {
+            py_structures[[s_name]] <- data[[mat_name]]
+          }
         }
       }
+      
+      flat_data <- flatten_for_python(data)
+      for (s_name in names(structures)) {
+        if (is.null(flat_data[[s_name]])) {
+            N_val <- if (!is.null(flat_data[["N"]])) flat_data[["N"]] else length(flat_data[[1]])
+            flat_data[[s_name]] <- 0:(N_val - 1)
+        } else {
+            if (min(flat_data[[s_name]], na.rm=TRUE) == 1) {
+                flat_data[[s_name]] <- flat_data[[s_name]] - 1
+            }
+        }
+      }
+
+      py_dsep_eqs <- because_py$get_dsep_equations(eq_strings, latent)
+      
+      current_tests <- list()
+      if (length(py_dsep_eqs) > 0) {
+        for (i in seq_along(py_dsep_eqs)) {
+          current_tests[[i]] <- stats::as.formula(py_dsep_eqs[[i]]$equation_string)
+        }
+      }
+      
+      incremental_check <- find_reusable_tests(
+        current_tests,
+        equations,
+        reuse_models,
+        data,
+        family = if (!is.null(family)) as.list(family) else NULL,
+        quiet = quiet
+      )
+      
+      reused_results <- incremental_check$found
+      tests_to_run_indices <- incremental_check$missing_indices
+      
+      dsep_equations_to_run <- NULL
+      if (length(tests_to_run_indices) == 0 && length(current_tests) > 0) {
+        # All tests cached!
+        py_result <- list(dsep_results = list())
+      } else {
+        if (length(tests_to_run_indices) > 0) {
+          dsep_equations_to_run <- sapply(current_tests[tests_to_run_indices], function(eq) paste(deparse(eq), collapse=" "))
+        }
+        
+        py_result <- because_py$fit(
+          equations = eq_strings,
+          data = flat_data,
+          family = if (!is.null(family)) as.list(family) else NULL,
+          latent = latent,
+          dsep = TRUE,
+          dsep_only = TRUE,
+          calculate_waic = FALSE,
+          num_samples = as.integer(n.iter - n.burnin),
+          num_warmup = as.integer(n.burnin),
+          num_chains = as.integer(n.chains),
+          thinning = as.integer(n.thin),
+          n_cores = as.integer(if (parallel) min(n.cores, n.chains) else 1),
+          dsep_max_obs = as.integer(dsep_max_obs),
+          quiet = quiet,
+          cor_matrices = py_structures,
+          dsep_equations_to_run = if (!is.null(dsep_equations_to_run)) as.list(dsep_equations_to_run) else NULL
+        )
+      }
+
+      new_dsep_df <- NULL
+      if (!is.null(py_result$dsep_results) && length(py_result$dsep_results) > 0) {
+        new_dsep_df <- do.call(rbind, lapply(py_result$dsep_results, function(x) as.data.frame(x, stringsAsFactors = FALSE)))
+        if (nrow(new_dsep_df) > 0) {
+          names(new_dsep_df)[names(new_dsep_df) == "claim"] <- "Test"
+          names(new_dsep_df)[names(new_dsep_df) == "coefficient"] <- "Parameter"
+          names(new_dsep_df)[names(new_dsep_df) == "mean"] <- "Estimate"
+          names(new_dsep_df)[names(new_dsep_df) == "ci_2.5"] <- "LowerCI"
+          names(new_dsep_df)[names(new_dsep_df) == "ci_97.5"] <- "UpperCI"
+          names(new_dsep_df)[names(new_dsep_df) == "rhat"] <- "Rhat"
+          names(new_dsep_df)[names(new_dsep_df) == "n_eff"] <- "n.eff"
+          new_dsep_df$Scale <- NA
+          new_dsep_df$is_independent <- NULL
+          new_dsep_df$equation <- NULL
+        }
+      }
+      
+      # Merge reused results back into the final dataframe in the original order
+      dsep_df_list <- list()
+      new_idx <- 1
+      if (length(current_tests) > 0) {
+        for (i in seq_along(current_tests)) {
+          if (!is.null(reused_results[[i]])) {
+            dsep_df_list[[i]] <- reused_results[[i]]
+          } else if (!is.null(new_dsep_df) && new_idx <= nrow(new_dsep_df)) {
+            dsep_df_list[[i]] <- new_dsep_df[new_idx, , drop = FALSE]
+            new_idx <- new_idx + 1
+          }
+        }
+      }
+      dsep_df <- if (length(dsep_df_list) > 0) do.call(rbind, dsep_df_list) else NULL
       result <- list(
         dsep = if (!is.null(dsep_df)) list(results = dsep_df) else NULL,
+        dsep_tests = current_tests,
         equations = equations,
         data = data,
         original_data = original_data,
@@ -3732,7 +3824,8 @@ because <- function(
           code = nimble_code,
           constants = nimble_constants,
           data = nimble_data,
-          inits = nimble_inits
+          inits = nimble_inits,
+          buildDerivs = (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC")
         )
         
         # [NEW] Ensure all parameters are initialized properly for NIMBLE
@@ -3779,21 +3872,29 @@ because <- function(
       enableWAIC = WAIC
     )
 
-    # Harden NIMBLE sampler assignments.
-    # Called via the top-level exported function so the code is always
-    # taken from the INSTALLED package, not from this closure.
-    because::nimble_harden_samplers(
-      mcmc_conf,
-      family          = family,
-      nimble_samplers = nimble_samplers,
-      quiet           = quiet
-    )
+    # Check if HMC was specifically requested
+    if (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC") {
+      if (!requireNamespace("nimbleHMC", quietly = TRUE)) {
+        stop("The 'nimbleHMC' package is required to use HMC samplers in NIMBLE. Install it with install.packages('nimbleHMC')")
+      }
+      if (!quiet) {
+        message("Building and compiling NIMBLE MCMC using nimbleHMC::buildHMC (this may take a moment)...")
+      }
+      nimble_mcmc <- nimbleHMC::buildHMC(nimble_model)
+    } else {
+      # Harden NIMBLE sampler assignments.
+      because::nimble_harden_samplers(
+        mcmc_conf,
+        family          = family,
+        nimble_samplers = nimble_samplers,
+        quiet           = quiet
+      )
 
-    if (!quiet) {
-      message("Building and compiling NIMBLE MCMC (this may take a moment)...")
+      if (!quiet) {
+        message("Building and compiling NIMBLE MCMC (this may take a moment)...")
+      }
+      nimble_mcmc <- nimble::buildMCMC(mcmc_conf)
     }
-
-    nimble_mcmc <- nimble::buildMCMC(mcmc_conf)
     
     # [PERFORMANCE] Skip main-thread compilation if running in parallel
     # to avoid redundant triple/quadruple compilation overhead.
@@ -3933,7 +4034,8 @@ because <- function(
           code = nimble_code,
           constants = nimble_constants,
           data = nimble_data,
-          inits = curr_inits
+          inits = curr_inits,
+          buildDerivs = (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC")
         )
 
         worker_conf <- nimble::configureMCMC(
@@ -3943,17 +4045,20 @@ because <- function(
         )
         
         # Harden worker MCMC samplers via the installed package function.
-        # CRITICAL: calling by package::function rather than using the closure
-        # ensures workers always run the CURRENT installed version of because,
-        # not the stale closure that was exported from the parent session.
-        because::nimble_harden_samplers(
-          worker_conf,
-          family          = family,
-          nimble_samplers = nimble_samplers,
-          quiet           = TRUE
-        )
-
-        worker_mcmc <- nimble::buildMCMC(worker_conf)
+        if (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC") {
+          if (!requireNamespace("nimbleHMC", quietly = TRUE)) {
+            stop("The 'nimbleHMC' package is required to use HMC samplers in NIMBLE.")
+          }
+          worker_mcmc <- nimbleHMC::buildHMC(worker_model)
+        } else {
+          because::nimble_harden_samplers(
+            worker_conf,
+            family          = family,
+            nimble_samplers = nimble_samplers,
+            quiet           = TRUE
+          )
+          worker_mcmc <- nimble::buildMCMC(worker_conf)
+        }
         worker_c_model <- nimble::compileNimble(worker_model)
         worker_c_mcmc <- nimble::compileNimble(
           worker_mcmc,

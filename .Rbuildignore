@@ -45,3 +45,10 @@
 ^scratch$
 ^\.positai$
 ^\.claude$
+^extract\.py$
+^patch_because\.R$
+^patch_bernoulli\.R$
+^patch_family\.R$
+^recovered_code\.R$
+^test_.*\.R$
+^test_.*\.py$

@@ -98,8 +98,7 @@ power. Set to \code{Inf} to disable subsampling.}
 
 \item{family}{A named character vector specifying the distribution for each response
 (e.g., \code{c(Y = "poisson", M = "gaussian")}). Supports "gaussian" (default), "poisson",
-"binomial", "gamma", "lognormal", "bernoulli", and "ordinal". Note that
-"bernoulli" and "binomial" are treated identically and can be used interchangeably.}
+"binomial", "gamma", "lognormal", "bernoulli", "ordinal", and "occupancy".}
 
 \item{distribution}{Alias for \code{family} (deprecated).}
 

@@ -961,13 +961,7 @@ because_model <- function(
           if (is_dummy) is_identity <- TRUE
       }
       
-      # 2. Is it explicitly wrapped in I(...) on the RHS?
-      # We check the formula string to be sure
-      raw_eq <- formula(equations[[j]])
-      rhs_str <- deparse(raw_eq[[3]])
-      if (grepl("^I\\(", rhs_str)) {
-          is_identity <- TRUE
-      }
+      # (Removed incorrect I() check: I() is used to define predictors, not identity assignments)
     }
 
     if (is_identity) {

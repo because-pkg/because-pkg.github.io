@@ -257,7 +257,7 @@ plot_dag <- function(
             }
             
             # Identify all nodes in the DAG
-            all_nodes_in_dag <- dagitty::names.dagitty(dag_obj)
+            all_nodes_in_dag <- names(dag_obj)
             new_coords <- list()
             
             # Calculate Y for each level based on depth (inverted for top-down)

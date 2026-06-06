@@ -19,6 +19,8 @@
 \item{resp}{Character string; the name of the response variable to predict.
 If \code{NULL}, takes the first response variable in the model.}
 
+\item{newdata}{Optional new data frame for prediction. Currently ignored.}
+
 \item{ndraws}{Integer; number of posterior draws to use. Defaults to all draws.}
 
 \item{re_formula}{Formula or \code{NA}; determines which random effects to include.
