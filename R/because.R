@@ -280,6 +280,7 @@ because <- function(
   n.iter = 12500,
   n.burnin = floor(n.iter / 5),
   n.thin = 10,
+  adapt_delta = 0.95,
   DIC = TRUE,
   WAIC = FALSE,
   n.adapt = floor(n.iter / 5),
@@ -3320,7 +3321,8 @@ because <- function(
       n_cores = as.integer(if (parallel) min(n.cores, n.chains) else 1),
       dsep_max_obs = as.integer(dsep_max_obs),
       quiet = quiet,
-      cor_matrices = py_structures
+      cor_matrices = py_structures,
+      adapt_delta = adapt_delta
     )
     # Convert numpyro group_by_chain samples into an mcmc.list
     raw_samples <- py_result$samples
@@ -3820,13 +3822,14 @@ because <- function(
             nimble_constants[["Prec_multiPhylo"]] <- NULL
         }
 
-        m_obj <- nimble::nimbleModel(
+        m_obj <- suppressMessages(suppressWarnings(nimble::nimbleModel(
           code = nimble_code,
           constants = nimble_constants,
           data = nimble_data,
           inits = nimble_inits,
-          buildDerivs = (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC")
-        )
+          buildDerivs = (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC"),
+          calculate = FALSE
+        )))
         
         # [NEW] Ensure all parameters are initialized properly for NIMBLE
         # This handles vector/matrix nodes like alpha_y and err_y
@@ -3876,6 +3879,9 @@ because <- function(
     if (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC") {
       if (!requireNamespace("nimbleHMC", quietly = TRUE)) {
         stop("The 'nimbleHMC' package is required to use HMC samplers in NIMBLE. Install it with install.packages('nimbleHMC')")
+      }
+      if (!("package:nimbleHMC" %in% search())) {
+        suppressPackageStartupMessages(attachNamespace("nimbleHMC"))
       }
       if (!quiet) {
         message("Building and compiling NIMBLE MCMC using nimbleHMC::buildHMC (this may take a moment)...")
@@ -4038,13 +4044,14 @@ because <- function(
             nimble_constants[["Prec_multiPhylo"]] <- NULL
         }
 
-        worker_model <- nimble::nimbleModel(
+        worker_model <- suppressMessages(suppressWarnings(nimble::nimbleModel(
           code = nimble_code,
           constants = nimble_constants,
           data = nimble_data,
           inits = curr_inits,
-          buildDerivs = (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC")
-        )
+          buildDerivs = (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC"),
+          calculate = FALSE
+        )))
 
         worker_conf <- nimble::configureMCMC(
           worker_model,
