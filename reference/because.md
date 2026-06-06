@@ -152,8 +152,7 @@ because(
   A named character vector specifying the distribution for each response
   (e.g., `c(Y = "poisson", M = "gaussian")`). Supports "gaussian"
   (default), "poisson", "binomial", "gamma", "lognormal", "bernoulli",
-  and "ordinal". Note that "bernoulli" and "binomial" are treated
-  identically and can be used interchangeably.
+  "ordinal", and "occupancy".
 
 - distribution:
 

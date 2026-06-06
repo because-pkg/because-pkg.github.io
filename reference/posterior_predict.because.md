@@ -29,6 +29,10 @@ posterior_predict(
   Character string; the name of the response variable to predict. If
   `NULL`, takes the first response variable in the model.
 
+- newdata:
+
+  Optional new data frame for prediction. Currently ignored.
+
 - ndraws:
 
   Integer; number of posterior draws to use. Defaults to all draws.
