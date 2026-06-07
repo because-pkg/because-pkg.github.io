@@ -276,14 +276,14 @@ because <- function(
   engine = "jags",
   monitor = "interpretable",
   nimble_samplers = NULL,
-  n.chains = 3,
-  n.iter = 12500,
-  n.burnin = floor(n.iter / 5),
-  n.thin = 10,
+  n.chains = NULL,
+  n.iter = NULL,
+  n.burnin = NULL,
+  n.thin = NULL,
   adapt_delta = 0.95,
   DIC = TRUE,
   WAIC = FALSE,
-  n.adapt = floor(n.iter / 5),
+  n.adapt = NULL,
   quiet = FALSE,
   verbose = FALSE,
   dsep = FALSE,
@@ -352,9 +352,10 @@ because <- function(
   
   # Auto-adjust MCMC defaults for NUTS sampler (NumPyro) if not explicitly provided
   if (engine == "numpyro") {
-    if (missing(n.iter)) n.iter <- 2000
-    if (missing(n.thin)) n.thin <- 1
-    if (missing(n.burnin)) n.burnin <- floor(n.iter / 2)
+    if (is.null(n.iter))   n.iter   <- 2000
+    if (is.null(n.thin))   n.thin   <- 1
+    if (is.null(n.burnin)) n.burnin <- floor(n.iter / 2)
+
   }
   if (engine == "numpyro") {
     if (!requireNamespace("reticulate", quietly = TRUE)) {
