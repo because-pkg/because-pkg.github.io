@@ -33,7 +33,7 @@ code from standard R formulas. Key features include:
   repeated measures or known error variances.
 - **Distribution families**: Supports Gaussian, Binomial, Multinomial,
   Ordinal, Poisson,Negative Binomial as well as Zero Inflated Poisson
-  (ZIP) and Zero Inflated Negative Binomial (ZINP) distributions.
+  (ZIP) and Zero Inflated Negative Binomial (ZINB) distributions.
 - **Categorical Predictors**: Automatic handling of factor variables
   with dummy variable expansion.
 - **Polynomial and Interaction Terms**: Easily include polynomial terms
