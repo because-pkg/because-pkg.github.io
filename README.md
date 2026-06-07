@@ -11,8 +11,8 @@ The focus of `because` is on causal inference, providing tools to facilitate the
 
 **because** simplifies the process of running complex Bayesian Structural Equation Models by automatically generating JAGS or NIMBLE code from standard R formulas. Key features include:
 
--   **Dual-Engine Support**: Choose between the simplicity of **JAGS** or the high-performance C++ backend of **NIMBLE**.
--   **Automatic Model Generation**: Builds complex BUGS/NIMBLE models directly from a list of structural equations.
+-   **Multiple-Engine Support**: Choose between the simplicity of **JAGS** or o the high-performance of  **NIMBLE**
+-   **Automatic Model Generation**: Builds complex JAGS/NIMBLE/NUMPYRO models directly from a list of structural equations.
 -   **Generalized Covariance Structures**: Supports the specification of custom covariance structures in the data.
 -   **Missing Data Support**: Imputes missing values in both response and predictor variables (assuming data is missing at random (MAR) or completely at random (MCAR).
 -   **Measurement Error**: Accounts for measurement error providing repeated measures or known error variances.
@@ -30,10 +30,10 @@ The focus of `because` is on causal inference, providing tools to facilitate the
 
 ## Installation
 
-To install the **stable release** (`v1.2.8`), run:
+To install the **stable release** (`v1.2.9`), run:
 
 ``` r
-remotes::install_github("because-pkg/because@v1.2.8", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.2.9", build_vignettes = TRUE)
 ```
 
 To install the **latest development version** (unstable), run:
