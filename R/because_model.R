@@ -2716,16 +2716,24 @@ because_model <- function(
                 next
               }
 
+              s_lvl <- get_struct_lvl(s_name, hierarchical_info)
+              s_bound <- if (is.null(s_lvl)) get_loop_bound(response, hierarchical_info) else paste0("N_", s_lvl)
+              s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
+
+              # Hierarchical bridge index (e.g. site_idx_obs[i])
+              s_idx_var <- get_struct_index(s_name, response, hierarchical_info)
+
               # Use Hook to get JAGS code bits
               s_def <- jags_structure_definition(
-                s_obj,
-                variable_name = response,
-                s_name = s_name,
-                loop_bound = get_loop_bound(response, hierarchical_info),
-                is_multi = is_struct_multi(s_name),
+                s_obj, 
+                variable_name = response, 
+                s_name = s_name, 
+                loop_bound = s_bound, 
+                zeros_name = s_zeros, 
+                is_multi = is_struct_multi(s_name), 
+                i_index = s_idx_var, 
                 engine = engine
               )
-
               if (!is.null(s_def)) {
                 model_lines <- safe_add_lines(model_lines, s_def$model_lines)
                 total_u <- paste0(total_u, " + ", s_def$term)

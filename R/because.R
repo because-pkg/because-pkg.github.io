@@ -1537,7 +1537,7 @@ because <- function(
     # Use S3 Generic for Processing
     for (s_name in structure_names) {
       structure_obj <- structures[[s_name]]
-      prep_res <- prepare_structure_data(structure_obj, data = data, optimize = TRUE, quiet = quiet, engine = engine)
+      prep_res <- prepare_structure_data(structure_obj, data = data, optimize = TRUE, quiet = quiet, engine = engine, row_ids = row_ids)
 
       if (!is.null(prep_res$data_list)) {
         for (d_name in names(prep_res$data_list)) {
@@ -2210,7 +2210,7 @@ because <- function(
             expected_name <- paste0(s_name, "_transform")
             func_name <- if (expected_name %in% funcs) expected_name else funcs[!funcs %in% c("numpyro", "jnp", "jax", "dist", "np", "r")][1]
             if (!is.null(func_name) && (func_name %in% names(env))) {
-              py_structures[[s_name]] <- list(matrix = data[[mat_name]], transform_func = env[[func_name]])
+              py_structures[[s_name]] <- list(matrix = data[[mat_name]], transform_func = env[[func_name]], type = class(s_obj)[1])
             }
           } else {
             py_structures[[s_name]] <- data[[mat_name]]
@@ -2302,7 +2302,7 @@ because <- function(
       new_idx <- 1
       if (length(current_tests) > 0) {
         for (i in seq_along(current_tests)) {
-          if (!is.null(reused_results[[i]])) {
+          if (!is.null(reused_results) && length(reused_results) >= i && !is.null(reused_results[[i]])) {
             dsep_df_list[[i]] <- reused_results[[i]]
           } else if (!is.null(new_dsep_df) && new_idx <= nrow(new_dsep_df)) {
             dsep_df_list[[i]] <- new_dsep_df[new_idx, , drop = FALSE]
@@ -3259,7 +3259,8 @@ because <- function(
           if (!is.null(func_name) && (func_name %in% names(env))) {
             py_structures[[s_name]] <- list(
               matrix = data[[mat_name]],
-              transform_func = env[[func_name]]
+              transform_func = env[[func_name]],
+              type = class(s_obj)[1]
             )
           }
         } else {
@@ -3277,8 +3278,8 @@ because <- function(
            if (exists("is_hierarchical") && is_hierarchical && exists("hierarchical_info")) {
                s_lvl <- hierarchical_info$structure_levels[[s_name]]
                tryCatch({
-                   resp_lvl <- infer_variable_level(response, hierarchical_info$levels, data = NULL, equations = equations, latent = latent, hierarchy = if(exists("hierarchy")) hierarchy else NULL)
-                   if (!is.null(s_lvl) && !is.na(resp_lvl) && resp_lvl != s_lvl) {
+                   resp_lvl <- infer_variable_level(response, hierarchical_info$levels, data = NULL, equations = equations, latent = latent, hierarchy = hierarchical_info$hierarchy)
+                   if (!is_valid_structure_mapping_dsep(s_lvl, resp_lvl, hierarchical_info)) {
                        is_valid <- FALSE
                    }
                }, error = function(e) {
@@ -3321,8 +3322,7 @@ because <- function(
         }
     }
     
-    print("FLAT DATA NAMES:")
-    print(names(flat_data)); print("PHYLO LEN:"); print(length(flat_data$phylo)); print("PHYLO MAX:"); print(max(flat_data$phylo))
+
 
     py_result <- because_py$fit(
       equations = eq_strings,
@@ -3883,7 +3883,7 @@ because <- function(
           message("\nCRITICAL NIMBLE ERROR during model initialization:")
           message(e$message)
         }
-        stop(e)
+        stop(paste(e, "\n\n", model_string))
       }
     )
 
@@ -4361,7 +4361,7 @@ because <- function(
             message(e$message)
             message("Check your model code syntax or data dimensions.\n")
           }
-          stop(e)
+          stop(paste(e, "\n\n", model_string))
         }
       )
       if (n.burnin > 0) {

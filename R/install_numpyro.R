@@ -40,7 +40,7 @@ install_because_numpyro <- function(envname = NULL,
   message("Target environment: ", envname)
   
   # The required packages: jax, numpyro, and the because_py github repo
-  pkgs <- c("jax", "jaxlib", "numpyro", because_py_url)
+  pkgs <- c("numpyro", "jax", "jaxlib", "networkx", "funsor", because_py_url)
   
   tryCatch({
     reticulate::py_install(

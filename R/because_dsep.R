@@ -86,6 +86,14 @@ because_dsep <- function(
   family = NULL,
   quiet = FALSE
 ) {
+  # Support passing a fitted 'because' object directly
+  if (inherits(equations, "because")) {
+    obj <- equations
+    equations <- obj$equations
+    if (is.null(latent) && !is.null(obj$latent)) latent <- obj$latent
+    if (is.null(hierarchical_info) && !is.null(obj$hierarchical_info)) hierarchical_info <- obj$hierarchical_info
+  }
+
   # If no latents, use standard DAG d-separation
   if (is.null(latent)) {
     return(dsep_standard(
