@@ -16,7 +16,7 @@ The focus of `because` is on causal inference, providing tools to facilitate the
 -   **Generalized Covariance Structures**: Supports the specification of custom covariance structures in the data.
 -   **Missing Data Support**: Imputes missing values in both response and predictor variables (assuming data is missing at random (MAR) or completely at random (MCAR).
 -   **Measurement Error**: Accounts for measurement error providing repeated measures or known error variances.
--   **Distribution families**: Supports Gaussian, Binomial, Multinomial, Ordinal, Poisson,Negative Binomial as well as Zero Inflated Poisson (ZIP) and Zero Inflated Negative Binomial (ZINP) distributions.
+-   **Distribution families**: Supports Gaussian, Binomial, Multinomial, Ordinal, Poisson,Negative Binomial as well as Zero Inflated Poisson (ZIP) and Zero Inflated Negative Binomial (ZINB) distributions.
 -   **Categorical Predictors**: Automatic handling of factor variables with dummy variable expansion.
 -   **Polynomial and Interaction Terms**: Easily include polynomial terms and interactions in structural equations.
 -   **Hierachical Models**: Support for random effects and multi-level structures.
