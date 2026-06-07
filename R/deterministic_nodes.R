@@ -12,11 +12,12 @@ extract_deterministic_terms <- function(equations) {
     # name as the internal name for the node to avoid redundant intermediate nodes.
     assignments <- list()
     for (eq in equations) {
-        resp <- as.character(formula(eq))[2]
+        eq_form <- if (is.list(eq) && "formula" %in% names(eq)) eq$formula else formula(eq)
+        resp <- as.character(eq_form)[2]
         # Get RHS terms strictly (no random effects)
-        rhs_terms <- attr(terms(formula(eq)), "term.labels")
+        rhs_terms <- attr(terms(eq_form), "term.labels")
         # Check for random effects in the formula itself to be safe
-        has_random <- grepl("\\|", as.character(formula(eq))[3])
+        has_random <- grepl("\\|", as.character(eq_form)[3])
         
         if (!has_random && length(rhs_terms) == 1 && (grepl(":", rhs_terms) || grepl("\\(", rhs_terms))) {
             # Removed assignment tracking: let the deterministic node use the RHS name
@@ -27,8 +28,9 @@ extract_deterministic_terms <- function(equations) {
     terms_list <- list()
 
     for (eq in equations) {
+        eq_form <- if (is.list(eq) && "formula" %in% names(eq)) eq$formula else formula(eq)
         # Get all terms including interactions
-        eq_terms <- attr(terms(formula(eq)), "term.labels")
+        eq_terms <- attr(terms(eq_form), "term.labels")
 
         for (term in eq_terms) {
             # Skip random effects

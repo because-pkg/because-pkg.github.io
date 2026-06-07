@@ -2203,6 +2203,7 @@ because <- function(
         }
         if (!is.null(data[[mat_name]])) {
           py_code <- numpyro_structure_definition(s_obj, engine = "numpyro")
+          cat(py_code, file="scratch/generated_model.py")
           if (!is.null(py_code)) {
             env <- reticulate::py_run_string(py_code)
             funcs <- names(env)
@@ -3248,6 +3249,7 @@ because <- function(
       if (!is.null(data[[mat_name]])) {
         # Ask the extension package for the Python JAX code
         py_code <- numpyro_structure_definition(s_obj, engine = "numpyro")
+          cat(py_code, file="scratch/generated_model.py")
         if (!is.null(py_code)) {
           # Compile into a Python function using reticulate
           env <- reticulate::py_run_string(py_code)
@@ -3272,9 +3274,16 @@ because <- function(
            
            # Apply if dimension matches or valid level
            is_valid <- TRUE
-           if (!is.null(hierarchical_info)) {
-               # Add proper hierarchical check here if needed in future
-               is_valid <- TRUE
+           if (exists("is_hierarchical") && is_hierarchical && exists("hierarchical_info")) {
+               s_lvl <- hierarchical_info$structure_levels[[s_name]]
+               tryCatch({
+                   resp_lvl <- infer_variable_level(response, hierarchical_info$levels, data = NULL, equations = equations, latent = latent, hierarchy = if(exists("hierarchy")) hierarchy else NULL)
+                   if (!is.null(s_lvl) && !is.na(resp_lvl) && resp_lvl != s_lvl) {
+                       is_valid <- FALSE
+                   }
+               }, error = function(e) {
+                   is_valid <- FALSE
+               })
            }
            
            if (is_valid) {
@@ -3293,7 +3302,16 @@ because <- function(
     for (s_name in names(structures)) {
         # If indexing array is missing (e.g. 1-to-1 row mapping like JAGS), generate it!
         if (is.null(flat_data[[s_name]])) {
-            N_val <- if (!is.null(flat_data[["N"]])) flat_data[["N"]] else length(flat_data[[1]])
+            N_val <- NULL
+            if (exists("is_hierarchical") && is_hierarchical && exists("hierarchical_info")) {
+                s_lvl <- hierarchical_info$structure_levels[[s_name]]
+                if (!is.null(s_lvl)) {
+                    N_val <- flat_data[[paste0("N_", s_lvl)]]
+                }
+            }
+            if (is.null(N_val)) {
+                N_val <- if (!is.null(flat_data[["N"]])) flat_data[["N"]] else length(flat_data[[1]])
+            }
             flat_data[[s_name]] <- 0:(N_val - 1)
         } else {
             # In R, grouping variables start at 1. NumPyro expects 0-indexed arrays
@@ -3304,7 +3322,7 @@ because <- function(
     }
     
     print("FLAT DATA NAMES:")
-    print(names(flat_data))
+    print(names(flat_data)); print("PHYLO LEN:"); print(length(flat_data$phylo)); print("PHYLO MAX:"); print(max(flat_data$phylo))
 
     py_result <- because_py$fit(
       equations = eq_strings,
@@ -3679,6 +3697,7 @@ because <- function(
   samples <- NULL
   model <- NULL
 
+  nimble_waic <- NULL
   if (engine == "nimble") {
     # --- NIMBLE EXECUTION PIPELINE ---
     if (!requireNamespace("nimble", quietly = TRUE)) {
@@ -4138,8 +4157,22 @@ because <- function(
         )
       })
 
+      # Check for worker errors
+      for (i in seq_along(chain_results)) {
+        if (is.character(chain_results[[i]])) {
+          stop(sprintf("Chain %d failed: %s", i, chain_results[[i]]))
+        }
+      }
+
+      # Extract NIMBLE WAIC if available
+      if (WAIC && is.list(chain_results[[1]]) && !is.null(chain_results[[1]]$WAIC)) {
+          nimble_waic <- chain_results[[1]]$WAIC
+      }
+
       # Format into mcmc.list
-      samples <- coda::mcmc.list(lapply(chain_results, function(x) x))
+      samples <- coda::mcmc.list(lapply(chain_results, function(x) {
+          if (is.list(x) && !is.null(x$samples)) x$samples else x
+      }))
     } else {
       # Sequential execution (Existing logic)
       if (!quiet) {
@@ -4156,8 +4189,14 @@ because <- function(
         nchains = n.chains,
         thin = n.thin,
         samplesAsCodaMCMC = TRUE,
-        summary = FALSE
+        summary = FALSE,
+        WAIC = WAIC
       )
+
+      if (WAIC && is.list(nimble_samples) && !is.null(nimble_samples$samples)) {
+          nimble_waic <- nimble_samples$WAIC
+          nimble_samples <- nimble_samples$samples
+      }
 
       if (n.chains == 1) {
         samples <- coda::mcmc.list(nimble_samples)
@@ -4610,7 +4649,18 @@ because <- function(
 
   # Compute WAIC if requested (must be after class assignment)
   if (WAIC) {
-    result$WAIC <- because_waic(result)
+    if (engine == "nimble" && !is.null(nimble_waic)) {
+       waic_df <- data.frame(
+           Estimate = c(nimble_waic$lppd, nimble_waic$pWAIC, nimble_waic$WAIC),
+           SE = c(NA, NA, NA),
+           row.names = c("elpd_waic", "p_waic", "waic")
+       )
+       attr(waic_df, "dims") <- c(n_obs = NA, n_samples = n.iter - n.burnin)
+       class(waic_df) <- c("because_waic", "data.frame")
+       result$WAIC <- waic_df
+    } else {
+       result$WAIC <- because_waic(result)
+    }
   }
 
   # Preserve hierarchical metadata for diagnostics even if data was flat

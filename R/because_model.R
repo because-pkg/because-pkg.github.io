@@ -2993,7 +2993,6 @@ because_model <- function(
           suffix,
           "[i]",
           structure_term_str,
-          " + ",
           sum_res_errs,
           ", tau_obs_",
           var,
