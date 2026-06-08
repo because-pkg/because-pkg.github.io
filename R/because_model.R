@@ -1888,9 +1888,13 @@ because_model <- function(
                 }
               }
               
+              # use_partitioning = TRUE when: single structure + same level as response.
+              # Note: The family check is omitted — we are already inside if (dist == "gaussian").
+              # Note: identical() is used so NULL == NULL is TRUE for non-hierarchical models
+              #       (which have no hierarchy levels for either structure or response).
               use_partitioning <- (local_struct_count == 1) && 
-                                 (get_family_object(dist_list[[response]] %||% "gaussian")$family == "gaussian") &&
-                                 (s_lvl == r_lvl)
+                                 identical(s_lvl, r_lvl)
+
 
               # Call Generic to define the error vector u ~ dmnorm(...)
               s_def <- jags_structure_definition(
@@ -1907,6 +1911,22 @@ because_model <- function(
 
               model_lines <- safe_add_lines(model_lines, s_def$model_lines)
               
+              # [PARTITION GUARD] When using MEE-paper parameterization (use_partitioning=TRUE),
+              # safe_add_lines only registers the FIRST variable from the multi-line string.
+              # Pre-declare ALL generated node names so downstream code (predictor section,
+              # priors section) doesn't add duplicates → JAGS "Attempt to redefine node" error.
+              # NOTE: Use <- not <<- here — we are in the body of because_model, not a closure.
+              if (isTRUE(s_def$partition_handled)) {
+                prec_nm     <- paste0("tau_u_", s_name, "_", response)   # tau_u_phylo_BM
+                tau_res_nm  <- paste0("tau_res_", response)              # tau_res_BM
+                sigma_ph_nm <- paste0("sigma_", s_name, "_", response)   # sigma_phylo_BM
+                sigma_rs_nm <- paste0("sigma_", response, "_res")        # sigma_BM_res
+                sigma_tot_nm<- paste0("sigma_total_", response)          # sigma_total_BM
+                declared_nodes <- unique(c(declared_nodes,
+                  prec_nm, tau_res_nm, sigma_ph_nm, sigma_rs_nm, sigma_tot_nm))
+              }
+
+
               if (length(s_def$term) > 0 && nchar(s_def$term) > 0) {
                  additive_terms <- paste0(additive_terms, " + ", s_def$term)
               }
