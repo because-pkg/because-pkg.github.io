@@ -104,6 +104,9 @@ because_model <- function(
   # Global JAGS node tracker to prevent redefinition errors
   # Used to de-duplicate priors/derivations across different logical blocks
   declared_nodes <- character(0)
+  # Track responses that use the MEE-paper lambda/sigma_total partitioning.
+  # For these, lambdaXX derived quantity is redundant (lambda_XX already sampled).
+  partitioned_responses <- character(0)
   
   # Helper: Add lines to JAGS model while preventing node redefinition
   safe_add_lines <- function(current_lines, new_lines) {
@@ -1924,6 +1927,9 @@ because_model <- function(
                 sigma_tot_nm<- paste0("sigma_total_", response)          # sigma_total_BM
                 declared_nodes <- unique(c(declared_nodes,
                   prec_nm, tau_res_nm, sigma_ph_nm, sigma_rs_nm, sigma_tot_nm))
+                # Record this response as partitioned so the priors section
+                # skips generating the redundant lambdaXX derived quantity.
+                partitioned_responses <- unique(c(partitioned_responses, response))
               }
 
 
@@ -3378,10 +3384,13 @@ because_model <- function(
 
           # Generate lambda for compatibility if single structure
           # Only if tau_e exists (i.e. not NB/ZINB)
+          # Skip for partitioned responses: lambda_XX is already directly sampled,
+          # so lambdaXX would be a redundant duplicate in the summary output.
           if (
             length(structure_names) == 1 &&
               length(random_structure_names) == 0 &&
-              !dist %in% c("negbinomial", "zinb")
+              !dist %in% c("negbinomial", "zinb") &&
+              !response %in% partitioned_responses
           ) {
             s_name <- structure_names[1]
             s_suffix <- paste0("_", s_name)

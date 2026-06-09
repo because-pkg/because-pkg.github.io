@@ -912,7 +912,10 @@ format_dsep_test <- function(test, random_terms = NULL) {
 #' @export
 #' @importFrom ggplot2 ggplot aes geom_pointrange geom_hline coord_flip labs theme_minimal theme
 plot_dsep.because <- function(object, ...) {
-  if (is.null(object$dsep) || !object$dsep) {
+  has_dsep <- !is.null(object$dsep) &&
+    (isTRUE(object$dsep) ||
+       (is.list(object$dsep) && !is.null(object$dsep$results)))
+  if (!has_dsep) {
     stop("plot_dsep requires a 'because' object fitted with dsep = TRUE.")
   }
 
@@ -944,6 +947,12 @@ plot_dsep.because <- function(object, ...) {
   res$Label <- gsub(" \\| \\{.*?\\}", "", res$Test)
   res$Label <- trimws(res$Label)
 
+  # Symmetric axis: always show both sides of zero for fair visual comparison.
+  # Use coord_flip(ylim=) rather than scale_y_continuous(limits=) to zoom
+  # the coordinate system without clipping whiskers at the scale level.
+  max_abs <- max(abs(c(res$LowerCI, res$UpperCI, res$Estimate)), na.rm = TRUE)
+  axis_lim <- c(-max_abs, max_abs) * 1.05  # 5% padding
+
   # Create Plot
   p <- ggplot2::ggplot(
     res,
@@ -961,7 +970,7 @@ plot_dsep.because <- function(object, ...) {
       linewidth = 0.7
     ) +
     ggplot2::geom_pointrange(linewidth = 0.8, size = 0.5, fatten = 3) +
-    ggplot2::coord_flip() +
+    ggplot2::coord_flip(ylim = axis_lim) +
     ggplot2::labs(
       title = "d-separation Independence Tests",
       subtitle = "Caterpillar plot of path coefficients with 95% Bayesian Credibility Intervals",
@@ -976,3 +985,4 @@ plot_dsep.because <- function(object, ...) {
 
   return(p)
 }
+

@@ -889,8 +889,8 @@ plot_dag <- function(
         p <- p +
             ggraph::scale_edge_colour_manual(
                 values = c(
-                    "pos"     = "firebrick",
-                    "neg"     = "dodgerblue",
+                    "pos"     = "dodgerblue",
+                    "neg"     = "firebrick",
                     "sig"     = "black",
                     "ns"      = "grey70",
                     "default" = "black"

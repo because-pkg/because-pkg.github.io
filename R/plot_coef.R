@@ -204,13 +204,20 @@ plot_coef.because <- function(
         "non-sig" = "#bdbdbd"  # Light Grey
     )
 
+    # Symmetric axis: always show both sides of zero so positive and negative
+    # effects can be visually compared regardless of the data range.
+    # Use coord_flip(ylim=) rather than scale_y_continuous(limits=) to zoom
+    # the coordinate system without clipping whiskers at the scale level.
+    max_abs <- max(abs(c(plot_df$Lower, plot_df$Upper, plot_df$Estimate)), na.rm = TRUE)
+    axis_lim <- c(-max_abs, max_abs) * 1.05  # 5% padding
+
     p <- ggplot2::ggplot(
         plot_df, 
         ggplot2::aes(x = Path, y = Estimate, ymin = Lower, ymax = Upper, color = Significant)
     ) +
         ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
         ggplot2::geom_pointrange(linewidth = 0.8, size = 0.5) +
-        ggplot2::coord_flip() +
+        ggplot2::coord_flip(ylim = axis_lim) +
         ggplot2::scale_color_manual(values = color_map, guide = "none") +
         ggplot2::labs(
             title = paste("Path Coefficients (", type, ")", sep = ""),

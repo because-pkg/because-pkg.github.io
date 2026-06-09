@@ -119,8 +119,9 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
     current_types <- sapply(mcmc_conf$getSamplers(target), function(s) s$name)
     if (any(grepl("posterior_predictive", current_types, ignore.case = TRUE))) next
     
-    # [NEW] Phylogenetic ESS: Force Elliptical Slice Sampler for multivariate phylo nodes
-    if (grepl("^(err_raw_|u_std_).*(phylo|BM|OU|Pagel).*", target)) {
+    # [NEW] Phylogenetic ESS: Force Elliptical Slice Sampler for multivariate phylo nodes.
+    # Matches both centered (err_raw_*_phylo) and non-centered (z_*_phylo) parameterizations.
+    if (grepl("^(err_raw_|u_std_|z_).*(phylo|BM|OU|Pagel).*", target)) {
         mcmc_conf$removeSamplers(target)
         mcmc_conf$addSampler(target = target, type = "ess")
         if (!quiet) message(sprintf("NIMBLE: Forced 'ess' (Elliptical Slice) for phylogenetic vector '%s'.", target))
@@ -2204,7 +2205,6 @@ because <- function(
         }
         if (!is.null(data[[mat_name]])) {
           py_code <- numpyro_structure_definition(s_obj, engine = "numpyro")
-          cat(py_code, file="scratch/generated_model.py")
           if (!is.null(py_code)) {
             env <- reticulate::py_run_string(py_code)
             funcs <- names(env)
@@ -3250,7 +3250,6 @@ because <- function(
       if (!is.null(data[[mat_name]])) {
         # Ask the extension package for the Python JAX code
         py_code <- numpyro_structure_definition(s_obj, engine = "numpyro")
-          cat(py_code, file="scratch/generated_model.py")
         if (!is.null(py_code)) {
           # Compile into a Python function using reticulate
           env <- reticulate::py_run_string(py_code)
@@ -3841,6 +3840,11 @@ because <- function(
             nimble_data[["Prec_multiPhylo"]] <- data[["Prec_multiPhylo"]]
             nimble_constants[["Prec_multiPhylo"]] <- NULL
         }
+        if (!is.null(data[["L_phylo"]])) {
+            # Single-tree non-centered Cholesky factor: treat as data (observed matrix)
+            nimble_data[["L_phylo"]] <- data[["L_phylo"]]
+            nimble_constants[["L_phylo"]] <- NULL
+        }
 
         m_obj <- suppressMessages(suppressWarnings(nimble::nimbleModel(
           code = nimble_code,
@@ -4062,6 +4066,11 @@ because <- function(
         if (!is.null(data[["Prec_multiPhylo"]])) {
             nimble_data[["Prec_multiPhylo"]] <- data[["Prec_multiPhylo"]]
             nimble_constants[["Prec_multiPhylo"]] <- NULL
+        }
+        if (!is.null(data[["L_phylo"]])) {
+            # Single-tree non-centered Cholesky factor: treat as data (observed matrix)
+            nimble_data[["L_phylo"]] <- data[["L_phylo"]]
+            nimble_constants[["L_phylo"]] <- NULL
         }
 
         worker_model <- suppressMessages(suppressWarnings(nimble::nimbleModel(
@@ -4651,12 +4660,24 @@ because <- function(
   # Compute WAIC if requested (must be after class assignment)
   if (WAIC) {
     if (engine == "nimble" && !is.null(nimble_waic)) {
+       # NIMBLE built-in WAIC: lppd = log pointwise predictive density (no penalty),
+       # pWAIC = effective parameters, WAIC = -2*(lppd - pWAIC).
+       # elpd_waic (as in because) = lppd - pWAIC  (NOT just lppd)
+       nimble_elpd     <- nimble_waic$lppd - nimble_waic$pWAIC
+       nimble_pwaic    <- nimble_waic$pWAIC
+       nimble_waic_val <- nimble_waic$WAIC   # = -2 * nimble_elpd
+       # n_obs: N observations x number of modelled response variables
+       n_obs_nimble <- tryCatch({
+           n_resp <- length(unique(result$parameter_map$response))
+           as.integer(data$N * n_resp)
+       }, error = function(e) NA_integer_)
+       n_samples_nimble <- as.integer((n.iter - n.burnin) / n.thin) * n.chains
        waic_df <- data.frame(
-           Estimate = c(nimble_waic$lppd, nimble_waic$pWAIC, nimble_waic$WAIC),
-           SE = c(NA, NA, NA),
+           Estimate = c(nimble_elpd, nimble_pwaic, nimble_waic_val),
+           SE = c(NA_real_, NA_real_, NA_real_),  # no pointwise SE from NIMBLE built-in WAIC
            row.names = c("elpd_waic", "p_waic", "waic")
        )
-       attr(waic_df, "dims") <- c(n_obs = NA, n_samples = n.iter - n.burnin)
+       attr(waic_df, "dims") <- c(n_obs = n_obs_nimble, n_samples = n_samples_nimble)
        class(waic_df) <- c("because_waic", "data.frame")
        result$WAIC <- waic_df
     } else {
@@ -4790,9 +4811,8 @@ run_single_dsep_test_v2 <- function(
           }
           
           if (any(is.na(match_idx))) {
-            print("NA found in match_idx!")
-            print(head(vals))
-            print(levels_map)
+            warning(sprintf("Categorical level mismatch: %d value(s) in '%s' not found in expected levels.",
+                            sum(is.na(match_idx)), deparse(substitute(vals))))
           }
 
           for (k in seq_along(dummies)) {

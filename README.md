@@ -57,3 +57,49 @@ NIMBLE is an optional backend that requires a C++ compiler to be installed on yo
 -   **macOS**: Install **Xcode Command Line Tools** via terminal: `xcode-select --install`.
 -   **Linux**: Install `build-essential` (on Ubuntu/Debian) or equivalent development tools for your distribution.
 -   **R Package**: `install.packages("nimble")`.
+
+### NumPyro (Python-based Engine)
+NumPyro is an optional backend built on JAX, recommended for large datasets or
+GPU-accelerated sampling. It runs from R via the `reticulate` package.
+NumPyro requires Python 3.8 or later and the `reticulate` R package.
+Start by installing `reticulate` if you don't have it yet:
+
+``` r
+install.packages("reticulate")
+```
+
+If you do not already have Python installed on your system, you can skip installing
+it separately: `reticulate` can install Miniconda, which bundles Python and conda
+together:
+
+``` r
+reticulate::install_miniconda()  # skip if Python is already installed
+```
+
+**One-step setup**: `because` provides a built-in helper that installs all
+required Python packages (`numpyro`, `jax`, `jaxlib`, `networkx`, `funsor`,
+and the `because_py` companion module):
+
+``` r
+install_because_numpyro()
+```
+
+The function automatically detects your active Python environment — including
+RStudio project-level virtual environments (`.venv`) and any existing `reticulate`
+configuration — falling back to `"r-reticulate"` if none is found.
+
+If in a fresh R session `reticulate` picks up a different Python environment than
+the one where the packages were installed, `because` will throw an error like:
+
+```
+Error: Failed to import python module 'because.api'.
+Python is currently running from: /path/to/wrong/python
+Ensure because_py is installed in this exact environment.
+Try running: install_because_numpyro()
+```
+
+In this case, point `reticulate` to the correct environment before calling `because()`:
+
+``` r
+reticulate::use_virtualenv("r-reticulate", required = TRUE)
+```

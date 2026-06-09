@@ -37,13 +37,15 @@ find_reusable_tests <- function(
         message("Scanning previous models for reusable d-separation tests...")
     }
 
-    # Filter valid models first
+    # Filter valid models first.
+    # JAGS/NIMBLE store individual test results in $dsep_results (list of coda objects).
+    # NumPyro stores a pre-formatted data.frame in $dsep$results.
     valid_models <- list()
     for (m_idx in seq_along(reuse_models)) {
         prev_model <- reuse_models[[m_idx]]
-        if (
-            inherits(prev_model, "because") && !is.null(prev_model$dsep_results)
-        ) {
+        is_jags_dsep    <- !is.null(prev_model$dsep_results)
+        is_numpyro_dsep <- is.list(prev_model$dsep) && !is.null(prev_model$dsep$results)
+        if (inherits(prev_model, "because") && (is_jags_dsep || is_numpyro_dsep)) {
             valid_models <- c(valid_models, list(prev_model))
         }
     }
@@ -119,7 +121,14 @@ find_reusable_tests <- function(
 
                 if (curr_req_hash == prev_req_hash) {
                     # MATCH CONFIRMED SAFE
-                    found[[i]] <- prev_model$dsep_results[[match_idx]]
+                    # Retrieve from the correct slot depending on engine:
+                    # JAGS/NIMBLE: $dsep_results is a list of coda-based result objects
+                    # NumPyro:     $dsep$results is a data.frame (one row per test)
+                    if (!is.null(prev_model$dsep_results)) {
+                        found[[i]] <- prev_model$dsep_results[[match_idx]]
+                    } else {
+                        found[[i]] <- prev_model$dsep$results[match_idx, , drop = FALSE]
+                    }
                     found_indices <- c(found_indices, i)
                     n_reused <- n_reused + 1
                     found_match <- TRUE
