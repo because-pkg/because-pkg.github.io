@@ -1010,14 +1010,11 @@ because_model <- function(
       resp_level <- get_var_level(response, hierarchical_info)
       pred_idx <- get_pred_index(pred, resp_level, hierarchical_info)
 
-      if (pred_dist == "occupancy") {
-        # Use latent state z_Predictor instead of Predictor
-        # Replace pred in pred_idx with z_pred
-        z_pred_idx <- gsub(paste0("^", pred), paste0("z_", pred), pred_idx)
-        linpred <- paste0(linpred, " + ", beta_name, "*", z_pred_idx)
-      } else {
-        linpred <- paste0(linpred, " + ", beta_name, "*", pred_idx)
-      }
+      # Use hook to get the correct predictor index (e.g. z_Species[i] for occupancy)
+      pred_fam_obj <- get_family_object(pred_dist)
+      actual_pred_idx <- get_latent_predictor_name(pred_fam_obj, pred, pred_idx)
+      linpred <- paste0(linpred, " + ", beta_name, "*", actual_pred_idx)
+
 
       # Store in parameter map
       param_map[[length(param_map) + 1]] <- list(
@@ -1759,9 +1756,6 @@ because_model <- function(
           )
         )
       }
-    } else if (dist == "occupancy") {
-      # No Zeros-trick or custom likelihood loop needed here
-      # The occupancy likelihood is handled in the Likelihoods section.
     } else {
       stop(paste("Unknown distribution:", dist))
     }
@@ -1795,18 +1789,17 @@ because_model <- function(
       tau <- paste0("TAU", tolower(response), suffix)
 
       if (dist == "gaussian") {
-        # Skip likelihood generation for detection probability equations (p_Response)
-        # These are auxiliary equations for Occupancy models
+        # Skip likelihood generation for auxiliary detection equations (e.g. p_Species ~ ...)
+        # Uses is_auxiliary_equation() hook so extension packages can define their own.
         if (grepl("^p_", response)) {
-          target_resp <- sub("^p_", "", response)
-          # Check if this target is an occupancy model response
-          is_occupancy_aux <- any(sapply(names(dist_list), function(n) {
-            (dist_list[[n]] == "occupancy") && (n == target_resp)
-          }))
-          if (is_occupancy_aux) next
+          all_resp_names <- names(dist_list)
+          fam_check <- get_family_object(dist_list[[sub("^p_", "", response)]] %||% "gaussian")
+          aux_flags <- is_auxiliary_equation(fam_check, response, all_resp_names)
+          if (isTRUE(aux_flags$skip_likelihood)) next
         }
 
         mu <- paste0("mu_", response, suffix)
+
         tau_scalar <- paste0("tau", response, suffix)
 
         # Check if this variable has missing data
@@ -3193,13 +3186,13 @@ because_model <- function(
       next
     }
 
-    # Identify if this is an occupancy auxiliary parameter
-    is_occupancy_aux <- FALSE
+    # Identify if this is an auxiliary detection equation (e.g. p_Species for occupancy)
+    # Uses is_auxiliary_equation() hook so extension packages drive this decision.
+    aux_flags <- list(skip_likelihood = FALSE, skip_variance = FALSE)
     if (grepl("^p_", response)) {
-      target_resp <- sub("^p_", "", response)
-      is_occupancy_aux <- any(sapply(names(dist_list), function(n) {
-        (dist_list[[n]] == "occupancy") && (paste0("p_", n) == response)
-      }))
+      target_dist <- dist_list[[sub("^p_", "", response)]] %||% "gaussian"
+      fam_check_aux <- get_family_object(target_dist)
+      aux_flags <- is_auxiliary_equation(fam_check_aux, response, names(dist_list))
     }
 
     for (k in 1:response_counter[[response]]) {
@@ -3217,7 +3210,7 @@ because_model <- function(
         "ordinal"
       )
       default_alpha <- "dnorm(0, 0.01)"
-      if (dist %in% logit_dists || is_occupancy_aux) {
+      if (dist %in% logit_dists || isTRUE(aux_flags$skip_likelihood)) {
         default_alpha <- "dnorm(0, 1)"
       }
       model_lines <- c(
@@ -3253,7 +3246,7 @@ because_model <- function(
       if (
         (is.null(vars_with_na) || !response %in% vars_with_na || TRUE) &&
           (needs_residual_variance || needs_random_variance) &&
-          !is_occupancy_aux
+          !isTRUE(aux_flags$skip_variance)
       ) {
         if (independent) {
           # Independent Priors (only tau_e)

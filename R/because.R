@@ -3369,7 +3369,9 @@ because <- function(
     
     result <- list(
       equations = equations,
-      model = model_string,
+      model      = NULL,        # No live model object for NumPyro
+      model_code = model_string, # JAGS-equivalent string (kept for reference)
+      numpyro_code = if (!is.null(py_result$model_code)) py_result$model_code else NULL,
       parameter_map = parameter_map,
       samples = mcmc_samples,
       data = data,
@@ -4214,7 +4216,11 @@ because <- function(
         samples <- coda::mcmc.list(lapply(nimble_samples, function(x) x))
       }
     }
-    model <- nimble_model # Store the Rmodel object
+    model <- nimble_model # Store the R (uncompiled) model object
+    # Store compiled objects for because_continue() — NULL when parallel=TRUE
+    result$nimble_compiled <- if (exists("compiled_mcmc")) compiled_mcmc else NULL
+    result$nimble_cmodel   <- if (exists("compiled_model")) compiled_model else NULL
+    result$nimble_samplers <- nimble_samplers
   } else {
     # --- JAGS EXECUTION PIPELINE (Default) ---
     if (parallel && n.cores > 1 && n.chains > 1) {
@@ -4552,15 +4558,20 @@ because <- function(
   )
 
   # Combine with basic model info
-  result$model <- model_string
-  result$samples <- samples
-  result$parameter_map <- parameter_map
-  result$data <- data
-  result$original_data <- original_data
-  result$family <- family
+  # NOTE: result$model already holds the live rjags object (from result list above).
+  # result$model_code holds the model string for reference / recompilation.
+  # Do NOT overwrite result$model here — keeping the live object enables because_continue().
+  result$engine         <- "jags"
+  result$samples        <- samples
+  result$parameter_map  <- parameter_map
+  result$data           <- data
+  result$original_data  <- original_data
+  result$family         <- family
   result$categorical_vars <- attr(data, "categorical_vars")
-  result$poly_terms <- all_poly_terms
-  result$equations <- equations
+  result$poly_terms     <- all_poly_terms
+  result$equations      <- equations
+  result$parallel       <- parallel
+  result$n.cores        <- n.cores
 
   # --- Result Enrichment ---
   # If we have a structure, try to extract labels for ordering
