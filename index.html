@@ -155,6 +155,28 @@
 </h3>
 <p>NIMBLE is an optional backend that requires a C++ compiler to be installed on your system: - <strong>Windows</strong>: Install <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a>. - <strong>macOS</strong>: Install <strong>Xcode Command Line Tools</strong> via terminal: <code>xcode-select --install</code>. - <strong>Linux</strong>: Install <code>build-essential</code> (on Ubuntu/Debian) or equivalent development tools for your distribution. - <strong>R Package</strong>: <code>install.packages("nimble")</code>.</p>
 </div>
+<div class="section level3">
+<h3 id="numpyro-python-based-engine">NumPyro (Python-based Engine)<a class="anchor" aria-label="anchor" href="#numpyro-python-based-engine"></a>
+</h3>
+<p>NumPyro is an optional backend built on JAX, recommended for large datasets or GPU-accelerated sampling. It runs from R via the <code>reticulate</code> package. NumPyro requires Python 3.8 or later and the <code>reticulate</code> R package. Start by installing <code>reticulate</code> if you don’t have it yet:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"reticulate"</span><span class="op">)</span></span></code></pre></div>
+<p>If you do not already have Python installed on your system, you can skip installing it separately: <code>reticulate</code> can install Miniconda, which bundles Python and conda together:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/install_miniconda.html" class="external-link">install_miniconda</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># skip if Python is already installed</span></span></code></pre></div>
+<p><strong>One-step setup</strong>: <code>because</code> provides a built-in helper that installs all required Python packages (<code>numpyro</code>, <code>jax</code>, <code>jaxlib</code>, <code>networkx</code>, <code>funsor</code>, and the <code>because_py</code> companion module):</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/install_because_numpyro.html">install_because_numpyro</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>The function automatically detects your active Python environment — including RStudio project-level virtual environments (<code>.venv</code>) and any existing <code>reticulate</code> configuration — falling back to <code>"r-reticulate"</code> if none is found.</p>
+<p>If in a fresh R session <code>reticulate</code> picks up a different Python environment than the one where the packages were installed, <code>because</code> will throw an error like:</p>
+<pre><code>Error: Failed to import python module 'because.api'.
+Python is currently running from: /path/to/wrong/python
+Ensure because_py is installed in this exact environment.
+Try running: install_because_numpyro()</code></pre>
+<p>In this case, point <code>reticulate</code> to the correct environment before calling <code><a href="reference/because.html">because()</a></code>:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/use_python.html" class="external-link">use_virtualenv</a></span><span class="op">(</span><span class="st">"r-reticulate"</span>, required <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+</div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
