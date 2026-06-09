@@ -1,7 +1,7 @@
 Package: because
 Type: Package
 Title: Bayesian Estimation of Causal Effects
-Version: 1.2.9
+Version: 1.3.0
 Authors@R: c(
     person(
       "Achaz", "von Hardenberg",
@@ -12,7 +12,7 @@ Authors@R: c(
 Author: Achaz von Hardenberg [aut, cre]
 Maintainer: Achaz von Hardenberg <achaz.hardenberg@unipv.it>
 Description: Provides tools for specifying and fitting Bayesian Structural Equation Models
-    using JAGS or NIMBLE. The 'because' package allows causal inference in complex ecological and 
+    using JAGS, NIMBLE or NUMPYRO. The 'because' package allows causal inference in complex ecological and 
     evolutionary analyses, accounting for phylogenetic uncertainty (through the because.phybase extension), spatial autocorrelation, 
     and other covariance structures.
 SystemRequirements: JAGS (>= 4.0.0)
