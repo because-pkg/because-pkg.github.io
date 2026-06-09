@@ -17,6 +17,6 @@ https://github.com/achazhardenberg/because
       title = {because: Bayesian Estimation of Causal Effects},
       author = {Achaz {von Hardenberg}},
       year = {2026},
-      note = {R package version 1.2.9},
+      note = {R package version 1.3.0},
       url = {https://because-pkg.github.io},
     }
