@@ -17,7 +17,7 @@
 #' @export
 install_because_numpyro <- function(envname = NULL, 
                                     method = "auto",
-                                    because_py_url = "git+https://github.com/because-pkg/because_py.git",
+                                    because_py_url = "https://github.com/because-pkg/because_py/archive/main.zip",
                                     ...) {
   
   if (!requireNamespace("reticulate", quietly = TRUE)) {
@@ -57,6 +57,8 @@ install_because_numpyro <- function(envname = NULL,
     message('fit <- because(equations, data, engine = "numpyro")')
     message("\nNote: If you encounter issues finding the environment in a fresh R session, you may need to explicitly load it before calling because():")
     message(sprintf('reticulate::use_virtualenv("%s", required = TRUE)', envname))
+    message("If you are using Miniconda/Anaconda, use this instead:")
+    message(sprintf('reticulate::use_condaenv("%s", required = TRUE)', envname))
     
   }, error = function(e) {
     message("\nInstallation failed. Error details:")
