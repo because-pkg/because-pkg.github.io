@@ -3331,6 +3331,7 @@ because <- function(
       data = flat_data,
       family = if (!is.null(family)) as.list(family) else NULL,
       latent = latent,
+      induced_correlations = if (!is.null(induced_cors) && length(induced_cors) > 0) induced_cors else NULL,
       dsep = FALSE,
       dsep_only = FALSE,
       calculate_waic = WAIC,
