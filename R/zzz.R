@@ -43,22 +43,39 @@ if (getRversion() >= "2.15.1") {
 # to avoid polluting the global environment and satisfy CRAN requirements.
 .because_env <- new.env(parent = emptyenv())
 
+# Update these two variables whenever you release a new because_py backend!
+.target_numpyro_version <- "0.1.1" 
+.notify_numpyro_update <- FALSE
+
 .onAttach <- function(libname, pkgname) {
-  # Toggle this to TRUE whenever you release a major update to the Python
-  # backend and want to notify your R users to upgrade.
-  notify_numpyro_update <- FALSE 
-  
-  if (notify_numpyro_update) {
+  if (.notify_numpyro_update) {
     # Only notify users who actually have the reticulate environment set up
     if (requireNamespace("reticulate", quietly = TRUE)) {
       if (reticulate::virtualenv_exists("because_env") || reticulate::condaenv_exists("because_env")) {
-        packageStartupMessage(
-          "----------------------------------------------------------------------\n",
-          " NOTE: A new version of the NumPyro backend (because_py) is available!\n",
-          " Run `install_because_numpyro()` to upgrade and get the latest features.\n",
-          "----------------------------------------------------------------------"
-        )
+        
+        # Check if the user already installed this specific update
+        config_dir <- tools::R_user_dir("because", which = "config")
+        receipt_file <- file.path(config_dir, paste0("numpyro_receipt_", .target_numpyro_version, ".txt"))
+        
+        if (!file.exists(receipt_file)) {
+          packageStartupMessage(
+            "----------------------------------------------------------------------\n",
+            sprintf(" NOTE: NumPyro backend (because_py) v%s is available!\n", .target_numpyro_version),
+            " Run `install_because_numpyro()` to upgrade and get the latest features.\n",
+            "----------------------------------------------------------------------"
+          )
+        }
       }
     }
   }
+}
+
+# Internal helper called by install_because_numpyro() to silence the message
+.write_numpyro_update_receipt <- function() {
+  config_dir <- tools::R_user_dir("because", which = "config")
+  if (!dir.exists(config_dir)) {
+    dir.create(config_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  receipt_file <- file.path(config_dir, paste0("numpyro_receipt_", .target_numpyro_version, ".txt"))
+  file.create(receipt_file, showWarnings = FALSE)
 }

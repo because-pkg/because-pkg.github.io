@@ -51,6 +51,11 @@ install_because_numpyro <- function(envname = NULL,
       ...
     )
     
+    # Write the receipt so the startup message goes away!
+    try({
+      .write_numpyro_update_receipt()
+    }, silent = TRUE)
+    
     message("\nInstallation successful!")
     message("------------------------")
     message("You can now use the NumPyro engine in your models:")
