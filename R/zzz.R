@@ -47,6 +47,33 @@ if (getRversion() >= "2.15.1") {
 .target_numpyro_version <- "0.2.0" 
 .notify_numpyro_update <- TRUE
 
+.onLoad <- function(libname, pkgname) {
+  # Point reticulate to because_env BEFORE Python is initialized.
+  # use_virtualenv() is too late once RStudio (or another package) has already
+  # started Python.  Setting RETICULATE_PYTHON here — at namespace load time —
+  # ensures because_env's interpreter wins even in RStudio sessions.
+  if (requireNamespace("reticulate", quietly = TRUE)) {
+    # Only act if Python has not been initialised yet
+    if (!reticulate::py_available(initialize = FALSE)) {
+      # Prefer virtualenv, fall back to conda
+      venv_python <- file.path(
+        reticulate::virtualenv_root(), "because_env", "bin", "python"
+      )
+      if (file.exists(venv_python)) {
+        Sys.setenv(RETICULATE_PYTHON = venv_python)
+      } else if (reticulate::condaenv_exists("because_env")) {
+        conda_python <- tryCatch(
+          reticulate::conda_python(envname = "because_env"),
+          error = function(e) ""
+        )
+        if (nzchar(conda_python) && file.exists(conda_python)) {
+          Sys.setenv(RETICULATE_PYTHON = conda_python)
+        }
+      }
+    }
+  }
+}
+
 .onAttach <- function(libname, pkgname) {
   # Print the current R package version
   pkg_version <- utils::packageVersion(pkgname)

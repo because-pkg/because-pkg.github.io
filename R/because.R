@@ -365,9 +365,13 @@ because <- function(
     # Automatically try to bind to the default r-reticulate virtual environment
     # before attempting to import the module, to save the user from doing it manually.
     tryCatch({
-      # Try virtualenv first, then condaenv
-      reticulate::use_virtualenv("because_env", required = FALSE)
-      reticulate::use_condaenv("because_env", required = FALSE)
+      # Bind to because_env with required = TRUE so we never silently fall
+      # back to a different environment that may be missing because_py.
+      if (reticulate::virtualenv_exists("because_env")) {
+        reticulate::use_virtualenv("because_env", required = TRUE)
+      } else if (reticulate::condaenv_exists("because_env")) {
+        reticulate::use_condaenv("because_env", required = TRUE)
+      }
     }, error = function(e) NULL)
     # Set XLA device count BEFORE importing jax/because_py so that JAX picks it up
     target_cores <- as.integer(if (parallel) min(n.cores, n.chains) else 1)
@@ -385,7 +389,16 @@ because <- function(
       tryCatch({
         current_env <- reticulate::py_config()$python
       }, error = function(e) {})
-      stop(sprintf("Failed to import python module 'because.api'. \nPython is currently running from: %s\nEnsure because_py is installed in this exact environment. Try running: install_because_numpyro()", current_env))
+      stop(sprintf(paste0(
+        "Failed to import python module 'because.api'.\n",
+        "Python is currently running from: %s\n\n",
+        "This usually means Python was initialized to a different environment\n",
+        "before 'library(because)' was called (e.g. by RStudio or another package).\n\n",
+        "Quick fix — add this line BEFORE library(because) in your script:\n",
+        "  reticulate::use_virtualenv('because_env', required = TRUE)\n\n",
+        "If because_env does not exist yet, install it first with:\n",
+        "  install_because_numpyro()"
+      ), current_env))
     })
   }
 
