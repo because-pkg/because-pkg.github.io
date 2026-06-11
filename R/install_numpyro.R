@@ -32,7 +32,7 @@ install_because_numpyro <- function(envname = NULL,
     } else if (reticulate::py_available(initialize = FALSE)) {
       envname <- dirname(dirname(reticulate::py_config()$python))
     } else {
-      envname <- "r-reticulate"
+      envname <- "because_env"
     }
   }
   

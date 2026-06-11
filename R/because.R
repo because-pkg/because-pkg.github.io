@@ -365,7 +365,7 @@ because <- function(
     # Automatically try to bind to the default r-reticulate virtual environment
     # before attempting to import the module, to save the user from doing it manually.
     tryCatch({
-      reticulate::use_virtualenv("r-reticulate", required = FALSE)
+      reticulate::use_virtualenv("because_env", required = FALSE)
     }, error = function(e) NULL)
     # Set XLA device count BEFORE importing jax/because_py so that JAX picks it up
     target_cores <- as.integer(if (parallel) min(n.cores, n.chains) else 1)

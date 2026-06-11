@@ -84,4 +84,4 @@ companion module):
 install_because_numpyro()
 ```
 
-If you encounter any issues finding your Python environment (or if you are using Miniconda/Conda), we highly recommend referring to the **[because_py Installation Guide](https://because-pkg.github.io/because_py/articles/installation.html)** for comprehensive troubleshooting and dedicated environment setups.
+If you encounter any issues finding your Python environment (or if you are using Miniconda/Conda), we highly recommend referring to the **[because NumPyro (because_py) Installation Guide](https://because-pkg.github.io/because_py/articles/installation.html)** for comprehensive troubleshooting and dedicated environment setups.
