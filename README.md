@@ -77,29 +77,11 @@ reticulate::install_miniconda()  # skip if Python is already installed
 ```
 
 **One-step setup**: `because` provides a built-in helper that installs all
-required Python packages (`numpyro`, `jax`, `jaxlib`, `networkx`, `funsor`,
-and the `because_py` companion module):
+required Python packages (`numpyro`, `jax`, `jaxlib`, and the `because_py` 
+companion module):
 
 ``` r
 install_because_numpyro()
 ```
 
-The function automatically detects your active Python environment — including
-RStudio project-level virtual environments (`.venv`) and any existing `reticulate`
-configuration — falling back to `"r-reticulate"` if none is found.
-
-If in a fresh R session `reticulate` picks up a different Python environment than
-the one where the packages were installed, `because` will throw an error like:
-
-```
-Error: Failed to import python module 'because.api'.
-Python is currently running from: /path/to/wrong/python
-Ensure because_py is installed in this exact environment.
-Try running: install_because_numpyro()
-```
-
-In this case, point `reticulate` to the correct environment before calling `because()`:
-
-``` r
-reticulate::use_virtualenv("r-reticulate", required = TRUE)
-```
+If you encounter any issues finding your Python environment (or if you are using Miniconda/Conda), we highly recommend referring to the **[because_py Installation Guide](https://because-pkg.github.io/because_py/articles/installation.html)** for comprehensive troubleshooting and dedicated environment setups.
