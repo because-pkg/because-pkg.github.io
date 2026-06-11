@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -127,9 +127,9 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>To install the <strong>stable release</strong> (<code>v1.3.0</code>), run:</p>
+<p>To install the <strong>stable release</strong> (<code>v1.3.1</code>), run:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because@v1.3.0"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because@v1.3.1"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>To install the <strong>latest development version</strong> (unstable), run:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
@@ -164,18 +164,10 @@
 <p>If you do not already have Python installed on your system, you can skip installing it separately: <code>reticulate</code> can install Miniconda, which bundles Python and conda together:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/install_miniconda.html" class="external-link">install_miniconda</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># skip if Python is already installed</span></span></code></pre></div>
-<p><strong>One-step setup</strong>: <code>because</code> provides a built-in helper that installs all required Python packages (<code>numpyro</code>, <code>jax</code>, <code>jaxlib</code>, <code>networkx</code>, <code>funsor</code>, and the <code>because_py</code> companion module):</p>
+<p><strong>One-step setup</strong>: <code>because</code> provides a built-in helper that installs all required Python packages (<code>numpyro</code>, <code>jax</code>, <code>jaxlib</code>, and the <code>because_py</code> companion module):</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/install_because_numpyro.html">install_because_numpyro</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>The function automatically detects your active Python environment — including RStudio project-level virtual environments (<code>.venv</code>) and any existing <code>reticulate</code> configuration — falling back to <code>"r-reticulate"</code> if none is found.</p>
-<p>If in a fresh R session <code>reticulate</code> picks up a different Python environment than the one where the packages were installed, <code>because</code> will throw an error like:</p>
-<pre><code>Error: Failed to import python module 'because.api'.
-Python is currently running from: /path/to/wrong/python
-Ensure because_py is installed in this exact environment.
-Try running: install_because_numpyro()</code></pre>
-<p>In this case, point <code>reticulate</code> to the correct environment before calling <code><a href="reference/because.html">because()</a></code>:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/use_python.html" class="external-link">use_virtualenv</a></span><span class="op">(</span><span class="st">"r-reticulate"</span>, required <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>If you encounter any issues finding your Python environment (or if you are using Miniconda/Conda), we highly recommend referring to the <strong><a href="https://because-pkg.github.io/because_py/articles/installation.html">because NumPyro (because_py) Installation Guide</a></strong> for comprehensive troubleshooting and dedicated environment setups.</p>
 </div>
 </div>
 </div>

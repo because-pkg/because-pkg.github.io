@@ -61,11 +61,11 @@ code from standard R formulas. Key features include:
 
 ## Installation
 
-To install the **stable release** (`v1.3.0`), run:
+To install the **stable release** (`v1.3.1`), run:
 
 ``` r
 
-remotes::install_github("because-pkg/because@v1.3.0", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.3.1", build_vignettes = TRUE)
 ```
 
 To install the **latest development version** (unstable), run:
@@ -120,33 +120,16 @@ reticulate::install_miniconda()  # skip if Python is already installed
 ```
 
 **One-step setup**: `because` provides a built-in helper that installs
-all required Python packages (`numpyro`, `jax`, `jaxlib`, `networkx`,
-`funsor`, and the `because_py` companion module):
+all required Python packages (`numpyro`, `jax`, `jaxlib`, and the
+`because_py` companion module):
 
 ``` r
 
 install_because_numpyro()
 ```
 
-The function automatically detects your active Python environment —
-including RStudio project-level virtual environments (`.venv`) and any
-existing `reticulate` configuration — falling back to `"r-reticulate"`
-if none is found.
-
-If in a fresh R session `reticulate` picks up a different Python
-environment than the one where the packages were installed, `because`
-will throw an error like:
-
-    Error: Failed to import python module 'because.api'.
-    Python is currently running from: /path/to/wrong/python
-    Ensure because_py is installed in this exact environment.
-    Try running: install_because_numpyro()
-
-In this case, point `reticulate` to the correct environment before
-calling
-[`because()`](https://because-pkg.github.io/because/reference/because.md):
-
-``` r
-
-reticulate::use_virtualenv("r-reticulate", required = TRUE)
-```
+If you encounter any issues finding your Python environment (or if you
+are using Miniconda/Conda), we highly recommend referring to the
+**[because NumPyro (because_py) Installation
+Guide](https://because-pkg.github.io/because_py/articles/installation.html)**
+for comprehensive troubleshooting and dedicated environment setups.
