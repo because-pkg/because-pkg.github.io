@@ -49,11 +49,16 @@ if (getRversion() >= "2.15.1") {
   notify_numpyro_update <- FALSE 
   
   if (notify_numpyro_update) {
-    packageStartupMessage(
-      "----------------------------------------------------------------------\n",
-      " NOTE: A new version of the NumPyro backend (because_py) is available!\n",
-      " Run `install_because_numpyro()` to upgrade and get the latest features.\n",
-      "----------------------------------------------------------------------"
-    )
+    # Only notify users who actually have the reticulate environment set up
+    if (requireNamespace("reticulate", quietly = TRUE)) {
+      if (reticulate::virtualenv_exists("because_env") || reticulate::condaenv_exists("because_env")) {
+        packageStartupMessage(
+          "----------------------------------------------------------------------\n",
+          " NOTE: A new version of the NumPyro backend (because_py) is available!\n",
+          " Run `install_because_numpyro()` to upgrade and get the latest features.\n",
+          "----------------------------------------------------------------------"
+        )
+      }
+    }
   }
 }
