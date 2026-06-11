@@ -48,6 +48,10 @@ if (getRversion() >= "2.15.1") {
 .notify_numpyro_update <- FALSE
 
 .onAttach <- function(libname, pkgname) {
+  # Print the current R package version
+  pkg_version <- utils::packageVersion(pkgname)
+  packageStartupMessage(sprintf("This is because v%s", pkg_version))
+  
   if (.notify_numpyro_update) {
     # Only notify users who actually have the reticulate environment set up
     if (requireNamespace("reticulate", quietly = TRUE)) {
