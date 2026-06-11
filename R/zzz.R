@@ -44,8 +44,8 @@ if (getRversion() >= "2.15.1") {
 .because_env <- new.env(parent = emptyenv())
 
 # Update these two variables whenever you release a new because_py backend!
-.target_numpyro_version <- "0.1.1" 
-.notify_numpyro_update <- FALSE
+.target_numpyro_version <- "0.2.0" 
+.notify_numpyro_update <- TRUE
 
 .onAttach <- function(libname, pkgname) {
   # Print the current R package version
