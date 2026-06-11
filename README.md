@@ -30,10 +30,10 @@ The focus of `because` is on causal inference, providing tools to facilitate the
 
 ## Installation
 
-To install the **stable release** (`v1.3.0`), run:
+To install the **stable release** (`v1.3.1`), run:
 
 ``` r
-remotes::install_github("because-pkg/because@v1.3.0", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.3.1", build_vignettes = TRUE)
 ```
 
 To install the **latest development version** (unstable), run:
