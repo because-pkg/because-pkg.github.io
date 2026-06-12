@@ -44,7 +44,7 @@ if (getRversion() >= "2.15.1") {
 .because_env <- new.env(parent = emptyenv())
 
 # Update these two variables whenever you release a new because_py backend!
-.target_numpyro_version <- "0.2.0" 
+.target_numpyro_version <- "0.2.1"
 .notify_numpyro_update <- TRUE
 
 .onLoad <- function(libname, pkgname) {
@@ -78,16 +78,16 @@ if (getRversion() >= "2.15.1") {
   # Print the current R package version
   pkg_version <- utils::packageVersion(pkgname)
   packageStartupMessage(sprintf("This is because v%s", pkg_version))
-  
+
   if (.notify_numpyro_update) {
     # Only notify users who actually have the reticulate environment set up
     if (requireNamespace("reticulate", quietly = TRUE)) {
       if (reticulate::virtualenv_exists("because_env") || reticulate::condaenv_exists("because_env")) {
-        
+
         # Check if the user already installed this specific update
         config_dir <- tools::R_user_dir("because", which = "config")
         receipt_file <- file.path(config_dir, paste0("numpyro_receipt_", .target_numpyro_version, ".txt"))
-        
+
         if (!file.exists(receipt_file)) {
           packageStartupMessage(
             "----------------------------------------------------------------------\n",
