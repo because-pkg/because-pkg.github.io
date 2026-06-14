@@ -772,7 +772,25 @@ because <- function(
     }
   }
 
-  # [AUTO-DETECTION] Infer structure levels if not provided
+  # Capture row_ids early for hierarchical models, while 'data' is still the
+  # raw input list of data frames (before preprocess_categorical_vars converts
+  # character species columns to integer codes and before original_data is
+  # overwritten at line ~1056).
+  row_ids <- NULL
+  if (is_hierarchical && !is.null(id_col) && is.list(data) && !is.data.frame(data)) {
+    for (.lvl in names(data)) {
+      .lvl_df <- data[[.lvl]]
+      if (is.data.frame(.lvl_df) && id_col %in% names(.lvl_df)) {
+        .col <- .lvl_df[[id_col]]
+        if (is.character(.col) || is.factor(.col)) {
+          row_ids <- as.character(.col)
+          break
+        }
+      }
+    }
+    rm(.lvl, .lvl_df, .col)
+  }
+
   if (is_hierarchical && !is.null(structure) && is.null(hierarchical_info$structure_levels)) {
       hierarchical_info$structure_levels <- auto_detect_structure_levels(structure, hierarchical_info, quiet = quiet)
   }
@@ -1193,6 +1211,10 @@ because <- function(
     }
   }
 
+  # row_ids was already captured above (immediately after hierarchical_info was
+  # built from the raw data). For the flat path it is re-initialised below.
+  # row_ids <- NULL  # <-- original position; now handled earlier.
+
   if (
     (is.data.frame(data) || (is.list(data) && !is.data.frame(data))) &&
       !is_hierarchical
@@ -1248,7 +1270,7 @@ because <- function(
     }
 
     # Handle id_col for matching to tree/structure
-    row_ids <- NULL
+    row_ids <- NULL  # (re-initialised here for the flat path)
     if (is.data.frame(data)) {
       if (!is.null(id_col)) {
         if (!id_col %in% names(data)) {
