@@ -373,15 +373,66 @@ because <- function(
         reticulate::use_condaenv("because_env", required = TRUE)
       }
     }, error = function(e) NULL)
-    # Set XLA device count BEFORE importing jax/because_py so that JAX picks it up
-    target_cores <- as.integer(if (parallel) min(n.cores, n.chains) else 1)
-    if (target_cores > 1) {
-      current_flags <- Sys.getenv("XLA_FLAGS")
-      if (!grepl("--xla_force_host_platform_device_count", current_flags)) {
-         Sys.setenv(XLA_FLAGS = paste0(current_flags, " --xla_force_host_platform_device_count=", target_cores))
+    # ------------------------------------------------------------------
+    # Thread-limit setup: must happen BEFORE reticulate::import("because.api")
+    # because api.py now performs a lazy "import jax" on first fit() call,
+    # and JAX reads thread counts from the C++ runtime at that moment.
+    #
+    # Strategy:
+    #   1. Set vars in R's environment (covers child processes spawned by R).
+    #   2. Mirror into Python's os.environ in case Python is already running
+    #      (reticulate shares one Python process across the session).
+    #   3. Set XLA_FLAGS for the correct device count.
+    # ------------------------------------------------------------------
+    target_cores <- as.integer(if (parallel) min(n.cores, n.chains) else 1L)
+
+    # --- R-level env vars ---
+    .thread_vars <- list(
+      OMP_NUM_THREADS            = "1",
+      OPENBLAS_NUM_THREADS       = "1",
+      GOTO_NUM_THREADS           = "1",
+      MKL_NUM_THREADS            = "1",
+      MKL_DOMAIN_NUM_THREADS     = "1",
+      NUMEXPR_NUM_THREADS        = "1",
+      LLVM_NUM_THREADS           = "1",
+      TF_NUM_INTEROP_THREADS     = as.character(target_cores),
+      TF_NUM_INTRAOP_THREADS     = as.character(target_cores),
+      XLA_PYTHON_CLIENT_PREALLOCATE = "false"
+    )
+    # Only set vars not already set by the user
+    for (.v in names(.thread_vars)) {
+      if (!nzchar(Sys.getenv(.v))) {
+        do.call(Sys.setenv, stats::setNames(list(.thread_vars[[.v]]), .v))
       }
     }
-    
+
+    # XLA_FLAGS: merge device-count and Eigen flags without overwriting user flags
+    .current_xla <- Sys.getenv("XLA_FLAGS")
+    .xla_additions <- character(0)
+    if (!grepl("--xla_force_host_platform_device_count", .current_xla))
+      .xla_additions <- c(.xla_additions,
+                          paste0("--xla_force_host_platform_device_count=", target_cores))
+    if (!grepl("--xla_cpu_multi_thread_eigen", .current_xla))
+      .xla_additions <- c(.xla_additions, "--xla_cpu_multi_thread_eigen=false")
+    if (length(.xla_additions) > 0)
+      Sys.setenv(XLA_FLAGS = trimws(paste(.current_xla, paste(.xla_additions, collapse = " "))))
+
+    # --- Mirror vars into Python's os.environ (if Python is already running) ---
+    if (reticulate::py_available(initialize = FALSE)) {
+      .py_set_code <- paste(
+        "import os",
+        paste(sapply(names(.thread_vars), function(.v) {
+          sprintf("os.environ.setdefault('%s', '%s')", .v, .thread_vars[[.v]])
+        }), collapse = "\n"),
+        sprintf("os.environ.setdefault('XLA_FLAGS', '%s')", Sys.getenv("XLA_FLAGS")),
+        sep = "\n"
+      )
+      tryCatch(
+        reticulate::py_run_string(.py_set_code),
+        error = function(e) NULL
+      )
+    }
+
     tryCatch({
       because_py <- reticulate::import("because.api")
     }, error = function(e) {
