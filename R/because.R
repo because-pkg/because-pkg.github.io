@@ -414,6 +414,10 @@ because <- function(
                           paste0("--xla_force_host_platform_device_count=", target_cores))
     if (!grepl("--xla_cpu_multi_thread_eigen", .current_xla))
       .xla_additions <- c(.xla_additions, "--xla_cpu_multi_thread_eigen=false")
+    if (!grepl("intra_op_parallelism_threads", .current_xla))
+      .xla_additions <- c(.xla_additions, paste0("intra_op_parallelism_threads=", target_cores))
+    if (!grepl("inter_op_parallelism_threads", .current_xla))
+      .xla_additions <- c(.xla_additions, paste0("inter_op_parallelism_threads=", target_cores))
     if (length(.xla_additions) > 0)
       Sys.setenv(XLA_FLAGS = trimws(paste(.current_xla, paste(.xla_additions, collapse = " "))))
 
