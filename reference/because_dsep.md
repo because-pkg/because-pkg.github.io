@@ -128,7 +128,6 @@ ind_tests <- because_dsep(equations)
 # With latent variable
 equations_latent <- list(X ~ Quality, Y ~ Quality)
 result <- because_dsep(equations_latent, latent = "Quality")
-#> Removed 1 untestable m-separation claim(s) where latent variable(s) appear in the conditioning set (Shipley & Douma 2021).
 #> Basis Set for MAG: 
 #> I(X,Y|Z) means X is m-separated from Y given the set Z in the MAG 
 #> No elements in the basis set 
