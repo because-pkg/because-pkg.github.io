@@ -1,0 +1,5 @@
+library(dagitty)
+d <- dagitty("dag { A -> B -> C }")
+ind <- impliedConditionalIndependencies(d)
+un <- unclass(ind)
+print(str(un))

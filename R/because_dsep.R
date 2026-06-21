@@ -448,7 +448,8 @@ dsep_standard <- function(
     family = family,
     deterministic_terms = all_det_terms,
     root_vars = root_vars,
-    hierarchical_info = hierarchical_info
+    hierarchical_info = hierarchical_info,
+    d_obj = d_obj
   )
 
   # Append random terms if relevant
@@ -610,27 +611,27 @@ dsep_with_latents <- function(
     }
   }
   
-  # Compute true Shipley (2000) minimal basis set
-  sorted <- dagitty::topologicalOrdering(d_obj)
-  sorted_nodes <- names(sorted)[order(unlist(sorted))]
-  
-  basis <- list()
-  for (i in seq_along(sorted_nodes)) {
-    v_i <- sorted_nodes[i]
-    parents_vi <- dagitty::parents(d_obj, v_i)
-    
-    if (i > 1) {
-      predecessors <- sorted_nodes[1:(i-1)]
-      non_parents <- setdiff(predecessors, parents_vi)
-      
-      for (v_j in non_parents) {
-        parents_vj <- dagitty::parents(d_obj, v_j)
-        basis[[length(basis) + 1]] <- c(v_i, v_j, unique(c(parents_vi, parents_vj)))
+  # --- Compute optimal MAG basis set (Shipley & Douma 2021) ---
+  # Find which observed nodes share a latent parent
+  latent_sharers <- list()
+  if (!is.null(latent) && length(latent) > 0) {
+    for (l in latent) {
+      if (l %in% names(d_obj)) {
+        children <- dagitty::children(d_obj, l)
+        for (c in children) {
+          if (is.null(latent_sharers[[c]])) {
+            latent_sharers[[c]] <- character(0)
+          }
+          latent_sharers[[c]] <- unique(c(latent_sharers[[c]], setdiff(children, c)))
+        }
       }
     }
   }
-
-  # Build combined exclusion list (same logic as dsep_standard)
+  
+  # Extract all possible implied independencies (dagitty natively marginalizes latents)
+  indeps <- unclass(dagitty::impliedConditionalIndependencies(d_obj))
+  
+  # Build combined exclusion list for deterministic/poly terms
   excl_names <- unique(c(
     if (!is.null(all_det_terms) && length(all_det_terms) > 0) {
       sapply(all_det_terms, function(x) x$internal_name)
@@ -643,44 +644,44 @@ dsep_with_latents <- function(
       character(0)
     }
   ))
-  if (length(excl_names) > 0 && !is.null(basis)) {
-    basis <- Filter(
-      function(test) {
-        !(test[1] %in% excl_names || test[2] %in% excl_names)
-      },
-      basis
+
+  # Group by pair and apply collinearity penalty
+  pairs <- list()
+  for (i in seq_along(indeps)) {
+    x <- as.character(unlist(indeps[[i]]$X))
+    y <- as.character(unlist(indeps[[i]]$Y))
+    z <- as.character(unlist(indeps[[i]]$Z))
+    
+    # Filter out deterministic/polynomial nodes from focal pairs
+    if (x %in% excl_names || y %in% excl_names) next
+    
+    xy <- sort(c(x, y))
+    key <- paste(xy, collapse = "_||_")
+    
+    if (is.null(pairs[[key]])) {
+      pairs[[key]] <- list()
+    }
+    
+    col_pen <- 0
+    if (length(z) > 0) {
+      sharers_x <- if (!is.null(latent_sharers[[x]])) latent_sharers[[x]] else character(0)
+      sharers_y <- if (!is.null(latent_sharers[[y]])) latent_sharers[[y]] else character(0)
+      all_sharers <- unique(c(sharers_x, sharers_y))
+      col_pen <- sum(z %in% all_sharers)
+    }
+    size_pen <- length(z)
+    
+    pairs[[key]][[length(pairs[[key]]) + 1]] <- list(
+      X = x, Y = y, Z = z, col_pen = col_pen, size_pen = size_pen
     )
   }
-
-  # --- Shipley & Douma (2021): Remove untestable basis set elements ---
-  # Per the MAG approach, m-separation tests where a LATENT variable appears
-  # in the CONDITIONING SET are not directly testable from observed data.
-  # (You cannot condition on an unobserved variable in a regression.)
-  # The latent's effect is already captured via bidirected edges in the MAG.
-  # Filter these tests out so they are not run as JAGS sub-models.
-  if (!is.null(latent) && length(latent) > 0 && !is.null(basis)) {
-    n_before <- length(basis)
-    basis <- Filter(
-      function(test) {
-        # Conditioning set is test[3:length(test)] (if present)
-        if (length(test) > 2) {
-          cond_vars <- test[3:length(test)]
-          if (any(cond_vars %in% latent)) return(FALSE)
-        }
-        # Also skip if a latent is the focal pair variable (test[1] or test[2])
-        # — these are internal MAG nodes and should not appear as observed test pairs
-        if (test[1] %in% latent || test[2] %in% latent) return(FALSE)
-        return(TRUE)
-      },
-      basis
-    )
-    n_removed <- n_before - length(basis)
-    if (!quiet && n_removed > 0) {
-      message(sprintf(
-        "Removed %d untestable m-separation claim(s) where latent variable(s) appear in the conditioning set (Shipley & Douma 2021).",
-        n_removed
-      ))
-    }
+  
+  basis <- list()
+  for (key in names(pairs)) {
+    options <- pairs[[key]]
+    options <- options[order(sapply(options, function(x) x$col_pen), sapply(options, function(x) x$size_pen))]
+    best <- options[[1]]
+    basis[[length(basis) + 1]] <- c(best$X, best$Y, best$Z)
   }
 
   # Polynomial-term injection in conditioning sets
@@ -740,7 +741,9 @@ dsep_with_latents <- function(
     family = family,
     deterministic_terms = all_det_terms,
     root_vars = root_vars,
-    hierarchical_info = hierarchical_info
+    hierarchical_info = hierarchical_info,
+    latent_sharers = latent_sharers,
+    d_obj = d_obj
   )
 
   # Save tests without random effects for clean display

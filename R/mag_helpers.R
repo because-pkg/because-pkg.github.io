@@ -213,7 +213,9 @@ mag_basis_to_formulas <- function(
     family = NULL,
     deterministic_terms = NULL,
     root_vars = NULL,
-    hierarchical_info = NULL
+    hierarchical_info = NULL,
+    latent_sharers = NULL,
+    d_obj = NULL
 ) {
     # Build reverse lookup: internal_name -> original R syntax
     # e.g. "BM_x_M" -> "BM:M"
@@ -284,16 +286,51 @@ mag_basis_to_formulas <- function(
         var2 <- test[2]
         cond_vars <- if (length(test) > 2) test[3:length(test)] else NULL
 
-        # Apply ordering rule: if var1 is a latent child and var2 is not,
-        # swap them so the latent child becomes the predictor (test variable).
-        if (!is.null(latent_children)) {
-            var1_is_latent_child <- var1 %in% latent_children
-            var2_is_latent_child <- var2 %in% latent_children
-
-            if (var1_is_latent_child && !var2_is_latent_child) {
+        # Collinearity Orientation Rule: Minimize RHS collinearity in MAGs
+        # We test var1 _||_ var2 | cond_vars. This can be oriented as var1 ~ var2 + cond_vars
+        # or var2 ~ var1 + cond_vars. We want to pick the orientation that minimizes
+        # the number of predictors that share a latent parent.
+        if (!is.null(latent_sharers)) {
+            rhs1 <- c(var2, cond_vars) # predictors if var1 is response
+            rhs2 <- c(var1, cond_vars) # predictors if var2 is response
+            
+            calc_pen <- function(rhs) {
+                pen <- 0
+                if (length(rhs) > 1) {
+                    for (i in 1:(length(rhs)-1)) {
+                        for (j in (i+1):length(rhs)) {
+                            if (rhs[i] %in% latent_sharers[[rhs[j]]]) {
+                                pen <- pen + 1
+                            }
+                        }
+                    }
+                }
+                return(pen)
+            }
+            
+            col_pen1 <- calc_pen(rhs1)
+            col_pen2 <- calc_pen(rhs2)
+            
+            if (col_pen2 < col_pen1) {
                 temp <- var1
                 var1 <- var2
                 var2 <- temp
+            }
+        }
+
+
+        # Ancestry Rule: if one variable is an ancestor of the other in the DAG,
+        # the descendant should be the Response (var1) and the ancestor should be the Predictor (var2).
+        if (!is.null(d_obj)) {
+            # dagitty::ancestors includes the node itself.
+            if (var1 %in% names(d_obj) && var2 %in% names(d_obj)) {
+                if (var1 %in% dagitty::ancestors(d_obj, var2)) {
+                    # var1 is an ancestor of var2, so var2 is the descendant.
+                    # Swap so var2 becomes Response (var1)
+                    temp <- var1
+                    var1 <- var2
+                    var2 <- temp
+                }
             }
         }
 

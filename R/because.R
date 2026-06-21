@@ -2278,6 +2278,59 @@ because <- function(
     }
   }
 
+    # Auto-detect latent variables: variables in equations but not in data
+    if (is.null(latent)) {
+      vars_in_equations <- unique(unlist(lapply(equations, all.vars)))
+      vars_in_data <- names(data)
+
+      # Find variables that appear in equations but not in data
+      potential_latents <- setdiff(vars_in_equations, vars_in_data)
+
+      # Extension Hook: Remove specialized variables from potential latents
+      potential_latents <- dsep_potential_latent_hook(
+        family_obj,
+        potential_latents
+      )
+
+      # Exclude polynomial internal variables (they're deterministic, not latent)
+      if (!is.null(all_poly_terms)) {
+        poly_internal_names <- sapply(all_poly_terms, function(x) {
+          x$internal_name
+        })
+        potential_latents <- setdiff(potential_latents, poly_internal_names)
+      }
+
+      # Exclude categorical parent variables (they are replaced by dummies but are still in the model equations)
+      cat_metadata <- attr(data, "categorical_vars")
+      if (!is.null(cat_metadata)) {
+        potential_latents <- setdiff(potential_latents, names(cat_metadata))
+      }
+
+      if (length(potential_latents) > 0) {
+        # Auto-detect latent variables
+        latent <- potential_latents
+
+        if (!quiet) {
+          message(
+            "Auto-detected latent variable(s): ",
+            paste(latent, collapse = ", "),
+            "\n(Variables in equations but not in data will be treated as latent.)\n",
+            "Generating m-separation tests for MAG..."
+          )
+        }
+      }
+    }
+
+    if (!quiet) {
+      if (!is.null(latent)) {
+        message(
+          "Generating m-separation tests (MAG with latent variables)..."
+        )
+      } else {
+        message("Generating d-separation tests...")
+      }
+    }
+
   # Handle d-sep logic
   dsep_tests <- NULL
   induced_cors <- NULL
@@ -2323,12 +2376,24 @@ because <- function(
         }
       }
 
-      py_dsep_eqs <- because_py$get_dsep_equations(eq_strings, latent)
+      # Compute the optimal DAG/MAG tests natively using because_dsep (with dagitty)
+      native_dsep <- because_dsep(
+        equations = equations,
+        latent = latent,
+        random_terms = random_terms,
+        hierarchical_info = hierarchical_info,
+        poly_terms = all_poly_terms,
+        categorical_vars = attr(data, "categorical_vars"),
+        family = family,
+        quiet = TRUE
+      )
       
       current_tests <- list()
-      if (length(py_dsep_eqs) > 0) {
-        for (i in seq_along(py_dsep_eqs)) {
-          current_tests[[i]] <- stats::as.formula(py_dsep_eqs[[i]]$equation_string)
+      if (!is.null(native_dsep)) {
+        if (!is.null(latent) && length(latent) > 0) {
+           current_tests <- native_dsep$tests
+        } else {
+           current_tests <- native_dsep
         }
       }
       
@@ -2350,7 +2415,29 @@ because <- function(
         py_result <- list(dsep_results = list())
       } else {
         if (length(tests_to_run_indices) > 0) {
-          dsep_equations_to_run <- sapply(current_tests[tests_to_run_indices], function(eq) paste(deparse(eq), collapse=" "))
+          # Format tests into structured list for Python to bypass its internal graph logic
+          dsep_equations_to_run <- lapply(current_tests[tests_to_run_indices], function(eq) {
+            resp <- as.character(eq)[2]
+            test_var <- attr(eq, "test_var")
+            
+            rhs_str <- paste(deparse(eq[[3]]), collapse = " ")
+            rhs_parts <- trimws(strsplit(rhs_str, "\\+")[[1]])
+            cond_set <- rhs_parts[rhs_parts != test_var]
+            
+            if (is.null(test_var)) {
+              vars <- all.vars(eq)
+              test_var <- setdiff(vars, resp)[1]
+              cond_set <- setdiff(vars, c(resp, test_var))
+            }
+            
+            list(
+              type = "dsep",
+              response = resp,
+              test_node = test_var,
+              conditioning_set = as.list(cond_set),
+              equation_string = paste(deparse(eq), collapse = " ")
+            )
+          })
         }
         
         py_result <- because_py$fit(
@@ -2430,58 +2517,7 @@ because <- function(
       DIC <- FALSE
     }
 
-    # Auto-detect latent variables: variables in equations but not in data
-    if (is.null(latent)) {
-      vars_in_equations <- unique(unlist(lapply(equations, all.vars)))
-      vars_in_data <- names(data)
 
-      # Find variables that appear in equations but not in data
-      potential_latents <- setdiff(vars_in_equations, vars_in_data)
-
-      # Extension Hook: Remove specialized variables from potential latents
-      potential_latents <- dsep_potential_latent_hook(
-        family_obj,
-        potential_latents
-      )
-
-      # Exclude polynomial internal variables (they're deterministic, not latent)
-      if (!is.null(all_poly_terms)) {
-        poly_internal_names <- sapply(all_poly_terms, function(x) {
-          x$internal_name
-        })
-        potential_latents <- setdiff(potential_latents, poly_internal_names)
-      }
-
-      # Exclude categorical parent variables (they are replaced by dummies but are still in the model equations)
-      cat_metadata <- attr(data, "categorical_vars")
-      if (!is.null(cat_metadata)) {
-        potential_latents <- setdiff(potential_latents, names(cat_metadata))
-      }
-
-      if (length(potential_latents) > 0) {
-        # Auto-detect latent variables
-        latent <- potential_latents
-
-        if (!quiet) {
-          message(
-            "Auto-detected latent variable(s): ",
-            paste(latent, collapse = ", "),
-            "\n(Variables in equations but not in data will be treated as latent.)\n",
-            "Generating m-separation tests for MAG..."
-          )
-        }
-      }
-    }
-
-    if (!quiet) {
-      if (!is.null(latent)) {
-        message(
-          "Generating m-separation tests (MAG with latent variables)..."
-        )
-      } else {
-        message("Generating d-separation tests...")
-      }
-    }
     # Expanded random terms for d-sep (include all variables as potential responses)
     # This ensures that root nodes in the DAG get random effects in d-sep tests
     random_terms_for_dsep <- random_terms
