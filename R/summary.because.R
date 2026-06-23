@@ -8,6 +8,7 @@
 #'   Defaults to \code{FALSE} to prevent clutter when \code{monitor="all"}.
 #' @param show_random Logical. If \code{TRUE}, shows random effect estimates (e.g., \code{u_...}).
 #'   Defaults to \code{FALSE}.
+#' @param prob Numeric. The credibility interval probability mass. Defaults to 0.95.
 #' @param object A \code{because} object.
 #' @param ... Additional arguments passed to \code{\link[coda]{summary.mcmc}}.
 #'
@@ -32,8 +33,21 @@ summary.because <- function(
     show_internal = FALSE,
     show_nodes = FALSE,
     show_random = FALSE,
+    prob = 0.95,
     ...
 ) {
+    # Calculate quantiles based on prob
+    lower_prob <- (1 - prob) / 2
+    upper_prob <- 1 - lower_prob
+    quantiles_req <- c(lower_prob, 0.5, upper_prob)
+    
+    # Helper to format percentages like coda does
+    format_pct <- function(p) {
+        paste0(format(100 * p, trim = TRUE, digits = max(2, getOption("digits"))), "%")
+    }
+    lower_name <- format_pct(lower_prob)
+    med_name <- format_pct(0.5)
+    upper_name <- format_pct(upper_prob)
     # If this was a d-sep run, we want to format the output specifically
     if (!is.null(object$dsep) && (isTRUE(object$dsep) || is.list(object$dsep))) {
         # Check if dsep results were pre-computed by a backend engine (e.g., numpyro)
@@ -179,7 +193,7 @@ summary.because <- function(
                 sub_samples <- res_i$samples[, param_name, drop = FALSE]
 
                 # Summarize only this parameter
-                summ_i <- summary(sub_samples)
+                summ_i <- summary(sub_samples, quantiles = quantiles_req)
 
                 # Handle edge case: single parameter returns vector, not matrix
                 if (!is.matrix(summ_i$statistics)) {
@@ -202,8 +216,8 @@ summary.because <- function(
                 # Extract statistics
                 if (param_name %in% rownames(summ_i$quantiles)) {
                     est <- summ_i$statistics[param_name, "Mean"]
-                    lower <- summ_i$quantiles[param_name, "2.5%"]
-                    upper <- summ_i$quantiles[param_name, "97.5%"]
+                    lower <- summ_i$quantiles[param_name, 1]
+                    upper <- summ_i$quantiles[param_name, 3]
 
                     # Diagnostics (locally computed for this chain list)
                     n_chains_i <- coda::nchain(sub_samples)
@@ -274,11 +288,11 @@ summary.because <- function(
         return(out)
     } else {
         # Standard summary
-        # Use stored summary if available, otherwise calculate it
-        if (!is.null(object$summary)) {
+        # Use stored summary if available and defaults are used, otherwise calculate it
+        if (!is.null(object$summary) && prob == 0.95) {
             summ <- object$summary
         } else {
-            summ <- summary(object$samples, ...)
+            summ <- summary(object$samples, quantiles = quantiles_req, ...)
         }
 
         # Calculate convergence diagnostics
@@ -311,7 +325,13 @@ summary.because <- function(
             c("Mean", "SD", "Naive SE", "Time-series SE"),
             drop = FALSE
         ]
-        quant_table <- summ$quantiles[, c("2.5%", "50%", "97.5%"), drop = FALSE]
+        
+        if (all(c(lower_name, med_name, upper_name) %in% colnames(summ$quantiles))) {
+            quant_table <- summ$quantiles[, c(lower_name, med_name, upper_name), drop = FALSE]
+        } else {
+            fallback_cols <- min(3, ncol(summ$quantiles))
+            quant_table <- summ$quantiles[, 1:fallback_cols, drop = FALSE]
+        }
 
         # Create combined table
         combined <- cbind(stats_table, quant_table)
@@ -383,9 +403,7 @@ summary.because <- function(
                 "SD",
                 "Naive SE",
                 "Time-series SE",
-                "2.5%",
-                "50%",
-                "97.5%",
+                colnames(quant_table),
                 "Rhat"
             )
         )

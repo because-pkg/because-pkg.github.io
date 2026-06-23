@@ -9,6 +9,7 @@
   show_internal = FALSE,
   show_nodes = FALSE,
   show_random = FALSE,
+  prob = 0.95,
   ...
 )
 }
@@ -23,6 +24,8 @@ Defaults to \code{FALSE} to prevent clutter when \code{monitor="all"}.}
 
 \item{show_random}{Logical. If \code{TRUE}, shows random effect estimates (e.g., \code{u_...}).
 Defaults to \code{FALSE}.}
+
+\item{prob}{Numeric. The credibility interval probability mass. Defaults to 0.95.}
 
 \item{...}{Additional arguments passed to \code{\link[coda]{summary.mcmc}}.}
 }

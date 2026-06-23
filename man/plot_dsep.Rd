@@ -5,7 +5,7 @@
 \alias{plot_dsep}
 \title{plot_dsep}
 \usage{
-\method{plot_dsep}{because}(object, ...)
+\method{plot_dsep}{because}(object, prob = 0.95, ...)
 
 plot_dsep(object, ...)
 }

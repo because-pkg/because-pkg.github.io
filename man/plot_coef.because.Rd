@@ -9,6 +9,7 @@
   type = "raw",
   multinomial_probabilities = TRUE,
   color_scheme = "sig_only",
+  prob = 0.95,
   ...
 )
 }
@@ -36,6 +37,8 @@ matching the arcs in the DAG.}
 \item \code{"directional"}: Switched to a directional Red/Blue/Grey scheme.
 \item \code{"monochrome"}: All effects are rendered in Black regardless of significance.
 }}
+
+\item{prob}{Numeric; probability mass for the credibility interval (default 0.95).}
 
 \item{...}{Additional arguments.}
 }

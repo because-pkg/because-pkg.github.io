@@ -914,7 +914,7 @@ format_dsep_test <- function(test, random_terms = NULL) {
 #' @rdname plot_dsep
 #' @export
 #' @importFrom ggplot2 ggplot aes geom_pointrange geom_hline coord_flip labs theme_minimal theme
-plot_dsep.because <- function(object, ...) {
+plot_dsep.because <- function(object, prob = 0.95, ...) {
   has_dsep <- !is.null(object$dsep) &&
     (isTRUE(object$dsep) ||
        (is.list(object$dsep) && !is.null(object$dsep$results)))
@@ -923,7 +923,7 @@ plot_dsep.because <- function(object, ...) {
   }
 
   # summary.because handles the complex renaming and dummy variable matching
-  s <- summary(object)
+  s <- summary(object, prob = prob)
 
   if (is.null(s$results) || nrow(s$results) == 0) {
     stop("No d-separation test results found in model object.")

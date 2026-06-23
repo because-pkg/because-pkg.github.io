@@ -21,6 +21,7 @@
 #'     (where 95% CI excludes zero) are Black; non-significant are Light Grey.
 #'   - `"directional"`: Switched to a directional Red/Blue/Grey scheme.
 #'   - `"monochrome"`: All effects are rendered in Black regardless of significance.
+#' @param prob Numeric; probability mass for the credibility interval (default 0.95).
 #' @param ... Additional arguments.
 #'
 #' @return A `ggplot` object. Use standard `ggplot2` functions like `+ ggtitle()` 
@@ -51,6 +52,7 @@ plot_coef.because <- function(
     type = "raw",
     multinomial_probabilities = TRUE,
     color_scheme = "sig_only",
+    prob = 0.95,
     ...
 ) {
     if (!inherits(object, "because")) {
@@ -71,15 +73,20 @@ plot_coef.because <- function(
         me_table <- marginal_effects(
             object, 
             samples = 1000, 
+            prob = prob,
             multinomial_probabilities = multinomial_probabilities
         )
     } else {
-        if (is.null(object$summary)) {
-            stats <- summary(object$samples)$statistics
-            quantiles <- summary(object$samples)$quantiles
-        } else {
+        if (prob == 0.95 && !is.null(object$summary)) {
             stats <- object$summary$statistics
             quantiles <- object$summary$quantiles
+        } else {
+            lower_prob <- (1 - prob) / 2
+            upper_prob <- 1 - lower_prob
+            quantiles_req <- c(lower_prob, 0.5, upper_prob)
+            summ <- summary(object$samples, quantiles = quantiles_req)
+            stats <- summ$statistics
+            quantiles <- summ$quantiles
         }
     }
 
@@ -138,10 +145,29 @@ plot_coef.because <- function(
          # Exclude internal deterministic link parameters
          target_params <- target_params[!grepl("(_det_|_1_times_)", target_params)]
 
+         # Helpers for dynamically resolving the quantile column names
+         format_pct <- function(p) paste0(format(100 * p, trim = TRUE, digits = max(2, getOption("digits"))), "%")
+         lower_prob <- (1 - prob) / 2
+         upper_prob <- 1 - lower_prob
+         lower_col <- format_pct(lower_prob)
+         upper_col <- format_pct(upper_prob)
+
          for (pname in target_params) {
              est  <- stats[pname, "Mean"]
-             low  <- quantiles[pname, "2.5%"]
-             upp  <- quantiles[pname, "97.5%"]
+             
+             # Safely get lower bound
+             if (lower_col %in% colnames(quantiles)) {
+                 low  <- quantiles[pname, lower_col]
+             } else {
+                 low  <- quantiles[pname, 1]
+             }
+             
+             # Safely get upper bound
+             if (upper_col %in% colnames(quantiles)) {
+                 upp  <- quantiles[pname, upper_col]
+             } else {
+                 upp  <- quantiles[pname, ncol(quantiles)]
+             }
 
              # Try to resolve friendly names from parameter_map
              label <- pname

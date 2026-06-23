@@ -7,7 +7,7 @@
 install_because_numpyro(
   envname = NULL,
   method = "auto",
-  because_py_url = "git+https://github.com/because-pkg/because_py.git",
+  because_py_url = "https://github.com/because-pkg/because_py/archive/main.zip",
   ...
 )
 }
