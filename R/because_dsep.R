@@ -976,7 +976,7 @@ plot_dsep.because <- function(object, prob = 0.95, ...) {
     ggplot2::coord_flip(ylim = axis_lim) +
     ggplot2::labs(
       title = "d-separation Independence Tests",
-      subtitle = "Caterpillar plot of path coefficients with 95% Bayesian Credibility Intervals",
+      subtitle = paste0("Caterpillar plot of path coefficients with ", prob * 100, "% Bayesian Credibility Intervals"),
       x = "Conditional Independence Claim",
       y = "Estimated Beta (Effect Size)"
     ) +

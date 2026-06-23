@@ -247,7 +247,7 @@ plot_coef.because <- function(
         ggplot2::scale_color_manual(values = color_map, guide = "none") +
         ggplot2::labs(
             title = paste("Path Coefficients (", type, ")", sep = ""),
-            subtitle = if (type == "marginal") "Average Marginal Effects with 95% Bayesian Credibility Intervals" else "Raw model parameters",
+            subtitle = if (type == "marginal") paste0("Average Marginal Effects with ", prob * 100, "% Bayesian Credibility Intervals") else paste0("Raw model parameters with ", prob * 100, "% Bayesian Credibility Intervals"),
             x = "",
             y = "Effect Size"
         ) +

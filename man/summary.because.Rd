@@ -10,6 +10,7 @@
   show_nodes = FALSE,
   show_random = FALSE,
   prob = 0.95,
+  rope = NULL,
   ...
 )
 }
@@ -26,6 +27,8 @@ Defaults to \code{FALSE} to prevent clutter when \code{monitor="all"}.}
 Defaults to \code{FALSE}.}
 
 \item{prob}{Numeric. The credibility interval probability mass. Defaults to 0.95.}
+
+\item{rope}{A numeric vector of length 2 specifying the Region of Practical Equivalence (e.g., \code{c(-0.1, 0.1)}). If provided, calculates the proportion of posterior samples falling inside the ROPE.}
 
 \item{...}{Additional arguments passed to \code{\link[coda]{summary.mcmc}}.}
 }

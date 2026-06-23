@@ -9,6 +9,7 @@
 #' @param show_random Logical. If \code{TRUE}, shows random effect estimates (e.g., \code{u_...}).
 #'   Defaults to \code{FALSE}.
 #' @param prob Numeric. The credibility interval probability mass. Defaults to 0.95.
+#' @param rope A numeric vector of length 2 specifying the Region of Practical Equivalence (e.g., \code{c(-0.1, 0.1)}). If provided, calculates the proportion of posterior samples falling inside the ROPE.
 #' @param object A \code{because} object.
 #' @param ... Additional arguments passed to \code{\link[coda]{summary.mcmc}}.
 #'
@@ -34,6 +35,7 @@ summary.because <- function(
     show_nodes = FALSE,
     show_random = FALSE,
     prob = 0.95,
+    rope = NULL,
     ...
 ) {
     # Calculate quantiles based on prob
@@ -251,8 +253,14 @@ summary.because <- function(
                     ) {
                         p_neff <- eff_size_i[param_name]
                     }
+                    
+                    p_rope <- NA_real_
+                    if (!is.null(rope) && length(rope) == 2) {
+                        sub_samples_mat <- as.matrix(sub_samples)
+                        p_rope <- mean(sub_samples_mat > rope[1] & sub_samples_mat < rope[2])
+                    }
 
-                    return(data.frame(
+                    res_row <- data.frame(
                         Test = test_str_base,
                         Parameter = param_name,
                         Estimate = round(est, 3),
@@ -262,7 +270,13 @@ summary.because <- function(
                         n.eff = round(p_neff, 0),
                         Scale = if (!is.null(test_scale)) test_scale else NA_character_,
                         stringsAsFactors = FALSE
-                    ))
+                    )
+                    
+                    if (!is.null(rope) && length(rope) == 2) {
+                        res_row$P_ROPE <- paste0(format(round(100 * p_rope, 2), nsmall = 2, trim = TRUE), "%")
+                    }
+                    
+                    return(res_row)
                 }
                 return(NULL)
             })
@@ -412,6 +426,23 @@ summary.because <- function(
         }
         if ("n.eff" %in% colnames(combined)) {
             combined[, "n.eff"] <- round(combined[, "n.eff"], 0)
+        }
+
+        # Add P_ROPE if requested
+        if (!is.null(rope) && length(rope) == 2) {
+            all_samps <- as.matrix(object$samples)
+            p_rope_vals <- numeric(nrow(combined))
+            for (i in seq_along(p_rope_vals)) {
+                param_name <- rownames(combined)[i]
+                if (param_name %in% colnames(all_samps)) {
+                    s_col <- all_samps[, param_name]
+                    p_rope_vals[i] <- mean(s_col > rope[1] & s_col < rope[2])
+                } else {
+                    p_rope_vals[i] <- NA
+                }
+            }
+            # Add to combined as character column
+            combined <- cbind(combined, P_ROPE = paste0(format(round(100 * p_rope_vals, 2), nsmall = 2, trim = TRUE), "%"))
         }
 
         # Store components in list instead of printing
