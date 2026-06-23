@@ -12,6 +12,8 @@ plot_dsep(object, ...)
 \arguments{
 \item{object}{A fitted model object.}
 
+\item{prob}{Numeric; probability mass for the credibility interval (default 0.95).}
+
 \item{...}{Additional arguments.}
 }
 \value{

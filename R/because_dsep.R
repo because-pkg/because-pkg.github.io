@@ -904,6 +904,7 @@ format_dsep_test <- function(test, random_terms = NULL) {
 #'
 #' @param object A `because` object fitted with \code{dsep = TRUE}.
 #' @param ... Additional arguments.
+#' @param prob Numeric; probability mass for the credibility interval (default 0.95).
 #'
 #' @return A `ggplot` object.
 #' @examples
