@@ -62,6 +62,7 @@
 <span>  show_nodes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  show_random <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  prob <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  rope <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -91,6 +92,10 @@ Defaults to <code>FALSE</code>.</p></dd>
 
 <dt id="arg-prob">prob<a class="anchor" aria-label="anchor" href="#arg-prob"></a></dt>
 <dd><p>Numeric. The credibility interval probability mass. Defaults to 0.95.</p></dd>
+
+
+<dt id="arg-rope">rope<a class="anchor" aria-label="anchor" href="#arg-rope"></a></dt>
+<dd><p>A numeric vector of length 2 specifying the Region of Practical Equivalence (e.g., <code>c(-0.1, 0.1)</code>). If provided, calculates the proportion of posterior samples falling inside the ROPE.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

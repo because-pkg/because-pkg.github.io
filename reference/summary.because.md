@@ -12,6 +12,7 @@ summary(
   show_nodes = FALSE,
   show_random = FALSE,
   prob = 0.95,
+  rope = NULL,
   ...
 )
 ```
@@ -41,6 +42,12 @@ summary(
 - prob:
 
   Numeric. The credibility interval probability mass. Defaults to 0.95.
+
+- rope:
+
+  A numeric vector of length 2 specifying the Region of Practical
+  Equivalence (e.g., `c(-0.1, 0.1)`). If provided, calculates the
+  proportion of posterior samples falling inside the ROPE.
 
 - ...:
 
