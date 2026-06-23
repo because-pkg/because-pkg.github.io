@@ -189,6 +189,10 @@ for comprehensive troubleshooting and dedicated environment setups.
   : plot_dsep
 - [`plot_posterior()`](https://because-pkg.github.io/because/reference/plot_posterior.md)
   : Plot Posterior Distributions for Model Comparison
+- [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md)
+  : Plot Region of Practical Equivalence (ROPE)
+- [`plot_rope(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/plot_rope.because.md)
+  : Plot ROPE for Because Model
 - [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)
   : Posterior Predictive Samples
 - [`posterior_predict(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/posterior_predict.because.md)

@@ -20,6 +20,10 @@ plot_dsep(object, ...)
 
   A fitted model object.
 
+- prob:
+
+  Numeric; probability mass for the credibility interval (default 0.95).
+
 - ...:
 
   Additional arguments.
