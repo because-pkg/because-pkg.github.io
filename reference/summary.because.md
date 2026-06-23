@@ -11,6 +11,7 @@ summary(
   show_internal = FALSE,
   show_nodes = FALSE,
   show_random = FALSE,
+  prob = 0.95,
   ...
 )
 ```
@@ -36,6 +37,10 @@ summary(
 
   Logical. If `TRUE`, shows random effect estimates (e.g., `u_...`).
   Defaults to `FALSE`.
+
+- prob:
+
+  Numeric. The credibility interval probability mass. Defaults to 0.95.
 
 - ...:
 

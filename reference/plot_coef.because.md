@@ -16,6 +16,7 @@ plot_coef(
   type = "raw",
   multinomial_probabilities = TRUE,
   color_scheme = "sig_only",
+  prob = 0.95,
   ...
 )
 ```
@@ -57,6 +58,10 @@ plot_coef(
 
   - `"monochrome"`: All effects are rendered in Black regardless of
     significance.
+
+- prob:
+
+  Numeric; probability mass for the credibility interval (default 0.95).
 
 - ...:
 

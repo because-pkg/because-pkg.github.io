@@ -51,7 +51,7 @@ comparison of effect sizes and their Bayesian credibility intervals."><meta prop
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Plot Path Coefficients (Caterpillar Plot)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/v1.3.4/R/plot_coef.R" class="external-link"><code>R/plot_coef.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/R/plot_coef.R" class="external-link"><code>R/plot_coef.R</code></a></small>
       <div class="d-none name"><code>plot_coef.because.Rd</code></div>
     </div>
 
@@ -70,6 +70,7 @@ comparison of effect sizes and their Bayesian credibility intervals.</p>
 <span>  type <span class="op">=</span> <span class="st">"raw"</span>,</span>
 <span>  multinomial_probabilities <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  color_scheme <span class="op">=</span> <span class="st">"sig_only"</span>,</span>
+<span>  prob <span class="op">=</span> <span class="fl">0.95</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -104,6 +105,10 @@ matching the arcs in the DAG.</p></dd>
 <li><p><code>"directional"</code>: Switched to a directional Red/Blue/Grey scheme.</p></li>
 <li><p><code>"monochrome"</code>: All effects are rendered in Black regardless of significance.</p></li>
 </ul></dd>
+
+
+<dt id="arg-prob">prob<a class="anchor" aria-label="anchor" href="#arg-prob"></a></dt>
+<dd><p>Numeric; probability mass for the credibility interval (default 0.95).</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

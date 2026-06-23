@@ -319,10 +319,8 @@ registerS3method(
 ```
 
 For custom **covariance structures** (e.g., spatial distance matrices),
-use
-[`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md)
-— a parallel helper function described in
-[`?because_structure`](https://because-pkg.github.io/because/reference/because_structure.md).
+use `because_structure()` — a parallel helper function described in
+`?because_structure`.
 
 ------------------------------------------------------------------------
 
@@ -334,7 +332,7 @@ use
 | Heavy-tailed robust regression | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with [`dt()`](https://rdrr.io/r/stats/TDist.html) | `df_{response}` extra prior |
 | Proportions in (0,1) | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with [`dbeta()`](https://rdrr.io/r/stats/Beta.html) | logit link, `phi_{response}` |
 | Strictly positive data | [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md) with `T(0,)` truncation | log link |
-| Custom covariance structure | [`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md) | `precision_fn` |
+| Custom covariance structure | `because_structure()` | `precision_fn` |
 | Reusable family for a package | S3 method for `jags_family_likelihood` | Register with [`registerS3method()`](https://rdrr.io/r/base/ns-internal.html) |
 
 ### References

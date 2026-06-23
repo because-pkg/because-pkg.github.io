@@ -9,7 +9,7 @@ includes zero) or violated (95% CI excludes zero).
 
 ``` r
 # S3 method for class 'because'
-plot_dsep(object, ...)
+plot_dsep(object, prob = 0.95, ...)
 
 plot_dsep(object, ...)
 ```

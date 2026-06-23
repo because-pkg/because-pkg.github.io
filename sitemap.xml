@@ -23,6 +23,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/auto_stack_multispecies_data.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_compare.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/because_continue.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_dsep.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_family.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_format_data.html</loc></url>
@@ -30,7 +31,6 @@
 <url><loc>https://because-pkg.github.io/because/reference/because_loo_compare.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_mediation.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_model.html</loc></url>
-<url><loc>https://because-pkg.github.io/because/reference/because_structure.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_waic.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/dag_matrix_to_dagitty.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/do.because.html</loc></url>
@@ -61,6 +61,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/get_inherited_random_terms.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_inits_hook.default.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_inits_hook.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/get_latent_predictor_name.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_level_depth.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_monitor_vars_hook.default.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/get_monitor_vars_hook.html</loc></url>
@@ -75,6 +76,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/index.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/infer_variable_level.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/install_because_numpyro.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/is_auxiliary_equation.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/is_cross_hierarchy_test.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/is_latent_child_hook.default.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/is_latent_child_hook.html</loc></url>

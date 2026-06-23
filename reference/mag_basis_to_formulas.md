@@ -12,7 +12,9 @@ mag_basis_to_formulas(
   family = NULL,
   deterministic_terms = NULL,
   root_vars = NULL,
-  hierarchical_info = NULL
+  hierarchical_info = NULL,
+  latent_sharers = NULL,
+  d_obj = NULL
 )
 ```
 
