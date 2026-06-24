@@ -2311,17 +2311,20 @@ because <- function(
         latent <- potential_latents
 
         if (!quiet) {
-          message(
+          msg <- paste0(
             "Auto-detected latent variable(s): ",
             paste(latent, collapse = ", "),
-            "\n(Variables in equations but not in data will be treated as latent.)\n",
-            "Generating m-separation tests for MAG..."
+            "\n(Variables in equations but not in data will be treated as latent.)"
           )
+          if (dsep) {
+            msg <- paste0(msg, "\nGenerating m-separation tests for MAG...")
+          }
+          message(msg)
         }
       }
     }
 
-    if (!quiet) {
+    if (!quiet && dsep) {
       if (!is.null(latent)) {
         message(
           "Generating m-separation tests (MAG with latent variables)..."

@@ -432,6 +432,7 @@ summary.because <- function(
         if (!is.null(rope) && length(rope) == 2) {
             all_samps <- as.matrix(object$samples)
             p_rope_vals <- numeric(nrow(combined))
+            
             for (i in seq_along(p_rope_vals)) {
                 param_name <- rownames(combined)[i]
                 if (param_name %in% colnames(all_samps)) {
@@ -441,7 +442,7 @@ summary.because <- function(
                     p_rope_vals[i] <- NA
                 }
             }
-            # Add to combined as character column
+            # Add to combined
             combined <- cbind(combined, P_ROPE = paste0(format(round(100 * p_rope_vals, 2), nsmall = 2, trim = TRUE), "%"))
         }
 

@@ -286,6 +286,35 @@ mag_basis_to_formulas <- function(
         var2 <- test[2]
         cond_vars <- if (length(test) > 2) test[3:length(test)] else NULL
 
+        # Ancestry Rule: if one variable is an ancestor of the other in the DAG,
+        # the descendant should be the Response (var1) and the ancestor should be the Predictor (var2).
+        if (!is.null(d_obj)) {
+            # dagitty::ancestors includes the node itself.
+            if (var1 %in% names(d_obj) && var2 %in% names(d_obj)) {
+                if (var1 %in% dagitty::ancestors(d_obj, var2)) {
+                    # var1 is an ancestor of var2, so var2 is the descendant.
+                    # Swap so var2 becomes Response (var1)
+                    temp <- var1
+                    var1 <- var2
+                    var2 <- temp
+                }
+            }
+        }
+
+        # Root-node rule: exogenous variables (no parents in the DAG) should
+        # always be predictors, never responses.  If var1 is a root node and
+        # var2 is not, swap so the non-root (downstream) variable is the response.
+        if (!is.null(root_vars)) {
+            var1_is_root <- var1 %in% root_vars
+            var2_is_root <- var2 %in% root_vars
+
+            if (var1_is_root && !var2_is_root) {
+                temp <- var1
+                var1 <- var2
+                var2 <- temp
+            }
+        }
+
         # Collinearity Orientation Rule: Minimize RHS collinearity in MAGs
         # We test var1 _||_ var2 | cond_vars. This can be oriented as var1 ~ var2 + cond_vars
         # or var2 ~ var1 + cond_vars. We want to pick the orientation that minimizes
@@ -312,36 +341,6 @@ mag_basis_to_formulas <- function(
             col_pen2 <- calc_pen(rhs2)
             
             if (col_pen2 < col_pen1) {
-                temp <- var1
-                var1 <- var2
-                var2 <- temp
-            }
-        }
-
-
-        # Ancestry Rule: if one variable is an ancestor of the other in the DAG,
-        # the descendant should be the Response (var1) and the ancestor should be the Predictor (var2).
-        if (!is.null(d_obj)) {
-            # dagitty::ancestors includes the node itself.
-            if (var1 %in% names(d_obj) && var2 %in% names(d_obj)) {
-                if (var1 %in% dagitty::ancestors(d_obj, var2)) {
-                    # var1 is an ancestor of var2, so var2 is the descendant.
-                    # Swap so var2 becomes Response (var1)
-                    temp <- var1
-                    var1 <- var2
-                    var2 <- temp
-                }
-            }
-        }
-
-        # Root-node rule: exogenous variables (no parents in the DAG) should
-        # always be predictors, never responses.  If var1 is a root node and
-        # var2 is not, swap so the non-root (downstream) variable is the response.
-        if (!is.null(root_vars)) {
-            var1_is_root <- var1 %in% root_vars
-            var2_is_root <- var2 %in% root_vars
-
-            if (var1_is_root && !var2_is_root) {
                 temp <- var1
                 var1 <- var2
                 var2 <- temp
