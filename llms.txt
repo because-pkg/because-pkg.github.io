@@ -61,11 +61,11 @@ code from standard R formulas. Key features include:
 
 ## Installation
 
-To install the **stable release** (`v1.3.4`), run:
+To install the **stable release** (`v1.4.0`), run:
 
 ``` r
 
-remotes::install_github("because-pkg/because@v1.3.4", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.4.0", build_vignettes = TRUE)
 ```
 
 To install the **latest development version**, run:
