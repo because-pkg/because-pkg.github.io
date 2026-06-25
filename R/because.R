@@ -1022,6 +1022,12 @@ because <- function(
       eq_vars <- unique(c(eq_vars, random_vars))
     }
 
+    # Ensure all link_vars are in eq_vars. They define the hierarchy and may be
+    # injected automatically as random effects during D-Separation tests.
+    if (!is.null(hierarchical_info) && !is.null(hierarchical_info$link_vars)) {
+      eq_vars <- unique(c(eq_vars, unlist(hierarchical_info$link_vars)))
+    }
+
     # [NEW] Add categorical dummy variables to eq_vars so they aren't dropped
     # from the final hierarchical data list sent to JAGS.
     if (!is.null(attr(original_data, "categorical_vars"))) {
