@@ -2407,6 +2407,34 @@ because <- function(
         }
       }
       
+      # --- A priori cross-hierarchy filter ---
+      # Tests where the response and the focal predictor belong to orthogonal
+      # hierarchical branches are trivially satisfied. Skip them.
+      if (length(current_tests) > 0) {
+        cross_hier_flags <- sapply(current_tests, function(eq) {
+          is_cross_hierarchy_test(eq, hierarchical_info)
+        })
+        n_cross <- sum(cross_hier_flags)
+        if (n_cross > 0 && !quiet) {
+          skipped_labels <- sapply(current_tests[cross_hier_flags], function(eq) {
+            resp     <- as.character(eq)[2]
+            test_var <- attr(eq, "test_var")
+            if (!is.null(test_var)) {
+              sprintf("  %s _||_ %s (orthogonal hierarchy branches - trivially satisfied)",
+                      resp, test_var)
+            } else {
+              paste(deparse(eq), collapse = " ")
+            }
+          })
+          message(sprintf(
+            "\nSkipping %d cross-hierarchy d-sep test(s) (trivially satisfied by design):",
+            n_cross
+          ))
+          for (lbl in skipped_labels) message(lbl)
+        }
+        current_tests <- current_tests[!cross_hier_flags]
+      }
+      
       incremental_check <- find_reusable_tests(
         current_tests,
         equations,
