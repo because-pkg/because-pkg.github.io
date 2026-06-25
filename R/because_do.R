@@ -17,8 +17,9 @@ do <- function(object, ...) {
 #' @export
 because_do <- do
 
-#' Causal Interventions for Because Models
+#' @rdname do
 #'
+#' @description
 #' This method implements Pearl's do-operator for Bayesian Structural Equation 
 #' Models fitted with \code{because}. It topologically propagates interventions 
 #' downstream through the causal graph to simulate counterfactual outcomes.
@@ -322,8 +323,9 @@ do.because <- function(object, ..., ndraws = NULL, re_formula = NULL, raw_scale 
     return(results)
 }
 
-#' Summarize a Because Counterfactual Object
+#' @rdname do
 #'
+#' @description
 #' @param object An object of class \code{because_counterfactual} returned by \code{do()}.
 #' @param ... Additional arguments (ignored).
 #' @return A data.frame summarizing the expected value and credible intervals for each variable.

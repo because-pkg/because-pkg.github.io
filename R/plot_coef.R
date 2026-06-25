@@ -1,5 +1,6 @@
-#' Plot Path Coefficients (Caterpillar Plot)
-#' 
+#' @rdname plot_coef
+#'
+#' @description 
 #' Creates a 'caterpillar plot' (point and whisker) of all path coefficients 
 #' from a `because` model. This visualization provides a precise statistical 
 #' complement to the `plot_dag()` overview, allowing for a side-by-side 

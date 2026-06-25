@@ -1,5 +1,6 @@
-#' Generate Posterior Predictive Draws for Because Models
+#' @rdname posterior_predict
 #'
+#' @description
 #' This function generates simulated data (\eqn{y_{rep}}) from the posterior distribution
 #' of a fitted \code{because} model. These draws are used for posterior predictive checks (PPC)
 #' and model validation.
