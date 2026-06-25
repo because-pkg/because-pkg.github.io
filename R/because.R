@@ -313,6 +313,7 @@ because <- function(
   structure_levels = NULL,
   ...
 ) {
+  original_call <- match.call(expand.dots = TRUE)
   args <- list(...)
   
   # --- Handle Terminology Aliases (Backward Compatibility) ---
@@ -2504,6 +2505,7 @@ because <- function(
         categorical_vars = attr(data, "categorical_vars"),
         poly_terms = all_poly_terms
       )
+      result$call <- original_call
       class(result) <- "because"
       return(result)
     }
@@ -3069,6 +3071,7 @@ because <- function(
       categorical_vars = attr(data, "categorical_vars"),
       poly_terms = all_poly_terms
     )
+    result$call <- original_call
     class(result) <- "because"
     return(result)
   }
@@ -3564,6 +3567,7 @@ because <- function(
     }
     result$summary <- sum_stats
 
+    result$call <- original_call
     class(result) <- "because"
     return(result)
   }
@@ -4715,6 +4719,7 @@ because <- function(
   }
 
   # Assign class immediately (needed for print/summary/waic methods)
+  result$call <- original_call
   class(result) <- "because"
 
   # Add DIC and WAIC
