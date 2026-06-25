@@ -1,5 +1,0 @@
-library(dagitty)
-d <- dagitty("mag { Brain -> Mass; Mass <-> Size }")
-ind <- impliedConditionalIndependencies(d)
-un <- unclass(ind)
-print(str(un))
