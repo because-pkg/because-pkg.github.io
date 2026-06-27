@@ -171,8 +171,8 @@ standard deviations above the historical mean for every single site.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;   Variable  Mean     SD   2.5%   50% 97.5%</span></span>
 <span><span class="co">#&gt;       Temp 2.000 0.0000 2.0000 2.000 2.000</span></span>
-<span><span class="co">#&gt;   Resource 1.138 0.2197 0.7211 1.119 1.578</span></span>
-<span><span class="co">#&gt;  Abundance 2.139 0.9129 1.1583 1.910 4.306</span></span></code></pre></div>
+<span><span class="co">#&gt;   Resource 1.147 0.2395 0.7416 1.161 1.538</span></span>
+<span><span class="co">#&gt;  Abundance 2.143 0.7733 1.0383 2.075 3.803</span></span></code></pre></div>
 <p>Notice that the <code>SD</code> for <code>Temp</code> is exactly
 0—because we intervened and forced it to be deterministically fixed.
 However, <code>Resource</code> and <code>Abundance</code> maintain their
@@ -194,10 +194,10 @@ variable.</p>
 <span><span class="co">#&gt; Estimates represent the global expectation (averaged across all observations)</span></span>
 <span><span class="co">#&gt; under the intervened causal structure.</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Variable   Mean     SD   2.5%    50%  97.5%</span></span>
-<span><span class="co">#&gt;       Temp 1.0000 0.0000 1.0000 1.0000 1.0000</span></span>
-<span><span class="co">#&gt;   Resource 0.5327 0.1566 0.2635 0.5329 0.9146</span></span>
-<span><span class="co">#&gt;  Abundance 1.8322 0.6464 1.0675 1.7000 3.4912</span></span></code></pre></div>
+<span><span class="co">#&gt;   Variable  Mean     SD   2.5%    50%  97.5%</span></span>
+<span><span class="co">#&gt;       Temp 1.000 0.0000 1.0000 1.0000 1.0000</span></span>
+<span><span class="co">#&gt;   Resource 0.537 0.1841 0.1228 0.5155 0.8798</span></span>
+<span><span class="co">#&gt;  Abundance 1.832 0.4691 1.1080 1.8100 2.7860</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -224,10 +224,10 @@ back before running the simulation!</p>
 <span><span class="co">#&gt; Estimates represent the global expectation (averaged across all observations)</span></span>
 <span><span class="co">#&gt; under the intervened causal structure.</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Variable   Mean     SD   2.5%    50%  97.5%</span></span>
-<span><span class="co">#&gt;       Temp 22.130 0.0000 22.130 22.130 22.130</span></span>
-<span><span class="co">#&gt;   Resource 21.047 0.5629 19.754 21.076 21.996</span></span>
-<span><span class="co">#&gt;  Abundance  1.655 0.5526  1.009  1.525  2.601</span></span></code></pre></div>
+<span><span class="co">#&gt;   Variable   Mean     SD  2.5%   50%  97.5%</span></span>
+<span><span class="co">#&gt;       Temp 22.130 0.0000 22.13 22.13 22.130</span></span>
+<span><span class="co">#&gt;   Resource 21.073 0.5682 20.06 21.10 22.252</span></span>
+<span><span class="co">#&gt;  Abundance  1.661 0.4414  1.06  1.57  2.532</span></span></code></pre></div>
 <blockquote>
 <p><strong>Important Note:</strong> Base R’s
 <code>data.frame(Temp = scale(raw_temp))</code> silently strips scaling
@@ -256,10 +256,10 @@ automatically rescale it back before simulation.</p>
 <span><span class="co">#&gt; Estimates represent the global expectation (averaged across all observations)</span></span>
 <span><span class="co">#&gt; under the intervened causal structure.</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Variable   Mean     SD  2.5%   50%  97.5%</span></span>
-<span><span class="co">#&gt;       Temp 22.143 0.0000 22.14 22.14 22.143</span></span>
-<span><span class="co">#&gt;   Resource 21.001 0.4816 20.09 21.06 21.886</span></span>
-<span><span class="co">#&gt;  Abundance  1.601 0.4172  1.01  1.52  2.696</span></span></code></pre></div>
+<span><span class="co">#&gt;   Variable   Mean     SD   2.5%    50%  97.5%</span></span>
+<span><span class="co">#&gt;       Temp 22.143 0.0000 22.143 22.143 22.143</span></span>
+<span><span class="co">#&gt;   Resource 21.024 0.5649 19.847 21.147 22.001</span></span>
+<span><span class="co">#&gt;  Abundance  1.619 0.4323  1.089  1.535  2.387</span></span></code></pre></div>
 <p><em>(Note: Under the hood, the <code>%</code> string syntax is a
 convenient shortcut that intercepts the unscaled matrix and multiplies
 it by <code>1 + (val/100)</code>).</em></p>
@@ -281,9 +281,9 @@ points.</p>
 <span><span class="co">#&gt; under the intervened causal structure.</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;   Variable   Mean      SD   2.5%    50%  97.5%</span></span>
-<span><span class="co">#&gt;       Temp 1.0030 0.02077 0.9617 1.0019 1.0409</span></span>
-<span><span class="co">#&gt;   Resource 0.5491 0.16099 0.2024 0.5413 0.8858</span></span>
-<span><span class="co">#&gt;  Abundance 1.8321 0.75153 0.9690 1.6800 4.0965</span></span></code></pre></div>
+<span><span class="co">#&gt;       Temp 1.0031 0.02076 0.9617 1.0027 1.0409</span></span>
+<span><span class="co">#&gt;   Resource 0.5548 0.16621 0.2813 0.5637 0.8201</span></span>
+<span><span class="co">#&gt;  Abundance 1.8420 0.52583 1.1093 1.7550 3.0337</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -305,12 +305,12 @@ intervention.</p>
 <span></span>
 <span><span class="co"># Calculate the mean counterfactual abundance for Site 5</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">abund_matrix</span><span class="op">[</span>, <span class="fl">5</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1.7875</span></span>
+<span><span class="co">#&gt; [1] 1.7</span></span>
 <span></span>
 <span><span class="co"># Calculate the 95% Credible Interval for Site 5</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">abund_matrix</span><span class="op">[</span>, <span class="fl">5</span><span class="op">]</span>, probs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  2.5% 97.5% </span></span>
-<span><span class="co">#&gt; 0.000 7.075</span></span></code></pre></div>
+<span><span class="co">#&gt; 0.000 9.125</span></span></code></pre></div>
 <p>This flexibility allows you to easily compute site-specific treatment
 effects (the difference between the historical values and the
 counterfactual values) for precision ecology!</p>
