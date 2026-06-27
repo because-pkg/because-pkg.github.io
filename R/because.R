@@ -2379,11 +2379,24 @@ because <- function(
         if (is.null(flat_data[[s_name]])) {
             N_val <- if (!is.null(flat_data[["N"]])) flat_data[["N"]] else length(flat_data[[1]])
             flat_data[[s_name]] <- 0:(N_val - 1)
-        } else {
-            if (min(flat_data[[s_name]], na.rm=TRUE) == 1) {
-                flat_data[[s_name]] <- flat_data[[s_name]] - 1
-            }
         }
+      }
+      idx_vars <- grep("_idx", names(flat_data), value = TRUE)
+      idx_vars <- c(idx_vars, names(structures))
+      for (eq in equations) {
+          eq_str <- if (is.character(eq)) eq else paste(deparse(eq), collapse=" ")
+          matches <- regmatches(eq_str, gregexpr("\\(1\\s*\\|\\s*[^)]+\\)", eq_str))[[1]]
+          for (m in matches) {
+              grp <- trimws(strsplit(m, "\\|")[[1]][2])
+              grp <- gsub("\\)", "", grp)
+              idx_vars <- c(idx_vars, grp)
+          }
+      }
+      idx_vars <- unique(idx_vars)
+      for (s_name in idx_vars) {
+          if (s_name %in% names(flat_data) && min(flat_data[[s_name]], na.rm=TRUE) >= 1) {
+              flat_data[[s_name]] <- as.integer(flat_data[[s_name]] - 1L)
+          }
       }
 
       # Compute the optimal DAG/MAG tests natively using because_dsep (with dagitty)
@@ -3482,13 +3495,29 @@ because <- function(
                 N_val <- if (!is.null(flat_data[["N"]])) flat_data[["N"]] else length(flat_data[[1]])
             }
             flat_data[[s_name]] <- 0:(N_val - 1)
-        } else {
-            # In R, grouping variables start at 1. NumPyro expects 0-indexed arrays
-            if (min(flat_data[[s_name]], na.rm=TRUE) == 1) {
-                flat_data[[s_name]] <- flat_data[[s_name]] - 1
-            }
         }
     }
+    idx_vars <- grep("_idx", names(flat_data), value = TRUE)
+    idx_vars <- c(idx_vars, names(structures))
+    for (eq in equations) {
+        eq_str <- if (is.character(eq)) eq else paste(deparse(eq), collapse=" ")
+        matches <- regmatches(eq_str, gregexpr("\\(1\\s*\\|\\s*[^)]+\\)", eq_str))[[1]]
+        for (m in matches) {
+            grp <- trimws(strsplit(m, "\\|")[[1]][2])
+            grp <- gsub("\\)", "", grp)
+            idx_vars <- c(idx_vars, grp)
+        }
+    }
+    idx_vars <- unique(idx_vars)
+    for (s_name in idx_vars) {
+        if (s_name %in% names(flat_data) && min(flat_data[[s_name]], na.rm=TRUE) >= 1) {
+            flat_data[[s_name]] <- as.integer(flat_data[[s_name]] - 1L)
+        }
+    }
+    print("DEBUG: idx_vars:")
+    print(idx_vars)
+    print("DEBUG: species_idx_obs inside flat_data:")
+    print(flat_data$species_idx_obs)
     
 
 
