@@ -3199,18 +3199,20 @@ because_model <- function(
       suffix <- if (k == 1) "" else as.character(k)
       # alpha prior
       alpha_name <- paste0("alpha_", response, suffix)
-      # Determine default prior based on distribution (logit link needs tighter prior)
-      logit_dists <- c(
+      # Determine default prior based on distribution (logit/log link needs tighter prior)
+      non_identity_dists <- c(
         "occupancy",
         "binomial",
         "zip",
         "zinb",
         "bernoulli",
         "multinomial",
-        "ordinal"
+        "ordinal",
+        "poisson",
+        "negbinomial"
       )
       default_alpha <- "dnorm(0, 0.01)"
-      if (dist %in% logit_dists || isTRUE(aux_flags$skip_likelihood)) {
+      if (dist %in% non_identity_dists || isTRUE(aux_flags$skip_likelihood)) {
         default_alpha <- "dnorm(0, 1)"
       }
       model_lines <- c(
@@ -3925,7 +3927,9 @@ because_model <- function(
             "zinb",
             "bernoulli",
             "multinomial",
-            "ordinal"
+            "ordinal",
+            "poisson",
+            "negbinomial"
           )
       ) {
         default_beta <- "dnorm(0, 1)"
