@@ -296,6 +296,7 @@ because <- function(
   latent_method = "correlations",
   standardize_latent = TRUE,
   fix_latent = "loading",
+  prior_scale_fixed = NULL,
   parallel = FALSE,
   n.cores = parallel::detectCores() - 1,
   cl = NULL,
@@ -699,6 +700,10 @@ because <- function(
     }
   }
 
+  # Save completely raw data before ANY categorical conversion happens
+  # so that string/character tip labels remain intact for later PGLS matching
+  original_raw_data_before_preprocess <- data
+
   # --- Automatic Data Cleaning (Handle Character/Factor Columns) ---
   data <- preprocess_categorical_vars(
     data,
@@ -1071,6 +1076,9 @@ because <- function(
       }
     })))
 
+    # Save raw data with string/character values intact for d-sep PGLS tip matching
+    original_raw_data <- original_raw_data_before_preprocess
+
     # Preprocess categorical variables in hierarchical data
     if (!is.null(hierarchical_info)) {
       hierarchical_info$data <- preprocess_categorical_vars(
@@ -1132,8 +1140,8 @@ because <- function(
       )
     }
 
-    # original_data remains the list of dataframes for safety
-    original_data <- hierarchical_info$data
+    # original_data remains the raw un-indexed dataframes so tip labels match
+    original_data <- original_raw_data
   }
 
   # --- Data Validation ---
@@ -1633,6 +1641,22 @@ because <- function(
       }
     }
   } else {
+    # --- HOTFIX: Inject raw string labels so prepare_structure_data can align tips ---
+    # JAGS data is flattened to integers, which destroys tip labels. 
+    # We temporarily inject them back into 'data' so they can be discovered.
+    injected_raw_cols <- character(0)
+    if (is_hierarchical && !is.null(hierarchical_info$structure_levels)) {
+      for (s_name in names(hierarchical_info$structure_levels)) {
+        lvl_name <- hierarchical_info$structure_levels[[s_name]]
+        link_var <- if (!is.null(hierarchical_info$link_vars)) hierarchical_info$link_vars[[lvl_name]] else NULL
+        if (!is.null(link_var) && is.data.frame(original_raw_data_before_preprocess[[lvl_name]])) {
+           raw_col_name <- paste0(".raw_", link_var)
+           data[[raw_col_name]] <- as.character(original_raw_data_before_preprocess[[lvl_name]][[link_var]])
+           injected_raw_cols <- c(injected_raw_cols, raw_col_name)
+        }
+      }
+    }
+
     structure_levels <- list()
     structure_multi <- list()
     # Use S3 Generic for Processing
@@ -1644,6 +1668,15 @@ because <- function(
         for (d_name in names(prep_res$data_list)) {
           custom_s_name <- get_structure_name_hook(structure_obj)
           prefixed_name <- if (d_name %in% c("Prec", "VCV", "multiVCV", custom_s_name)) paste0(d_name, "_", s_name) else d_name
+          
+          # --- HOTFIX: Prevent Python/JAGS crashes ---
+          # prepare_structure_data might return character/factor vectors (e.g. aligned tip labels).
+          # We MUST NOT let these overwrite the integer index arrays (e.g. data$Species)
+          # nor be added to the data list, as NumPyro strictly requires numeric arrays.
+          if (is.character(prep_res$data_list[[d_name]]) || is.factor(prep_res$data_list[[d_name]])) {
+             next
+          }
+          
           data[[prefixed_name]] <- prep_res$data_list[[d_name]]
         }
       } else {
@@ -2374,6 +2407,15 @@ because <- function(
         }
       }
       
+      # --- HOTFIX: Ultimate safety net for Python/JAX ---
+      # Remove any character or factor vectors from data before passing to NumPyro
+      # to guarantee we never hit a JAX string dtype error.
+      for (n in names(data)) {
+        if (is.character(data[[n]]) || is.factor(data[[n]])) {
+          data[[n]] <- NULL
+        }
+      }
+      
       flat_data <- flatten_for_python(data)
       for (s_name in names(structures)) {
         if (is.null(flat_data[[s_name]])) {
@@ -2467,28 +2509,68 @@ because <- function(
       } else {
         if (length(tests_to_run_indices) > 0) {
           # Format tests into structured list for Python to bypass its internal graph logic
-          dsep_equations_to_run <- lapply(current_tests[tests_to_run_indices], function(eq) {
-            resp <- as.character(eq)[2]
-            test_var <- attr(eq, "test_var")
+          dsep_equations_to_run <- list()
+          cs_results <- list()
+          
+          for (i in tests_to_run_indices) {
+            eq <- current_tests[[i]]
             
-            rhs_str <- paste(deparse(eq[[3]]), collapse = " ")
-            rhs_parts <- trimws(strsplit(rhs_str, "\\+")[[1]])
-            cond_set <- rhs_parts[rhs_parts != test_var]
-            
-            if (is.null(test_var)) {
-              vars <- all.vars(eq)
-              test_var <- setdiff(vars, resp)[1]
-              cond_set <- setdiff(vars, c(resp, test_var))
+            cs_info <- detect_crossscale_dsep(eq, hierarchical_info)
+            if (cs_info$is_crossscale) {
+              if (!quiet) {
+                message(sprintf("  -> Cross-scale test detected: focal predictor '%s' at %s level, response '%s' at %s level", cs_info$test_var, cs_info$predictor_level, cs_info$response, cs_info$response_level))
+              }
+              # Run PGLS in R instead of passing to Python
+              mcmc_res <- run_crossscale_dsep_pgls(
+                i = i, test_eq = eq, cs_info = cs_info,
+                original_data = original_data, hierarchical_info = hierarchical_info,
+                structure = structure, family = family, n.iter = 1000, n.chains = 1, quiet = quiet
+              )
+              
+              samples_mcmc <- mcmc_res$samples
+              if (inherits(samples_mcmc, "mcmc.list")) {
+                samples <- as.matrix(samples_mcmc[[1]])
+              } else {
+                samples <- as.matrix(samples_mcmc)
+              }
+              param_name <- colnames(samples)[1] # PGLS returns the focal param as the first column
+              
+              vec <- as.numeric(samples[,1])
+              cs_df <- data.frame(
+                claim = paste(deparse(eq), collapse = " "),
+                coefficient = param_name,
+                mean = mean(vec, na.rm=TRUE),
+                ci_2.5 = unname(quantile(vec, 0.025, na.rm=TRUE)),
+                ci_97.5 = unname(quantile(vec, 0.975, na.rm=TRUE)),
+                rhat = 1.0,
+                n_eff = nrow(samples),
+                stringsAsFactors = FALSE
+              )
+              cs_results[[as.character(i)]] <- cs_df
+            } else {
+              # Standard test, prepare for Python
+              resp <- as.character(eq)[2]
+              test_var <- attr(eq, "test_var")
+              
+              rhs_str <- paste(deparse(eq[[3]]), collapse = " ")
+              rhs_parts <- trimws(strsplit(rhs_str, "\\+")[[1]])
+              cond_set <- rhs_parts[rhs_parts != test_var]
+              
+              if (is.null(test_var)) {
+                vars <- all.vars(eq)
+                test_var <- setdiff(vars, resp)[1]
+                cond_set <- setdiff(vars, c(resp, test_var))
+              }
+              
+              dsep_equations_to_run[[length(dsep_equations_to_run) + 1]] <- list(
+                type = "dsep",
+                response = resp,
+                test_node = test_var,
+                conditioning_set = as.list(cond_set),
+                equation_string = paste(deparse(eq), collapse = " ")
+              )
             }
-            
-            list(
-              type = "dsep",
-              response = resp,
-              test_node = test_var,
-              conditioning_set = as.list(cond_set),
-              equation_string = paste(deparse(eq), collapse = " ")
-            )
-          })
+          }
         }
         
         py_result <- because_py$fit(
@@ -2507,7 +2589,8 @@ because <- function(
           dsep_max_obs = as.integer(dsep_max_obs),
           quiet = quiet,
           cor_matrices = py_structures,
-          dsep_equations_to_run = if (!is.null(dsep_equations_to_run)) as.list(dsep_equations_to_run) else NULL
+          dsep_equations_to_run = if (!is.null(dsep_equations_to_run)) as.list(dsep_equations_to_run) else NULL,
+          prior_scale_fixed = prior_scale_fixed
         )
       }
 
@@ -2535,6 +2618,18 @@ because <- function(
         for (i in seq_along(current_tests)) {
           if (!is.null(reused_results) && length(reused_results) >= i && !is.null(reused_results[[i]])) {
             dsep_df_list[[i]] <- reused_results[[i]]
+          } else if (!is.null(cs_results[[as.character(i)]])) {
+            dsep_df_list[[i]] <- cs_results[[as.character(i)]]
+            names(dsep_df_list[[i]])[names(dsep_df_list[[i]]) == "claim"] <- "Test"
+            names(dsep_df_list[[i]])[names(dsep_df_list[[i]]) == "coefficient"] <- "Parameter"
+            names(dsep_df_list[[i]])[names(dsep_df_list[[i]]) == "mean"] <- "Estimate"
+            names(dsep_df_list[[i]])[names(dsep_df_list[[i]]) == "ci_2.5"] <- "LowerCI"
+            names(dsep_df_list[[i]])[names(dsep_df_list[[i]]) == "ci_97.5"] <- "UpperCI"
+            names(dsep_df_list[[i]])[names(dsep_df_list[[i]]) == "rhat"] <- "Rhat"
+            names(dsep_df_list[[i]])[names(dsep_df_list[[i]]) == "n_eff"] <- "n.eff"
+            dsep_df_list[[i]]$Scale <- NA
+            dsep_df_list[[i]]$is_independent <- NULL
+            dsep_df_list[[i]]$equation <- NULL
           } else if (!is.null(new_dsep_df) && new_idx <= nrow(new_dsep_df)) {
             dsep_df_list[[i]] <- new_dsep_df[new_idx, , drop = FALSE]
             new_idx <- new_idx + 1
@@ -3538,7 +3633,8 @@ because <- function(
       dsep_max_obs = as.integer(dsep_max_obs),
       quiet = quiet,
       cor_matrices = py_structures,
-      adapt_delta = adapt_delta
+      adapt_delta = adapt_delta,
+      prior_scale_fixed = prior_scale_fixed
     )
     # Convert numpyro group_by_chain samples into an mcmc.list
     raw_samples <- py_result$samples
@@ -4936,7 +5032,38 @@ run_single_dsep_test_v2 <- function(
 ) {
   if (!quiet) {
     message(paste("D-sep test eq:", deparse(test_eq)))
+    message(paste("Test var attribute:", attr(test_eq, "test_var")))
   }
+
+  # --- AUTOMATED SCALE-AWARE DISPATCH ---
+  cs_info <- detect_crossscale_dsep(test_eq, hierarchical_info)
+  if (!quiet) message("is_crossscale:", cs_info$is_crossscale)
+
+  if (cs_info$is_crossscale) {
+    if (!quiet) {
+      message(sprintf(
+        "  -> Cross-scale test detected: focal predictor '%s' at %s level, response '%s' at %s level",
+        cs_info$test_var, cs_info$predictor_level, cs_info$response, cs_info$response_level
+      ))
+    }
+    
+    synth_iter <- n.iter
+    if (synth_iter < 1000) synth_iter <- 1000
+    
+    return(run_crossscale_dsep_pgls(
+      i = i,
+      test_eq = test_eq,
+      cs_info = cs_info,
+      original_data = original_data,
+      hierarchical_info = hierarchical_info,
+      structure = structure,
+      family = family,
+      n.iter = synth_iter,
+      n.chains = n.chains,
+      quiet = quiet
+    ))
+  }
+  # ----------------------------------------
 
   # Select appropriate dataset for this test
   test_data <- original_data
