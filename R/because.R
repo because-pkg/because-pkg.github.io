@@ -3862,26 +3862,13 @@ because <- function(
       !quiet
   ) {
     message("--- Latent Variable Structure (MAG) ---")
-    # We call because_dsep just for its side effect (printing MAG info).
-    # We wrap it in tryCatch to ensure it doesn't block the main run if it fails.
-    tryCatch(
-      {
-        if (length(equations) > 0) {
-          invisible(because_dsep(
-            equations,
-            latent = latent,
-            random_terms = random_terms,
-            quiet = quiet
-          ))
-        }
-      },
-      error = function(e) {
-        # Silently skip if MAG display fails - not critical for main run
-        if (!quiet) {
-          message("(MAG structure display skipped)")
-        }
+    if (length(induced_cors) > 0) {
+      for (cor_pair in induced_cors) {
+        message(sprintf("  Induced Correlation: %s <-> %s", cor_pair[1], cor_pair[2]))
       }
-    )
+    } else {
+      message("  No induced correlations.")
+    }
     message("---------------------------------------")
   }
 
