@@ -449,7 +449,8 @@ dsep_standard <- function(
     deterministic_terms = all_det_terms,
     root_vars = root_vars,
     hierarchical_info = hierarchical_info,
-    d_obj = d_obj
+    d_obj = d_obj,
+    quiet = quiet
   )
 
   # Append random terms if relevant
@@ -743,7 +744,8 @@ dsep_with_latents <- function(
     root_vars = root_vars,
     hierarchical_info = hierarchical_info,
     latent_sharers = latent_sharers,
-    d_obj = d_obj
+    d_obj = d_obj,
+    quiet = quiet
   )
 
   # Save tests without random effects for clean display
@@ -999,12 +1001,10 @@ plot_dsep.because <- function(object, prob = 0.95, ...) {
 # a standard observation-level GLMM is non-identifiable: the group-level fixed
 # effect and the group-level random effect compete for the same variance.
 #
-# The correct approach is to run the test at the predictor's own scale:
+# To avoid MCMC convergence issues, we run the test at the predictor's own scale:
 #   1. Aggregate the response to the predictor's level.
 #   2. Include only conditioning variables at or above that level.
 #   3. Fit GLS with the appropriate correlation structure (phylo / spatial).
-#
-# Reference: von Hardenberg & Gonzalez-Voyer (2013); Shipley (2009).
 # ==========================================================================
 
 #' Detect whether a d-sep test crosses hierarchical scales in the same chain
@@ -1065,6 +1065,41 @@ detect_crossscale_dsep <- function(test_eq, hierarchical_info) {
   list(is_crossscale = FALSE)
 }
 
+.cs_flatten_all <- function(original_data) {
+  if (is.data.frame(original_data)) return(original_data)
+  if (!is.list(original_data)) return(original_data)
+  
+  row_counts <- sapply(original_data, function(x) if (is.data.frame(x)) nrow(x) else 0)
+  base_idx <- which.max(row_counts)
+  if (length(base_idx) == 0) return(NULL)
+  
+  base_tbl <- original_data[[base_idx]]
+  merged_tables <- c(base_idx)
+  
+  repeat {
+    merged_in_this_pass <- FALSE
+    for (i in seq_along(original_data)) {
+      if (i %in% merged_tables) next
+      tbl <- original_data[[i]]
+      if (!is.data.frame(tbl)) next
+      
+      shared <- intersect(names(base_tbl), names(tbl))
+      if (length(shared) > 0) {
+        new_cols <- setdiff(names(tbl), names(base_tbl))
+        if (length(new_cols) > 0) {
+          base_tbl <- merge(base_tbl, tbl[, c(shared, new_cols), drop = FALSE], by = shared, all.x = TRUE)
+        }
+        merged_tables <- c(merged_tables, i)
+        merged_in_this_pass <- TRUE
+      }
+    }
+    # Count dataframes
+    n_dfs <- sum(sapply(original_data, is.data.frame))
+    if (!merged_in_this_pass || length(merged_tables) == n_dfs) break
+  }
+  
+  base_tbl
+}
 
 #' Run a cross-scale d-sep test via aggregation and PGLS/GLS
 #'
@@ -1104,6 +1139,7 @@ run_crossscale_dsep_pgls <- function(
   hierarchical_info,
   structure = NULL,
   family    = NULL,
+  engine    = "numpyro",
   n.iter    = 1000L,
   n.chains  = 3L,
   quiet     = FALSE
@@ -1121,16 +1157,24 @@ run_crossscale_dsep_pgls <- function(
     ))
   }
 
-  # ---- 1. Flatten the hierarchical data to a single data.frame ----
-  flat <- .cs_flatten(original_data, resp, group_col)
+  # ---- 1. Use the globally flattened dataset ----
+  flat <- .cs_flatten_all(original_data)
 
   # ---- 2. Aggregate response to the predictor's group level ----
   y_raw   <- flat[[resp]]
   grp     <- as.character(flat[[group_col]])
   fam_str <- if (!is.null(family) && resp %in% names(family)) family[[resp]] else "gaussian"
 
-  agg_y <- if (identical(fam_str, "poisson")) {
+  agg_y <- if (fam_str %in% c("poisson", "negbin", "zip", "zinb")) {
     tapply(log(pmax(y_raw, 0) + 0.5), grp, mean, na.rm = TRUE)
+  } else if (fam_str %in% c("lognormal", "gamma", "exponential")) {
+    tapply(log(pmax(y_raw, 1e-6)), grp, mean, na.rm = TRUE)
+  } else if (fam_str %in% c("binomial", "bernoulli", "beta")) {
+    tapply(y_raw, grp, function(x) {
+      p <- mean(x, na.rm = TRUE)
+      p <- pmax(0.01, pmin(0.99, p)) # Bound to prevent log(0)
+      log(p / (1 - p)) # Logit transform
+    })
   } else {
     tapply(y_raw, grp, mean, na.rm = TRUE)
   }
@@ -1141,87 +1185,151 @@ run_crossscale_dsep_pgls <- function(
     setNames(list(group_ids, as.numeric(agg_y)), c(group_col, ".response"))
   )
 
-  # ---- 3. Attach group-level predictor columns ----
-  rhs_vars <- setdiff(all.vars(test_eq)[-1L], group_col)
-  pred_tbl <- .cs_find_table(original_data, group_col, test_var)
-  keep     <- intersect(c(group_col, rhs_vars), names(pred_tbl))
-  agg_df   <- merge(agg_df, pred_tbl[, keep, drop = FALSE],
-                    by = group_col, all.x = TRUE)
-  agg_df   <- agg_df[stats::complete.cases(agg_df), , drop = FALSE]
+  # ---- 3. Aggregate all conditioning variables to the group level ----
+  # Exclude random effect grouping variables (which are just the link_vars)
+  rhs_vars <- setdiff(all.vars(test_eq)[-1L], c(group_col, unlist(link_vars)))
+  
+  for (v in rhs_vars) {
+    if (v %in% names(flat)) {
+      v_raw <- flat[[v]]
+      agg_v <- tapply(v_raw, grp, function(x) {
+        if (is.numeric(x)) {
+          mean(x, na.rm = TRUE)
+        } else {
+          # For categorical predictors, take the most frequent value (mode)
+          tbl <- sort(table(x), decreasing = TRUE)
+          if (length(tbl) > 0) names(tbl)[1] else NA
+        }
+      })
+      # Ensure order matches agg_df
+      agg_df[[v]] <- as.vector(agg_v[agg_df[[group_col]]])
+    }
+  }
 
-  # ---- 4. Build GLS formula (only species-level predictors) ----
+  agg_df <- agg_df[stats::complete.cases(agg_df), , drop = FALSE]
+
+  # ---- 4. Reformat aggregated dataset for flat Bayesian run ----
   avail_preds <- intersect(rhs_vars, names(agg_df))
   if (length(avail_preds) == 0L) {
     stop("No predictors available in aggregated data for cross-scale PGLS.")
   }
-  gls_formula <- stats::as.formula(
-    paste(".response ~", paste(avail_preds, collapse = " + "))
-  )
-
-  # ---- 5. Build correlation structure (phylo if available) ----
-  cor_result  <- .cs_build_cor(structure, agg_df, group_col)
-  cor_struct  <- cor_result$cor
-  agg_df      <- cor_result$agg_df   # possibly reordered to match tree tips
-
-  # ---- 6. Fit GLS or OLS ----
-  if (!requireNamespace("nlme", quietly = TRUE)) {
-    stop("Package 'nlme' is required for cross-scale PGLS d-sep tests.")
-  }
-  method_used <- if (!is.null(cor_struct)) "PGLS (Pagel lambda)" else "OLS"
+  
+  # Ensure the response has its original name for the because() call
+  names(agg_df)[names(agg_df) == ".response"] <- resp
+  
+  # For the phylogeny mapping in because(), if the data is flat, the row names or 
+  # an identifier column matching the tree tips must be present.
+  # The identifier column is group_col, so we rename it to the expected raw format.
+  # because() expects '.raw_Species' for species mapping. We use group_col dynamically.
+  raw_group_col <- paste0(".raw_", group_col)
+  names(agg_df)[names(agg_df) == group_col] <- raw_group_col
+  
+  # Ensure we only keep the necessary columns to avoid unrelated data issues
+  keep_cols <- c(raw_group_col, resp, avail_preds)
+  agg_df <- agg_df[, keep_cols, drop = FALSE]
+  
+  method_used <- sprintf("Bayesian PGLS/GLS (%s)", if (tolower(engine) == "jags") "JAGS" else if (tolower(engine) == "nimble") "NIMBLE" else "NumPyro")
   if (!quiet) {
     message(sprintf(
-      "  [Cross-scale d-sep] '%s' aggregated to %s level (n=%d) -> %s",
+      "  [Cross-scale d-sep] '%s' aggregated to %s level (n=%d) -> %s ... ",
       resp, pred_level, nrow(agg_df), method_used
-    ))
+    ), appendLF = FALSE)
+    flush.console()
   }
 
-  gls_fit <- tryCatch({
-    if (!is.null(cor_struct)) {
-      nlme::gls(gls_formula, data = agg_df,
-                correlation = cor_struct,
-                method = "ML", na.action = stats::na.omit)
-    } else {
-      stats::lm(gls_formula, data = agg_df, na.action = stats::na.omit)
+  # Build the flat equation
+  gls_formula <- stats::as.formula(
+    paste(resp, "~", paste(avail_preds, collapse = " + "))
+  )
+
+  # ---- 5. Prune structure to only what applies to this level ----
+  pruned_structure <- list()
+  if (!is.null(structure) && is.list(structure)) {
+    groups_present <- as.character(agg_df[[raw_group_col]])
+    for (s_name in names(structure)) {
+      s_obj <- structure[[s_name]]
+      # For phylo trees
+      if (inherits(s_obj, "phylo")) {
+        common <- intersect(s_obj$tip.label, groups_present)
+        if (length(common) > 0) {
+          pruned_structure[[s_name]] <- s_obj
+        }
+      } 
+      # For spatial distance matrices
+      else if (is.matrix(s_obj)) {
+        common <- intersect(rownames(s_obj), groups_present)
+        if (length(common) > 0) {
+          pruned_structure[[s_name]] <- s_obj
+        }
+      }
     }
+  }
+  if (length(pruned_structure) == 0) pruned_structure <- NULL
+
+  # ---- 6. Run native fully-Bayesian model via because() ----
+  fit_bayesian <- tryCatch({
+    because(
+      equations = list(gls_formula),
+      data = agg_df,
+      structure = pruned_structure,  # Pass only applicable structures
+      family = {
+        if (!is.null(family)) {
+          agg_fam <- as.list(family)
+          agg_fam[[resp]] <- "gaussian"
+          agg_fam
+        } else {
+          NULL
+        }
+      },
+      dsep = FALSE,           # Just fit this single equation, don't generate more tests
+      engine = engine,        # Use user-specified engine
+      n.chains = n.chains,
+      n.iter = n.iter,
+      quiet = TRUE            # Suppress inner compilation messages
+    )
   }, error = function(e) {
     warning(sprintf(
-      "PGLS failed (%s); falling back to OLS for test %d.", conditionMessage(e), i
+      "Cross-scale Bayesian PGLS failed (%s); returning empty samples for test %d.", conditionMessage(e), i
     ))
-    stats::lm(gls_formula, data = agg_df, na.action = stats::na.omit)
+    NULL
   })
 
-  # ---- 7. Extract focal coefficient ----
-  cf  <- summary(gls_fit)$coefficients
-  if (is.matrix(cf) && test_var %in% rownames(cf)) {
-    est <- cf[test_var, 1L]
-    se  <- cf[test_var, 2L]
-    p_val <- if (ncol(cf) >= 4L) cf[test_var, 4L] else NA_real_
-  } else {
-    est <- NA_real_
-    se  <- 0.01
-    p_val <- NA_real_
-    warning(sprintf(
-      "Cross-scale PGLS: focal predictor '%s' not found in coefficient table.", test_var
-    ))
+  param_name <- paste0("beta_", resp, "_", test_var)
+  
+  if (!quiet) {
+    if (!is.null(fit_bayesian)) {
+      message("Done.")
+    } else {
+      message("Failed.")
+    }
   }
 
-  # ---- 8. Synthetic MCMC samples (normal approximation) ----
-  param_name <- paste0("beta_", resp, "_", test_var)
-  synth_chains <- lapply(seq_len(n.chains), function(ch) {
-    mat <- matrix(
-      stats::rnorm(n.iter, mean = est, sd = max(se, 1e-6)),
-      nrow = n.iter, ncol = 1L,
-      dimnames = list(NULL, param_name)
-    )
-    coda::mcmc(mat)
-  })
+  # ---- 6. Extract MCMC chains and map parameters ----
+  
+  if (!is.null(fit_bayesian) && !is.null(fit_bayesian$samples)) {
+    # Extract the chains for the focal predictor from the Bayesian run
+    # because() names coefficients as `beta_Response_Predictor`
+    if (inherits(fit_bayesian$samples, "mcmc.list")) {
+      extracted_samples <- coda::mcmc.list(lapply(fit_bayesian$samples, function(x) {
+        coda::mcmc(as.matrix(x)[, param_name, drop = FALSE])
+      }))
+    } else {
+      extracted_samples <- fit_bayesian$samples[, param_name, drop = FALSE]
+    }
+  } else {
+    # Fallback if the Bayesian model failed to compile/run
+    extracted_samples <- lapply(seq_len(n.chains), function(ch) {
+      mat <- matrix(NA_real_, nrow = n.iter, ncol = 1L, dimnames = list(NULL, param_name))
+      coda::mcmc(mat)
+    })
+    extracted_samples <- coda::mcmc.list(extracted_samples)
+  }
 
-  # ---- 9. param_map (minimal columns consumed by downstream code) ----
+  # ---- 7. param_map (minimal columns consumed by downstream code) ----
   param_map <- data.frame(
-    parameter      = param_name,
-    variable       = test_var,
-    predictor      = test_var,
     response       = resp,
+    predictor      = test_var,
+    parameter      = param_name,
     equation_index = i,
     type           = "beta",
     stringsAsFactors = FALSE
@@ -1229,22 +1337,22 @@ run_crossscale_dsep_pgls <- function(
 
   model_str <- sprintf(
     paste0(
-      "# Cross-scale PGLS d-sep test (test %d)\n",
+      "# Cross-scale Bayesian PGLS d-sep test (test %d)\n",
       "# Response '%s' aggregated to '%s' level (n = %d)\n",
-      "# Formula: .response ~ %s\n",
+      "# Formula: %s ~ %s\n",
       "# Method: %s"
     ),
     i, resp, pred_level, nrow(agg_df),
-    paste(avail_preds, collapse = " + "),
+    resp, paste(avail_preds, collapse = " + "),
     method_used
   )
 
   list(
-    samples       = coda::mcmc.list(synth_chains),
+    samples       = extracted_samples,
     param_map     = param_map,
     model         = model_str,
     test_index    = i,
-    exact_p_value = p_val
+    exact_p_value = NA_real_ # P-values are not standard in pure Bayesian outputs; credible intervals will be used
   )
 }
 
@@ -1325,10 +1433,6 @@ run_crossscale_dsep_pgls <- function(
     common <- intersect(tree$tip.label, groups)
 
     if (length(common) < 3L) {
-      warning(sprintf(
-        "Only %d tip label(s) match group IDs for cross-scale PGLS; falling back to OLS.",
-        length(common)
-      ))
       return(list(cor = NULL, agg_df = agg_df))
     }
 
@@ -1344,7 +1448,7 @@ run_crossscale_dsep_pgls <- function(
     rownames(agg_df) <- agg_df[[group_col]]
     agg_df_aligned   <- agg_df[tree_p$tip.label, , drop = FALSE]
 
-    cor_struct <- ape::corPagel(1, phy = tree_p, fixed = FALSE)
+    cor_struct <- ape::corPagel(1, phy = tree_p, form = stats::as.formula(paste("~", group_col)), fixed = FALSE)
     return(list(cor = cor_struct, agg_df = agg_df_aligned))
   }
 

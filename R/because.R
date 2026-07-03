@@ -223,6 +223,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @param expand_ordered Logical; if `TRUE`, expands ordered factors using monotonic effects.
 #' @param structure_multi Logical; if `TRUE`, handles multiple covariance structures.
 #' @param structure_levels Mapping of variables to covariance structure levels.
+#' @param aggregate_crossscale Optional. Set to "all" to aggregate all cross-scale d-sep tests, or a numeric vector specifying test indices.
 #' @param ... Additional arguments passed to the underlying model engines.
 #'
 #' @return An object of class \code{"because"} containing:
@@ -312,10 +313,16 @@ because <- function(
   expand_ordered = FALSE,
   structure_multi = NULL,
   structure_levels = NULL,
+  aggregate_crossscale = NULL,
   ...
 ) {
   original_call <- match.call(expand.dots = TRUE)
   args <- list(...)
+  
+  if (!is.null(link_vars)) {
+      link_vars <- as.list(link_vars)
+  }
+
   
   # --- Handle Terminology Aliases (Backward Compatibility) ---
   # hierarchy -> multiscale
@@ -2516,34 +2523,94 @@ because <- function(
             eq <- current_tests[[i]]
             
             cs_info <- detect_crossscale_dsep(eq, hierarchical_info)
+            do_aggregate <- FALSE
             if (cs_info$is_crossscale) {
+              if (is.character(aggregate_crossscale) && length(aggregate_crossscale) == 1 && aggregate_crossscale == "all") {
+                do_aggregate <- TRUE
+              } else if (is.numeric(aggregate_crossscale) && i %in% aggregate_crossscale) {
+                do_aggregate <- TRUE
+              }
+            }
+
+            if (do_aggregate) {
               if (!quiet) {
                 message(sprintf("  -> Cross-scale test detected: focal predictor '%s' at %s level, response '%s' at %s level", cs_info$test_var, cs_info$predictor_level, cs_info$response, cs_info$response_level))
               }
               # Run PGLS in R instead of passing to Python
+              synth_iter <- max(1000, n.iter)
               mcmc_res <- run_crossscale_dsep_pgls(
                 i = i, test_eq = eq, cs_info = cs_info,
                 original_data = original_data, hierarchical_info = hierarchical_info,
-                structure = structure, family = family, n.iter = 1000, n.chains = 1, quiet = quiet
+                structure = structure, family = family, engine = engine, 
+                n.iter = synth_iter, n.chains = n.chains, quiet = quiet
               )
               
               samples_mcmc <- mcmc_res$samples
-              if (inherits(samples_mcmc, "mcmc.list")) {
-                samples <- as.matrix(samples_mcmc[[1]])
-              } else {
-                samples <- as.matrix(samples_mcmc)
-              }
-              param_name <- colnames(samples)[1] # PGLS returns the focal param as the first column
+              param_name <- colnames(as.matrix(samples_mcmc))[1]
+              vec <- as.numeric(as.matrix(samples_mcmc)[, 1])
               
-              vec <- as.numeric(samples[,1])
+              r_hat_val <- 1.0
+              n_eff_val <- length(vec)
+              if (inherits(samples_mcmc, "mcmc.list") && length(samples_mcmc) > 1) {
+                tryCatch({
+                  n_ch <- length(samples_mcmc)
+                  chain_means <- numeric(n_ch)
+                  chain_vars <- numeric(n_ch)
+                  n_iter_ch <- nrow(as.matrix(samples_mcmc[[1]]))
+                  for (c in 1:n_ch) {
+                    vals <- as.numeric(as.matrix(samples_mcmc[[c]])[, 1])
+                    chain_means[c] <- mean(vals, na.rm = TRUE)
+                    chain_vars[c] <- var(vals, na.rm = TRUE)
+                  }
+                  B <- n_iter_ch * var(chain_means, na.rm = TRUE)
+                  W <- mean(chain_vars, na.rm = TRUE)
+                  if (W > 0) {
+                    var_plus <- ((n_iter_ch - 1) / n_iter_ch) * W + (1 / n_iter_ch) * B
+                    r_hat_val <- sqrt(var_plus / W)
+                  }
+                  
+                  if (requireNamespace("coda", quietly = TRUE)) {
+                    n_eff_val <- coda::effectiveSize(samples_mcmc[, param_name, drop = FALSE])
+                  }
+                }, error = function(e) {})
+              }
+              
+              eq_full <- current_tests[[i]]
+              resp_name <- as.character(eq_full)[2]
+              test_var <- attr(eq_full, "test_var")
+              if (is.null(test_var)) {
+                  rhs <- labels(stats::terms(eq_full))
+                  if (length(rhs) > 0) test_var <- rhs[1]
+              }
+              formula_str <- paste(deparse(eq_full), collapse = " ")
+              rhs_full <- sub("^[^~]+~\\s*", "", formula_str)
+              all_terms <- trimws(strsplit(rhs_full, "\\+")[[1]])
+              cond_terms <- all_terms[all_terms != test_var]
+
+              test_str_base <- paste0(
+                  resp_name,
+                  " _||_ ",
+                  test_var,
+                  if (length(cond_terms) > 0) {
+                      paste0(" | {", paste(cond_terms, collapse = ","), "}")
+                  } else {
+                      " | {} "
+                  }
+              )
+              
+              test_scale <- attr(eq_full, "scale")
+              if (!is.null(test_scale)) {
+                  test_str_base <- paste0(test_str_base, " [Scale: ", test_scale, "]")
+              }
+              
               cs_df <- data.frame(
-                claim = paste(deparse(eq), collapse = " "),
+                claim = test_str_base,
                 coefficient = param_name,
-                mean = mean(vec, na.rm=TRUE),
-                ci_2.5 = unname(quantile(vec, 0.025, na.rm=TRUE)),
-                ci_97.5 = unname(quantile(vec, 0.975, na.rm=TRUE)),
-                rhat = 1.0,
-                n_eff = nrow(samples),
+                mean = round(mean(vec, na.rm=TRUE), 3),
+                ci_2.5 = round(unname(quantile(vec, 0.025, na.rm=TRUE)), 3),
+                ci_97.5 = round(unname(quantile(vec, 0.975, na.rm=TRUE)), 3),
+                rhat = round(r_hat_val, 3),
+                n_eff = round(n_eff_val, 0),
                 stringsAsFactors = FALSE
               )
               cs_results[[as.character(i)]] <- cs_df
@@ -2633,6 +2700,47 @@ because <- function(
           } else if (!is.null(new_dsep_df) && new_idx <= nrow(new_dsep_df)) {
             dsep_df_list[[i]] <- new_dsep_df[new_idx, , drop = FALSE]
             new_idx <- new_idx + 1
+          }
+
+          # Force uniform JAGS-style formatting for all NumPyro results 
+          # (including reused results cached from older versions)
+          if (!is.null(dsep_df_list[[i]])) {
+            eq_full <- current_tests[[i]]
+            resp_name <- as.character(eq_full)[2]
+            test_var <- attr(eq_full, "test_var")
+            if (is.null(test_var)) {
+                rhs <- labels(stats::terms(eq_full))
+                if (length(rhs) > 0) test_var <- rhs[1]
+            }
+            formula_str <- paste(deparse(eq_full), collapse = " ")
+            rhs_full <- sub("^[^~]+~\\s*", "", formula_str)
+            all_terms <- trimws(strsplit(rhs_full, "\\+")[[1]])
+            cond_terms <- all_terms[all_terms != test_var]
+
+            test_str_base <- paste0(
+                resp_name,
+                " _||_ ",
+                test_var,
+                if (length(cond_terms) > 0) {
+                    paste0(" | {", paste(cond_terms, collapse = ","), "}")
+                } else {
+                    " | {} "
+                }
+            )
+            
+            test_scale <- attr(eq_full, "scale")
+            if (!is.null(test_scale)) {
+                test_str_base <- paste0(test_str_base, " [Scale: ", test_scale, "]")
+            }
+            
+            dsep_df_list[[i]]$Test <- test_str_base
+
+            # Also force rounding for standard Python tests so they look beautiful
+            if ("Estimate" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$Estimate <- round(as.numeric(dsep_df_list[[i]]$Estimate), 3)
+            if ("LowerCI" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$LowerCI <- round(as.numeric(dsep_df_list[[i]]$LowerCI), 3)
+            if ("UpperCI" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$UpperCI <- round(as.numeric(dsep_df_list[[i]]$UpperCI), 3)
+            if ("Rhat" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$Rhat <- round(as.numeric(dsep_df_list[[i]]$Rhat), 3)
+            if ("n.eff" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$n.eff <- round(as.numeric(dsep_df_list[[i]]$n.eff), 0)
           }
         }
       }
@@ -2929,17 +3037,17 @@ because <- function(
             current_monitor <- "interpretable"
 
             tryCatch({
-              run_single_dsep_test_v2(
-                i,
-                test_eq,
-                current_monitor,
-                engine = engine,
-                nimble_samplers = nimble_samplers,
-                quiet = quiet,
-                original_data = original_data,
-                hierarchical_info = hierarchical_info,
-                random_terms = random_terms,
-                equations = equations,
+                run_single_dsep_test_v2(
+                  i,
+                  test_eq,
+                  current_monitor,
+                  engine = engine,
+                  nimble_samplers = nimble_samplers,
+                  quiet = quiet,
+                  original_data = original_data,
+                  hierarchical_info = hierarchical_info,
+                  random_terms = random_terms,
+                  equations = equations,
                 family = if (!is.null(family)) as.list(family) else NULL,
                 structure = structure,
                 levels = levels,
@@ -2958,7 +3066,8 @@ because <- function(
                 random = random,
                 id_col = id_col,
                 variability = variability,
-                dsep_max_obs = dsep_max_obs
+                dsep_max_obs = dsep_max_obs,
+                aggregate_crossscale = aggregate_crossscale
               )
             }, error = function(e) {
               # Return error info to parent session for reporting
@@ -3009,7 +3118,9 @@ because <- function(
                   ic_recompile = ic_recompile,
                   random = random,
                   id_col = id_col,
-                  variability = variability
+                  variability = variability,
+                  dsep_max_obs = dsep_max_obs,
+                  aggregate_crossscale = aggregate_crossscale
                 )
               }, error = function(e) {
                 # Return error info to parent session for reporting
@@ -3086,7 +3197,9 @@ because <- function(
               ic_recompile = ic_recompile,
               random = random,
               id_col = id_col,
-              variability = variability
+              variability = variability,
+              dsep_max_obs = dsep_max_obs,
+              aggregate_crossscale = aggregate_crossscale
             ),
             error = function(e) {
               if (!quiet) {
@@ -3609,11 +3722,7 @@ because <- function(
             flat_data[[s_name]] <- as.integer(flat_data[[s_name]] - 1L)
         }
     }
-    print("DEBUG: idx_vars:")
-    print(idx_vars)
-    print("DEBUG: species_idx_obs inside flat_data:")
-    print(flat_data$species_idx_obs)
-    
+
 
 
     py_result <- because_py$fit(
@@ -5028,7 +5137,8 @@ run_single_dsep_test_v2 <- function(
   random = NULL,
   id_col = NULL,
   variability = NULL,
-  dsep_max_obs = 10000
+  dsep_max_obs = 10000,
+  aggregate_crossscale = NULL
 ) {
   if (!quiet) {
     message(paste("D-sep test eq:", deparse(test_eq)))
@@ -5039,6 +5149,7 @@ run_single_dsep_test_v2 <- function(
   cs_info <- detect_crossscale_dsep(test_eq, hierarchical_info)
   if (!quiet) message("is_crossscale:", cs_info$is_crossscale)
 
+  do_aggregate <- FALSE
   if (cs_info$is_crossscale) {
     if (!quiet) {
       message(sprintf(
@@ -5047,6 +5158,14 @@ run_single_dsep_test_v2 <- function(
       ))
     }
     
+    if (is.character(aggregate_crossscale) && length(aggregate_crossscale) == 1 && aggregate_crossscale == "all") {
+      do_aggregate <- TRUE
+    } else if (is.numeric(aggregate_crossscale) && i %in% aggregate_crossscale) {
+      do_aggregate <- TRUE
+    }
+  }
+
+  if (do_aggregate) {
     synth_iter <- n.iter
     if (synth_iter < 1000) synth_iter <- 1000
     
@@ -5058,6 +5177,7 @@ run_single_dsep_test_v2 <- function(
       hierarchical_info = hierarchical_info,
       structure = structure,
       family = family,
+      engine = engine,  # Pass the engine choice down!
       n.iter = synth_iter,
       n.chains = n.chains,
       quiet = quiet

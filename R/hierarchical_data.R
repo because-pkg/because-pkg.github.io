@@ -884,38 +884,38 @@ get_level_depth <- function(lvl, hierarchy_str) {
 }
 flatten_for_python <- function(data_list, link_vars = NULL) {
     if (is.data.frame(data_list) || (is.list(data_list) && !any(sapply(data_list, is.data.frame)))) {
-        return(as.list(data_list))
-    }
-    
-    flat_data <- list()
-    for (lvl_name in names(data_list)) {
-        if (is.data.frame(data_list[[lvl_name]])) {
-            for (col in names(data_list[[lvl_name]])) {
-                flat_data[[col]] <- data_list[[lvl_name]][[col]]
-            }
-        }
-    }
-    
-    if (!is.null(link_vars)) {
-        for (link in unlist(link_vars)) {
-            parent_lvl <- NULL
-            for (lvl_name in names(data_list)) {
-                if (is.data.frame(data_list[[lvl_name]]) && link %in% names(data_list[[lvl_name]])) {
-                    if (!any(duplicated(data_list[[lvl_name]][[link]]))) {
-                        parent_lvl <- lvl_name
-                        break
-                    }
+        flat_data <- as.list(data_list)
+    } else {
+        flat_data <- list()
+        for (lvl_name in names(data_list)) {
+            if (is.data.frame(data_list[[lvl_name]])) {
+                for (col in names(data_list[[lvl_name]])) {
+                    flat_data[[col]] <- data_list[[lvl_name]][[col]]
                 }
             }
-            if (!is.null(parent_lvl)) {
-                parent_keys <- data_list[[parent_lvl]][[link]]
+        }
+        
+        if (!is.null(link_vars)) {
+            for (link in unlist(link_vars)) {
+                parent_lvl <- NULL
                 for (lvl_name in names(data_list)) {
-                    if (is.data.frame(data_list[[lvl_name]]) && lvl_name != parent_lvl && link %in% names(data_list[[lvl_name]])) {
-                        child_keys <- data_list[[lvl_name]][[link]]
-                        idx_array <- match(child_keys, parent_keys) - 1 # 0-indexed for python
-                        for (p_var in names(data_list[[parent_lvl]])) {
-                            if (p_var != link) {
-                                flat_data[[paste0("idx_", p_var)]] <- idx_array
+                    if (is.data.frame(data_list[[lvl_name]]) && link %in% names(data_list[[lvl_name]])) {
+                        if (!any(duplicated(data_list[[lvl_name]][[link]]))) {
+                            parent_lvl <- lvl_name
+                            break
+                        }
+                    }
+                }
+                if (!is.null(parent_lvl)) {
+                    parent_keys <- data_list[[parent_lvl]][[link]]
+                    for (lvl_name in names(data_list)) {
+                        if (is.data.frame(data_list[[lvl_name]]) && lvl_name != parent_lvl && link %in% names(data_list[[lvl_name]])) {
+                            child_keys <- data_list[[lvl_name]][[link]]
+                            idx_array <- match(child_keys, parent_keys) - 1 # 0-indexed for python
+                            for (p_var in names(data_list[[parent_lvl]])) {
+                                if (p_var != link) {
+                                    flat_data[[paste0("idx_", p_var)]] <- idx_array
+                                }
                             }
                         }
                     }
@@ -923,5 +923,13 @@ flatten_for_python <- function(data_list, link_vars = NULL) {
             }
         }
     }
+    
+    # Ensure all data passed to Python/JAX is numeric; drop character/factor columns (e.g. id_col)
+    for (col in names(flat_data)) {
+        if (!is.numeric(flat_data[[col]]) && !is.logical(flat_data[[col]])) {
+            flat_data[[col]] <- NULL
+        }
+    }
+    
     return(flat_data)
 }

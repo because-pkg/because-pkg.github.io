@@ -298,10 +298,38 @@ dsep_tree_hook.default <- function(
     # If no hierarchical info, we return NULL for safety (standard models)
     if (is.null(hierarchical_info)) return(NULL)
     
-    # In hierarchical models, we MUST return the full structure list/object
-    # so that the sub-model can correctly attach structured covariance 
-    # (like phylogeny) to ALL relevant levels (Response or Random Groups).
-    # e.g., Metabolic_Rate (Species response) AND Abundance (via Species random effect).
+    # Filter the structure list based on the truncated levels for this d-sep test
+    if (!is.null(hierarchical_info$structure_levels) && !is.null(levels)) {
+        struct_map <- hierarchical_info$structure_levels
+        # struct_map: names = structure names (e.g. "phylo"), values = level names (e.g. "species")
+        kept_levels <- names(levels)
+        
+        if (is.list(tree) && !is.null(names(tree))) {
+            filtered_tree <- list()
+            for (struct_name in names(tree)) {
+                # Find the level mapping to this structure
+                struct_level <- struct_map[[struct_name]]
+                
+                # If the structure's level is still in the truncated levels, keep the structure
+                if (is.null(struct_level) || (struct_level %in% kept_levels)) {
+                    filtered_tree[[struct_name]] <- tree[[struct_name]]
+                }
+            }
+            attributes(filtered_tree) <- attributes(tree)
+            if (length(filtered_tree) == 0) return(NULL)
+            return(filtered_tree)
+        } else {
+            # Single object structure
+            struct_name <- class(tree)[1]
+            struct_level <- struct_map[[struct_name]]
+            if (!is.null(struct_level) && !(struct_level %in% kept_levels)) {
+                return(NULL)
+            }
+        }
+    }
+    
+    # In hierarchical models, return the structure list/object so that the sub-model 
+    # can correctly attach structured covariance to ALL relevant levels.
     return(tree)
 }
 

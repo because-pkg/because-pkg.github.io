@@ -215,7 +215,8 @@ mag_basis_to_formulas <- function(
     root_vars = NULL,
     hierarchical_info = NULL,
     latent_sharers = NULL,
-    d_obj = NULL
+    d_obj = NULL,
+    quiet = FALSE
 ) {
     # Build reverse lookup: internal_name -> original R syntax
     # e.g. "BM_x_M" -> "BM:M"
@@ -559,15 +560,17 @@ mag_basis_to_formulas <- function(
 
                         if (any(bad_components %in% components)) {
                             keep_indices[i] <- FALSE
-                            message(paste0(
-                                "  (Safety) Dropping cyclic d-sep test: ",
-                                resp_var,
-                                " ~ ",
-                                test_var_r,
-                                " | ",
-                                cv,
-                                " (conditioned on own component)"
-                            ))
+                            if (!quiet) {
+                                message(paste0(
+                                    "  (Safety) Dropping cyclic d-sep test: ",
+                                    resp_var,
+                                    " ~ ",
+                                    test_var_r,
+                                    " | ",
+                                    cv,
+                                    " (conditioned on own component)"
+                                ))
+                            }
                             break
                         }
                     }

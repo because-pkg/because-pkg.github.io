@@ -3821,6 +3821,58 @@ because_model <- function(
       model_lines,
       paste0("  alpha_", var, " ~ dnorm(0, 0.01)")
     )
+    
+    # Generate structural priors for correlated variables
+    if (!is.null(structures) && length(structures) > 0) {
+      for (s_name in names(structures)) {
+        if (!is_valid_structure_mapping(get_struct_lvl(s_name, hierarchical_info), get_var_level(var, hierarchical_info), hierarchical_info, allow_identity = TRUE)) {
+          next
+        }
+        
+        # [UNIFICATION] Use unified naming for phylo/spatial/group structures
+        is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
+        
+        if (is_unified) {
+            tau_u <- paste0("tau_u_", s_name, "_", var)
+            sigma_name <- paste0("sigma_", s_name, "_", var)
+        } else {
+            tau_u <- paste0("tau_u_", var, "_", s_name)
+            sigma_name <- paste0("sigma_", var, "_", s_name)
+        }
+        
+        model_lines <- c(
+          model_lines,
+          paste0("  ", get_precision_prior(tau_u, var)),
+          paste0("  ", sigma_name, " <- 1/sqrt(", tau_u, ")")
+        )
+      }
+    }
+    
+    # Generate priors for random groups of correlated variables
+    if (!is.null(random_structure_names) && length(random_structure_names) > 0) {
+      for (r_name in random_structure_names) {
+        # Check relevance
+        is_requested <- FALSE
+        for (rt in random_terms) {
+          if (identical(rt$response, var) && identical(rt$group, r_name)) {
+            is_requested <- TRUE
+            break
+          }
+        }
+        if (!is_requested) next
+        
+        if (!is_valid_random_level(var, r_name, hierarchical_info)) next
+        
+        tau_u <- paste0("tau_u_", var, "_", r_name)
+        sigma_name <- paste0("sigma_", var, "_", r_name)
+        
+        model_lines <- c(
+          model_lines,
+          paste0("  ", get_precision_prior(tau_u, var)),
+          paste0("  ", sigma_name, " <- 1/sqrt(", tau_u, ")")
+        )
+      }
+    }
   }
 
   # Priors for Zero-Inflation parameters (psi)
