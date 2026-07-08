@@ -173,7 +173,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #'   this must be a named list of data frames (one per scale/level).
 #' @param family A named character vector specifying the distribution for each response 
 #'   (e.g., `c(Y = "poisson", M = "gaussian")`). Supports "gaussian" (default), "poisson", 
-#'   "binomial", "gamma", "lognormal", "bernoulli", "ordinal", and "occupancy".
+#'   "binomial", "bernoulli", "ordinal", "multinomial", "negbinomial", "zip", and "zinb".
 #' @param dsep Logical; if `TRUE`, performs d-separation tests to evaluate the global 
 #'   fit of the DAG against the data. Highly recommended for causal validation.
 #' @param dsep_max_obs (Diagnostic Optimization) Maximum number of observations used 
@@ -563,6 +563,25 @@ because <- function(
       family <- unlist(family)
     }
     # Now family is a named character vector, family_objects stores originals
+    
+    # Check for unsupported families and warn
+    supported_families <- c(
+      "gaussian", "normal", "poisson", "negbinomial", "zip", "zinb", 
+      "binomial", "bernoulli", "multinomial", "ordinal"
+    )
+    
+    for (node_name in names(family)) {
+      specified_dist <- tolower(family[[node_name]])
+      if (!(specified_dist %in% supported_families)) {
+        stop(
+          sprintf(
+            "Error: The distribution family '%s' specified for node '%s' is not supported in 'because'. Supported families are: %s.", 
+            specified_dist, node_name, paste(supported_families, collapse = ", ")
+          ),
+          call. = FALSE
+        )
+      }
+    }
   }
 
   # S3 Class assignment for dispatch on extensions
