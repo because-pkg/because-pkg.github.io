@@ -3687,7 +3687,9 @@ because <- function(
                s_lvl <- hierarchical_info$structure_levels[[s_name]]
                tryCatch({
                    resp_lvl <- infer_variable_level(response, hierarchical_info$levels, data = NULL, equations = equations, latent = latent, hierarchy = hierarchical_info$hierarchy)
-                   if (!is_valid_structure_mapping_dsep(s_lvl, resp_lvl, hierarchical_info)) {
+                   if (is.null(resp_lvl)) {
+                       is_valid <- FALSE
+                   } else if (!is_valid_structure_mapping_dsep(s_lvl, resp_lvl, hierarchical_info)) {
                        is_valid <- FALSE
                    }
                }, error = function(e) {
@@ -3740,9 +3742,20 @@ because <- function(
         if (s_name %in% names(flat_data) && min(flat_data[[s_name]], na.rm=TRUE) >= 1) {
             flat_data[[s_name]] <- as.integer(flat_data[[s_name]] - 1L)
         }
+    # Re-inject standard random terms that were stripped for JAGS
+    if (length(random_terms) > 0) {
+        for (rt in random_terms) {
+            for (i in seq_along(equations)) {
+                resp <- trimws(strsplit(deparse(equations[[i]]), "~")[[1]][1])
+                if (resp == rt$response) {
+                    re_str <- paste0("\\(1\\s*\\|\\s*", rt$group, "\\)")
+                    if (!grepl(re_str, eq_strings[i])) {
+                        eq_strings[i] <- paste0(eq_strings[i], " + (1|", rt$group, ")")
+                    }
+                }
+            }
+        }
     }
-
-
 
     py_result <- because_py$fit(
       equations = eq_strings,
