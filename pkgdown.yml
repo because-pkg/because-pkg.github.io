@@ -1,5 +1,5 @@
 pandoc: 3.8.3
-pkgdown: 2.2.0
+pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   01_getting_started: 01_getting_started.html
@@ -16,7 +16,7 @@ articles:
   12_custom_families: 12_custom_families.html
   13_counterfactual_simulations: 13_counterfactual_simulations.html
   extensions: extensions.html
-last_built: 2026-06-29T09:30Z
+last_built: 2026-07-08T20:41Z
 urls:
   reference: https://because-pkg.github.io/because/reference
   article: https://because-pkg.github.io/because/articles
