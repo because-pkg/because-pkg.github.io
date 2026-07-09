@@ -6,5 +6,5 @@ bibentry(bibtype = "Manual",
   year = "2026",
   note = "R package version 1.6.1",
   url = "https://because-pkg.github.io",
-  textVersion = "von Hardenberg, A. (2026). because: Bayesian Estimation of Causal Effects. R package version 1.5.0 https://github.com/achazhardenberg/because"
+  textVersion = "von Hardenberg, A. (2026). because: Bayesian Estimation of Causal Effects. R package version 1.6.1 https://github.com/achazhardenberg/because"
 )
