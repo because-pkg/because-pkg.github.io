@@ -194,8 +194,8 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @param link_vars (Hierarchical) A named character vector specifying the columns used to 
 #'   link data frames across levels (e.g., `c(site = "SiteID")`).
 #' @param engine Bayesian backend: `"jags"` (default), `"nimble"`, or `"numpyro"`. 
-#'   Note: For Gaussian models, JAGS/NIMBLE use a legacy `dgamma(0.01, 0.01)` prior on precision, 
-#'   while NumPyro uses a modern robust `HalfCauchy(5)` prior on the standard deviation.
+#'   Note: For Gaussian models, the framework now uses a robust, scale-invariant `Uniform(0, 100)`
+#'   prior on the standard deviation across all engines, replacing legacy precision priors.
 #' @param n.iter Total MCMC iterations per chain (default = 12500).
 #' @param n.burnin Number of burn-in iterations (default = 20% of `n.iter`).
 #' @param n.chains Number of independent MCMC chains (default = 3).
@@ -228,7 +228,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @param expand_ordered Logical; if `TRUE`, expands ordered factors using monotonic effects.
 #' @param structure_multi Logical; if `TRUE`, handles multiple covariance structures.
 #' @param structure_levels Mapping of variables to covariance structure levels.
-#' @param aggregate_crossscale Optional. Set to "all" to aggregate all cross-scale d-sep tests, or a numeric vector specifying test indices.
+#' @param aggregate_crossscale Optional. Set to `"all"` to aggregate all cross-scale d-sep tests (evaluating coarse-scale conditional independencies by aggregating fine-scale data via group means), or provide a numeric vector specifying specific test indices to aggregate. By default, paths between a fine-scale and coarse-scale variable are flattened with hierarchical random effects instead.
 #' @param ... Additional arguments passed to the underlying model engines.
 #'
 #' @return An object of class \code{"because"} containing:
