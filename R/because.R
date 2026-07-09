@@ -207,6 +207,11 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @param DIC Logical; if `TRUE`, calculates the Deviance Information Criterion (JAGS only).
 #' @param WAIC Logical; if `TRUE`, calculates the Watanabe-Akaike Information Criterion.
 #' @param n.adapt Number of iterations for the adaptation phase.
+#' @param adapt_delta Target acceptance probability for the NUTS sampler (NumPyro only, default = 0.95).
+#'   Increase towards 1 (e.g., `0.99`) for complex posteriors with funnel geometry or many
+#'   competing variance components. Higher values slow sampling but improve mixing.
+#' @param max_treedepth Maximum tree depth for the NUTS sampler (NumPyro only, default = 10).
+#'   Increase to 12 or 14 if you see many divergent transitions or very low n.eff.
 #' @param quiet Logical; if `TRUE`, suppresses status messages and progress bars.
 #' @param verbose Logical; if `TRUE`, prints detailed debugging information.
 #' @param variability Optional named character vector specifying the type of residual variance (e.g., "fixed", "random").
@@ -283,6 +288,7 @@ because <- function(
   n.burnin = NULL,
   n.thin = NULL,
   adapt_delta = 0.95,
+  max_treedepth = 10,
   DIC = TRUE,
   WAIC = FALSE,
   n.adapt = NULL,
@@ -3788,6 +3794,7 @@ because <- function(
       quiet = quiet,
       cor_matrices = py_structures,
       adapt_delta = adapt_delta,
+      max_treedepth = as.integer(max_treedepth),
       prior_scale_fixed = prior_scale_fixed
     )
     # Convert numpyro group_by_chain samples into an mcmc.list
