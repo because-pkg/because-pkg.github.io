@@ -1162,7 +1162,7 @@ because <- function(
 
     if (!quiet) {
       message(
-        "Prepared hierarchical data for JAGS: ",
+        paste0("Prepared hierarchical data for ", toupper(engine), ": "),
         paste(
           names(prep_res$n_vec),
           unlist(prep_res$n_vec),

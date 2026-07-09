@@ -2014,7 +2014,7 @@ because_model <- function(
 
               model_lines <- safe_add_lines(model_lines, c(
                 paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
-                paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- ", u_std, "[g] / sqrt(", tau_u, ") }")
+                paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- (", u_std, "[g] - mean(", u_std, "[1:", n_groups, "])) / sqrt(", tau_u, ") }")
               ))
               
               group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
@@ -2185,7 +2185,7 @@ because_model <- function(
             model_lines <- c(
               model_lines,
               paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
-              paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- ", u_std, "[g] / sqrt(", tau_u, ") }")
+              paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- (", u_std, "[g] - mean(", u_std, "[1:", n_groups, "])) / sqrt(", tau_u, ") }")
             )
             
             group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
@@ -2340,7 +2340,7 @@ because_model <- function(
 
                 model_lines <- safe_add_lines(model_lines, c(
                   paste0("  ", u_std, "[1:", n_groups, ", k] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
-                  paste0("  for (g in 1:", n_groups, ") { ", u, "[g, k] <- ", u_std, "[g, k] / sqrt(", tau_u, "[k]) }")
+                  paste0("  for (g in 1:", n_groups, ") { ", u, "[g, k] <- (", u_std, "[g, k] - mean(", u_std, "[1:", n_groups, ", k])) / sqrt(", tau_u, "[k]) }")
                 ))
                 
                 group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
@@ -2474,7 +2474,7 @@ because_model <- function(
 
                 model_lines <- safe_add_lines(model_lines, c(
                   paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
-                  paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- ", u_std, "[g] / sqrt(", tau_u, ") }")
+                  paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- (", u_std, "[g] - mean(", u_std, "[1:", n_groups, "])) / sqrt(", tau_u, ") }")
                 ))
                 
                 group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
@@ -2588,7 +2588,7 @@ because_model <- function(
             model_lines <- c(
               model_lines,
               paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
-              paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- ", u_std, "[g] / sqrt(", tau_u, ") }")
+              paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- (", u_std, "[g] - mean(", u_std, "[1:", n_groups, "])) / sqrt(", tau_u, ") }")
             )
             
             group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
@@ -2801,7 +2801,7 @@ because_model <- function(
             model_lines <- c(
               model_lines,
               paste0("  ", u_std, "[1:", n_groups, "] ~ dmnorm(", zeros_name, "[1:", n_groups, "], ", prec_name, "[1:", n_groups, ", 1:", n_groups, "])"),
-              paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- ", u_std, "[g] / sqrt(", tau_u, ") }")
+              paste0("  for (g in 1:", n_groups, ") { ", u, "[g] <- (", u_std, "[g] - mean(", u_std, "[1:", n_groups, "])) / sqrt(", tau_u, ") }")
             )
             
             group_idx <- get_group_idx_string(response, r_name, hierarchical_info)
