@@ -1773,7 +1773,18 @@ because <- function(
     }
 
     if (!is.null(hierarchical_info)) {
-      hierarchical_info$structure_levels <- structure_levels
+      # Merge: prefer the already name-matched auto-detect result for each s_name,
+      # only overwriting with the newly computed (dimension-based) value when the
+      # auto-detect didn't produce a result for that structure.
+      existing_sl <- hierarchical_info$structure_levels
+      for (s_name in names(structure_levels)) {
+        # Only override if auto-detect has no entry or if dimension match is more specific
+        if (is.null(existing_sl[[s_name]])) {
+          existing_sl[[s_name]] <- structure_levels[[s_name]]
+        }
+        # If both give a result, keep the existing (name-based) auto-detect result
+      }
+      hierarchical_info$structure_levels <- existing_sl
       hierarchical_info$structure_multi  <- structure_multi
     }
   }
@@ -3693,7 +3704,7 @@ because <- function(
                        is_valid <- FALSE
                    }
                }, error = function(e) {
-                   is_valid <- FALSE
+                   is_valid <<- FALSE   # <<- assigns to enclosing loop scope, not local handler scope
                })
            }
            
@@ -3742,6 +3753,8 @@ because <- function(
         if (s_name %in% names(flat_data) && min(flat_data[[s_name]], na.rm=TRUE) >= 1) {
             flat_data[[s_name]] <- as.integer(flat_data[[s_name]] - 1L)
         }
+    }
+    
     # Re-inject standard random terms that were stripped for JAGS
     if (length(random_terms) > 0) {
         for (rt in random_terms) {
@@ -3755,6 +3768,13 @@ because <- function(
                 }
             }
         }
+    }
+
+    if (!quiet) {
+        message("[DEBUG] eq_strings sent to NumPyro:")
+        for (.eq_s in eq_strings) message("  ", .eq_s)
+        message("[DEBUG] structure_levels: ", paste(names(hierarchical_info$structure_levels), 
+            unlist(hierarchical_info$structure_levels), sep="->", collapse=", "))
     }
 
     py_result <- because_py$fit(
