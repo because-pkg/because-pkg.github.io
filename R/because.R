@@ -3770,13 +3770,6 @@ because <- function(
         }
     }
 
-    if (!quiet) {
-        message("[DEBUG] eq_strings sent to NumPyro:")
-        for (.eq_s in eq_strings) message("  ", .eq_s)
-        message("[DEBUG] structure_levels: ", paste(names(hierarchical_info$structure_levels), 
-            unlist(hierarchical_info$structure_levels), sep="->", collapse=", "))
-    }
-
     py_result <- because_py$fit(
       equations = eq_strings,
       data = flat_data,
