@@ -162,9 +162,8 @@ for comprehensive troubleshooting and dedicated environment setups.
   : Calculate WAIC with Standard Errors for a Because Model
 - [`do()`](https://because-pkg.github.io/because/reference/do.md)
   [`because_do()`](https://because-pkg.github.io/because/reference/do.md)
+  [`summary(`*`<because_counterfactual>`*`)`](https://because-pkg.github.io/because/reference/do.md)
   : Causal Interventions for Structural Equation Models
-- [`do(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/do.because.md)
-  : Causal Interventions for Because Models
 - [`extract_imputed()`](https://because-pkg.github.io/because/reference/extract_imputed.md)
   : Extract Imputed Values for Missing Data
 - [`.nimble_fn_cache`](https://because-pkg.github.io/because/reference/family_definitions.md)
@@ -181,8 +180,6 @@ for comprehensive troubleshooting and dedicated environment setups.
   : Calculate Marginal Effects for Because Fit
 - [`plot_coef()`](https://because-pkg.github.io/because/reference/plot_coef.md)
   : Plot Path Coefficients
-- [`plot_coef(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/plot_coef.because.md)
-  : Plot Path Coefficients (Caterpillar Plot)
 - [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
   : Plot DAG from Equations or Fitted Model
 - [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md)
@@ -191,22 +188,14 @@ for comprehensive troubleshooting and dedicated environment setups.
   : Plot Posterior Distributions for Model Comparison
 - [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md)
   : Plot Region of Practical Equivalence (ROPE)
-- [`plot_rope(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/plot_rope.because.md)
-  : Plot ROPE for Because Model
 - [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)
   : Posterior Predictive Samples
-- [`posterior_predict(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/posterior_predict.because.md)
-  : Generate Posterior Predictive Draws for Because Models
 - [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
   : Posterior Predictive Checks
-- [`pp_check(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/pp_check.because.md)
-  : Posterior Predictive Checks for Because Fits
 - [`storks`](https://because-pkg.github.io/because/reference/storks.md)
   : Data on Stork Populations and Human Birth Rates
 - [`summary(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/summary.because.md)
   : Summary for Because Model
-- [`summary(`*`<because_counterfactual>`*`)`](https://because-pkg.github.io/because/reference/summary.because_counterfactual.md)
-  : Summarize a Because Counterfactual Object
 
 # Articles
 

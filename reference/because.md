@@ -21,6 +21,7 @@ because(
   n.burnin = NULL,
   n.thin = NULL,
   adapt_delta = 0.95,
+  max_treedepth = 10,
   DIC = TRUE,
   WAIC = FALSE,
   n.adapt = NULL,
@@ -35,6 +36,7 @@ because(
   latent_method = "correlations",
   standardize_latent = TRUE,
   fix_latent = "loading",
+  prior_scale_fixed = NULL,
   parallel = FALSE,
   n.cores = parallel::detectCores() - 1,
   cl = NULL,
@@ -50,6 +52,7 @@ because(
   expand_ordered = FALSE,
   structure_multi = NULL,
   structure_levels = NULL,
+  aggregate_crossscale = NULL,
   ...
 )
 ```
@@ -80,9 +83,9 @@ because(
 - engine:
 
   Bayesian backend: `"jags"` (default), `"nimble"`, or `"numpyro"`.
-  Note: For Gaussian models, JAGS/NIMBLE use a legacy
-  `dgamma(0.01, 0.01)` prior on precision, while NumPyro uses a modern
-  robust `HalfCauchy(5)` prior on the standard deviation.
+  Note: For Gaussian models, the framework now uses a robust,
+  scale-invariant `Uniform(0, 100)` prior on the standard deviation
+  across all engines, replacing legacy precision priors.
 
 - monitor:
 
@@ -107,6 +110,19 @@ because(
 - n.thin:
 
   Thinning interval for MCMC chains (default = 10).
+
+- adapt_delta:
+
+  Target acceptance probability for the NUTS sampler (NumPyro only,
+  default = 0.95). Increase towards 1 (e.g., `0.99`) for complex
+  posteriors with funnel geometry or many competing variance components.
+  Higher values slow sampling but improve mixing.
+
+- max_treedepth:
+
+  Maximum tree depth for the NUTS sampler (NumPyro only, default = 10).
+  Increase to 12 or 14 if you see many divergent transitions or very low
+  n.eff.
 
 - DIC:
 
@@ -152,8 +168,8 @@ because(
 
   A named character vector specifying the distribution for each response
   (e.g., `c(Y = "poisson", M = "gaussian")`). Supports "gaussian"
-  (default), "poisson", "binomial", "gamma", "lognormal", "bernoulli",
-  "ordinal", and "occupancy".
+  (default), "poisson", "binomial", "bernoulli", "ordinal",
+  "multinomial", "negbinomial", "zip", and "zinb".
 
 - distribution:
 
@@ -242,6 +258,15 @@ because(
 - structure_levels:
 
   Mapping of variables to covariance structure levels.
+
+- aggregate_crossscale:
+
+  Optional. Set to `"all"` to aggregate all cross-scale d-sep tests
+  (evaluating coarse-scale conditional independencies by aggregating
+  fine-scale data via group means), or provide a numeric vector
+  specifying specific test indices to aggregate. By default, paths
+  between a fine-scale and coarse-scale variable are flattened with
+  hierarchical random effects instead.
 
 - ...:
 

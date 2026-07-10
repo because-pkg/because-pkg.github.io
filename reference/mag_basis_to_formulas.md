@@ -14,7 +14,8 @@ mag_basis_to_formulas(
   root_vars = NULL,
   hierarchical_info = NULL,
   latent_sharers = NULL,
-  d_obj = NULL
+  d_obj = NULL,
+  quiet = FALSE
 )
 ```
 

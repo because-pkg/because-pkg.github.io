@@ -181,7 +181,6 @@ cat(because_model(eqs, is_multi_structure = TRUE)$model)
 #> model {
 #>   # Common structures and priors
 #>   # Structural equations
-#> 
 #>   for (i in 1:N) {
 #>     mu_BR[i] <- alpha_BR + beta_BR_BM*BM[i]
 #>   }
