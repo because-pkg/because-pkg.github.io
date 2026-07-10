@@ -17,6 +17,7 @@ because(
   n.burnin = NULL,
   n.thin = NULL,
   adapt_delta = 0.95,
+  max_treedepth = 10,
   DIC = TRUE,
   WAIC = FALSE,
   n.adapt = NULL,
@@ -31,6 +32,7 @@ because(
   latent_method = "correlations",
   standardize_latent = TRUE,
   fix_latent = "loading",
+  prior_scale_fixed = NULL,
   parallel = FALSE,
   n.cores = parallel::detectCores() - 1,
   cl = NULL,
@@ -46,6 +48,7 @@ because(
   expand_ordered = FALSE,
   structure_multi = NULL,
   structure_levels = NULL,
+  aggregate_crossscale = NULL,
   ...
 )
 }
@@ -62,8 +65,8 @@ this must be a named list of data frames (one per scale/level).}
 for modeling correlated residuals.}
 
 \item{engine}{Bayesian backend: \code{"jags"} (default), \code{"nimble"}, or \code{"numpyro"}.
-Note: For Gaussian models, JAGS/NIMBLE use a legacy \code{dgamma(0.01, 0.01)} prior on precision,
-while NumPyro uses a modern robust \code{HalfCauchy(5)} prior on the standard deviation.}
+Note: For Gaussian models, the framework now uses a robust, scale-invariant \code{Uniform(0, 100)}
+prior on the standard deviation across all engines, replacing legacy precision priors.}
 
 \item{monitor}{Monitoring mode (e.g. "interpretable", "all", or "minimal").}
 
@@ -76,6 +79,13 @@ while NumPyro uses a modern robust \code{HalfCauchy(5)} prior on the standard de
 \item{n.burnin}{Number of burn-in iterations (default = 20\% of \code{n.iter}).}
 
 \item{n.thin}{Thinning interval for MCMC chains (default = 10).}
+
+\item{adapt_delta}{Target acceptance probability for the NUTS sampler (NumPyro only, default = 0.95).
+Increase towards 1 (e.g., \code{0.99}) for complex posteriors with funnel geometry or many
+competing variance components. Higher values slow sampling but improve mixing.}
+
+\item{max_treedepth}{Maximum tree depth for the NUTS sampler (NumPyro only, default = 10).
+Increase to 12 or 14 if you see many divergent transitions or very low n.eff.}
 
 \item{DIC}{Logical; if \code{TRUE}, calculates the Deviance Information Criterion (JAGS only).}
 
@@ -99,7 +109,7 @@ power. Set to \code{Inf} to disable subsampling.}
 
 \item{family}{A named character vector specifying the distribution for each response
 (e.g., \code{c(Y = "poisson", M = "gaussian")}). Supports "gaussian" (default), "poisson",
-"binomial", "gamma", "lognormal", "bernoulli", "ordinal", and "occupancy".}
+"binomial", "bernoulli", "ordinal", "multinomial", "negbinomial", "zip", and "zinb".}
 
 \item{distribution}{Alias for \code{family} (deprecated).}
 
@@ -145,6 +155,8 @@ link data frames across levels (e.g., \code{c(site = "SiteID")}).}
 \item{structure_multi}{Logical; if \code{TRUE}, handles multiple covariance structures.}
 
 \item{structure_levels}{Mapping of variables to covariance structure levels.}
+
+\item{aggregate_crossscale}{Optional. Set to \code{"all"} to aggregate all cross-scale d-sep tests (evaluating coarse-scale conditional independencies by aggregating fine-scale data via group means), or provide a numeric vector specifying specific test indices to aggregate. By default, paths between a fine-scale and coarse-scale variable are flattened with hierarchical random effects instead.}
 
 \item{...}{Additional arguments passed to the underlying model engines.}
 }

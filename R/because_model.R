@@ -112,6 +112,9 @@ because_model <- function(
   safe_add_lines <- function(current_lines, new_lines) {
     if (length(new_lines) == 0) return(current_lines)
     
+    # Flatten any multi-line strings
+    new_lines <- unlist(strsplit(new_lines, "\n"))
+    
     clean_lines <- c()
     for (line in new_lines) {
       trimmed <- trimws(line)

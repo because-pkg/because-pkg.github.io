@@ -2,14 +2,24 @@
 % Please edit documentation in R/plot_rope.R
 \name{plot_rope}
 \alias{plot_rope}
+\alias{plot_rope.because}
 \title{Plot Region of Practical Equivalence (ROPE)}
 \usage{
 plot_rope(object, ...)
+
+\method{plot_rope}{because}(object, rope = c(-0.1, 0.1), parameters = NULL, ...)
 }
 \arguments{
-\item{object}{A fitted model object.}
+\item{object}{A \code{because} object.}
 
-\item{...}{Additional arguments.}
+\item{...}{Additional arguments passed to methods.}
+
+\item{rope}{A numeric vector of length 2 specifying the ROPE limits. Default is \code{c(-0.1, 0.1)}.}
+
+\item{parameters}{Optional character vector to filter which parameters to plot.}
+}
+\value{
+A \code{ggplot} object.
 }
 \description{
 Generic for plotting posterior density distributions and visualizing their overlap
