@@ -84,3 +84,215 @@ format_numpyro_samples <- function(py_result) {
   
   return(coda::mcmc.list(chain_list))
 }
+
+#' Execute full NumPyro pipeline for because()
+#'
+#' @keywords internal
+run_numpyro_pipeline <- function(
+  equations, data, family, structures, priors, random_terms,
+  hierarchical_info, is_hierarchical, latent, n.chains, n.iter, n.burnin,
+  adapt_delta, max_treedepth, prior_scale_fixed, quiet, WAIC,
+  model_string, parameter_map, original_call, engine = "numpyro"
+) {
+  eq_strings <- sapply(equations, function(eq) paste(deparse(eq), collapse=" "))
+  
+  # Process structures for NumPyro
+  py_structures <- list()
+  for (s_name in names(structures)) {
+    s_obj <- structures[[s_name]]
+    
+    # Determine matrix name in the prepared data
+    custom_s_name <- get_structure_name_hook(s_obj)
+    mat_name <- if (!is.null(custom_s_name)) paste0(custom_s_name, "_", s_name) else paste0("VCV_", s_name)
+    if (is.null(data[[mat_name]]) && !is.null(data[[paste0("Prec_", s_name)]])) {
+      mat_name <- paste0("Prec_", s_name)
+    }
+    
+    if (!is.null(data[[mat_name]])) {
+      # Ask the extension package for the Python JAX code
+      py_code <- numpyro_structure_definition(s_obj, engine = "numpyro")
+      if (!is.null(py_code)) {
+        # Compile into a Python function using reticulate
+        env <- reticulate::py_run_string(py_code)
+        funcs <- names(env)
+        expected_name <- paste0(s_name, "_transform")
+        func_name <- if (expected_name %in% funcs) expected_name else funcs[!funcs %in% c("numpyro", "jnp", "jax", "dist", "np", "r")][1]
+        if (!is.null(func_name) && (func_name %in% names(env))) {
+          py_structures[[s_name]] <- list(
+            matrix = data[[mat_name]],
+            transform_func = env[[func_name]],
+            type = class(s_obj)[1]
+          )
+        }
+      } else {
+        # Fallback to pure matrix
+        py_structures[[s_name]] <- data[[mat_name]]
+      }
+      
+      # Append + (1 | s_name) to valid endogenous equations
+      for (i in seq_along(equations)) {
+         eq <- equations[[i]]
+         response <- trimws(strsplit(deparse(eq), "~")[[1]][1])
+         
+         # Apply if dimension matches or valid level
+         is_valid <- TRUE
+         if (!is.null(is_hierarchical) && is_hierarchical && !is.null(hierarchical_info)) {
+             s_lvl <- hierarchical_info$structure_levels[[s_name]]
+             tryCatch({
+                 resp_lvl <- infer_variable_level(response, hierarchical_info$levels, data = NULL, equations = equations, latent = latent, hierarchy = hierarchical_info$hierarchy)
+                 if (is.null(resp_lvl)) {
+                     is_valid <- FALSE
+                 } else if (!is_valid_structure_mapping_dsep(s_lvl, resp_lvl, hierarchical_info)) {
+                     is_valid <- FALSE
+                 }
+             }, error = function(e) {
+                 is_valid <<- FALSE
+             })
+         }
+         
+         if (is_valid) {
+             eq_str <- eq_strings[i]
+             if (!grepl(paste0("\\(1\\s*\\|\\s*", s_name, "\\)"), eq_str)) {
+                 eq_strings[i] <- paste0(eq_str, " + (1|", s_name, ")")
+             }
+         }
+      }
+    }
+  }
+  
+  flat_data <- flatten_for_python(data)
+  
+  # Ensure zero-indexing for Python categorical variables
+  for (s_name in names(structures)) {
+      if (is.null(flat_data[[s_name]])) {
+          N_val <- NULL
+          if (!is.null(is_hierarchical) && is_hierarchical && !is.null(hierarchical_info)) {
+              s_lvl <- hierarchical_info$structure_levels[[s_name]]
+              if (!is.null(s_lvl)) {
+                  N_val <- flat_data[[paste0("N_", s_lvl)]]
+              }
+          }
+          if (is.null(N_val)) {
+              N_val <- if (!is.null(flat_data[["N"]])) flat_data[["N"]] else length(flat_data[[1]])
+          }
+          flat_data[[s_name]] <- 0:(N_val - 1)
+      }
+  }
+  idx_vars <- grep("_idx", names(flat_data), value = TRUE)
+  idx_vars <- c(idx_vars, names(structures))
+  for (eq in equations) {
+      eq_str <- if (is.character(eq)) eq else paste(deparse(eq), collapse=" ")
+      matches <- regmatches(eq_str, gregexpr("\\(1\\s*\\|\\s*[^)]+\\)", eq_str))[[1]]
+      for (m in matches) {
+          grp <- trimws(strsplit(m, "\\|")[[1]][2])
+          grp <- gsub("\\)", "", grp)
+          idx_vars <- c(idx_vars, grp)
+      }
+  }
+  idx_vars <- unique(idx_vars)
+  for (s_name in idx_vars) {
+      if (s_name %in% names(flat_data) && min(flat_data[[s_name]], na.rm=TRUE) >= 1) {
+          flat_data[[s_name]] <- as.integer(flat_data[[s_name]] - 1L)
+      }
+  }
+  
+  # Re-inject standard random terms that were stripped for JAGS
+  if (length(random_terms) > 0) {
+      for (rt in random_terms) {
+          for (i in seq_along(equations)) {
+              resp <- trimws(strsplit(deparse(equations[[i]]), "~")[[1]][1])
+              if (resp == rt$response) {
+                  re_str <- paste0("\\(1\\s*\\|\\s*", rt$group, "\\)")
+                  if (!grepl(re_str, eq_strings[i])) {
+                      eq_strings[i] <- paste0(eq_strings[i], " + (1|", rt$group, ")")
+                  }
+              }
+          }
+      }
+  }
+
+  py_result <- run_numpyro_model(
+    eq_strings = eq_strings,
+    flat_data = flat_data,
+    family = if (!is.null(family)) as.list(family) else NULL,
+    priors = NULL,
+    py_structures = py_structures,
+    n_chains = n.chains,
+    n_iter = n.iter - n.burnin,
+    n_warmup = n.burnin,
+    adapt_delta = adapt_delta,
+    max_treedepth = max_treedepth,
+    prior_scale_fixed = prior_scale_fixed,
+    quiet = quiet
+  )
+  mcmc_samples <- format_numpyro_samples(py_result)
+  
+  result <- list(
+    equations = equations,
+    model      = NULL,        # No live model object for NumPyro
+    model_code = model_string, # JAGS-equivalent string (kept for reference)
+    numpyro_code = if (!is.null(py_result$model_code)) py_result$model_code else NULL,
+    parameter_map = parameter_map,
+    samples = mcmc_samples,
+    data = data,
+    dsep = NULL,
+    priors = priors,
+    hierarchical_info = if (!is.null(is_hierarchical) && is_hierarchical) hierarchical_info else NULL,
+    engine = engine,
+    quiet = quiet
+  )
+  if (WAIC && !is.null(py_result$waic)) {
+    waic_df <- data.frame(
+      Estimate = c(py_result$waic$elpd_waic$Estimate, py_result$waic$p_waic$Estimate, py_result$waic$waic$Estimate),
+      SE = c(py_result$waic$elpd_waic$SE, py_result$waic$p_waic$SE, py_result$waic$waic$SE),
+      row.names = c("elpd_waic", "p_waic", "waic")
+    )
+    
+    attr(waic_df, "pointwise") <- data.frame(
+      elpd_waic = as.numeric(py_result$waic$pointwise$elpd_waic_i),
+      p_waic = as.numeric(py_result$waic$pointwise$p_waic_i),
+      waic = as.numeric(py_result$waic$pointwise$waic_i)
+    )
+    
+    attr(waic_df, "dims") <- c(n_obs = py_result$waic$n_obs, n_samples = py_result$waic$n_samples)
+    class(waic_df) <- c("because_waic", "data.frame")
+    
+    result$WAIC <- waic_df
+  }
+  # Compute summary statistics
+  sum_stats <- if (!is.null(mcmc_samples)) summary(mcmc_samples) else NULL
+  if (!is.null(mcmc_samples) && n.chains > 1) {
+    tryCatch({
+      n_ch <- length(mcmc_samples)
+      first_chain <- as.matrix(mcmc_samples[[1]])
+      pnames <- colnames(first_chain)
+      n_params <- length(pnames)
+      rhat_vals <- numeric(n_params)
+      n_iter_chain <- nrow(first_chain)
+      for (p in 1:n_params) {
+        chain_means <- numeric(n_ch)
+        chain_vars <- numeric(n_ch)
+        for (c in 1:n_ch) {
+          vals <- as.matrix(mcmc_samples[[c]])[, p]
+          chain_means[c] <- mean(vals)
+          chain_vars[c] <- var(vals)
+        }
+        grand_mean <- mean(chain_means)
+        B <- n_iter_chain * var(chain_means)
+        W <- mean(chain_vars)
+        if (W > 0) {
+          var_plus <- ((n_iter_chain - 1) / n_iter_chain) * W + (1 / n_iter_chain) * B
+          rhat_vals[p] <- sqrt(var_plus / W)
+        } else {
+          rhat_vals[p] <- 1.0
+        }
+      }
+      sum_stats$statistics <- cbind(sum_stats$statistics, Rhat = rhat_vals)
+    }, error = function(e) {})
+  }
+  result$summary <- sum_stats
+
+  result$call <- original_call
+  class(result) <- "because"
+  return(result)
+}

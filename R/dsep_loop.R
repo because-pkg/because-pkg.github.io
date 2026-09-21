@@ -10,11 +10,15 @@ run_because_dsep <- function(
   dsep, engine, equations, data, family, structures, structure_obj,
   hierarchical_info, is_hierarchical, random_terms, levels, multiscale,
   link_vars, latent, latent_method, id_col, variability, all_poly_terms,
-  fixed_equations_temp, induced_cors_in, dsep_max_obs, aggregate_crossscale,
+  fixed_equations_temp, induced_cors_in = NULL, dsep_max_obs, aggregate_crossscale,
   parallel, n.cores, n.chains, n.iter, n.burnin, n.thin, n.adapt,
   ic_recompile, fix_residual_variance, quiet, priors, monitor_mode,
   expand_ordered, nimble_samplers, adapt_delta, max_treedepth,
-  prior_scale_fixed, verbose
+  prior_scale_fixed, verbose,
+  # Additional variables from parent scope
+  family_obj = NULL, hierarchy = NULL, original_call = NULL,
+  original_data = NULL, random = NULL, response_vars_with_na = NULL,
+  reuse_models = FALSE, structure = NULL, because_py = NULL
 ) {
   dsep_tests <- NULL
   induced_cors <- induced_cors_in

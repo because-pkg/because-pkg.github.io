@@ -745,6 +745,7 @@ because <- function(
   dsep_tests <- NULL
   dsep_results <- NULL
   dsep_correlations <- NULL
+  induced_cors <- NULL
 
   # Handle global variability setting (e.g. variability = "reps")
   # If user provides a single string, apply it to all variables in equations
@@ -981,11 +982,18 @@ because <- function(
   }
 
   # --- Random Effects Data Prep ---
-  data <- prepare_random_effects_data(
+  re_res <- prepare_random_effects_data(
     data = data, random_terms = random_terms, equations = equations,
     hierarchical_info = hierarchical_info, is_hierarchical = is_hierarchical,
-    levels = levels, family = family, quiet = quiet
+    levels = levels, family = family, quiet = quiet,
+    variability = variability, id_col = id_col,
+    all_poly_terms = all_poly_terms, latent = latent, structure = structure,
+    original_data = original_data
   )
+  data              <- re_res$data
+  random_structures <- re_res$random_structures
+  if (!is.null(re_res$hierarchical_info)) hierarchical_info <- re_res$hierarchical_info
+  if (!is.null(re_res$original_data)) original_data <- re_res$original_data
 
   # --- Structure Processing ---
   struct_res <- process_because_structures(
@@ -993,263 +1001,16 @@ because <- function(
     data = data, hierarchical_info = hierarchical_info,
     is_hierarchical = is_hierarchical, equations = equations,
     family = family, family_obj = family_obj, levels = levels,
-    multiscale = multiscale, latent = latent, quiet = quiet
+    multiscale = multiscale, latent = latent, quiet = quiet,
+    engine = engine,
+    original_raw_data_before_preprocess = original_raw_data_before_preprocess,
+    row_ids = row_ids
   )
-  data       <- struct_res$data
-  structures <- struct_res$structures
-
-  # --- Structure Processing ---
-  structures <- list()
-  is_multiple <- FALSE
-  N <- NULL
-
-  # 1. Normalize Input to List
-  if (is.null(structure)) {
-    # Independent model - no structures to process
-  } else if (is.matrix(structure)) {
-    structures[["custom"]] <- structure
-  } else if (is.list(structure) && !inherits(structure, "list")) {
-    # It's an S3 object with list base - use class name
-    class_name <- class(structure)[1]
-    # Check if it's a multi-object type (contains multiple items)
-    # Defense: Ignore list-based S3 objects that represent a single entity (like 'phylo' or 'spatial_knn')
-    if (length(structure) > 1 && is.null(names(structure))) {
-      is_multiple <- TRUE
-      N_trees <- length(structure)
-    }
-    structures[[class_name]] <- structure
-  } else if (
-    is.list(structure) && (is.null(class(structure)) || identical(class(structure), "list"))
-  ) {
-    # Plain list of structures
-    structures <- structure
-    # Check for multi-objects in the list
-    for (s in structures) {
-      if (is.list(s) && length(s) > 1 && !is.matrix(s) && !inherits(s, "phylo") && !inherits(s, "because_structure")) {
-        # Generic list with multiple items (likely replicates or multiPhylo)
-        is_multiple <- TRUE
-        if (!exists("N_trees")) N_trees <- length(structures)
-      }
-    }
-  } else {
-    # Any other S3 object (phylo, spatial_knn, etc.) - use class name
-    class_name <- class(structure)[1]
-    structures[[class_name]] <- structure
-  }
-
-  # Ensure N_trees is available if is_multiple is true
-  if (is_multiple && !exists("N_trees")) {
-     N_trees <- length(structures)
-  }
-
-  # Discover total N (number of observations) early
-  if (is.null(N) && "N" %in% names(data)) {
-    N <- if (is.list(data)) data$N[1] else data[["N"]][1]
-  }
-  if (is.null(N)) {
-    # Try to get N from data - handle both data.frame and list cases
-    if (is.data.frame(data) && nrow(data) > 0) {
-      N <- nrow(data)
-    } else if (is.list(data) && length(data) > 0) {
-      # For hierarchical lists, N should be the row count of the FINEST grain level.
-      first_obj <- data[[1]]
-      if (is.data.frame(first_obj)) {
-        N <- nrow(first_obj)
-      } else if (is.vector(first_obj) || is.factor(first_obj)) {
-        N <- length(first_obj)
-      } else if (is.matrix(first_obj) || is.array(first_obj)) {
-        N <- nrow(first_obj)
-      }
-    }
-  }
-  # [CLEANUP] Only include N if we are not in a complex hierarchical context where level-specific Ns take priority.
-  # This silences the "Unused variable 'N' in data" warning in JAGS.
-  if (is.null(hierarchical_info) && !"N" %in% names(data)) {
-    data$N <- N
-  }
-
-  # [URGENT FIX] Pre-calculate level-specific counts so structure auto-detection works!
-  # If we don't do this here, we can't match e.g. a 50x50 matrix to the 50-species level.
-  if (!is.null(hierarchical_info)) {
-    for (lvl_name in names(hierarchical_info$levels)) {
-      z_name <- paste0("zeros_", lvl_name)
-      if (is.null(data[[z_name]])) {
-        data[[z_name]] <- rep(0, N)
-      }
-      n_name <- paste0("N_", lvl_name)
-      if (is.null(data[[n_name]])) {
-        if (is.data.frame(data) && !is.null(data[[lvl_name]])) {
-          data[[n_name]] <- as.integer(length(unique(na.omit(data[[lvl_name]]))))[1]
-        } else if (is.list(data) && !is.null(data[[lvl_name]])) {
-          if (is.data.frame(data[[lvl_name]]) || is.matrix(data[[lvl_name]])) {
-            data[[n_name]] <- as.integer(nrow(data[[lvl_name]]))[1]
-          } else {
-            data[[n_name]] <- as.integer(length(data[[lvl_name]]))[1]
-          }
-        } else {
-          data[[n_name]] <- as.integer(N)[1]
-        }
-      }
-      if (!is.null(data[[n_name]])) {
-        data[[n_name]] <- as.integer(data[[n_name]])[1]
-      }
-      
-      # Populate synonymous names (ID column names)
-      lvl_vars <- hierarchical_info$levels[[lvl_name]]
-      for (v_nm in lvl_vars) {
-        v_title <- paste0(toupper(substring(v_nm, 1, 1)), substring(v_nm, 2))
-        potential_names <- unique(c(v_nm, v_title, toupper(v_nm), paste0(v_nm, "ID"), paste0(v_title, "ID"), paste0(v_nm, "_id"), paste0(v_title, "_id")))
-        for (p_nm in potential_names) {
-            nn_name <- paste0("N_", p_nm)
-            zz_name <- paste0("zeros_", p_nm)
-            if (is.null(data[[nn_name]])) data[[nn_name]] <- data[[n_name]]
-            if (is.null(data[[zz_name]])) data[[zz_name]] <- data[[z_name]]
-        }
-      }
-    }
-  }
-
-  structure_names <- names(structures)
-  if (is.null(structure_names) && length(structures) > 0) {
-    structure_names <- paste0("Struct", seq_along(structures))
-    names(structures) <- structure_names
-  }
-
-  # 2. Process Structures using S3 Generic
-  if (length(structures) == 0) {
-    # Independent Logic: Determine N from data
-    if (is.null(N) || N == 0) {
-      potential_objects <- Filter(
-        function(x) is.vector(x) || is.factor(x) || is.matrix(x) || is.array(x),
-        data
-      )
-      if (length(potential_objects) > 0) {
-        obj <- potential_objects[[1]]
-        N <- if (is.matrix(obj) || is.array(obj)) nrow(obj) else length(obj)
-      }
-    }
-  } else {
-    # --- HOTFIX: Inject raw string labels so prepare_structure_data can align tips ---
-    # JAGS data is flattened to integers, which destroys tip labels. 
-    # We temporarily inject them back into 'data' so they can be discovered.
-    injected_raw_cols <- character(0)
-    if (is_hierarchical && !is.null(hierarchical_info$structure_levels)) {
-      for (s_name in names(hierarchical_info$structure_levels)) {
-        lvl_name <- hierarchical_info$structure_levels[[s_name]]
-        link_var <- if (!is.null(hierarchical_info$link_vars)) hierarchical_info$link_vars[[lvl_name]] else NULL
-        if (!is.null(link_var) && is.data.frame(original_raw_data_before_preprocess[[lvl_name]])) {
-           raw_col_name <- paste0(".raw_", link_var)
-           data[[raw_col_name]] <- as.character(original_raw_data_before_preprocess[[lvl_name]][[link_var]])
-           injected_raw_cols <- c(injected_raw_cols, raw_col_name)
-        }
-      }
-    }
-
-    structure_levels <- list()
-    structure_multi <- list()
-    # Use S3 Generic for Processing
-    for (s_name in structure_names) {
-      structure_obj <- structures[[s_name]]
-      prep_res <- prepare_structure_data(structure_obj, data = data, optimize = TRUE, quiet = quiet, engine = engine, row_ids = row_ids)
-
-      if (!is.null(prep_res$data_list)) {
-        for (d_name in names(prep_res$data_list)) {
-          custom_s_name <- get_structure_name_hook(structure_obj)
-          prefixed_name <- if (d_name %in% c("Prec", "VCV", "multiVCV", custom_s_name)) paste0(d_name, "_", s_name) else d_name
-          
-          # --- HOTFIX: Prevent Python/JAGS crashes ---
-          # prepare_structure_data might return character/factor vectors (e.g. aligned tip labels).
-          # We MUST NOT let these overwrite the integer index arrays (e.g. data$Species)
-          # nor be added to the data list, as NumPyro strictly requires numeric arrays.
-          if (is.character(prep_res$data_list[[d_name]]) || is.factor(prep_res$data_list[[d_name]])) {
-             next
-          }
-          
-          data[[prefixed_name]] <- prep_res$data_list[[d_name]]
-        }
-      } else {
-        structures[[s_name]] <- NULL
-        structure_names <- setdiff(structure_names, s_name)
-        next
-      }
-
-      current_N <- NULL
-      is_this_one_multi <- FALSE
-      for (obj in prep_res$data_list) {
-        if (is.matrix(obj) && nrow(obj) == ncol(obj)) {
-          current_N <- nrow(obj)
-          break
-        } else if (is.array(obj) && length(dim(obj)) == 3) {
-          dims <- dim(obj)
-          if (dims[1] == dims[2]) {
-             current_N <- dims[1]
-             is_this_one_multi <- TRUE
-             if (is_multiple && !exists("N_trees")) N_trees <- dims[3]
-             break
-          } else if (dims[2] == dims[3]) {
-             current_N <- dims[2]
-             is_this_one_multi <- TRUE
-             if (is_multiple && !exists("N_trees")) N_trees <- dims[1]
-             break
-          }
-        }
-      }
-
-      if (is.null(current_N)) {
-        n_attr <- attr(structure_obj, "n")
-        if (is.numeric(n_attr)) current_N <- n_attr
-      }
-
-      # [FIX] Robust Level Matching
-      # Prioritize name-based matching (e.g. if the structure in the tree list is named "Species")
-      s_level <- NULL
-      if (!is.null(hierarchical_info) && !is.null(current_N)) {
-        # 1. Try Name Matching first
-        if (s_name %in% names(hierarchical_info$levels)) {
-            s_level <- s_name
-        } else {
-            # 2. Fallback to Dimension Matching
-            for (lvl in names(hierarchical_info$levels)) {
-              n_name <- paste0("N_", lvl)
-              if (!is.null(data[[n_name]]) && data[[n_name]] == current_N) {
-                s_level <- lvl
-                break
-              }
-            }
-        }
-      }
-      structure_levels[[s_name]] <- s_level
-      structure_multi[[s_name]]  <- is_this_one_multi
-
-      if (!is.null(current_N)) {
-        if (is.null(N) || N == 0) {
-          N <- current_N
-        } else if (N != current_N && is.null(hierarchical_info)) {
-          stop(paste("Dimension mismatch in structure:", s_name))
-        }
-      }
-
-      if (!is.null(prep_res$structure_object)) {
-        structures[[s_name]] <- prep_res$structure_object
-      }
-    }
-
-    if (!is.null(hierarchical_info)) {
-      # Merge: prefer the already name-matched auto-detect result for each s_name,
-      # only overwriting with the newly computed (dimension-based) value when the
-      # auto-detect didn't produce a result for that structure.
-      existing_sl <- hierarchical_info$structure_levels
-      for (s_name in names(structure_levels)) {
-        # Only override if auto-detect has no entry or if dimension match is more specific
-        if (is.null(existing_sl[[s_name]])) {
-          existing_sl[[s_name]] <- structure_levels[[s_name]]
-        }
-        # If both give a result, keep the existing (name-based) auto-detect result
-      }
-      hierarchical_info$structure_levels <- existing_sl
-      hierarchical_info$structure_multi  <- structure_multi
-    }
-  }
+  data              <- struct_res$data
+  structures        <- struct_res$structures
+  is_multiple       <- struct_res$is_multiple
+  if (!is.null(struct_res$hierarchical_info)) hierarchical_info <- struct_res$hierarchical_info
+  N                 <- struct_res$N
 
   # --- [NEW] Map Link Variables (IDs) to Counts ---
   # Ensures JAGS finds loop bounds for grouping variables not listed in 'levels'
@@ -1892,7 +1653,12 @@ because <- function(
     quiet = quiet, priors = priors, monitor_mode = monitor_mode,
     expand_ordered = expand_ordered, nimble_samplers = nimble_samplers,
     adapt_delta = adapt_delta, max_treedepth = max_treedepth,
-    prior_scale_fixed = prior_scale_fixed, verbose = verbose
+    prior_scale_fixed = prior_scale_fixed, verbose = verbose,
+    family_obj = family_obj, hierarchy = hierarchy,
+    original_call = original_call, original_data = original_data,
+    random = random, response_vars_with_na = response_vars_with_na,
+    reuse_models = reuse_models, structure = structure,
+    because_py = if (exists("because_py")) because_py else NULL
   )
   dsep_tests <- dsep_res$dsep_tests
   induced_cors <- dsep_res$induced_cors
@@ -1986,208 +1752,29 @@ because <- function(
   model_string <- model_output$model
   parameter_map <- model_output$parameter_map
   if (engine == "numpyro") {
-    eq_strings <- sapply(equations, function(eq) paste(deparse(eq), collapse=" "))
-    
-    # Process structures for NumPyro
-    py_structures <- list()
-    for (s_name in names(structures)) {
-      s_obj <- structures[[s_name]]
-      
-      # Determine matrix name in the prepared data
-      custom_s_name <- get_structure_name_hook(s_obj)
-      mat_name <- if (!is.null(custom_s_name)) paste0(custom_s_name, "_", s_name) else paste0("VCV_", s_name)
-      if (is.null(data[[mat_name]]) && !is.null(data[[paste0("Prec_", s_name)]])) {
-        mat_name <- paste0("Prec_", s_name)
-      }
-      
-      if (!is.null(data[[mat_name]])) {
-        # Ask the extension package for the Python JAX code
-        py_code <- numpyro_structure_definition(s_obj, engine = "numpyro")
-        if (!is.null(py_code)) {
-          # Compile into a Python function using reticulate
-          env <- reticulate::py_run_string(py_code)
-          funcs <- names(env)
-          expected_name <- paste0(s_name, "_transform")
-          func_name <- if (expected_name %in% funcs) expected_name else funcs[!funcs %in% c("numpyro", "jnp", "jax", "dist", "np", "r")][1]
-          if (!is.null(func_name) && (func_name %in% names(env))) {
-            py_structures[[s_name]] <- list(
-              matrix = data[[mat_name]],
-              transform_func = env[[func_name]],
-              type = class(s_obj)[1]
-            )
-          }
-        } else {
-          # Fallback to pure matrix
-          py_structures[[s_name]] <- data[[mat_name]]
-        }
-        
-        # Append + (1 | s_name) to valid endogenous equations
-        for (i in seq_along(equations)) {
-           eq <- equations[[i]]
-           response <- trimws(strsplit(deparse(eq), "~")[[1]][1])
-           
-           # Apply if dimension matches or valid level
-           is_valid <- TRUE
-           if (exists("is_hierarchical") && is_hierarchical && exists("hierarchical_info")) {
-               s_lvl <- hierarchical_info$structure_levels[[s_name]]
-               tryCatch({
-                   resp_lvl <- infer_variable_level(response, hierarchical_info$levels, data = NULL, equations = equations, latent = latent, hierarchy = hierarchical_info$hierarchy)
-                   if (is.null(resp_lvl)) {
-                       is_valid <- FALSE
-                   } else if (!is_valid_structure_mapping_dsep(s_lvl, resp_lvl, hierarchical_info)) {
-                       is_valid <- FALSE
-                   }
-               }, error = function(e) {
-                   is_valid <<- FALSE   # <<- assigns to enclosing loop scope, not local handler scope
-               })
-           }
-           
-           if (is_valid) {
-               eq_str <- eq_strings[i]
-               if (!grepl(paste0("\\(1\\s*\\|\\s*", s_name, "\\)"), eq_str)) {
-                   eq_strings[i] <- paste0(eq_str, " + (1|", s_name, ")")
-               }
-           }
-        }
-      }
-    }
-    
-    flat_data <- flatten_for_python(data)
-    
-    # Ensure zero-indexing for Python categorical variables
-    for (s_name in names(structures)) {
-        # If indexing array is missing (e.g. 1-to-1 row mapping like JAGS), generate it!
-        if (is.null(flat_data[[s_name]])) {
-            N_val <- NULL
-            if (exists("is_hierarchical") && is_hierarchical && exists("hierarchical_info")) {
-                s_lvl <- hierarchical_info$structure_levels[[s_name]]
-                if (!is.null(s_lvl)) {
-                    N_val <- flat_data[[paste0("N_", s_lvl)]]
-                }
-            }
-            if (is.null(N_val)) {
-                N_val <- if (!is.null(flat_data[["N"]])) flat_data[["N"]] else length(flat_data[[1]])
-            }
-            flat_data[[s_name]] <- 0:(N_val - 1)
-        }
-    }
-    idx_vars <- grep("_idx", names(flat_data), value = TRUE)
-    idx_vars <- c(idx_vars, names(structures))
-    for (eq in equations) {
-        eq_str <- if (is.character(eq)) eq else paste(deparse(eq), collapse=" ")
-        matches <- regmatches(eq_str, gregexpr("\\(1\\s*\\|\\s*[^)]+\\)", eq_str))[[1]]
-        for (m in matches) {
-            grp <- trimws(strsplit(m, "\\|")[[1]][2])
-            grp <- gsub("\\)", "", grp)
-            idx_vars <- c(idx_vars, grp)
-        }
-    }
-    idx_vars <- unique(idx_vars)
-    for (s_name in idx_vars) {
-        if (s_name %in% names(flat_data) && min(flat_data[[s_name]], na.rm=TRUE) >= 1) {
-            flat_data[[s_name]] <- as.integer(flat_data[[s_name]] - 1L)
-        }
-    }
-    
-    # Re-inject standard random terms that were stripped for JAGS
-    if (length(random_terms) > 0) {
-        for (rt in random_terms) {
-            for (i in seq_along(equations)) {
-                resp <- trimws(strsplit(deparse(equations[[i]]), "~")[[1]][1])
-                if (resp == rt$response) {
-                    re_str <- paste0("\\(1\\s*\\|\\s*", rt$group, "\\)")
-                    if (!grepl(re_str, eq_strings[i])) {
-                        eq_strings[i] <- paste0(eq_strings[i], " + (1|", rt$group, ")")
-                    }
-                }
-            }
-        }
-    }
-
-    py_result <- run_numpyro_model(
-      eq_strings = eq_strings,
-      flat_data = flat_data,
-      family = if (!is.null(family)) as.list(family) else NULL,
-      priors = NULL,
-      py_structures = py_structures,
-      n_chains = n.chains,
-      n_iter = n.iter - n.burnin,
-      n_warmup = n.burnin,
+    return(run_numpyro_pipeline(
+      equations = equations,
+      data = data,
+      family = family,
+      structures = structures,
+      priors = priors,
+      random_terms = random_terms,
+      hierarchical_info = hierarchical_info,
+      is_hierarchical = is_hierarchical,
+      latent = latent,
+      n.chains = n.chains,
+      n.iter = n.iter,
+      n.burnin = n.burnin,
       adapt_delta = adapt_delta,
       max_treedepth = max_treedepth,
       prior_scale_fixed = prior_scale_fixed,
-      quiet = quiet
-    )
-    mcmc_samples <- format_numpyro_samples(py_result)
-    
-    result <- list(
-      equations = equations,
-      model      = NULL,        # No live model object for NumPyro
-      model_code = model_string, # JAGS-equivalent string (kept for reference)
-      numpyro_code = if (!is.null(py_result$model_code)) py_result$model_code else NULL,
+      quiet = quiet,
+      WAIC = WAIC,
+      model_string = model_string,
       parameter_map = parameter_map,
-      samples = mcmc_samples,
-      data = data,
-      dsep = NULL,
-      priors = priors,
-      hierarchical_info = if (is_hierarchical) hierarchical_info else NULL,
-      engine = engine,
-      quiet = quiet
-    )
-    if (WAIC && !is.null(py_result$waic)) {
-      waic_df <- data.frame(
-        Estimate = c(py_result$waic$elpd_waic$Estimate, py_result$waic$p_waic$Estimate, py_result$waic$waic$Estimate),
-        SE = c(py_result$waic$elpd_waic$SE, py_result$waic$p_waic$SE, py_result$waic$waic$SE),
-        row.names = c("elpd_waic", "p_waic", "waic")
-      )
-      
-      attr(waic_df, "pointwise") <- data.frame(
-        elpd_waic = as.numeric(py_result$waic$pointwise$elpd_waic_i),
-        p_waic = as.numeric(py_result$waic$pointwise$p_waic_i),
-        waic = as.numeric(py_result$waic$pointwise$waic_i)
-      )
-      
-      attr(waic_df, "dims") <- c(n_obs = py_result$waic$n_obs, n_samples = py_result$waic$n_samples)
-      class(waic_df) <- c("because_waic", "data.frame")
-      
-      result$WAIC <- waic_df
-    }
-    # Compute summary statistics
-    sum_stats <- if (!is.null(mcmc_samples)) summary(mcmc_samples) else NULL
-    if (!is.null(mcmc_samples) && n.chains > 1) {
-      tryCatch({
-        n_ch <- length(mcmc_samples)
-        first_chain <- as.matrix(mcmc_samples[[1]])
-        pnames <- colnames(first_chain)
-        n_params <- length(pnames)
-        rhat_vals <- numeric(n_params)
-        n_iter <- nrow(first_chain)
-        for (p in 1:n_params) {
-          chain_means <- numeric(n_ch)
-          chain_vars <- numeric(n_ch)
-          for (c in 1:n_ch) {
-            vals <- as.matrix(mcmc_samples[[c]])[, p]
-            chain_means[c] <- mean(vals)
-            chain_vars[c] <- var(vals)
-          }
-          grand_mean <- mean(chain_means)
-          B <- n_iter * var(chain_means)
-          W <- mean(chain_vars)
-          if (W > 0) {
-            var_plus <- ((n_iter - 1) / n_iter) * W + (1 / n_iter) * B
-            rhat_vals[p] <- sqrt(var_plus / W)
-          } else {
-            rhat_vals[p] <- 1.0
-          }
-        }
-        sum_stats$statistics <- cbind(sum_stats$statistics, Rhat = rhat_vals)
-      }, error = function(e) {})
-    }
-    result$summary <- sum_stats
-
-    result$call <- original_call
-    class(result) <- "because"
-    return(result)
+      original_call = original_call,
+      engine = engine
+    ))
   }
 
 
@@ -2461,677 +2048,55 @@ because <- function(
   nimble_waic <- NULL
   if (engine == "nimble") {
     # --- NIMBLE EXECUTION PIPELINE ---
-    if (!requireNamespace("nimble", quietly = TRUE)) {
-      stop(
-        "The 'nimble' package is required when engine = 'nimble'.\n",
-        "Please install it using: install.packages('nimble')\n",
-        "For detailed installation instructions and system requirements (e.g. Rtools/Xcode),\n",
-        "see: https://r-nimble.org/download"
-      )
-    }
-
-    # Attach nimble to the search path to avoid 'getNimbleOption' errors during evaluation
-    if (!requireNamespace("nimble", quietly = TRUE)) {
-      stop("The 'nimble' package is required for this model but not installed.")
-    }
-
-    if (!quiet) {
-      message("Compiling model via NIMBLE...")
-    }
-
-    # --- NIMBLE Family Optimizations (S3) ---
-    # Extensions can implement nimble_family_optimization to provide
-    # specialized distributions (e.g. dImperfect) and model transformations.
-    nimble_funcs <- list()
-    if (!requireNamespace("nimble", quietly = TRUE)) {
-      stop("Package 'nimble' is required for engine = 'nimble'.")
-    }
-    
-    if (!("package:nimble" %in% search())) {
-      suppressPackageStartupMessages(attachNamespace("nimble"))
-    }
-
-
-    nimble_string <- model_string
-
-    # Generic cleanup for NIMBLE: strip JAGS-specific log-density nodes
-    lines <- strsplit(nimble_string, "\n")[[1]]
-    lines <- lines[!grepl("logdensity\\.", lines)]
-    lines <- lines[!grepl("log_lik_", lines)]
-    lines <- lines[!grepl("lik_matrix_", lines)]
-    nimble_string <- paste(lines, collapse = "\n")
-
-    for (v in names(family)) {
-      fam_obj <- structure(
-        list(name = family[[v]]),
-        class = c(paste0("because_family_", family[[v]]), "because_family")
-      )
-      opt_res <- nimble_family_optimization(
-        fam_obj,
-        nimble_string,
-        variable = v
-      )
-      nimble_string <- opt_res$model_string
-      if (length(opt_res$nimble_functions) > 0) {
-        nimble_funcs <- c(nimble_funcs, opt_res$nimble_functions)
-      }
-
-      # If discretized latent states were marginalized, remove them from monitors
-      if (
-        nimble_string != model_string && any(grepl(paste0("z_", v), monitor))
-      ) {
-        monitor <- setdiff(monitor, paste0("z_", v))
-      }
-    }
-
-    # Register nimble functions to local environment for compiler
-    if (length(nimble_funcs) > 0) {
-      unique_names <- unique(names(nimble_funcs))
-      for (fn_name in unique_names) {
-        # Assign to local environment so nimbleModel can find them
-        assign(fn_name, nimble_funcs[[fn_name]], envir = environment())
-
-        # Explicitly register with NIMBLE if it looks like a distribution
-        if (startsWith(fn_name, "d")) {
-          try(
-            nimble::registerDistributions(nimble_funcs[fn_name]),
-            silent = TRUE
-          )
-        }
-      }
-    }
-
-    # Ensure all monitored parameters have initial values for NIMBLE stability
-    # JAGS auto-initializes many nodes, but NIMBLE is more rigorous.
-    # Latent random effects and categorical intercepts must be initialized.
-    nimble_inits <- extension_inits
-    if (is.null(nimble_inits)) nimble_inits <- list()
-    for (p in monitor) {
-      if (!p %in% names(nimble_inits)) {
-        if (grepl("^(tau_|sigmay_|sigmap_|sigmar_|sigma_)", p)) {
-          nimble_inits[[p]] <- 1.0 # Standard unit variance start
-        } else if (grepl("^alpha_", p)) {
-          # [STABILITY] Initialize intercepts closer to data mean if available
-          resp_name <- sub("^alpha_", "", p)
-          if (resp_name %in% names(data)) {
-              m_val <- mean(as.numeric(data[[resp_name]]), na.rm = TRUE)
-              # If it looks like a count or binary, use link Scale
-              if (all(as.numeric(data[[resp_name]]) >= 0, na.rm = TRUE)) {
-                  nimble_inits[[p]] <- log(max(0.1, m_val))
-              } else {
-                  nimble_inits[[p]] <- m_val
-              }
-          } else {
-            nimble_inits[[p]] <- 0.0
-          }
-        } else if (grepl("^beta_", p)) {
-          # [STABILITY] Start slopes at 0 but ensure they will be jittered
-          nimble_inits[[p]] <- 0.0
-        } else if (grepl("^psi_", p)) {
-          nimble_inits[[p]] <- 0.5
-        } else if (grepl("^r_", p)) {
-          nimble_inits[[p]] <- 1.0
-        } else if (grepl("^sigma_total_", p)) {
-          # [PARTITIONING] sigma_total drives both tau_u and tau_res via lambda.
-          # Starting at 0 collapses the dmnorm prior to a point mass (tau -> Inf).
-          nimble_inits[[p]] <- 1.0
-        } else if (grepl("^lambda_", p)) {
-          nimble_inits[[p]] <- 0.5
-        } else if (grepl("^cutpoint", p)) {
-          # Ordinal cutpoints need to be ordered; leaving as 0 can crash
-          # better to use extension_inits or stay conservative
-          nimble_inits[[p]] <- 0.0
-        }
-      }
-    }
-
-    # Convert the JAGS model string directly into a NIMBLE model
-    nimble_model <- tryCatch(
-      {
-        nimble_string <- sub("^\\s*model\\s*\\{", "{", nimble_string)
-        nimble_code <- parse(text = nimble_string)[[1]]
-
-        nimble_constants <- data
-        nimble_data <- list()
-        if (!is.null(data[["L_multiPhylo"]])) {
-            nimble_data[["L_multiPhylo"]] <- data[["L_multiPhylo"]]
-            nimble_constants[["L_multiPhylo"]] <- NULL
-        }
-        if (!is.null(data[["Prec_multiPhylo"]])) {
-            nimble_data[["Prec_multiPhylo"]] <- data[["Prec_multiPhylo"]]
-            nimble_constants[["Prec_multiPhylo"]] <- NULL
-        }
-        if (!is.null(data[["L_phylo"]])) {
-            # Single-tree non-centered Cholesky factor: treat as data (observed matrix)
-            nimble_data[["L_phylo"]] <- data[["L_phylo"]]
-            nimble_constants[["L_phylo"]] <- NULL
-        }
-
-        m_obj <- suppressMessages(suppressWarnings(nimble::nimbleModel(
-          code = nimble_code,
-          constants = nimble_constants,
-          data = nimble_data,
-          inits = nimble_inits,
-          buildDerivs = (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC"),
-          calculate = FALSE
-        )))
-        
-        # [NEW] Ensure all parameters are initialized properly for NIMBLE
-        # This handles vector/matrix nodes like alpha_y and err_y
-        model_nodes <- m_obj$getNodeNames(stochOnly = TRUE, includeData = FALSE)
-        for (node in model_nodes) {
-          # Only initialize if NOT already set in nimble_inits
-          # (getNodeNames returns specific indices, so we strip them)
-          base_node <- sub("\\[.*\\]", "", node)
-          if (!any(grepl(paste0("^", base_node, "$"), names(nimble_inits)))) {
-            # Check if this is a variance/precision node
-            is_prec <- grepl("^(tau_|sigmay_|sigmap_|sigmar_)", node)
-            val <- if (is_prec) 1 else 0
-            if (grepl("^psi_", node)) val <- 0.5
-            if (grepl("^r_", node)) val <- 1
-            # [PARTITIONING] sigma_total_ and lambda_ MUST NOT start at 0.
-            # sigma_total=0 -> tau=Inf -> dmnorm at point mass -> NA cascade.
-            if (grepl("^sigma_total_", node)) val <- 1.0
-            if (grepl("^lambda_", node)) val <- 0.5
-            
-            try({
-              curr_val <- m_obj[[node]]
-              if (any(is.na(curr_val)) || any(is.nan(curr_val))) {
-                m_obj[[node]] <- val
-              }
-            }, silent = TRUE)
-          }
-        }
-        
-        # [CRITICAL FIX] Export the auto-initialized values back into nimble_inits
-        # so they can be sent to parallel workers.
-        unique_base_nodes <- unique(sub("\\[.*\\]", "", model_nodes))
-        for (v in unique_base_nodes) {
-            if (!v %in% names(nimble_inits)) {
-                try({
-                    nimble_inits[[v]] <- m_obj[[v]]
-                }, silent = TRUE)
-            }
-        }
-        
-        m_obj
-      },
-      error = function(e) {
-        if (!quiet) {
-          message("\nCRITICAL NIMBLE ERROR during model initialization:")
-          message(e$message)
-        }
-        stop(paste(e, "\n\n", model_string))
-      }
+    nimble_res <- run_nimble_pipeline(
+      model_string    = model_string,
+      data            = data,
+      family          = family,
+      extension_inits = extension_inits,
+      monitor         = monitor,
+      n.chains        = n.chains,
+      n.iter          = n.iter,
+      n.burnin        = n.burnin,
+      n.thin          = n.thin,
+      WAIC            = WAIC,
+      nimble_samplers = nimble_samplers,
+      parallel        = parallel,
+      n.cores         = n.cores,
+      cl              = cl,
+      quiet           = quiet
     )
-
-    # Configure MCMC
-    mcmc_conf <- nimble::configureMCMC(
-      nimble_model,
-      monitors = monitor,
-      enableWAIC = WAIC
-    )
-
-    # Check if HMC was specifically requested
-    if (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC") {
-      if (!requireNamespace("nimbleHMC", quietly = TRUE)) {
-        stop("The 'nimbleHMC' package is required to use HMC samplers in NIMBLE. Install it with install.packages('nimbleHMC')")
-      }
-      if (!("package:nimbleHMC" %in% search())) {
-        suppressPackageStartupMessages(attachNamespace("nimbleHMC"))
-      }
-      if (!quiet) {
-        message("Building and compiling NIMBLE MCMC using nimbleHMC::buildHMC (this may take a moment)...")
-      }
-      nimble_mcmc <- nimbleHMC::buildHMC(nimble_model)
-    } else {
-      # Harden NIMBLE sampler assignments.
-      because::nimble_harden_samplers(
-        mcmc_conf,
-        family          = family,
-        nimble_samplers = nimble_samplers,
-        quiet           = quiet
-      )
-
-      if (!quiet) {
-        message("Building and compiling NIMBLE MCMC (this may take a moment)...")
-      }
-      nimble_mcmc <- nimble::buildMCMC(mcmc_conf)
-    }
-    
-    # [PERFORMANCE] Skip main-thread compilation if running in parallel
-    # to avoid redundant triple/quadruple compilation overhead.
-    if (!parallel || n.cores == 1 || n.chains == 1) {
-      compiled_model <- nimble::compileNimble(nimble_model)
-      compiled_mcmc <- nimble::compileNimble(nimble_mcmc, project = nimble_model)
-    } else {
-      compiled_mcmc <- NULL
-    }
-
-    if (parallel && n.cores > 1 && n.chains > 1) {
-      # Parallel execution for NIMBLE
-      if (!quiet) {
-        message(sprintf(
-          "Running %d NIMBLE chains in %s on %d cores...",
-          n.chains,
-          "parallel",
-          n.cores
-        ))
-      }
-
-      if (is.null(cl)) {
-        cl <- parallel::makeCluster(n.cores)
-        on.exit(parallel::stopCluster(cl), add = TRUE)
-      }
-
-      # Helper for parallel NIMBLE chain
-      run_nimble_chain <- function(
-        chain_id,
-        model_string,
-        data,
-        family,
-        nimble_inits, # Corrected: Pass populated inits instead of extension_inits
-        monitor,
-        n.iter,
-        n.burnin,
-        n.thin,
-        WAIC,
-        nimble_samplers,
-        quiet
-      ) {
-        if (!requireNamespace("nimble", quietly = TRUE)) {
-          return(NULL)
-        }
-        if (!requireNamespace("nimble", quietly = TRUE)) {
-          stop(
-            "The 'nimble' package is required for this model but not installed."
-          )
-        }
-
-        # --- NIMBLE Family Optimizations via S3 (Worker) ---
-        nimble_funcs <- list()
-        nimble_string <- model_string
-
-        # Cleanup JAGS nodes
-        lines <- strsplit(nimble_string, "\n")[[1]]
-        lines <- lines[!grepl("logdensity\\.", lines)]
-        lines <- lines[!grepl("log_lik_", lines)]
-        lines <- lines[!grepl("lik_matrix_", lines)]
-        nimble_string <- paste(lines, collapse = "\n")
-
-        for (v in names(family)) {
-          fam_obj <- structure(
-            list(name = family[[v]]),
-            class = c(paste0("because_family_", family[[v]]), "because_family")
-          )
-          opt_res <- nimble_family_optimization(
-            fam_obj,
-            nimble_string,
-            variable = v
-          )
-          nimble_string <- opt_res$model_string
-          if (length(opt_res$nimble_functions) > 0) {
-            nimble_funcs <- c(nimble_funcs, opt_res$nimble_functions)
-          }
-          if (
-            nimble_string != model_string &&
-              any(grepl(paste0("z_", v), monitor))
-          ) {
-            monitor <- setdiff(monitor, paste0("z_", v))
-          }
-        }
-        # Assign functions to local environment so nimbleModel can find them
-        if (length(nimble_funcs) > 0) {
-          unique_names <- unique(names(nimble_funcs))
-          for (fn_name in unique_names) {
-            assign(fn_name, nimble_funcs[[fn_name]], envir = environment())
-            
-            # Explicitly register with NIMBLE if it looks like a distribution
-            if (startsWith(fn_name, "d")) {
-              try(nimble::registerDistributions(nimble_funcs[fn_name]), silent = TRUE)
-            }
-          }
-        }
-
-        # Strip model { ... } wrapping
-        nimble_string <- sub("^\\s*model\\s*\\{", "{", nimble_string)
-        nimble_code <- parse(text = nimble_string)[[1]]
-
-        # [STABILITY] Jitter inits for this specific chain
-        curr_inits <- nimble_inits # Corrected: Use populated inits
-        if (is.null(curr_inits)) curr_inits <- list()
-        
-        # Add a stochastic jitter to all continuous parameters
-        # This is critical for NIMBLE to escape locally flat regions
-        # We increase the range to 0.1 for more robust exploration
-        set.seed(12345 + chain_id)
-        for (p_name in names(curr_inits)) {
-            val <- curr_inits[[p_name]]
-            if (is.numeric(val) && length(val) == 1) {
-                if (grepl("^(beta_|alpha_)", p_name)) {
-                    curr_inits[[p_name]] <- val + rnorm(1, 0, 0.1)
-                } else if (grepl("^(tau_|sigma_)", p_name)) {
-                    curr_inits[[p_name]] <- max(0.1, val * exp(rnorm(1, 0, 0.1)))
-                }
-            }
-        }
-
-        # Ensure NIMBLE namespace is loaded on the worker
-        requireNamespace("nimble", quietly = TRUE)
-        if (!("package:nimble" %in% search())) {
-          suppressPackageStartupMessages(attachNamespace("nimble"))
-        }
-        
-        # If HMC is requested, ensure nimbleHMC is attached so samplers are registered
-        if (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC") {
-          requireNamespace("nimbleHMC", quietly = TRUE)
-          if (!("package:nimbleHMC" %in% search())) {
-            suppressPackageStartupMessages(attachNamespace("nimbleHMC"))
-          }
-        }
-
-        nimble_constants <- data
-        nimble_data <- list()
-        if (!is.null(data[["L_multiPhylo"]])) {
-            nimble_data[["L_multiPhylo"]] <- data[["L_multiPhylo"]]
-            nimble_constants[["L_multiPhylo"]] <- NULL
-        }
-        if (!is.null(data[["Prec_multiPhylo"]])) {
-            nimble_data[["Prec_multiPhylo"]] <- data[["Prec_multiPhylo"]]
-            nimble_constants[["Prec_multiPhylo"]] <- NULL
-        }
-        if (!is.null(data[["L_phylo"]])) {
-            # Single-tree non-centered Cholesky factor: treat as data (observed matrix)
-            nimble_data[["L_phylo"]] <- data[["L_phylo"]]
-            nimble_constants[["L_phylo"]] <- NULL
-        }
-
-        worker_model <- suppressMessages(suppressWarnings(nimble::nimbleModel(
-          code = nimble_code,
-          constants = nimble_constants,
-          data = nimble_data,
-          inits = curr_inits,
-          buildDerivs = (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC"),
-          calculate = FALSE
-        )))
-
-        worker_conf <- nimble::configureMCMC(
-          worker_model,
-          monitors = monitor,
-          enableWAIC = WAIC
-        )
-        
-        # Harden worker MCMC samplers via the installed package function.
-        if (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC") {
-          if (!requireNamespace("nimbleHMC", quietly = TRUE)) {
-            stop("The 'nimbleHMC' package is required to use HMC samplers in NIMBLE.")
-          }
-          worker_mcmc <- nimbleHMC::buildHMC(worker_model)
-        } else {
-          because::nimble_harden_samplers(
-            worker_conf,
-            family          = family,
-            nimble_samplers = nimble_samplers,
-            quiet           = TRUE
-          )
-          worker_mcmc <- nimble::buildMCMC(worker_conf)
-        }
-        worker_c_model <- nimble::compileNimble(worker_model)
-        worker_c_mcmc <- nimble::compileNimble(
-          worker_mcmc,
-          project = worker_model
-        )
-
-        # --- Execute MCMC ---
-        # Wrap everything in try to avoid hanging the cluster on error
-        res <- try({
-          samples <- nimble::runMCMC(
-            worker_c_mcmc,
-            niter = n.iter,
-            nburnin = n.burnin,
-            nchains = 1,
-            thin = n.thin,
-            samplesAsCodaMCMC = TRUE,
-            WAIC = WAIC
-          )
-          samples
-        }, silent = TRUE)
-
-        if (inherits(res, "try-error")) {
-          return(paste("NIMBLE WORKER ERROR:", as.character(res)))
-        }
-        return(res)
-      }
-
-      # Export all required variables to worker nodes
-      parallel::clusterExport(
-        cl,
-        c(
-          "model_string", "data", "family", "nimble_inits",
-          "monitor", "n.iter", "n.burnin", "n.thin",
-          "WAIC", "quiet", "run_nimble_chain", "nimble_samplers"
-        ),
-        envir = environment()
-      )
-
-      # Copy S3 methods to workers if package isn't installed
-      # (Necessary for devtools::load_all sessions)
-      if ("package:because" %in% search()) {
-        parallel::clusterEvalQ(cl, library(because))
-      }
-      if ("package:because.phybase" %in% search()) {
-        parallel::clusterEvalQ(cl, library(because.phybase))
-      }
-
-      chain_results <- parallel::parLapply(cl, seq_len(n.chains), function(i) {
-        run_nimble_chain(
-          chain_id = i,
-          model_string = model_string,
-          data = data,
-          family = if (!is.null(family)) as.list(family) else NULL,
-          nimble_inits = nimble_inits,
-          monitor = monitor,
-          n.iter = n.iter,
-          n.burnin = n.burnin,
-          n.thin = n.thin,
-          WAIC = WAIC,
-          nimble_samplers = nimble_samplers,
-          quiet = quiet
-        )
-      })
-
-      # Check for worker errors
-      for (i in seq_along(chain_results)) {
-        if (is.character(chain_results[[i]])) {
-          stop(sprintf("Chain %d failed: %s", i, chain_results[[i]]))
-        }
-      }
-
-      # Extract NIMBLE WAIC if available
-      if (WAIC && is.list(chain_results[[1]]) && !is.null(chain_results[[1]]$WAIC)) {
-          nimble_waic <- chain_results[[1]]$WAIC
-      }
-
-      # Format into mcmc.list
-      samples <- coda::mcmc.list(lapply(chain_results, function(x) {
-          if (is.list(x) && !is.null(x$samples)) x$samples else x
-      }))
-    } else {
-      # Sequential execution (Existing logic)
-      if (!quiet) {
-        message(sprintf(
-          "Sampling %d chains sequentially via NIMBLE...",
-          n.chains
-        ))
-      }
-
-      # --- Sequential NIMBLE execution via run_nimble_model() ---
-      nimble_run_res <- run_nimble_model(
-        nimble_code  = nimble_code,
-        constants    = data,
-        data         = list(),
-        inits        = nimble_inits,
-        n.chains     = n.chains,
-        n.iter       = n.iter,
-        n.burnin     = n.burnin,
-        n.thin       = n.thin,
-        monitor      = monitor,
-        quiet        = quiet,
-        family       = family,
-        nimble_samplers = nimble_samplers,
-        nimble_waic  = WAIC
-      )
-      samples     <- nimble_run_res$samples
-      nimble_waic <- nimble_run_res$WAIC
-    }
-    model <- nimble_model # Store the R (uncompiled) model object
-    # Store compiled objects for because_continue() --- NULL when parallel=TRUE
-    saved_nimble_compiled <- if (exists("compiled_mcmc")) compiled_mcmc else NULL
-    saved_nimble_cmodel   <- if (exists("compiled_model")) compiled_model else NULL
-    saved_nimble_samplers <- nimble_samplers
+    samples               <- nimble_res$samples
+    model                 <- nimble_res$model
+    monitor               <- nimble_res$monitor
+    nimble_waic           <- nimble_res$nimble_waic
+    saved_nimble_compiled <- nimble_res$saved_nimble_compiled
+    saved_nimble_cmodel   <- nimble_res$saved_nimble_cmodel
+    saved_nimble_samplers <- nimble_res$saved_nimble_samplers
   } else {
     # --- JAGS EXECUTION PIPELINE (Default) ---
-    if (parallel && n.cores > 1 && n.chains > 1) {
-      # Parallel execution
-      message(sprintf(
-        "Running %d chains in parallel on %d cores...",
-        n.chains,
-        n.cores
-      ))
-
-      # Setup cluster if not provided
-      if (is.null(cl)) {
-        cl <- parallel::makeCluster(n.cores)
-        on.exit(parallel::stopCluster(cl), add = TRUE)
-      }
-
-      # Helper function to run a single chain
-      run_single_chain <- function(
-        chain_id,
-        model_file,
-        data,
-        monitor,
-        n.burnin,
-        n.iter,
-        n.thin,
-        n.adapt,
-        quiet
-      ) {
-        # Load rjags in each worker
-        if (!requireNamespace("rjags", quietly = TRUE)) {
-          stop("Package 'rjags' is required for parallel execution.")
-        }
-        # Explicitly load rjags to ensure modules are available
-        loadNamespace("rjags")
-
-        # Compile model for this chain
-        # Explicitly set RNG seed to ensure chains are different
-        inits_list <- c(
-          extension_inits,
-          list(
-            .RNG.name = "base::Wichmann-Hill",
-            .RNG.seed = 12345 + chain_id
-          )
-        )
-
-        par_inits <- list(inits_list)
-        model <- run_jags_model(model_file, data, par_inits, 1L, n.adapt, quiet, model_string)
-
-        # Burn-in
-        if (n.burnin > 0) {
-          update(model, n.iter = n.burnin)
-        }
-
-        samples <- sample_jags_model(model, monitor, n.iter, n.burnin, n.thin)
-
-        return(list(samples = samples, model = model))
-      }
-
-      # Export necessary objects to cluster, including backend helpers
-      parallel::clusterExport(cl, c("run_single_chain", "run_jags_model", "sample_jags_model"), envir = environment())
-      # Ensure because package (and its helpers) are available on workers
-      parallel::clusterEvalQ(cl, {
-        if (requireNamespace("because", quietly = TRUE)) library(because)
-      })
-
-      # Run chains in parallel
-      if (!quiet) {
-        message(sprintf("Sampling %d chains in parallel...", n.chains))
-      }
-
-      chain_results <- parallel::parLapply(cl, seq_len(n.chains), function(i) {
-        res <- run_single_chain(
-          i,
-          model_file,
-          data,
-          monitor,
-          n.burnin,
-          n.iter,
-          n.thin,
-          n.adapt,
-          quiet
-        )
-        return(res)
-      })
-
-      if (!quiet) {
-        message("All chains completed.")
-      }
-
-      # Combine samples from all chains
-      if (!is.null(chain_results[[1]]$samples)) {
-        samples <- coda::mcmc.list(lapply(chain_results, function(x) {
-          x$samples[[1]]
-        }))
-      } else {
-        samples <- NULL
-      }
-
-      # Use the first chain's model for DIC/WAIC (they all have the same structure)
-      model <- chain_results[[1]]$model
-    } else {
-      # Sequential execution (default)
-      if (verbose) {
-        message("--- JAGS MODEL STRING ---")
-        message(model_string)
-      }
-      if (verbose) {
-        cat(
-          "\n--- DATA LIST NAMES ---\n",
-          paste(names(data), collapse = ", "),
-          "\n"
-        )
-      }
-
-      # Combine with occupancy inits
-      inits_list <- lapply(1:n.chains, function(i) {
-        c(
-          extension_inits,
-          list(
-            .RNG.name = "base::Wichmann-Hill",
-            .RNG.seed = 12345 + i
-          )
-        )
-      })
-
-      # Model file is managed by tryCatch below (diagostic dump on failure)
-
-      model <- run_jags_model(model_file, data, inits_list, n.chains, n.adapt, quiet, model_string)
-      if (n.burnin > 0) {
-        update(model, n.iter = n.burnin)
-      }
-
-      # Disable DIC/WAIC if only 1 chain (rjags requirement)
-      if (n.chains < 2 && (DIC || WAIC)) {
-        warning(
-          "DIC and WAIC require at least 2 chains. Disabling calculation."
-        )
-        DIC <- FALSE
-        WAIC <- FALSE
-      }
-
-      samples <- sample_jags_model(model, monitor, n.iter, n.burnin, n.thin)
-    }
+    jags_res <- run_jags_pipeline(
+      model_file = model_file,
+      model_string = model_string,
+      data = data,
+      extension_inits = extension_inits,
+      monitor = monitor,
+      n.chains = n.chains,
+      n.iter = n.iter,
+      n.burnin = n.burnin,
+      n.thin = n.thin,
+      n.adapt = n.adapt,
+      quiet = quiet,
+      verbose = verbose,
+      parallel = parallel,
+      n.cores = n.cores,
+      cl = cl,
+      DIC = DIC,
+      WAIC = WAIC
+    )
+    samples <- jags_res$samples
+    model   <- jags_res$model
+    DIC     <- jags_res$DIC
+    WAIC    <- jags_res$WAIC
   }
 
   # Summarize posterior

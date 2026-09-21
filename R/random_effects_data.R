@@ -7,17 +7,25 @@ prepare_random_effects_data <- function(
   data, random_terms, equations, hierarchical_info, is_hierarchical,
   levels, family, quiet,
   variability = NULL, id_col = NULL, all_poly_terms = NULL,
-  latent = NULL, structure = NULL
+  latent = NULL, structure = NULL, original_data = NULL
 ) {
+  # If original_data not supplied, fall back to data
+  if (is.null(original_data)) original_data <- data
+  random_structures <- list()
+  random_data_updates <- list()
+  random_vars <- character(0)
+
   # --- Random Effects Data Prep (Post-Assembly) ---
   # Create structures for JAGS using the assembled data
   if (length(random_terms) > 0) {
     rand_structs <- create_group_structures(data, random_terms)
-
-    if (!quiet) {}
-    rand_structs <- create_group_structures(data, random_terms)
     random_structures <- rand_structs$structures
     random_data_updates <- rand_structs$data_updates
+    random_vars <- unique(vapply(
+      random_terms,
+      function(x) x$group,
+      character(1)
+    ))
   }
 
   if (is.data.frame(data) || (is.list(data) && !is.data.frame(data))) {
@@ -328,5 +336,10 @@ prepare_random_effects_data <- function(
   }
 
 
-  return(data)
+  return(list(
+    data = data,
+    random_structures = random_structures,
+    hierarchical_info = hierarchical_info,
+    original_data = original_data
+  ))
 }

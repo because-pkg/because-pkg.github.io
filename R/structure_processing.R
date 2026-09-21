@@ -262,5 +262,11 @@ process_because_structures <- function(
   }
 
 
-  return(list(data = data, structures = structures))
+  return(list(
+    data = data,
+    structures = structures,
+    is_multiple = is_multiple,
+    hierarchical_info = hierarchical_info,
+    N = N
+  ))
 }
