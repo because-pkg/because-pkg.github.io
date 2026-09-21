@@ -296,3 +296,95 @@ run_numpyro_pipeline <- function(
   class(result) <- "because"
   return(result)
 }
+
+
+#' Setup Python/NumPyro Environment and Thread Constraints
+#'
+#' @param parallel Logical, whether chains run in parallel
+#' @param n.cores Number of CPU cores requested
+#' @param n.chains Number of MCMC chains
+#' @return imported because.api module
+#' @noRd
+setup_numpyro_environment <- function(parallel = FALSE, n.cores = 1, n.chains = 3) {
+  if (!requireNamespace("reticulate", quietly = TRUE)) {
+    stop("The 'reticulate' package is required when engine = 'numpyro'.")
+  }
+
+  tryCatch({
+    if (reticulate::virtualenv_exists("because_env")) {
+      reticulate::use_virtualenv("because_env", required = TRUE)
+    } else if (reticulate::condaenv_exists("because_env")) {
+      reticulate::use_condaenv("because_env", required = TRUE)
+    }
+  }, error = function(e) NULL)
+
+  target_cores <- as.integer(if (parallel) min(n.cores, n.chains) else 1L)
+
+  .thread_vars <- list(
+    OMP_NUM_THREADS            = "1",
+    OPENBLAS_NUM_THREADS       = "1",
+    GOTO_NUM_THREADS           = "1",
+    MKL_NUM_THREADS            = "1",
+    MKL_DOMAIN_NUM_THREADS     = "1",
+    NUMEXPR_NUM_THREADS        = "1",
+    LLVM_NUM_THREADS           = "1",
+    TF_NUM_INTEROP_THREADS     = as.character(target_cores),
+    TF_NUM_INTRAOP_THREADS     = as.character(target_cores),
+    XLA_PYTHON_CLIENT_PREALLOCATE = "false"
+  )
+
+  for (.v in names(.thread_vars)) {
+    if (!nzchar(Sys.getenv(.v))) {
+      do.call(Sys.setenv, stats::setNames(list(.thread_vars[[.v]]), .v))
+    }
+  }
+
+  .current_xla <- Sys.getenv("XLA_FLAGS")
+  .xla_additions <- character(0)
+  if (!grepl("--xla_force_host_platform_device_count", .current_xla))
+    .xla_additions <- c(.xla_additions,
+                        paste0("--xla_force_host_platform_device_count=", target_cores))
+  if (!grepl("--xla_cpu_multi_thread_eigen", .current_xla))
+    .xla_additions <- c(.xla_additions, "--xla_cpu_multi_thread_eigen=false")
+  if (!grepl("intra_op_parallelism_threads", .current_xla))
+    .xla_additions <- c(.xla_additions, paste0("intra_op_parallelism_threads=", target_cores))
+  if (!grepl("inter_op_parallelism_threads", .current_xla))
+    .xla_additions <- c(.xla_additions, paste0("inter_op_parallelism_threads=", target_cores))
+  if (length(.xla_additions) > 0)
+    Sys.setenv(XLA_FLAGS = trimws(paste(.current_xla, paste(.xla_additions, collapse = " "))))
+
+  if (reticulate::py_available(initialize = FALSE)) {
+    .py_set_code <- paste(
+      "import os",
+      paste(sapply(names(.thread_vars), function(.v) {
+        sprintf("os.environ.setdefault('%s', '%s')", .v, .thread_vars[[.v]])
+      }), collapse = "\n"),
+      sprintf("os.environ.setdefault('XLA_FLAGS', '%s')", Sys.getenv("XLA_FLAGS")),
+      sep = "\n"
+    )
+    tryCatch(
+      reticulate::py_run_string(.py_set_code),
+      error = function(e) NULL
+    )
+  }
+
+  tryCatch({
+    reticulate::import("because.api")
+  }, error = function(e) {
+    current_env <- "unknown"
+    tryCatch({
+      current_env <- reticulate::py_config()$python
+    }, error = function(e) {})
+    stop(sprintf(paste0(
+      "Failed to import python module 'because.api'.\n",
+      "Python is currently running from: %s\n\n",
+      "This usually means Python was initialized to a different environment\n",
+      "before 'library(because)' was called (e.g. by RStudio or another package).\n\n",
+      "Quick fix --- add this line BEFORE library(because) in your script:\n",
+      "  reticulate::use_virtualenv('because_env', required = TRUE)\n\n",
+      "If because_env does not exist yet, install it first with:\n",
+      "  install_because_numpyro()"
+    ), current_env))
+  })
+}
+

@@ -354,3 +354,167 @@ preprocess_categorical_vars <- function(
 
   return(data)
 }
+
+
+#' Collect and Filter Model Data
+#'
+#' @noRd
+collect_and_filter_model_data <- function(
+  data,
+  equations,
+  random,
+  id_col,
+  link_vars,
+  family,
+  variability,
+  expand_ordered = FALSE,
+  quiet = FALSE
+) {
+  # 1. Identify all variables used in equations (fixed + random)
+  all_eq_vars <- unique(unlist(lapply(equations, all.vars)))
+
+  # 2. Identify variables in global random effects
+  global_random_vars <- if (!is.null(random)) {
+    if (inherits(random, "formula")) {
+      all.vars(random)
+    } else {
+      unique(unlist(lapply(random, all.vars)))
+    }
+  } else {
+    character(0)
+  }
+
+  # 3. Identify categorical predictors that need dummy variables
+  parsed_random_temp <- extract_random_effects(equations)
+  fixed_eqs_temp <- parsed_random_temp$fixed_equations
+  fixed_predictors <- unique(unlist(lapply(fixed_eqs_temp, function(eq) {
+    if (length(eq) == 3) all.vars(eq[[3]]) else character(0)
+  })))
+
+  # 4. Combine all needed variables
+  model_vars <- unique(c(
+    all_eq_vars,
+    global_random_vars,
+    id_col,
+    link_vars,
+    if (!is.null(family)) names(family),
+    if (!is.null(variability) && !is.character(variability)) names(variability),
+    "N"
+  ))
+
+  # 5. Filter data frame early to save memory if it's a data.frame
+  if (is.data.frame(data) || (is.list(data) && !is.data.frame(data))) {
+    available_vars <- intersect(names(data), model_vars)
+    if (length(available_vars) > 0) {
+      cat_vars <- attr(data, "categorical_vars")
+      if (!is.null(cat_vars)) {
+        for (cv in names(cat_vars)) {
+          if (cv %in% available_vars) {
+            available_vars <- unique(c(available_vars, cat_vars[[cv]]$dummies))
+          }
+        }
+        available_vars <- intersect(names(data), available_vars)
+      }
+
+      if (!quiet && length(data) > length(available_vars)) {
+        message(sprintf(
+          "Filtering data to %d relevant columns (out of %d) to optimize memory.",
+          length(available_vars),
+          length(data)
+        ))
+      }
+      if (is.data.frame(data)) {
+        data <- data[, available_vars, drop = FALSE]
+      }
+      if (!is.null(cat_vars)) {
+        attr(data, "categorical_vars") <- cat_vars
+      }
+    }
+  }
+
+  # Handle user-requested ordinal factors BEFORE categorical expansion
+  if (!is.null(family)) {
+    for (var in names(family)) {
+      if (family[[var]] == "ordinal") {
+        if (is.data.frame(data) && var %in% names(data)) {
+          if (!is.ordered(data[[var]])) {
+            data[[var]] <- factor(data[[var]], ordered = TRUE)
+            if (!quiet) message(sprintf("Converted '%s' to ordered factor (family = 'ordinal')", var))
+          }
+        } else if (is.list(data) && !is.data.frame(data)) {
+          for (i in seq_along(data)) {
+            if (is.data.frame(data[[i]]) && var %in% names(data[[i]])) {
+              if (!is.ordered(data[[i]][[var]])) {
+                data[[i]][[var]] <- factor(data[[i]][[var]], ordered = TRUE)
+                if (!quiet) message(sprintf("Converted '%s' to ordered factor (family = 'ordinal')", var))
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  original_raw_data_before_preprocess <- data
+
+  data <- preprocess_categorical_vars(
+    data,
+    target_vars = model_vars,
+    dummy_vars = fixed_predictors,
+    exclude_cols = id_col,
+    quiet = quiet,
+    expand_ordered = expand_ordered
+  )
+
+  list(
+    data                                = data,
+    original_raw_data_before_preprocess = original_raw_data_before_preprocess,
+    fixed_eqs_temp                      = fixed_eqs_temp,
+    parsed_random_temp                  = parsed_random_temp,
+    global_random_vars                  = global_random_vars,
+    fixed_predictors                    = fixed_predictors
+  )
+}
+
+
+#' Normalize Global Variability Setting
+#'
+#' @noRd
+normalize_global_variability <- function(variability, equations, random = NULL, id_col = NULL) {
+  if (
+    !is.null(variability) &&
+      is.character(variability) &&
+      length(variability) == 1 &&
+      is.null(names(variability))
+  ) {
+    global_type <- variability
+    if (global_type %in% c("se", "reps")) {
+      message(sprintf(
+        "Global variability setting detected: applying '%s' to all variables.",
+        global_type
+      ))
+
+      all_eq_vars <- unique(unlist(lapply(equations, all.vars)))
+
+      grouping_vars <- character(0)
+      if (!is.null(random)) {
+        random_list <- if (inherits(random, "formula")) list(random) else random
+        for (r in random_list) {
+          grouping_vars <- c(grouping_vars, all.vars(r))
+        }
+      }
+
+      if (!is.null(id_col)) {
+        grouping_vars <- c(grouping_vars, id_col)
+      }
+
+      target_vars <- setdiff(all_eq_vars, grouping_vars)
+      variability <- setNames(
+        rep(global_type, length(target_vars)),
+        target_vars
+      )
+    }
+  }
+  variability
+}
+

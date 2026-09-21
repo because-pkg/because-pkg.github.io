@@ -220,102 +220,7 @@ because <- function(
 
   }
   if (engine == "numpyro") {
-    if (!requireNamespace("reticulate", quietly = TRUE)) {
-      stop("The 'reticulate' package is required when engine = 'numpyro'.")
-    }
-    # Automatically try to bind to the default r-reticulate virtual environment
-    # before attempting to import the module, to save the user from doing it manually.
-    tryCatch({
-      # Bind to because_env with required = TRUE so we never silently fall
-      # back to a different environment that may be missing because_py.
-      if (reticulate::virtualenv_exists("because_env")) {
-        reticulate::use_virtualenv("because_env", required = TRUE)
-      } else if (reticulate::condaenv_exists("because_env")) {
-        reticulate::use_condaenv("because_env", required = TRUE)
-      }
-    }, error = function(e) NULL)
-    # ------------------------------------------------------------------
-    # Thread-limit setup: must happen BEFORE reticulate::import("because.api")
-    # because api.py now performs a lazy "import jax" on first fit() call,
-    # and JAX reads thread counts from the C++ runtime at that moment.
-    #
-    # Strategy:
-    #   1. Set vars in R's environment (covers child processes spawned by R).
-    #   2. Mirror into Python's os.environ in case Python is already running
-    #      (reticulate shares one Python process across the session).
-    #   3. Set XLA_FLAGS for the correct device count.
-    # ------------------------------------------------------------------
-    target_cores <- as.integer(if (parallel) min(n.cores, n.chains) else 1L)
-
-    # --- R-level env vars ---
-    .thread_vars <- list(
-      OMP_NUM_THREADS            = "1",
-      OPENBLAS_NUM_THREADS       = "1",
-      GOTO_NUM_THREADS           = "1",
-      MKL_NUM_THREADS            = "1",
-      MKL_DOMAIN_NUM_THREADS     = "1",
-      NUMEXPR_NUM_THREADS        = "1",
-      LLVM_NUM_THREADS           = "1",
-      TF_NUM_INTEROP_THREADS     = as.character(target_cores),
-      TF_NUM_INTRAOP_THREADS     = as.character(target_cores),
-      XLA_PYTHON_CLIENT_PREALLOCATE = "false"
-    )
-    # Only set vars not already set by the user
-    for (.v in names(.thread_vars)) {
-      if (!nzchar(Sys.getenv(.v))) {
-        do.call(Sys.setenv, stats::setNames(list(.thread_vars[[.v]]), .v))
-      }
-    }
-
-    # XLA_FLAGS: merge device-count and Eigen flags without overwriting user flags
-    .current_xla <- Sys.getenv("XLA_FLAGS")
-    .xla_additions <- character(0)
-    if (!grepl("--xla_force_host_platform_device_count", .current_xla))
-      .xla_additions <- c(.xla_additions,
-                          paste0("--xla_force_host_platform_device_count=", target_cores))
-    if (!grepl("--xla_cpu_multi_thread_eigen", .current_xla))
-      .xla_additions <- c(.xla_additions, "--xla_cpu_multi_thread_eigen=false")
-    if (!grepl("intra_op_parallelism_threads", .current_xla))
-      .xla_additions <- c(.xla_additions, paste0("intra_op_parallelism_threads=", target_cores))
-    if (!grepl("inter_op_parallelism_threads", .current_xla))
-      .xla_additions <- c(.xla_additions, paste0("inter_op_parallelism_threads=", target_cores))
-    if (length(.xla_additions) > 0)
-      Sys.setenv(XLA_FLAGS = trimws(paste(.current_xla, paste(.xla_additions, collapse = " "))))
-
-    # --- Mirror vars into Python's os.environ (if Python is already running) ---
-    if (reticulate::py_available(initialize = FALSE)) {
-      .py_set_code <- paste(
-        "import os",
-        paste(sapply(names(.thread_vars), function(.v) {
-          sprintf("os.environ.setdefault('%s', '%s')", .v, .thread_vars[[.v]])
-        }), collapse = "\n"),
-        sprintf("os.environ.setdefault('XLA_FLAGS', '%s')", Sys.getenv("XLA_FLAGS")),
-        sep = "\n"
-      )
-      tryCatch(
-        reticulate::py_run_string(.py_set_code),
-        error = function(e) NULL
-      )
-    }
-
-    tryCatch({
-      because_py <- reticulate::import("because.api")
-    }, error = function(e) {
-      current_env <- "unknown"
-      tryCatch({
-        current_env <- reticulate::py_config()$python
-      }, error = function(e) {})
-      stop(sprintf(paste0(
-        "Failed to import python module 'because.api'.\n",
-        "Python is currently running from: %s\n\n",
-        "This usually means Python was initialized to a different environment\n",
-        "before 'library(because)' was called (e.g. by RStudio or another package).\n\n",
-        "Quick fix --- add this line BEFORE library(because) in your script:\n",
-        "  reticulate::use_virtualenv('because_env', required = TRUE)\n\n",
-        "If because_env does not exist yet, install it first with:\n",
-        "  install_because_numpyro()"
-      ), current_env))
-    })
+    because_py <- setup_numpyro_environment(parallel = parallel, n.cores = n.cores, n.chains = n.chains)
   }
 
   # --- Robust Parameter Initialization (Handle NULL inputs from recursive calls) ---
@@ -386,600 +291,100 @@ because <- function(
     }
   }
 
-  # --- Selective Variable Collection ---
-  # To avoid memory issues with large datasets, we only process variables needed by the model.
-
-  # 1. Identify all variables used in equations (fixed + random)
-  all_eq_vars <- unique(unlist(lapply(equations, all.vars)))
-
-  # 2. Identify variables in global random effects
-  global_random_vars <- if (!is.null(random)) {
-    if (inherits(random, "formula")) {
-      all.vars(random)
-    } else {
-      unique(unlist(lapply(random, all.vars)))
-    }
-  } else {
-    character(0)
-  }
-
-  # 3. Identify categorical predictors that need dummy variables
-  # These are variables on the RHS of fixed-effect formulas
-  parsed_random_temp <- extract_random_effects(equations)
-  fixed_eqs_temp <- parsed_random_temp$fixed_equations
-  fixed_predictors <- unique(unlist(lapply(fixed_eqs_temp, function(eq) {
-    if (length(eq) == 3) all.vars(eq[[3]]) else character(0)
-  })))
-
-
-  # 4. Combine all needed variables
-  model_vars <- unique(c(
-    all_eq_vars,
-    global_random_vars,
-    id_col,
-    link_vars, # [HIERARCHY FIX] Keep link variables for hierarchical data prep
-    if (!is.null(family)) names(family),
-    if (!is.null(variability) && !is.character(variability)) names(variability),
-    "N" # Explicitly keep N if provided
-  ))
-
-  # 5. Filter data frame early to save memory if it's a data.frame
-  if (is.data.frame(data) || (is.list(data) && !is.data.frame(data))) {
-    available_vars <- intersect(names(data), model_vars)
-    if (length(available_vars) > 0) {
-
-      # [NEW] Check for categorical_vars to preserve them and their dummies
-      cat_vars <- attr(data, "categorical_vars")
-      if (!is.null(cat_vars)) {
-        for (cv in names(cat_vars)) {
-          if (cv %in% available_vars) {
-            # Add its dummy variables to available_vars so they aren't dropped
-            available_vars <- unique(c(available_vars, cat_vars[[cv]]$dummies))
-          }
-        }
-        # Keep only the subset that actually exists in data
-        available_vars <- intersect(names(data), available_vars)
-      }
-
-      if (!quiet && length(data) > length(available_vars)) {
-        message(sprintf(
-          "Filtering data to %d relevant columns (out of %d) to optimize memory.",
-          length(available_vars),
-          length(data)
-        ))
-      }
-      # Keep only relevant columns
-      # If list, subset list. If df, subset df.
-      if (is.data.frame(data)) {
-        data <- data[, available_vars, drop = FALSE]
-      } else {
-        # [HIERARCHY FIX] If list data (hierarchical), do not subset the list by variable names.
-        # Instead, filter columns within each dataframe in the list if needed.
-        # For now, safe to keep the full list to avoid breaking level-to-level links.
-      }
-
-      # [NEW] Restore the attribute if it was present
-      if (!is.null(cat_vars)) {
-        attr(data, "categorical_vars") <- cat_vars
-      }
-    }
-  }
-
-  # Handle user-requested ordinal factors BEFORE categorical expansion
-  if (!is.null(family)) {
-    for (var in names(family)) {
-      if (family[[var]] == "ordinal") {
-        if (is.data.frame(data) && var %in% names(data)) {
-          if (!is.ordered(data[[var]])) {
-            data[[var]] <- factor(data[[var]], ordered = TRUE)
-            if (!quiet) message(sprintf("Converted '%s' to ordered factor (family = 'ordinal')", var))
-          }
-        } else if (is.list(data) && !is.data.frame(data)) {
-          for (i in seq_along(data)) {
-            if (is.data.frame(data[[i]]) && var %in% names(data[[i]])) {
-              if (!is.ordered(data[[i]][[var]])) {
-                data[[i]][[var]] <- factor(data[[i]][[var]], ordered = TRUE)
-                if (!quiet) message(sprintf("Converted '%s' to ordered factor (family = 'ordinal')", var))
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  # Save completely raw data before ANY categorical conversion happens
-  # so that string/character tip labels remain intact for later PGLS matching
-  original_raw_data_before_preprocess <- data
-
-  # --- Automatic Data Cleaning (Handle Character/Factor Columns) ---
-  data <- preprocess_categorical_vars(
-    data,
-    target_vars = model_vars,
-    dummy_vars = fixed_predictors, # Categorical fixed predictors need dummies
-    exclude_cols = id_col,
-    quiet = quiet,
-    expand_ordered = expand_ordered
+  # --- Selective Variable Collection & Categorical Preprocessing ---
+  filtered_res <- collect_and_filter_model_data(
+    data           = data,
+    equations      = equations,
+    random         = random,
+    id_col         = id_col,
+    link_vars      = link_vars,
+    family         = family,
+    variability    = variability,
+    expand_ordered = expand_ordered,
+    quiet          = quiet
   )
+  data                                <- filtered_res$data
+  original_raw_data_before_preprocess <- filtered_res$original_raw_data_before_preprocess
+  fixed_eqs_temp                      <- filtered_res$fixed_eqs_temp
+  parsed_random_temp                  <- filtered_res$parsed_random_temp
+  global_random_vars                  <- filtered_res$global_random_vars
 
   # --- Hierarchical Data Detection & Validation ---
-  # Data is hierarchical if it's a list (not dataframe)
-  is_list_data <- is.list(data) && !is.data.frame(data)
-  is_hierarchical <- FALSE
-  hierarchical_info <- NULL
-
-  if (is_list_data) {
-    # Get all variables from fixed equations for auto-detection
-    # We use fixed_eqs_temp to exclude random grouping variables from being 
-    # assigned to a specific "home" level.
-    eq_vars <- unique(unlist(lapply(fixed_eqs_temp, all.vars)))
-    
-    # Also explicitly exclude any variables used in random terms or global random arg
-    all_random_groups <- unique(c(
-      vapply(parsed_random_temp$random_terms, function(x) x$group, character(1)),
-      global_random_vars
-    ))
-    eq_vars <- setdiff(eq_vars, all_random_groups)
-
-    # Auto-detect if levels not provided
-    if (is.null(levels)) {
-      auto_result <- auto_detect_hierarchical(data, eq_vars, quiet = quiet)
-      levels <- auto_result$levels
-
-      # Use auto-detected multiscale hierarchy/link_vars if not explicitly provided
-      if (is.null(multiscale)) {
-        multiscale <- auto_result$hierarchy
-      }
-      if (is.null(link_vars)) {
-        link_vars <- auto_result$link_vars
-      }
-    }
-
-    # Now validate (with either provided or auto-detected values)
-    if (!is.null(levels) && length(levels) > 0) {
-      is_hierarchical <- TRUE
-      
-      # Handle alias
-      if (is.null(multiscale) && !is.null(hierarchy)) multiscale <- hierarchy
-
-      # [AUTO-DETECTION] Identify deterministic responses (LHS of I() equations)
-      # Must happen BEFORE validation so the validator can skip them.
-      det_responses <- character(0)
-      for (eq in equations) {
-          raw_eq <- formula(eq)
-          if (length(raw_eq) >= 3) {
-              resp <- as.character(raw_eq[[2]])
-              rhs_str <- paste(deparse(raw_eq[[3]]), collapse = " ")
-              if (grepl("^I\\(", trimws(rhs_str))) det_responses <- c(det_responses, resp)
-          }
-      }
-
-      validate_hierarchical_data(
-        data,
-        levels,
-        multiscale,
-        link_vars,
-        latent_vars = latent,
-        equations = equations,
-        deterministic_vars = det_responses
-      )
-      # Try to infer hierarchy from random effects if still not set
-      if (is.null(multiscale)) {
-        multiscale <- parse_hierarchy_from_random(random, data)
-        if (is.null(multiscale)) {
-          stop(
-            "Multiscale data detected but 'multiscale' not specified. ",
-            "Provide either:\n",
-            "  1. 'multiscale' argument (e.g., \"site_year > individual\"), or\n",
-            "  2. Nested random effects (e.g., ~(1|site/individual))"
-          )
-        }
-      }
-
-
-      # Store multiscale info for later use
-      hierarchical_info <- list(
-        data = data,
-        levels = levels,
-        hierarchy = multiscale,
-        link_vars = link_vars,
-        latent_vars = latent,
-        deterministic_vars = det_responses # [NEW] Track deterministic responses
-      )
-
-      # Internal: Inject structural metadata if provided in sub-calls (e.g. from d-sep tests)
-      if (!is.null(structure_multi)) {
-        hierarchical_info$structure_multi <- structure_multi
-      }
-      if (!is.null(structure_levels)) {
-        hierarchical_info$structure_levels <- structure_levels
-      }
-
-      if (!quiet) {
-        message("Multiscale causal structure detected: ", multiscale)
-      }
-    }
-  } else {
-    # Data is not a data.frame (likely a list of dataframes or a standard JAGS list)
-    if (!is.null(levels) && (!is.null(multiscale) || !is.null(hierarchy))) {
-      is_hierarchical <- TRUE
-      hierarchical_info <- list(
-        data = data,
-        levels = levels,
-        hierarchy = if (!is.null(multiscale)) multiscale else hierarchy,
-        link_vars = link_vars
-      )
-      
-      # Internal: Inject structural metadata if provided in sub-calls
-      if (!is.null(structure_multi)) {
-        hierarchical_info$structure_multi <- structure_multi
-      }
-      if (!is.null(structure_levels)) {
-        hierarchical_info$structure_levels <- structure_levels
-      }
-      
-    }
-  }
-
-  # Capture row_ids early for hierarchical models, while 'data' is still the
-  # raw input list of data frames (before preprocess_categorical_vars converts
-  # character species columns to integer codes and before original_data is
-  # overwritten at line ~1056).
-  row_ids <- NULL
-  if (is_hierarchical && !is.null(id_col) && is.list(data) && !is.data.frame(data)) {
-    for (.lvl in names(data)) {
-      .lvl_df <- data[[.lvl]]
-      if (is.data.frame(.lvl_df) && id_col %in% names(.lvl_df)) {
-        .col <- .lvl_df[[id_col]]
-        if (is.character(.col) || is.factor(.col)) {
-          row_ids <- as.character(.col)
-          break
-        }
-      }
-    }
-    rm(.lvl, .lvl_df, .col)
-  }
-
-  if (is_hierarchical && !is.null(structure) && is.null(hierarchical_info$structure_levels)) {
-      hierarchical_info$structure_levels <- auto_detect_structure_levels(structure, hierarchical_info, quiet = quiet)
-  }
+  hier_res <- detect_and_validate_hierarchical(
+    data               = data,
+    equations          = equations,
+    fixed_eqs_temp     = fixed_eqs_temp,
+    parsed_random_temp = parsed_random_temp,
+    global_random_vars = global_random_vars,
+    levels             = levels,
+    multiscale         = multiscale,
+    hierarchy          = hierarchy,
+    link_vars          = link_vars,
+    latent             = latent,
+    random             = random,
+    structure          = structure,
+    structure_multi    = structure_multi,
+    structure_levels   = structure_levels,
+    id_col             = id_col,
+    quiet              = quiet
+  )
+  is_hierarchical   <- hier_res$is_hierarchical
+  hierarchical_info <- hier_res$hierarchical_info
+  levels            <- hier_res$levels
+  multiscale        <- hier_res$multiscale
+  link_vars         <- hier_res$link_vars
+  row_ids           <- hier_res$row_ids
 
   # --- Random Effects Parsing ---
-  # Extract (1|Group) and update equations to be fixed-effects only
-  parsed_random <- extract_random_effects(equations)
-  equations <- parsed_random$fixed_equations
-  # Start with equation-specific random terms
-  random_terms <- parsed_random$random_terms
-
-  # Parse global random argument if provided
-  if (!is.null(random)) {
-    # --- DEPRECATION WARNING ---
-    # Build the equivalent inline syntax to guide users on how to migrate.
-    resp_vars <- vapply(
-      parsed_random$fixed_equations,
-      function(eq) as.character(eq[[2]]),
-      character(1)
-    )
-    rand_char  <- as.character(random)
-    rand_rhs   <- rand_char[length(rand_char)]
-    rand_parts <- trimws(strsplit(rand_rhs, "\\+")[[1]])
-    rand_parts <- rand_parts[grepl("\\|", rand_parts)]
-    rand_inline <- paste(rand_parts, collapse = " + ")
-    migration_lines <- vapply(
-      resp_vars,
-      function(r) paste0("  ", r, " ~ ... + ", rand_inline),
-      character(1)
-    )
-    warning(
-      "The 'random' argument is deprecated and will be removed in a future ",
-      "version. Embed random effects directly in the equation formulas instead:\n",
-      paste(migration_lines, collapse = "\n"), "\n",
-      "See vignette('08_multiscale_models') for details.",
-      call. = FALSE
-    )
-
-    global_random_terms <- parse_global_random(random, equations)
-    # Combine with equation-specific terms
-    random_terms <- c(random_terms, global_random_terms)
-
-    # Deduplicate (avoid adding the same (1|Group) twice for the same response)
-    if (length(random_terms) > 0) {
-      keys <- vapply(
-        random_terms,
-        function(x) paste(x$response, x$group, sep = "|"),
-        character(1)
-      )
-      random_terms <- random_terms[!duplicated(keys)]
-    }
-  }
-
+  rand_res     <- parse_model_random_effects(equations, random)
+  equations    <- rand_res$equations
+  random_terms <- rand_res$random_terms
 
   # --- Polynomial Term Extraction ---
-  # Extract I(var^power) terms and expand formulas
-  all_poly_terms <- get_all_polynomial_terms(equations)
-
-  if (!is.null(all_poly_terms)) {
-    # Expand formulas to replace I(x^2) with x_pow2
-    equations <- lapply(equations, function(eq) {
-      poly_terms <- extract_polynomial_terms(eq)
-      expand_polynomial_formula(eq, poly_terms)
-    })
-
-    if (!quiet) {
-      message(
-        "Detected ",
-        length(all_poly_terms),
-        " polynomial term(s): ",
-        paste(
-          vapply(all_poly_terms, function(x) x$original, character(1)),
-          collapse = ", "
-        )
-      )
-    }
-
-    # Auto-assign polynomial variables to the same level as their base variable
-    if (is_hierarchical && !is.null(levels)) {
-      for (poly in all_poly_terms) {
-        base_var <- poly$base_var
-        new_var <- poly$internal_name
-
-        # Find level of base_var
-        for (lvl_name in names(levels)) {
-          if (base_var %in% levels[[lvl_name]]) {
-            # Add the new poly var to this level
-            levels[[lvl_name]] <- c(levels[[lvl_name]], new_var)
-            break
-          }
-        }
-      }
-
-      # Update the info stored for later data retrieval
-      hierarchical_info$levels <- levels
-    }
-  }
-  # Initialize random structures (will be populated later)
-  random_structures <- list()
-  random_data_updates <- list()
+  poly_res <- process_polynomial_terms(
+    equations         = equations,
+    is_hierarchical   = is_hierarchical,
+    levels            = levels,
+    hierarchical_info = hierarchical_info,
+    quiet             = quiet
+  )
+  equations         <- poly_res$equations
+  all_poly_terms    <- poly_res$all_poly_terms
+  levels            <- poly_res$levels
+  hierarchical_info <- poly_res$hierarchical_info
 
   # Initialize result variables
-  dsep_tests <- NULL
-  dsep_results <- NULL
+  dsep_tests        <- NULL
+  dsep_results      <- NULL
   dsep_correlations <- NULL
-  induced_cors <- NULL
+  induced_cors      <- NULL
 
   # Handle global variability setting (e.g. variability = "reps")
-  # If user provides a single string, apply it to all variables in equations
-  if (
-    !is.null(variability) &&
-      is.character(variability) &&
-      length(variability) == 1 &&
-      is.null(names(variability))
-  ) {
-    global_type <- variability
-    if (global_type %in% c("se", "reps")) {
-      message(sprintf(
-        "Global variability setting detected: applying '%s' to all variables.",
-        global_type
-      ))
-
-      # Extract all variables from equations
-      all_eq_vars <- unique(unlist(lapply(equations, all.vars)))
-
-      # Exclude grouping variables from random effects
-      grouping_vars <- character(0)
-      if (!is.null(random)) {
-        if (inherits(random, "formula")) {
-          random_list <- list(random)
-        } else {
-          random_list <- random
-        }
-
-        for (r in random_list) {
-          vars_in_random <- all.vars(r)
-          grouping_vars <- c(grouping_vars, vars_in_random)
-        }
-      }
-
-      # Also exclude Id col if provided
-      if (!is.null(id_col)) {
-        grouping_vars <- c(grouping_vars, id_col)
-      }
-
-      # Variables to apply variability to
-      target_vars <- setdiff(all_eq_vars, grouping_vars)
-
-      # Create named vector
-      variability <- setNames(
-        rep(global_type, length(target_vars)),
-        target_vars
-      )
-    }
-  }
+  variability <- normalize_global_variability(variability, equations, random, id_col)
 
   # --- Data Frame Preprocessing ---
-  # If data is a data.frame, convert to list format expected by the model
   original_data <- data
 
   # --- Hierarchical Data Assembly ---
-  # If hierarchical data provided, assemble full dataset for main model run
   if (is_hierarchical) {
-    # Get all variables needed across all equations
-    eq_vars <- unique(unlist(lapply(equations, all.vars)))
-
-    # Add random effect grouping variables
-    if (length(random_terms) > 0) {
-      random_vars <- unique(vapply(
-        random_terms,
-        function(x) x$group,
-        character(1)
-      ))
-      eq_vars <- unique(c(eq_vars, random_vars))
-    }
-
-    # Ensure all link_vars are in eq_vars. They define the hierarchy and may be
-    # injected automatically as random effects during D-Separation tests.
-    if (!is.null(hierarchical_info) && !is.null(hierarchical_info$link_vars)) {
-      eq_vars <- unique(c(eq_vars, unlist(hierarchical_info$link_vars)))
-    }
-
-    # [NEW] Add categorical dummy variables to eq_vars so they aren't dropped
-    # from the final hierarchical data list sent to JAGS.
-    if (!is.null(attr(original_data, "categorical_vars"))) {
-      cat_vars <- attr(original_data, "categorical_vars")
-      for (cv in names(cat_vars)) {
-        if (cv %in% eq_vars) {
-          eq_vars <- unique(c(eq_vars, cat_vars[[cv]]$dummies))
-        }
-      }
-    }
-
-    # Remove latent variables (not in data)
-    if (!is.null(latent)) {
-      eq_vars <- setdiff(eq_vars, latent)
-    }
-
-    # Ensure base variables for polynomials are included (JAGS computes Age^2 from Age)
-    # AND derived variables are excluded (so they aren't passed as data)
-    if (!is.null(all_poly_terms)) {
-      base_poly_vars <- vapply(
-        all_poly_terms,
-        function(x) x$base_var,
-        character(1)
-      )
-      derived_poly_vars <- vapply(
-        all_poly_terms,
-        function(x) x$internal_name,
-        character(1)
-      )
-
-      eq_vars <- unique(c(eq_vars, base_poly_vars))
-      eq_vars <- setdiff(eq_vars, derived_poly_vars)
-    }
-
-    # Identify predictor variables (RHS) to generate dummies only for them
-    rhs_vars <- unique(unlist(lapply(equations, function(eq) {
-      if (length(eq) == 3) {
-        all.vars(eq[[3]])
-      } else {
-        character(0)
-      }
-    })))
-
-    # Save raw data with string/character values intact for d-sep PGLS tip matching
-    original_raw_data <- original_raw_data_before_preprocess
-
-    # Preprocess categorical variables in hierarchical data
-    if (!is.null(hierarchical_info)) {
-      hierarchical_info$data <- preprocess_categorical_vars(
-        hierarchical_info$data,
-        dummy_vars = rhs_vars,
-        quiet = quiet
-      )
-
-      # Update 'data' variable if it's a list, so subsequent logic sees the attributes
-      if (is.list(data) && !is.data.frame(data)) {
-        data <- hierarchical_info$data
-      }
-    }
-
-    # Include dummy variables in eq_vars so they are extracted by prepare_hierarchical_jags_data
-    if (!is.null(attr(data, "categorical_vars"))) {
-      cat_vars <- attr(data, "categorical_vars")
-      # Extract RHS variables to identify which categorical vars are used as predictors
-      rhs_vars <- unique(unlist(lapply(equations, function(eq) {
-        if (length(eq) == 3) {
-          all.vars(eq[[3]])
-        } else {
-          character(0)
-        }
-      })))
-
-      for (cv_name in names(cat_vars)) {
-        if (cv_name %in% rhs_vars) {
-          # Add dummies to eq_vars
-          eq_vars <- c(eq_vars, cat_vars[[cv_name]]$dummies)
-        }
-      }
-      eq_vars <- unique(eq_vars)
-    }
-
-    # NEW PATH: Fully Hierarchical (Separate Loops)
-    # Do NOT flatten. Prepare separate vectors and indices.
-
-    prep_res <- prepare_hierarchical_jags_data(hierarchical_info, eq_vars)
-    data <- prep_res$data_list
-
-    # Restore categorical_vars attribute lost during list conversion
-    if (exists("cat_vars") && !is.null(cat_vars)) {
-      attr(data, "categorical_vars") <- cat_vars
-    }
-
-    # Add sample sizes to data list
-    data <- c(data, prep_res$n_vec)
-
-    if (!quiet) {
-      message(
-        paste0("Prepared hierarchical data for ", toupper(engine), ": "),
-        paste(
-          names(prep_res$n_vec),
-          unlist(prep_res$n_vec),
-          sep = "=",
-          collapse = ", "
-        )
-      )
-    }
-
-    # original_data remains the raw un-indexed dataframes so tip labels match
-    original_data <- original_raw_data
+    assem_res <- assemble_hierarchical_dataset(
+      data                                = data,
+      hierarchical_info                   = hierarchical_info,
+      equations                           = equations,
+      random_terms                        = random_terms,
+      latent                              = latent,
+      all_poly_terms                      = all_poly_terms,
+      original_raw_data_before_preprocess = original_raw_data_before_preprocess,
+      engine                              = engine,
+      quiet                               = quiet
+    )
+    data              <- assem_res$data
+    hierarchical_info <- assem_res$hierarchical_info
+    original_data     <- assem_res$original_data
   }
 
   # --- Data Validation ---
-  # Check that binomial response variables are 0/1 to avoid "Node inconsistent with parents" error
-  if (!is.null(family)) {
-    # If family is a single string but multiple equations, replicate it?
-    # 'because' usually handles parsing family vector inside because_model, but we check here.
-    # Assuming family corresponds to equations order or is named.
-
-    # Simple check: scan equations and find their family
-    # Note: 'family' argument handling in 'because' can be complex (vector vs single).
-    # We'll use a simplified check using the names if possible, or position.
-
-    responses <- vapply(
-      equations,
-      function(eq) as.character(formula(eq)[2]),
-      character(1)
-    )
-
-    for (i in seq_along(responses)) {
-      resp <- responses[i]
-      fam <- NULL
-
-      if (!is.null(names(family))) {
-        if (resp %in% names(family)) {
-          fam <- family[[resp]]
-        }
-      } else {
-        if (length(family) == 1) {
-          fam <- family
-        } else if (length(family) == length(responses)) {
-          # Ensure using double bracket if list, or single if vector
-          if (is.list(family)) fam <- family[[i]] else fam <- family[i]
-        }
-      }
-
-      if (!is.null(fam) && fam == "binomial" && resp %in% names(data)) {
-        vals <- data[[resp]]
-        if (any(!vals %in% c(0, 1, NA))) {
-          unique_vals <- unique(vals[!is.na(vals)])
-          stop(sprintf(
-            "Binomial response variable '%s' contains invalid values: {%s}. Binomial variables must be strictly 0 or 1.",
-            resp,
-            paste(head(unique_vals, 5), collapse = ", ")
-          ))
-        }
-      }
-    }
-  }
+  validate_binomial_responses(data, equations, family)
 
   # --- Random Effects Data Prep ---
   re_res <- prepare_random_effects_data(
@@ -1012,627 +417,32 @@ because <- function(
   if (!is.null(struct_res$hierarchical_info)) hierarchical_info <- struct_res$hierarchical_info
   N                 <- struct_res$N
 
-  # --- [NEW] Map Link Variables (IDs) to Counts ---
-  # Ensures JAGS finds loop bounds for grouping variables not listed in 'levels'
-  if (!is.null(hierarchical_info$link_vars) && !is.null(hierarchical_info$data)) {
-    for (lk_var in hierarchical_info$link_vars) {
-      # Find which level (dataframe) contains this link variable
-      # If multiple, find the one with the fewest rows (the level where it's defined)
-      potential_lvls <- character(0)
-      for (l_nm in names(hierarchical_info$data)) {
-         if (lk_var %in% colnames(hierarchical_info$data[[l_nm]])) {
-            potential_lvls <- c(potential_lvls, l_nm)
-         }
-      }
-      
-      if (length(potential_lvls) > 0) {
-        # Pick the level with minimum rows
-        r_counts <- vapply(potential_lvls, function(l) nrow(hierarchical_info$data[[l]]), numeric(1))
-        best_lvl <- potential_lvls[which.min(r_counts)]
-        best_n <- r_counts[best_lvl]
-        
-        # Generate names (Raw, Title, Upper)
-        v_title <- paste0(toupper(substring(lk_var, 1, 1)), substring(lk_var, 2))
-        pot_names <- unique(c(lk_var, v_title, toupper(lk_var)))
-        
-        for (p_nm in pot_names) {
-            nn_name <- paste0("N_", p_nm)
-            if (is.null(data[[nn_name]])) {
-              data[[nn_name]] <- best_n
-            }
-        }
-      }
-    }
-  }
+  # --- Missing Data, Variability, and Latent Processing ---
+  mv_res <- process_missing_and_variability(
+    data                  = data,
+    hierarchical_info     = hierarchical_info,
+    N                     = N,
+    structures            = structures,
+    family                = family,
+    family_obj            = family_obj,
+    equations             = equations,
+    fix_residual_variance = fix_residual_variance,
+    variability           = variability,
+    latent                = latent,
+    all_poly_terms        = all_poly_terms,
+    quiet                 = quiet,
+    dsep                  = dsep,
+    latent_method         = latent_method
+  )
+  data                  <- mv_res$data
+  family                <- mv_res$family
+  fix_residual_variance <- mv_res$fix_residual_variance
+  equations             <- mv_res$equations
+  variability           <- mv_res$variability
+  variability_list      <- mv_res$variability_list
+  latent                <- mv_res$latent
+  response_vars_with_na <- mv_res$response_vars_with_na
 
-  # Only add 'zeros' vector if using ZIP or ZINB (Poisson trick)
-  # Only add 'zeros' vector if using ZIP or ZINB (Poisson trick)
-  # OR if we have structures (which often use dmnorm(zeros, ...))
-  if (!is.null(N)) {
-    # Check if 'zeros' already exists (use exact name match)
-    has_zeros <- "zeros" %in% names(data)
-    if (!has_zeros) {
-      needs_zeros <- length(structures) > 0 ||
-        any(vapply(
-          names(family),
-          function(v) {
-            # Dispatch on the specific family object for this variable
-            fam_name <- family[[v]]
-            fam_obj_v <- get_family(fam_name)
-            needs_zero_inflation_hook(fam_obj_v, v)
-          },
-          logical(1)
-        ))
-
-      if (needs_zeros) {
-        data[["zeros"]] <- rep(0, N)
-      }
-    }
-  }
-
-  # ID is currently unused in model templates, removing to avoid JAGS warnings
-  # ID2 is used for pairwise induced correlations (Wishart priors)
-  data$ID2 <- diag(2)
-
-  # Handle multinomial and ordinal data
-  if (!is.null(family)) {
-    # If family is provided but unnamed, try to auto-assign if there is only one response
-    if (is.null(names(family))) {
-      response_vars <- unique(vapply(
-        equations,
-        function(eq) as.character(all.vars(eq[[2]])[1]),
-        character(1)
-      ))
-      if (length(family) == 1 && length(response_vars) == 1) {
-        names(family) <- response_vars
-        message(sprintf(
-          "Auto-assigned family '%s' to response variable '%s'",
-          family,
-          response_vars
-        ))
-      } else if (length(family) == length(response_vars)) {
-        # Riskier, but if lengths match, assume order
-        # Better to warn and ask for names.
-        warning(
-          "Argument 'family' is unnamed. Please provide a named vector like c(Response = 'binomial'). Assuming defaults (Gaussian) for safety."
-        )
-      } else {
-        warning(
-          "Argument 'family' is unnamed and length does not match response variables. Ignoring."
-        )
-      }
-    }
-
-    # Auto-fix residual variance for non-Gaussian distributions if not specified
-    for (var in names(family)) {
-      dist <- family[[var]]
-      if (dist %in% c("binomial", "multinomial", "ordinal")) {
-        should_fix <- FALSE
-        if (is.null(fix_residual_variance)) {
-          should_fix <- TRUE
-          fix_residual_variance <- c()
-        } else if (
-          is.numeric(fix_residual_variance) &&
-            length(fix_residual_variance) == 1 &&
-            is.null(names(fix_residual_variance))
-        ) {
-          # It's a global fix (e.g. fix=1), so it applies to this var too. No action needed.
-          should_fix <- FALSE
-        } else if (!var %in% names(fix_residual_variance)) {
-          should_fix <- TRUE
-        }
-
-        if (should_fix) {
-          # Append to fixed variance vector
-          new_fix <- setNames(1, var)
-          fix_residual_variance <- c(fix_residual_variance, new_fix)
-
-          if (!quiet) {
-            message(sprintf(
-              "Note: Fixing residual variance of '%s' (%s) to 1 for identifiability.",
-              var,
-              dist
-            ))
-          }
-        }
-      }
-    }
-
-    # Identify categorical variables and their K levels
-    cat_vars_metadata <- attr(data, "categorical_vars")
-
-    for (var in names(family)) {
-      if (family[[var]] %in% c("multinomial", "ordinal")) {
-        if (!var %in% names(data)) {
-          stop(paste(
-            family[[var]],
-            "variable",
-            var,
-            "not found in data."
-          ))
-        }
-
-        # Determine K (number of levels)
-        # PRIORITIZE existing categorical metadata if available
-        if (!is.null(cat_vars_metadata) && var %in% names(cat_vars_metadata)) {
-          K <- length(cat_vars_metadata[[var]]$levels)
-          val <- data[[var]]
-          if (is.factor(val)) {
-             data[[var]] <- as.integer(val)
-          } else if (is.character(val)) {
-             data[[var]] <- as.integer(factor(val, levels = cat_vars_metadata[[var]]$levels))
-          }
-        } else {
-          # Fallback: Detect from current data vector
-          val <- data[[var]]
-          if (is.factor(val)) {
-            K <- nlevels(val)
-            data[[var]] <- as.integer(val)
-          } else {
-            # Assume it's already integer or character
-            val <- as.factor(val)
-            K <- nlevels(val)
-            data[[var]] <- as.integer(val)
-          }
-        }
-
-        if (family[[var]] == "multinomial" && K < 3) {
-          warning(paste(
-            "Multinomial variable",
-            var,
-            "has fewer than 3 levels. Consider using binomial."
-          ))
-        }
-
-        if (family[[var]] == "ordinal" && K < 3) {
-          warning(paste(
-            "Ordinal variable",
-            var,
-            "has fewer than 3 levels. Consider using binomial."
-          ))
-        }
-
-        # Pass K to JAGS (auto-detected from data)
-        K_name <- paste0("K_", var)
-        if (!K_name %in% names(data)) {
-          data[[K_name]] <- K
-          if (!quiet) {
-            message(sprintf(
-              "Auto-detected K_%s = %d from %s variable '%s'",
-              var,
-              K,
-              family[[var]],
-              var
-            ))
-          }
-        }
-      }
-    }
-  }
-
-  if (!is.null(family)) {
-    for (var_name in names(family)) {
-      dist_type <- family[[var_name]]
-      if (dist_type %in% c("zip", "zinb")) {
-        zeros_name <- paste0("zeros_", var_name)
-        if (is.null(data[[zeros_name]])) {
-          data[[zeros_name]] <- rep(0, N)
-        }
-      }
-    }
-  }
-
-  # Check for missing data
-  all_vars <- unique(unlist(lapply(equations, function(eq) {
-    c(all.vars(eq[[3]]), all.vars(eq[[2]]))
-  })))
-
-  # [FIX] Ensure parent categorical variables are included in all_vars
-  # so their missing values (NAs) are detected and handled even if they
-  # were expanded into dummy variables in the formulas.
-  cat_metadata <- attr(data, "categorical_vars")
-  if (!is.null(cat_metadata)) {
-    for (parent in names(cat_metadata)) {
-      dummies <- cat_metadata[[parent]]$dummies
-      if (any(dummies %in% all_vars)) {
-        all_vars <- unique(c(all_vars, parent))
-      }
-    }
-  }
-
-  response_vars <- unique(vapply(
-    equations,
-    function(eq) as.character(all.vars(eq[[2]])[1]),
-    character(1)
-  ))
-  predictor_only_vars <- setdiff(all_vars, response_vars)
-
-  # Detect variables with missing data
-  response_vars_with_na <- character(0)
-  predictor_vars_with_na <- character(0)
-
-  for (var in all_vars) {
-    # [MULTISCALE FIX] Check inside list of datasets if data is multiscale
-    var_data <- if (var %in% names(data)) {
-      data[[var]]
-    } else if (is.list(data) && !is.data.frame(data)) {
-      # Search through levels to find the variable
-      found_val <- NULL
-      for (lvl_name in names(data)) {
-        if (is.data.frame(data[[lvl_name]]) && var %in% colnames(data[[lvl_name]])) {
-          found_val <- data[[lvl_name]][[var]]
-          break
-        }
-      }
-      found_val
-    } else {
-      NULL
-    }
-
-    if (!is.null(var_data)) {
-      if (
-        !is.matrix(var_data) && any(is.na(var_data)) && !all(is.na(var_data))
-      ) {
-        if (var %in% response_vars) {
-          response_vars_with_na <- c(response_vars_with_na, var)
-        } else {
-          predictor_vars_with_na <- c(predictor_vars_with_na, var)
-        }
-      }
-    }
-  }
-
-  # Handle predictor-only variables with missing data
-  if (length(predictor_vars_with_na) > 0) {
-    if (!quiet) {
-      message(
-        "Note: Detected missing data in predictor-only variables: ",
-        paste(predictor_vars_with_na, collapse = ", "),
-        "\nAutomatically adding intercept-only equations (e.g., ",
-        predictor_vars_with_na[1],
-        " ~ 1) to enable imputation."
-      )
-    }
-
-    # Add intercept-only equations
-    for (var in predictor_vars_with_na) {
-      new_eq <- stats::as.formula(paste(var, "~ 1"))
-      equations <- c(equations, list(new_eq))
-    }
-
-    # Treat them as responses now
-    response_vars_with_na <- c(response_vars_with_na, predictor_vars_with_na)
-  }
-
-  # For variables with missing data, we'll use the GLMM (Latent Variable) approach
-
-  # Auto-detect variability from data column names (user-friendly)
-  # Look for patterns: X_se, X_obs or matrix columns
-  auto_variability <- list()
-
-  for (var in all_vars) {
-    # Skip if already in manual variability specification
-    if (!is.null(variability) && var %in% c(names(variability), variability)) {
-      next
-    }
-
-    # Extension Hook: Variability priority handling
-    if (!is.null(family_obj)) {
-      v_type <- get_variability_type_hook(family_obj, var)
-      if (!is.null(v_type)) {
-        auto_variability[[var]] <- v_type
-        if (!quiet) {
-          message(sprintf(
-            "Extension-detected: '%s' is a specialized family -> using '%s' mode.",
-            var,
-            v_type
-          ))
-        }
-        next
-      }
-    }
-
-    # Check for SE pattern (X_se)
-    se_name <- paste0(var, "_se")
-    sd_name <- paste0(var, "_sd")
-
-    if (se_name %in% names(data)) {
-      auto_variability[[var]] <- "se"
-      if (!quiet) {
-        message(sprintf(
-          "Auto-detected: '%s' has standard errors in '%s'",
-          var,
-          se_name
-        ))
-      }
-
-      # Check for repeated measures pattern (X_obs or matrix)
-      obs_name <- paste0(var, "_obs")
-      if (var %in% names(data) && is.matrix(data[[var]])) {
-        auto_variability[[var]] <- "reps"
-        if (!quiet) {
-          message(sprintf(
-            "Auto-detected: '%s' has repeated measures (matrix format)",
-            var
-          ))
-        }
-      } else if (obs_name %in% names(data)) {
-        auto_variability[[var]] <- "reps"
-        if (!quiet) {
-          message(sprintf(
-            "Auto-detected: '%s' has repeated measures in '%s'",
-            var,
-            obs_name
-          ))
-        }
-      }
-    }
-  }
-
-  # Merge auto-detected with manual specification (manual takes precedence)
-  if (length(auto_variability) > 0) {
-    if (is.null(variability)) {
-      variability <- auto_variability
-    } else {
-      # Convert variability to named list if needed
-      if (is.null(names(variability))) {
-        # This case (unnamed vector but length > 1) is ambiguous or unsupported by global logic
-        # We'll treat as "names missing" warning or error?
-        # For backward compatibility / safety, just set names to values?
-        # Actually, existing code: variability <- setNames(rep(NA, ...)) seems wrong if we passed values like c("reps", "se")
-        # But previous logic (line 958 in original) did: variability <- setNames(rep(NA, length(variability)), variability)
-        # This implied variability was a vector of NAMES.
-        # But wait, the doc says variability is "c(Var = 'type')".
-        # If unnamed, `variability` contains TYPES? Or NAMES?
-        # Original Doc line 11 (approx): "If unnamed, it defaults to 'se' for all specified variables."
-        # Meaning: variability = c("Var1", "Var2") -> Var1="se", Var2="se".
-        # My new global logic handles length==1 separately.
-        # If length > 1 and unnamed, we assume standard behavior (list of vars, default type "se")
-        variability <- setNames(rep("se", length(variability)), variability)
-      }
-
-      # Merge: manual overrides auto
-      for (var in names(auto_variability)) {
-        if (!var %in% names(variability)) {
-          variability[[var]] <- auto_variability[[var]]
-        }
-      }
-    }
-  }
-  # Handle variability data
-  variability_list <- list()
-  if (!is.null(variability)) {
-    for (var_name in names(variability)) {
-      var_spec <- variability[[var_name]]
-
-      # Parse specification: can be "se"/"reps" or list(type="se", se_col="X_SD")
-      if (is.list(var_spec)) {
-        # Extended format with custom column names
-        type <- var_spec$type
-        custom_se_col <- var_spec$se_col
-        custom_obs_col <- var_spec$obs_col
-        custom_mean_col <- var_spec$mean_col
-      } else {
-        # Simple format: just the type
-        type <- as.character(var_spec)
-        custom_se_col <- NULL
-        custom_obs_col <- NULL
-        custom_mean_col <- NULL
-      }
-
-      # Validate type
-      if (!type %in% c("se", "reps")) {
-        stop(paste(
-          "Invalid variability type for",
-          var_name,
-          "- must be 'se' or 'reps', got:",
-          type
-        ))
-      }
-
-      variability_list[[var_name]] <- type
-
-      if (type == "se") {
-        # Determine SE column name (custom or standard)
-        se_col <- custom_se_col %||% paste0(var_name, "_se")
-        mean_col <- custom_mean_col %||% paste0(var_name, "_mean")
-
-        # Check if SE column exists
-        if (!se_col %in% names(data)) {
-          stop(paste(
-            "Variable",
-            var_name,
-            "specified as 'se' type but column",
-            se_col,
-            "not found in data."
-          ))
-        }
-
-        # Handle mean column
-        if (!mean_col %in% names(data)) {
-          if (var_name %in% names(data)) {
-            # Rename var to var_mean
-            data[[mean_col]] <- data[[var_name]]
-            data[[var_name]] <- NULL
-          } else {
-            stop(paste(
-              "Variable",
-              var_name,
-              "specified as 'se' type but neither",
-              var_name,
-              "nor",
-              mean_col,
-              "found in data."
-            ))
-          }
-        } else {
-          # If both exist, ensure var is removed (it's a latent parameter now)
-          if (var_name %in% names(data)) data[[var_name]] <- NULL
-        }
-
-        # Rename custom column to standard name if needed
-        if (se_col != paste0(var_name, "_se")) {
-          data[[paste0(var_name, "_se")]] <- data[[se_col]]
-        }
-      } else if (type == "reps") {
-        # Determine obs column name (custom or standard)
-        obs_col <- custom_obs_col %||% paste0(var_name, "_obs")
-        nrep_name <- paste0("N_reps_", var_name)
-
-        # Check if obs column exists
-        if (!obs_col %in% names(data)) {
-          # Also allow data.frame (as user detection histories often come as DF)
-          # Case 1: Matrix or Data Frame (Single Species or explicit multi-dimensional)
-          if (
-            var_name %in%
-              names(data) &&
-              (is.matrix(data[[var_name]]) || is.data.frame(data[[var_name]]))
-          ) {
-            data[[obs_col]] <- as.matrix(data[[var_name]])
-            data[[var_name]] <- NULL
-          } else if (
-            var_name %in%
-              names(data) &&
-              is.list(data[[var_name]]) &&
-              !is.data.frame(data[[var_name]])
-          ) {
-            # Case 2: List of Matrices (Multispecies Bundle)
-            # Verify elements are matrices/dfs
-            elem_valid <- all(sapply(data[[var_name]], function(x) {
-              is.matrix(x) || is.data.frame(x)
-            }))
-            if (!elem_valid) {
-              stop(
-                "Elements of '",
-                var_name,
-                "' list must be matrices or data frames."
-              )
-            }
-
-            # Convert to 3D Array [Sites, Reps, Species]
-            # Assumption: All matrices have same dimensions
-            tryCatch(
-              {
-                # Convert all to matrices first
-                mat_list <- lapply(data[[var_name]], as.matrix)
-                arr_3d <- simplify2array(mat_list)
-                data[[obs_col]] <- arr_3d
-                data[[var_name]] <- NULL
-
-                if (!quiet) {
-                  message(
-                    "Converted list of matrices '",
-                    var_name,
-                    "' to 3D array (",
-                    paste(dim(arr_3d), collapse = "x"),
-                    ")."
-                  )
-                }
-              },
-              error = function(e) {
-                stop(
-                  "Failed to convert list '",
-                  var_name,
-                  "' to 3D array. Ensure all matrices have identical dimensions. Error: ",
-                  e$message
-                )
-              }
-            )
-          } else {
-            stop(paste(
-              "Variable",
-              var_name,
-              "specified as 'reps' type but column",
-              obs_col,
-              "(as matrix) not found in data."
-            ))
-          }
-        }
-
-        # Rename custom column to standard name if needed
-        if (obs_col != paste0(var_name, "_obs")) {
-          data[[paste0(var_name, "_obs")]] <- data[[obs_col]]
-        }
-
-        # Calculate N_reps if not provided
-        if (!nrep_name %in% names(data)) {
-          mat <- data[[paste0(var_name, "_obs")]]
-          # Count non-NA values per row
-          n_reps <- apply(mat, 1, function(x) sum(!is.na(x)))
-          data[[nrep_name]] <- n_reps
-
-          # Compact matrix (move non-NAs to left) to ensure 1:N_reps indexing works
-          compact_mat <- matrix(NA, nrow = nrow(mat), ncol = ncol(mat))
-          for (i in seq_len(nrow(mat))) {
-            vals <- mat[i, !is.na(mat[i, ])]
-            if (length(vals) > 0) {
-              compact_mat[i, seq_along(vals)] <- vals
-            }
-          }
-          data[[paste0(var_name, "_obs")]] <- compact_mat
-        }
-      }
-
-      # Ensure var is removed (latent)
-      if (var_name %in% names(data)) data[[var_name]] <- NULL
-    }
-  }
-
-    # Auto-detect latent variables: variables in equations but not in data
-    if (is.null(latent)) {
-      vars_in_equations <- unique(unlist(lapply(equations, all.vars)))
-      vars_in_data <- names(data)
-
-      # Find variables that appear in equations but not in data
-      potential_latents <- setdiff(vars_in_equations, vars_in_data)
-
-      # Extension Hook: Remove specialized variables from potential latents
-      potential_latents <- dsep_potential_latent_hook(
-        family_obj,
-        potential_latents
-      )
-
-      # Exclude polynomial internal variables (they're deterministic, not latent)
-      if (!is.null(all_poly_terms)) {
-        poly_internal_names <- sapply(all_poly_terms, function(x) {
-          x$internal_name
-        })
-        potential_latents <- setdiff(potential_latents, poly_internal_names)
-      }
-
-      # Exclude categorical parent variables (they are replaced by dummies but are still in the model equations)
-      cat_metadata <- attr(data, "categorical_vars")
-      if (!is.null(cat_metadata)) {
-        potential_latents <- setdiff(potential_latents, names(cat_metadata))
-      }
-
-      if (length(potential_latents) > 0) {
-        # Auto-detect latent variables
-        latent <- potential_latents
-
-        if (!quiet) {
-          msg <- paste0(
-            "Auto-detected latent variable(s): ",
-            paste(latent, collapse = ", "),
-            "\n(Variables in equations but not in data will be treated as latent.)"
-          )
-          if (dsep) {
-            msg <- paste0(msg, "\nGenerating m-separation tests for MAG...")
-          }
-          message(msg)
-        }
-      }
-    }
-
-    if (!quiet && dsep) {
-      if (!is.null(latent)) {
-        message(
-          "Generating m-separation tests (MAG with latent variables)..."
-        )
-      } else {
-        message("Generating d-separation tests...")
-      }
-    }
 
   # --- D-Separation Tests ---
   dsep_res <- run_because_dsep(
@@ -1813,233 +623,30 @@ because <- function(
     message("Generated JAGS model:\n", model_string)
   }
 
-  # --- Monitor Parameters ---
-  # Handle monitor mode
-  monitor_mode <- NULL
-  custom_monitors <- character(0)
+  # --- Monitor and Inits Preparation ---
+  response_vars <- unique(vapply(
+    equations,
+    function(eq) as.character(all.vars(eq[[2]])[1]),
+    character(1)
+  ))
+  mon_inits <- prepare_monitors_and_inits(
+    model_string        = model_string,
+    monitor             = monitor,
+    response_vars       = response_vars,
+    mag_exogenous_vars  = if (exists("mag_exogenous_vars")) mag_exogenous_vars else character(0),
+    family_obj          = family_obj,
+    equations           = equations,
+    engine              = engine,
+    data                = data,
+    variability         = variability,
+    variability_list    = variability_list,
+    WAIC                = WAIC,
+    quiet               = quiet
+  )
+  monitor         <- mon_inits$monitor
+  data            <- mon_inits$data
+  extension_inits <- mon_inits$extension_inits
 
-  if (!is.null(monitor)) {
-    if (is.character(monitor)) {
-      if ("interpretable" %in% monitor) {
-        monitor_mode <- "interpretable"
-        custom_monitors <- setdiff(monitor, "interpretable")
-      } else if ("all" %in% monitor) {
-        monitor_mode <- "all"
-        custom_monitors <- setdiff(monitor, "all")
-      } else if (identical(monitor, "")) {
-        monitor_mode <- "interpretable"
-      } else {
-        # Entirely custom vector
-        custom_monitors <- monitor
-      }
-    }
-  } else {
-    monitor_mode <- "interpretable"
-  }
-
-  if (
-    is.null(monitor) ||
-      (!is.null(monitor_mode) && monitor_mode %in% c("interpretable", "all"))
-  ) {
-    lines <- unlist(strsplit(model_string, "\n"))
-
-    extract_names <- function(pattern) {
-      out <- grep(pattern, lines, value = TRUE)
-      out <- grep("(<-|~)", out, value = TRUE)
-      matches <- regmatches(
-        out,
-        regexec(
-          "(?:logit|log|cloglog|probit)?\\(?\\s*([a-zA-Z0-9_.]+)(?:\\[.*\\])?\\)?\\s*(?:<-|~)",
-          out
-        )
-      )
-
-      res <- sapply(matches, function(m) {
-        if (length(m) >= 2) m[2] else NA
-      })
-
-      found_params <- as.character(na.omit(res))
-      return(found_params)
-    }
-
-    # Extract all parameters
-    all_params <- unique(c(
-      extract_names("^\\s*beta"),
-      extract_names("^\\s*alpha"),
-      extract_names("^\\s*lambda"),
-      extract_names("^\\s*tau"),
-      extract_names("^\\s*rho"),
-      extract_names("^\\s*sigma"),
-      extract_names("^\\s*z_"),
-      extract_names("(^|\\W)p_"),
-      extract_names("(^|\\W)psi"),
-      extract_names("^\\s*r_"),
-      extract_names("^\\s*cutpoint")
-    ))
-
-    # Ensure mag_exogenous_vars is defined (defaults to empty)
-    if (!exists("mag_exogenous_vars")) {
-      mag_exogenous_vars <- character(0)
-    }
-
-    # Remove tau_obs_* (deterministic constants, not stochastic parameters)
-    # Remove tau_obs_* (deterministic constants, not stochastic parameters)
-    all_params <- all_params[!grepl("^tau_obs", all_params)]
-
-    if (!is.null(monitor_mode) && monitor_mode == "interpretable") {
-      # Filter to interpretable parameters only
-      monitor <- all_params[
-        (grepl("^alpha", all_params) &
-          gsub("^alpha_?", "", all_params) %in% response_vars &
-          !gsub("^alpha_?", "", all_params) %in% mag_exogenous_vars) | # Response intercepts, excluding MAG exogenous
-          grepl("^beta", all_params) | # All regression coefficients
-          grepl("^rho", all_params) | # Induced correlations
-          grepl("^sigma", all_params) | # Variance components
-          grepl("^psi", all_params) | # Zero-inflation or occupancy probability
-          grepl("^p_", all_params) | # Detection probability
-          grepl("^z_", all_params) | # Latent state
-          grepl("^r_", all_params) | # Negative Binomial size
-          grepl("^cutpoint", all_params) | # Ordinal cutpoints
-          grepl("^K_", all_params) | # BMA selection indices
-          (grepl("^lambda", all_params) &
-            gsub("^lambda_?", "", all_params) %in% response_vars &
-            !gsub("^lambda_?", "", all_params) %in% mag_exogenous_vars) # Response lambdas, excluding MAG exogenous
-      ]
-    } else {
-      # monitor_mode == "all" or NULL: include everything
-      monitor <- all_params
-
-      # Also include response variables (for imputation inspection)
-      # Also include response variables (for imputation inspection)
-      # We extract them directly from the equations (which include auto-added intercept models)
-      response_vars_all <- unique(sapply(equations, function(eq) {
-        all.vars(formula(eq)[[2]])
-      }))
-
-      # Only add them if they are in the model (obviously)
-      if (length(response_vars_all) > 0) {
-        # Extension Hook: Map response variables to parameters (e.g. z_Y for occupancy)
-        adj_response_vars <- unlist(lapply(response_vars_all, function(v) {
-          get_monitor_vars_hook(family_obj, v)
-        }))
-        monitor <- unique(c(monitor, adj_response_vars))
-      }
-    }
-  }
-
-  # Add custom monitors provided by the user
-  if (length(custom_monitors) > 0) {
-    if (!is.null(monitor)) {
-      monitor <- unique(c(monitor, custom_monitors))
-    } else {
-      monitor <- custom_monitors
-    }
-  }
-
-  # Guarantee monitor is not an empty character vector
-  if (is.null(monitor) || length(monitor) == 0) {
-    if (exists("all_params") && length(all_params) > 0) {
-      monitor <- all_params
-    }
-    if (is.null(monitor) || length(monitor) == 0) {
-      if (exists("lines") && length(lines) > 0) {
-        assign_lines <- grep("(<-|~)", lines, value = TRUE)
-        matches <- regmatches(
-          assign_lines,
-          regexec("^\\s*([a-zA-Z0-9_.]+)", assign_lines)
-        )
-        found <- sapply(matches, function(m) if (length(m) >= 2) m[2] else NA)
-        monitor <- unique(as.character(na.omit(found)))
-      }
-    }
-  }
-
-  # --- NIMBLE pre-processing ---
-  # Ensure all variables used as precision/covariance matrices are numeric matrices
-  if (engine == "nimble" && is.list(data)) {
-    prec_vars <- names(data)[grepl("^Prec_", names(data))]
-    for (pv in prec_vars) {
-      if (!is.matrix(data[[pv]])) {
-        data[[pv]] <- as.matrix(data[[pv]])
-      }
-      # [STABILITY] Add small diagonal jitter (nugget) to ensure positive definiteness
-      # and prevent numerical singularities during C++ compilation.
-      # Ref: Rasmussen & Williams (2006), Gaussian Processes for Machine Learning.
-      diag(data[[pv]]) <- diag(data[[pv]]) + 1e-6
-    }
-  }
-
-  # Add pointwise log-likelihood monitoring if WAIC requested
-  # (Future: LOO will also use this)
-  if (WAIC) {
-    # Extract log_lik parameters from model
-    log_lik_params <- unique(c(
-      extract_names("^\\s*log_lik")
-    ))
-
-    if (length(log_lik_params) > 0) {
-      monitor <- unique(c(monitor, log_lik_params))
-      if (!quiet) {
-        message(
-          "Monitoring ",
-          length(log_lik_params),
-          " pointwise log-likelihood parameter(s) for WAIC"
-        )
-      }
-    }
-  }
-
-  # Add response variables
-  # Use perl=TRUE for robust regex matching of variable names
-  matches <- regmatches(
-    model_string,
-    gregexpr(
-      "\\b([a-zA-Z0-9_.]+)\\s*\\[1:N\\]\\s*~",
-      model_string,
-      perl = TRUE
-    )
-  )[[1]]
-
-  response_vars <- unique(gsub("\\s*\\[1:N\\]\\s*~", "", matches))
-  for (v in response_vars) {
-    # Skip if variable is in variability list (it's latent, not data)
-    if (!is.null(variability) && v %in% names(variability_list)) {
-      next
-    }
-
-    if (!v %in% names(data)) {
-      base <- sub("[0-9]+$", "", v)
-      if (base %in% names(data)) data[[v]] <- data[[base]]
-    }
-  }
-
-  # Extension Hook: Custom inits (e.g. occupancy latent states)
-  extension_inits <- get_inits_hook(family_obj, data)
-
-  # Clean up data list: Remove variables not present in the model code to avoid warnings
-  model_code_str <- model_output$model
-  vars_to_remove <- character(0)
-
-  # Always keep these structural/special variables
-  keep_vars <- c("zeros")
-
-  for (v in names(data)) {
-    if (v %in% keep_vars) {
-      next
-    }
-
-    # Check if variable appears in the model code as a token
-    # Use perl=TRUE for word boundaries
-    if (!grepl(paste0("\\b", v, "\\b"), model_code_str, perl = TRUE)) {
-      vars_to_remove <- c(vars_to_remove, v)
-    }
-  }
-
-  if (length(vars_to_remove) > 0) {
-    for (v in vars_to_remove) {
-      data[[v]] <- NULL
-    }
-  }
 
   # Store MCMC compilation and run results
   samples <- NULL
@@ -2099,304 +706,51 @@ because <- function(
     WAIC    <- jags_res$WAIC
   }
 
-  # Summarize posterior
-  if (!is.null(samples)) {
-    sum_stats <- summary(samples)
-  } else {
-    sum_stats <- NULL
-  }
-
-  # Explicitly calculate R-hat if multiple chains
-  if (!is.null(samples) && n.chains > 1) {
-    tryCatch(
-      {
-        # Manual R-hat calculation to avoid coda::gelman.diag issues
-        # with parallel chains and R scoping problems
-        n_chains <- length(samples)
-
-        # Use base R colnames to get parameter names
-        first_chain <- as.matrix(samples[[1]])
-        pnames <- colnames(first_chain)
-        n_params <- length(pnames)
-
-        psrf <- matrix(NA, nrow = n_params, ncol = 2)
-        rownames(psrf) <- pnames
-        colnames(psrf) <- c("Point est.", "Upper C.I.")
-
-        # Convert chains to matrices ONCE outside the loop
-        chain_matrices <- lapply(samples, as.matrix)
-
-        for (idx in seq_len(n_params)) {
-          # Extract column idx from each chain matrix
-          vals <- do.call(cbind, lapply(chain_matrices, function(m) m[, idx]))
-
-          # Check for constant chains (variance 0)
-          # Use explicit variance calculation to avoid R scoping issues
-          chain_vars <- numeric(ncol(vals))
-          for (col_idx in seq_len(ncol(vals))) {
-            chain_vars[col_idx] <- stats::var(vals[, col_idx])
-          }
-
-          if (any(chain_vars < 1e-10)) {
-            psrf[idx, 1] <- 1.0 # If constant, Rhat is 1
-            next
-          }
-
-          # Calculate B/W (Gelman-Rubin statistic)
-          n_samples <- nrow(vals)
-          chain_means <- colMeans(vals)
-
-          # Between-chain variance
-          B <- n_samples * stats::var(chain_means)
-
-          # Within-chain variance
-          W <- mean(chain_vars)
-
-          # Estimated variance
-          var_plus <- (n_samples - 1) / n_samples * W + B / n_samples
-
-          # R-hat
-          rhat <- sqrt(var_plus / W)
-          psrf[idx, 1] <- rhat
-        }
-        # Add R-hat to summary statistics
-        # summary(samples) returns a list with 'statistics' and 'quantiles'
-        # We want to add R-hat to the statistics matrix
-
-        # Match parameter names
-        common_params <- intersect(
-          rownames(sum_stats$statistics),
-          rownames(psrf)
-        )
-
-        if (length(common_params) > 0) {
-          sum_stats$statistics <- cbind(sum_stats$statistics, Rhat = NA)
-          rhat_col_idx <- which(colnames(sum_stats$statistics) == "Rhat")
-
-          # Use numeric indexing to avoid any strange symbol evaluation
-          for (j in seq_along(common_params)) {
-            p <- common_params[j]
-            row_idx <- which(rownames(sum_stats$statistics) == p)
-            psrf_row_idx <- which(rownames(psrf) == p)
-            if (length(row_idx) == 1 && length(psrf_row_idx) == 1) {
-              sum_stats$statistics[row_idx, rhat_col_idx] <- psrf[
-                psrf_row_idx,
-                1
-              ]
-            }
-          }
-        }
-      },
-      error = function(e) {
-        warning("Could not calculate R-hat: ", e$message)
-      }
-    )
-  }
-
-  # Filter internal parameters (log_lik) from summary parameters
-  # We keep them in samples for WAIC calculation but hide them from the summary output
-  if (!is.null(sum_stats)) {
-    if (is.matrix(sum_stats$statistics)) {
-      rows_to_keep <- !grepl("^log_lik", rownames(sum_stats$statistics))
-      sum_stats$statistics <- sum_stats$statistics[
-        rows_to_keep,
-        ,
-        drop = FALSE
-      ]
-      sum_stats$quantiles <- sum_stats$quantiles[rows_to_keep, , drop = FALSE]
-    } else {
-      # Single parameter case (statistics is a vector)
-      # Check if the single parameter is log_lik
-      param_name <- colnames(samples[[1]])
-      if (length(param_name) == 1 && grepl("^log_lik", param_name)) {
-        # If the only parameter is log_lik, return empty stats
-        # Or handle appropriately. For now, empty seems safest or just nullify.
-        sum_stats <- NULL
-      }
-    }
-  }
-
-  # Initialize result object
-  result <- list(
-    model = model,
-    model_code = model_output$model,
-    data = data, # Store data for recompilation if needed
-    input = list(
-      equations = equations,
-      random = random,
-      structure = structure,
-      data = original_data, # Store original data too for safety
-      latent = latent,
-      distribution = distribution,
-      family = if (!is.null(family)) as.list(family) else NULL,
-      variability = variability,
-      poly_terms = all_poly_terms # Needed by plot_dag to reconstruct diamond nodes
-    ),
-    samples = samples,
-    summary = sum_stats,
-    monitor = monitor,
-    modfile = model_file,
-    dsep = dsep,
-    dsep_tests = dsep_tests,
-    dsep_results = dsep_results,
-    parameter_map = parameter_map,
-    induced_correlations = induced_cors,
-    scale_info = scale_info,
-    stacked_data = if (exists("stack_res") && stack_res$is_stacked) {
-      stack_res$data
-    } else {
-      NULL
-    }
-  )
-
-  # Combine with basic model info
-  # NOTE: result$model already holds the live rjags object (from result list above).
-  # result$model_code holds the model string for reference / recompilation.
-  # Do NOT overwrite result$model here --- keeping the live object enables because_continue().
-  result$engine         <- engine
-  if (engine == "nimble") {
-    result$nimble_compiled <- if (exists("saved_nimble_compiled")) saved_nimble_compiled else NULL
-    result$nimble_cmodel   <- if (exists("saved_nimble_cmodel")) saved_nimble_cmodel else NULL
-    result$nimble_samplers <- if (exists("saved_nimble_samplers")) saved_nimble_samplers else NULL
-  }
-  result$samples        <- samples
-  result$parameter_map  <- parameter_map
-  result$data           <- data
-  result$original_data  <- original_data
-  result$family         <- family
-  result$categorical_vars <- attr(data, "categorical_vars")
-  result$poly_terms     <- all_poly_terms
-  result$equations      <- equations
-  result$parallel       <- parallel
-  result$n.cores        <- n.cores
-
-  # --- Result Enrichment ---
-  # If we have a structure, try to extract labels for ordering
-  if (!is.null(structure)) {
-    result$species_order <- get_order_labels_hook(structure)
-  } else if (!is.null(id_col) && is.data.frame(original_data)) {
-    # If no structure but ID col provided
-    result$species_order <- as.character(original_data[[id_col]])
-  }
-
-  # Assign class immediately (needed for print/summary/waic methods)
-  result$call <- original_call
-  class(result) <- "because"
-
-  # Add DIC and WAIC
-  # For parallel runs, recompile the model if ic_recompile=TRUE
-  if (
-    (DIC || WAIC) && parallel && n.cores > 1 && n.chains > 1 && ic_recompile
-  ) {
-    message("Recompiling model for DIC/WAIC calculation...")
-
-    # Recompile model with 2 chains for IC calculation (DIC requires >=2)
-    ic_inits <- lapply(1:2, function(i) {
-      c(
-        extension_inits,
-        list(
-          .RNG.name = "base::Wichmann-Hill",
-          .RNG.seed = 12345 + i
-        )
-      )
-    })
-
-    ic_model <- rjags::jags.model(
-      model_file,
-      data = data,
-      inits = ic_inits,
-      n.chains = 2,
-      n.adapt = n.adapt,
-      quiet = quiet
-    )
-
-    # Short burn-in (use a fraction of original)
-    if (n.burnin > 0) {
-      update(ic_model, n.iter = min(n.burnin, 500))
-    }
-
-    # Compute DIC
-    if (DIC) {
-      if (n.iter > n.burnin) {
-        result$DIC <- rjags::dic.samples(
-          ic_model,
-          n.iter = min(n.iter - n.burnin, 1000)
-        )
-      } else {
-        result$DIC <- NULL
-      }
-    }
-
-    # Compute WAIC using pointwise log-likelihoods
-    # Note: WAIC calculation generally uses the posterior samples already collected.
-    # We defer WAIC calculation to the common block at the end to ensure consistency.
-    # if (WAIC) {
-    #   result$WAIC <- because_waic(result)
-    # }
-  } else if ((DIC || WAIC) && parallel && n.cores > 1 && n.chains > 1) {
-    # Parallel without recompilation - warn user
-    if (DIC) {
-      warning(
-        "DIC calculation disabled for parallel chains. Set ic_recompile=TRUE to compute DIC."
-      )
-      result$DIC <- NULL
-    }
-    if (WAIC) {
-      # WAIC can be computed from pointwise log-likelihoods even with parallel chains
-      # Defer to common block
-      # result$WAIC <- because_waic(result)
-    }
-  } else {
-    # Sequential execution - use standard approach
-  if (DIC) {
-    if (engine == "jags") {
-        if (n.iter > n.burnin) {
-          result$DIC <- rjags::dic.samples(model, n.iter = n.iter - n.burnin)
-        } else {
-          result$DIC <- NULL
-        }
-      } else {
-        result$DIC <- NULL # NIMBLE does not use rjags::dic.samples
-      }
-    }
-    # WAIC will be computed after class assignment
-  }
-
-  # Assign class before WAIC computation (because_waic needs this)
-  # Already assigned earlier
-  # class(result) <- "because"
-
-  # Compute WAIC if requested (must be after class assignment)
-  if (WAIC) {
-    if (engine == "nimble" && !is.null(nimble_waic)) {
-       # NIMBLE built-in WAIC: lppd = log pointwise predictive density (no penalty),
-       # pWAIC = effective parameters, WAIC = -2*(lppd - pWAIC).
-       # elpd_waic (as in because) = lppd - pWAIC  (NOT just lppd)
-       nimble_elpd     <- nimble_waic$lppd - nimble_waic$pWAIC
-       nimble_pwaic    <- nimble_waic$pWAIC
-       nimble_waic_val <- nimble_waic$WAIC   # = -2 * nimble_elpd
-       # n_obs: N observations x number of modelled response variables
-       n_obs_nimble <- tryCatch({
-           n_resp <- length(unique(result$parameter_map$response))
-           as.integer(data$N * n_resp)
-       }, error = function(e) NA_integer_)
-       n_samples_nimble <- as.integer((n.iter - n.burnin) / n.thin) * n.chains
-       waic_df <- data.frame(
-           Estimate = c(nimble_elpd, nimble_pwaic, nimble_waic_val),
-           SE = c(NA_real_, NA_real_, NA_real_),  # no pointwise SE from NIMBLE built-in WAIC
-           row.names = c("elpd_waic", "p_waic", "waic")
-       )
-       attr(waic_df, "dims") <- c(n_obs = n_obs_nimble, n_samples = n_samples_nimble)
-       class(waic_df) <- c("because_waic", "data.frame")
-       result$WAIC <- waic_df
-    } else {
-       result$WAIC <- because_waic(result)
-    }
-  }
-
-  # Preserve hierarchical metadata for diagnostics even if data was flat
-  result$hierarchical_info <- hierarchical_info
-  
-  return(result)
+  return(assemble_because_result(
+    model                 = model,
+    model_code            = model_string,
+    model_file            = model_file,
+    samples               = samples,
+    data                  = data,
+    original_data         = original_data,
+    equations             = equations,
+    random                = random,
+    random_terms          = random_terms,
+    structure             = structure,
+    structures            = structures,
+    latent                = latent,
+    distribution          = distribution,
+    family                = family,
+    variability           = variability,
+    all_poly_terms        = all_poly_terms,
+    dsep                  = dsep,
+    dsep_tests            = dsep_tests,
+    dsep_results          = dsep_results,
+    parameter_map         = parameter_map,
+    induced_cors          = induced_cors,
+    scale_info            = scale_info,
+    stack_res             = if (exists("stack_res")) stack_res else NULL,
+    engine                = engine,
+    saved_nimble_compiled = if (exists("saved_nimble_compiled")) saved_nimble_compiled else NULL,
+    saved_nimble_cmodel   = if (exists("saved_nimble_cmodel")) saved_nimble_cmodel else NULL,
+    saved_nimble_samplers = if (exists("saved_nimble_samplers")) saved_nimble_samplers else NULL,
+    nimble_waic           = if (exists("nimble_waic")) nimble_waic else NULL,
+    parallel              = parallel,
+    n.cores               = n.cores,
+    n.chains              = n.chains,
+    n.iter                = n.iter,
+    n.burnin              = n.burnin,
+    n.thin                = n.thin,
+    n.adapt               = n.adapt,
+    DIC                   = DIC,
+    WAIC                  = WAIC,
+    ic_recompile          = ic_recompile,
+    extension_inits       = extension_inits,
+    quiet                 = quiet,
+    id_col                = id_col,
+    original_call         = original_call,
+    hierarchical_info     = hierarchical_info,
+    monitor               = monitor
+  ))
 }
 
