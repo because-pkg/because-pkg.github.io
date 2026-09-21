@@ -12,11 +12,12 @@
 #' @param max_treedepth Maximum tree depth
 #' @param prior_scale_fixed Scale factor for fixed effects
 #' @param quiet Logical, suppress output
-#' @return Raw result from because_py$fit_numpyro_model
+#' @param WAIC Logical, whether to calculate WAIC
+#' @return Raw result from because_py$fit
 #' @export
 run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structures,
                               n_chains, n_iter, n_warmup, adapt_delta, max_treedepth,
-                              prior_scale_fixed, quiet) {
+                              prior_scale_fixed, quiet, WAIC = FALSE) {
   
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     stop("The 'reticulate' package is required to use engine = 'numpyro'")
@@ -28,18 +29,19 @@ run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structur
     stop("Failed to import 'because.api'. Make sure because_py is installed and reticulate is configured.")
   })
   
-  py_result <- because_py$fit_numpyro_model(
+  py_result <- because_py$fit(
     equations = eq_strings,
     data = flat_data,
     family = family,
-    priors = priors,
-    n_chains = as.integer(n_chains),
-    n_samples = as.integer(n_iter),
-    n_warmup = as.integer(n_warmup),
+    num_chains = as.integer(n_chains),
+    num_samples = as.integer(n_iter),
+    num_warmup = as.integer(n_warmup),
     cor_matrices = py_structures,
     adapt_delta = adapt_delta,
     max_treedepth = as.integer(max_treedepth),
-    prior_scale_fixed = prior_scale_fixed
+    prior_scale_fixed = prior_scale_fixed,
+    calculate_waic = WAIC,
+    quiet = quiet
   )
   
   return(py_result)
@@ -223,7 +225,8 @@ run_numpyro_pipeline <- function(
     adapt_delta = adapt_delta,
     max_treedepth = max_treedepth,
     prior_scale_fixed = prior_scale_fixed,
-    quiet = quiet
+    quiet = quiet,
+    WAIC = WAIC
   )
   mcmc_samples <- format_numpyro_samples(py_result)
   
