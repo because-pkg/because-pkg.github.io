@@ -477,6 +477,7 @@ because <- function(
   dsep_tests <- dsep_res$dsep_tests
   induced_cors <- dsep_res$induced_cors
   equations    <- dsep_res$equations
+  if (!is.null(dsep_res$data)) data <- dsep_res$data
 
   # --- Ensure zero_vec and ID2 are in data if needed (for multivariate priors) ---
   # Check if we need zero_vec (matches logic in because_model.R)
