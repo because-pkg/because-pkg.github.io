@@ -18,7 +18,8 @@ run_because_dsep <- function(
   # Additional variables from parent scope
   family_obj = NULL, hierarchy = NULL, original_call = NULL,
   original_data = NULL, random = NULL, response_vars_with_na = NULL,
-  reuse_models = FALSE, structure = NULL, because_py = NULL
+  reuse_models = FALSE, structure = NULL, because_py = NULL,
+  WAIC = FALSE, DIC = FALSE
 ) {
   dsep_tests <- NULL
   induced_cors <- induced_cors_in

@@ -468,7 +468,8 @@ because <- function(
     original_call = original_call, original_data = original_data,
     random = random, response_vars_with_na = response_vars_with_na,
     reuse_models = reuse_models, structure = structure,
-    because_py = if (exists("because_py")) because_py else NULL
+    because_py = if (exists("because_py")) because_py else NULL,
+    WAIC = WAIC, DIC = DIC
   )
   dsep_tests <- dsep_res$dsep_tests
   induced_cors <- dsep_res$induced_cors
