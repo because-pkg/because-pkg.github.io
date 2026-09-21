@@ -1,8 +1,8 @@
 #' Harden NIMBLE Sampler Configuration
 #'
 #' Applies robust sampler assignments to a NIMBLE MCMC configuration object.
-#' Exported as a standalone function so that parallel worker nodes — which
-#' load the package fresh — always use the current installed version of this
+#' Exported as a standalone function so that parallel worker nodes --- which
+#' load the package fresh --- always use the current installed version of this
 #' logic, regardless of which version of `because()` was originally called.
 #'
 #' @param mcmc_conf A NIMBLE MCMC configuration object (from `configureMCMC()`).
@@ -41,7 +41,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 
   sampler_targets <- sapply(mcmc_conf$getSamplers(), function(x) x$target)
 
-  # ── 1. Hybrid Grouping Logic: Core Equation Blocks ────────────────────────
+  # ------ 1. Hybrid Grouping Logic: Core Equation Blocks ------------------------------------------------------------------------
   # The goal is a SMALL block (5-10 nodes) containing: (alpha, all betas, all scales)
   trait_groups <- list()
 
@@ -80,7 +80,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
     }
   }
 
-  # ── 2. Apply Joint Core Blocks (AF_slice vs RW_block) ─────────────────────────
+  # ------ 2. Apply Joint Core Blocks (AF_slice vs RW_block) ---------------------------------------------------------------------------
   processed_nodes <- character(0)
 
   for (t_name in names(trait_groups)) {
@@ -112,7 +112,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
     }
   }
 
-  # ── 3. Handle Remaining Nodes (ESS and Defaults) ──────────────────────────
+  # ------ 3. Handle Remaining Nodes (ESS and Defaults) ------------------------------------------------------------------------------
   remaining_targets <- setdiff(sampler_targets, processed_nodes)
   
   for (target in remaining_targets) {
@@ -147,7 +147,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
       message(sprintf("NIMBLE: Sampler hardening complete. ESS + AF_slice + Hybrid strategy applied."))
   }
 
-  # ── 7. User-specified overrides (always applied last) ─────────────────────
+  # ------ 7. User-specified overrides (always applied last) ---------------------------------------------------------------
   if (!is.null(nimble_samplers)) {
     for (node in names(nimble_samplers)) {
       mcmc_conf$removeSamplers(node)
@@ -210,6 +210,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @param adapt_delta Target acceptance probability for the NUTS sampler (NumPyro only, default = 0.95).
 #'   Increase towards 1 (e.g., `0.99`) for complex posteriors with funnel geometry or many
 #'   competing variance components. Higher values slow sampling but improve mixing.
+#' @param prior_scale_fixed Numeric; scale parameter for Cauchy priors on fixed effects. Defaults to `sqrt(2)/2`.
 #' @param max_treedepth Maximum tree depth for the NUTS sampler (NumPyro only, default = 10).
 #'   Increase to 12 or 14 if you see many divergent transitions or very low n.eff.
 #' @param quiet Logical; if `TRUE`, suppresses status messages and progress bars.
@@ -273,7 +274,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 #' @import methods
 #' @importFrom rjags jags.model coda.samples dic.samples jags.samples
 #' @importFrom stats formula terms setNames start var na.omit update
-#' @importFrom utils capture.output head
+#' @importFrom utils capture.output head tail data flush.console
 #' @importFrom coda gelman.diag effectiveSize
 because <- function(
   equations,
@@ -468,7 +469,7 @@ because <- function(
         "Python is currently running from: %s\n\n",
         "This usually means Python was initialized to a different environment\n",
         "before 'library(because)' was called (e.g. by RStudio or another package).\n\n",
-        "Quick fix — add this line BEFORE library(because) in your script:\n",
+        "Quick fix --- add this line BEFORE library(because) in your script:\n",
         "  reticulate::use_virtualenv('because_env', required = TRUE)\n\n",
         "If because_env does not exist yet, install it first with:\n",
         "  install_because_numpyro()"
@@ -4694,7 +4695,7 @@ because <- function(
       }
     }
     model <- nimble_model # Store the R (uncompiled) model object
-    # Store compiled objects for because_continue() — NULL when parallel=TRUE
+    # Store compiled objects for because_continue() --- NULL when parallel=TRUE
     saved_nimble_compiled <- if (exists("compiled_mcmc")) compiled_mcmc else NULL
     saved_nimble_cmodel   <- if (exists("compiled_model")) compiled_model else NULL
     saved_nimble_samplers <- nimble_samplers
@@ -5037,7 +5038,7 @@ because <- function(
   # Combine with basic model info
   # NOTE: result$model already holds the live rjags object (from result list above).
   # result$model_code holds the model string for reference / recompilation.
-  # Do NOT overwrite result$model here — keeping the live object enables because_continue().
+  # Do NOT overwrite result$model here --- keeping the live object enables because_continue().
   result$engine         <- engine
   if (engine == "nimble") {
     result$nimble_compiled <- if (exists("saved_nimble_compiled")) saved_nimble_compiled else NULL

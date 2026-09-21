@@ -52,3 +52,4 @@
 ^recovered_code\.R$
 ^test_.*\.R$
 ^test_.*\.py$
+^explain\.md$

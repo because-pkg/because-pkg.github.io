@@ -325,7 +325,6 @@ do.because <- function(object, ..., ndraws = NULL, re_formula = NULL, raw_scale 
 
 #' @rdname do
 #'
-#' @description
 #' @param object An object of class \code{because_counterfactual} returned by \code{do()}.
 #' @param ... Additional arguments (ignored).
 #' @return A data.frame summarizing the expected value and credible intervals for each variable.
