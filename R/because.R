@@ -471,6 +471,9 @@ because <- function(
     because_py = if (exists("because_py")) because_py else NULL,
     WAIC = WAIC, DIC = DIC
   )
+  if (inherits(dsep_res, "because")) {
+    return(dsep_res)
+  }
   dsep_tests <- dsep_res$dsep_tests
   induced_cors <- dsep_res$induced_cors
   equations    <- dsep_res$equations
