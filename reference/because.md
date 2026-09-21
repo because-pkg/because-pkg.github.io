@@ -192,6 +192,11 @@ because(
 
   How to fix the scale of latent variables ("loading" or "variance").
 
+- prior_scale_fixed:
+
+  Numeric; scale parameter for Cauchy priors on fixed effects. Defaults
+  to `sqrt(2)/2`.
+
 - parallel:
 
   Logical; if `TRUE`, runs MCMC chains in parallel.

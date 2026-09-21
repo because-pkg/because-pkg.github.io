@@ -32,6 +32,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/because_loo_compare.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_mediation.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_model.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/because_structure.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_waic.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/dag_matrix_to_dagitty.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/detect_crossscale_dsep.html</loc></url>
@@ -119,6 +120,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/term_to_jags_expression.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/transform_graph_for_dsep.default.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/transform_graph_for_dsep.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/update.because.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/validate_hierarchical_data.html</loc></url>
 </urlset>
 
