@@ -31,11 +31,12 @@ generate_model_priors <- function(ctx) {
       suffix <- if (k == 1) "" else as.character(k)
       alpha_name <- paste0("alpha_", response, suffix)
       non_identity_dists <- c(
-        "occupancy", "binomial", "zip", "zinb", "bernoulli",
+        "binomial", "zip", "zinb", "bernoulli",
         "multinomial", "ordinal", "poisson", "negbinomial"
       )
       default_alpha <- "dnorm(0, 0.01)"
-      if (dist %in% non_identity_dists || isTRUE(aux_flags$skip_likelihood)) {
+      is_non_identity <- dist %in% non_identity_dists || !(dist %in% c("gaussian", "normal"))
+      if (is_non_identity || isTRUE(aux_flags$skip_likelihood)) {
         default_alpha <- "dnorm(0, 1)"
       }
       ctx$model_lines <- c(
@@ -43,13 +44,10 @@ generate_model_priors <- function(ctx) {
         paste0("  ", get_prior(alpha_name, type = "alpha", default = default_alpha, priors = ctx$priors))
       )
 
-      needs_residual_variance <- !dist %in% c(
-        "occupancy", "binomial", "zip", "zinb", "poisson",
-        "negbinomial", "bernoulli", "multinomial", "ordinal"
-      )
+      needs_residual_variance <- !is_non_identity && !isTRUE(aux_flags$skip_variance)
       needs_random_variance <- !ctx$independent &&
         (length(ctx$structure_names) > 0 || length(ctx$random_structure_names) > 0) &&
-        dist != "occupancy"
+        !is_non_identity && !isTRUE(aux_flags$skip_variance)
 
       if (
         (is.null(ctx$vars_with_na) || !response %in% ctx$vars_with_na || TRUE) &&
@@ -448,10 +446,10 @@ generate_model_priors <- function(ctx) {
     dist <- ctx$dist_list[[response]] %||% "gaussian"
     if (grepl("^p_", response)) {
       target_resp <- sub("^p_", "", response)
-      is_occupancy_aux <- any(sapply(names(ctx$dist_list), function(n) {
-        (ctx$dist_list[[n]] == "occupancy") && (paste0("p_", n) == response)
-      }))
-      if (is_occupancy_aux) next
+      target_dist <- ctx$dist_list[[target_resp]] %||% "gaussian"
+      fam_check_aux <- get_family_object(target_dist)
+      aux_flags <- is_auxiliary_equation(fam_check_aux, response, names(ctx$dist_list))
+      if (isTRUE(aux_flags$skip_likelihood)) next
     }
 
     if (dist %in% c("multinomial", "ordinal")) {
@@ -485,7 +483,7 @@ generate_model_priors <- function(ctx) {
 
     if (!is.null(found_resp)) {
       d <- ctx$dist_list[[found_resp]] %||% "gaussian"
-      if (d %in% c("occupancy", "binomial", "zip", "zinb", "bernoulli", "multinomial", "ordinal", "poisson", "negbinomial")) {
+      if (d %in% non_identity_dists || !(d %in% c("gaussian", "normal"))) {
         default_beta <- "dnorm(0, 1)"
       }
     }

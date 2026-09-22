@@ -202,18 +202,18 @@ plot_dag <- function(
             }
         }
 
-        # Handle occupancy expansion for visualization
-        occ_vars <- c()
+        # S3 Extension Hook: Expand compound latent nodes and DAG groups
+        family_obj <- current_family
         if (!is.null(current_family)) {
-            occ_vars <- names(current_family)[current_family == "occupancy"]
-            if (length(occ_vars) > 0) {
-                # Add p_ and psi_ to latent set so they become circles
-                latent_to_add <- unlist(lapply(occ_vars, function(v) {
-                    c(paste0("p_", v), paste0("psi_", v))
-                }))
-                current_latent <- unique(c(current_latent, latent_to_add))
+            for (f in unique(tolower(unlist(current_family)))) {
+                class(family_obj) <- unique(c(paste0("because_family_", f), class(family_obj)))
             }
         }
+        dag_expansion <- dag_expand_hook(family_obj, current_equations, current_latent)
+        current_equations <- dag_expansion$equations
+        current_latent <- dag_expansion$latent
+        compound_groups <- dag_expansion$compound_groups
+        extra_dag_edges <- dag_expansion$extra_edges %||% character()
 
         # 2. Convert to dagitty syntax
         induced_cors <- NULL
@@ -229,11 +229,12 @@ plot_dag <- function(
            dag_obj <- obj$dag
         } else {
            dag_result <- equations_to_dag_string(
-               equations,
+               current_equations,
                induced_cors,
                family = current_family,
                poly_terms = current_poly_terms,
-               collapse_expanded = (type == "marginal")
+               collapse_expanded = (type == "marginal"),
+               extra_edges = extra_dag_edges
            )
            dag_str <- dag_result$dag_string
            interaction_nodes <- dag_result$interaction_nodes
@@ -348,17 +349,12 @@ plot_dag <- function(
             }
         }
 
-        # Identify occupancy nodes and assign to groups for box drawing
-        dag_data$occ_species <- NA_character_
-        if (length(occ_vars) > 0) {
-            for (v in occ_vars) {
-                # Pattern match p_Species and psi_Species
-                dag_data$occ_species[grepl(
-                    paste0("^(p_|psi_)", v, "$"),
-                    dag_data$name
-                )] <- v
-                # Also include the observation node if it exists
-                dag_data$occ_species[dag_data$name == v] <- v
+        # Identify compound nodes and assign to groups for box drawing
+        dag_data$compound_group <- NA_character_
+        if (!is.null(compound_groups) && length(compound_groups) > 0) {
+            for (grp_name in names(compound_groups)) {
+                grp <- compound_groups[[grp_name]]
+                dag_data$compound_group[dag_data$name %in% grp$nodes] <- grp_name
             }
         }
 
@@ -372,18 +368,16 @@ plot_dag <- function(
                 ] <- interaction_nodes[[iname]]
             }
         }
-        # Override for occupancy latent nodes to just 'p' and 'psi'
-        if (length(occ_vars) > 0) {
-            dag_data$label_display <- ifelse(
-                grepl("^p_", dag_data$name) & !is.na(dag_data$occ_species),
-                "p",
-                dag_data$label_display
-            )
-            dag_data$label_display <- ifelse(
-                grepl("^psi_", dag_data$name) & !is.na(dag_data$occ_species),
-                "psi",
-                dag_data$label_display
-            )
+        # Override for compound latent nodes if specified by extension
+        if (!is.null(compound_groups) && length(compound_groups) > 0) {
+            for (grp_name in names(compound_groups)) {
+                grp <- compound_groups[[grp_name]]
+                if (!is.null(grp$labels)) {
+                    for (node_lbl in names(grp$labels)) {
+                        dag_data$label_display[dag_data$name == node_lbl] <- grp$labels[[node_lbl]]
+                    }
+                }
+            }
         }
 
         # Determine Node Size based on longest label (Heuristic)
@@ -608,19 +602,18 @@ plot_dag <- function(
         }
     }
 
-    # Calculate Bounding Boxes for Occupancy Groups
-    occupancy_boxes <- NULL
+    # Calculate Bounding Boxes for Compound Groups (e.g. imperfect detection, state-space)
+    compound_boxes <- NULL
     if (
         !is.null(combined_dag_data) &&
-            any(!is.na(combined_dag_data$occ_species))
+            "compound_group" %in% names(combined_dag_data) &&
+            any(!is.na(combined_dag_data$compound_group))
     ) {
         # Check if we have coordinates
         if (any(!is.na(combined_dag_data$x))) {
-            occupancy_boxes <- combined_dag_data |>
-                dplyr::filter(
-                    !is.na(occ_species) & grepl("^(p_|psi_)", name)
-                ) |>
-                dplyr::group_by(model_label, occ_species) |>
+            compound_boxes <- combined_dag_data |>
+                dplyr::filter(!is.na(compound_group)) |>
+                dplyr::group_by(model_label, compound_group) |>
                 dplyr::summarize(
                     xmin = min(x) - 0.25,
                     xmax = max(x) + 0.25,
@@ -660,11 +653,11 @@ plot_dag <- function(
         ggplot2::aes(x = x, y = y, xend = xend, yend = yend)
     )
 
-    # 0. Shadowed Boxes for Occupancy (Background Layer)
-    if (!is.null(occupancy_boxes)) {
+    # 0. Shadowed Boxes for Compound Groups (Background Layer)
+    if (!is.null(compound_boxes)) {
         p <- p +
             ggplot2::geom_rect(
-                data = occupancy_boxes,
+                data = compound_boxes,
                 ggplot2::aes(
                     xmin = xmin,
                     xmax = xmax,
@@ -678,13 +671,13 @@ plot_dag <- function(
                 linewidth = 0.4,
                 lty = "dashed"
             ) +
-            # Species name label for the box
+            # Group name label for the box
             ggplot2::geom_text(
-                data = occupancy_boxes,
+                data = compound_boxes,
                 ggplot2::aes(
                     x = (xmin + xmax) / 2,
                     y = ymax + 0.05,
-                    label = occ_species
+                    label = compound_group
                 ),
                 inherit.aes = FALSE,
                 size = text_size * 1.1,
@@ -949,7 +942,8 @@ equations_to_dag_string <- function(
     family = NULL,
     poly_terms = NULL, # list from get_all_polynomial_terms; used for fitted models
     # where equations are already expanded (I(age^2) -> age_pow2)
-    collapse_expanded = FALSE
+    collapse_expanded = FALSE,
+    extra_edges = character()
 ) {
     edges <- c()
     interaction_nodes <- list() # internal_name -> display label (e.g. "BM\u00d7M")
@@ -961,11 +955,6 @@ equations_to_dag_string <- function(
         for (pt in poly_terms) {
             poly_lookup[[pt$internal_name]] <- pt
         }
-    }
-
-    occ_vars <- c()
-    if (!is.null(family)) {
-        occ_vars <- names(family)[family == "occupancy"]
     }
 
     # Helper: make a dagitty-safe node name from a term string
@@ -1019,7 +1008,7 @@ equations_to_dag_string <- function(
            resp <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", resp)
         }
 
-        actual_resp <- if (resp %in% occ_vars) paste0("psi_", resp) else resp
+        actual_resp <- resp
 
         if (length(trm_lbls) == 0) {
             next
@@ -1036,12 +1025,7 @@ equations_to_dag_string <- function(
             interaction_nodes[[actual_resp]] <- actual_resp # LHS is the det. node
             components <- all.vars(stats::as.formula(paste("~", term)))
             for (comp in components) {
-                actual_comp <- if (comp %in% occ_vars) {
-                    paste0("psi_", comp)
-                } else {
-                    comp
-                }
-                edges <- c(edges, paste(actual_resp, "<-", actual_comp))
+                edges <- c(edges, paste(actual_resp, "<-", comp))
             }
             next
         }
@@ -1118,40 +1102,24 @@ equations_to_dag_string <- function(
                     n <- as.integer(pt$power)
                     d_label <- if (!is.na(n) && n >= 0 && n <= 9) paste0(pt$base_var, superscripts[n+1]) else iname
                     interaction_nodes[[iname]] <- d_label
-                    base_actual <- if (pt$base_var %in% occ_vars) paste0("psi_", pt$base_var) else pt$base_var
-                    edges <- c(edges, paste(iname, "<-", base_actual))
+                    edges <- c(edges, paste(iname, "<-", pt$base_var))
                     edges <- c(edges, paste(actual_resp, "<-", iname))
                 } else {
-                    actual_pred <- if (clean_term %in% occ_vars) {
-                        paste0("psi_", clean_term)
-                    } else {
-                        clean_term
-                    }
-                    edges <- c(edges, paste(actual_resp, "<-", actual_pred))
+                    edges <- c(edges, paste(actual_resp, "<-", clean_term))
                 }
             }
         }
     }
 
-    # Occupancy p_ nodes (visual grouping only)
-    for (v in occ_vars) {
-        # p_node existence is implied by its edges elsewhere
+    # Append any extra edges injected by extension packages via dag_expand_hook
+    if (length(extra_edges) > 0) {
+        edges <- c(edges, extra_edges)
     }
 
     if (!is.null(induced_cors)) {
         for (pair in induced_cors) {
             if (length(pair) == 2) {
-                p1 <- if (pair[1] %in% occ_vars) {
-                    paste0("psi_", pair[1])
-                } else {
-                    pair[1]
-                }
-                p2 <- if (pair[2] %in% occ_vars) {
-                    paste0("psi_", pair[2])
-                } else {
-                    pair[2]
-                }
-                edges <- c(edges, paste(p1, "<->", p2))
+                edges <- c(edges, paste(pair[1], "<->", pair[2]))
             }
         }
     }

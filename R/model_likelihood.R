@@ -674,74 +674,6 @@ generate_likelihoods <- function(ctx) {
             "  }"
           )
         }
-      } else if (dist == "occupancy") {
-        total_u <- ""
-        if (length(ctx$structures) > 0) {
-          for (s_idx in seq_along(ctx$structures)) {
-            s_name <- names(ctx$structures)[s_idx]
-            if (is.null(s_name) || s_name == "") s_name <- paste0("Struct", s_idx)
-            s_obj <- ctx$structures[[s_idx]]
-
-            if (!is_valid_structure_mapping(get_struct_lvl(s_name, ctx$hierarchical_info), get_var_level(response, ctx$hierarchical_info, equations = ctx$equations, latent = ctx$latent, categorical_vars = ctx$categorical_vars), ctx$hierarchical_info, allow_identity = TRUE)) next
-
-            s_lvl <- get_struct_lvl(s_name, ctx$hierarchical_info)
-            s_bound <- if (is.null(s_lvl)) get_loop_bound(response, ctx$hierarchical_info, default_N = ctx$main_loop_N) else paste0("N_", s_lvl)
-            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
-            s_idx_var <- get_struct_index(s_name, response, ctx$hierarchical_info, equations = ctx$equations, latent = ctx$latent, categorical_vars = ctx$categorical_vars)
-
-            s_def <- jags_structure_definition(
-              s_obj,
-              variable_name = response,
-              s_name = s_name,
-              loop_bound = s_bound,
-              zeros_name = s_zeros,
-              is_multi = is_struct_multi(s_name, ctx$hierarchical_info),
-              i_index = s_idx_var,
-              engine = ctx$engine
-            )
-
-            if (!is.null(s_def)) {
-              ctx$model_lines <- safe_add_lines(ctx$model_lines, s_def$model_lines, ctx$declared_nodes)
-              total_u <- paste0(total_u, " + ", s_def$term)
-
-              is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
-              if (is_unified) {
-                unified_tau <- paste0("tau_u_", s_name, "_", response)
-                unified_sigma <- paste0("sigma_", s_name, "_", response)
-                ctx$param_map[[length(ctx$param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
-                ctx$param_map[[length(ctx$param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
-              } else {
-                ctx$param_map[[length(ctx$param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name), equation_index = NA, type = "structure")
-                ctx$param_map[[length(ctx$param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
-              }
-            }
-          }
-        }
-
-        ctx$model_lines <- c(
-          ctx$model_lines,
-          paste0("  # Occupancy Model for ", response),
-          paste0("  for (i in 1:", eq_loop_N, ") {"),
-          paste0("    logit(psi_", response, "[i]) <- mu_", response, suffix, "[i]", total_u)
-        )
-
-        fam_obj <- get_family_object(dist)
-        curr_pred <- NULL
-        for (eq in ctx$eq_list) {
-          if (eq$response == response) {
-            curr_pred <- eq$predictors
-            break
-          }
-        }
-
-        def <- jags_family_definition(fam_obj, response, curr_pred)
-        if (!is.null(def$model_code)) {
-          ctx$model_lines <- safe_add_lines(ctx$model_lines, def$model_code, ctx$declared_nodes)
-        } else {
-          stop(paste("Unknown distribution or missing module for:", dist))
-        }
-
-        ctx$model_lines <- c(ctx$model_lines, "  }")
       } else if (dist == "negbinomial" || dist == "zinb") {
         err <- paste0("err_", response, suffix)
 
@@ -841,6 +773,76 @@ generate_likelihoods <- function(ctx) {
           paste0("    ", err, "[i] <- ", if (nchar(total_u) > 0) sub("^ \\+ ", "", total_u) else "0"),
           "  }"
         )
+      } else {
+        # Extension family dispatch via S3 generic jags_family_definition
+        fam_obj <- get_family_object(dist)
+        
+        total_u <- ""
+        if (length(ctx$structures) > 0) {
+          for (s_idx in seq_along(ctx$structures)) {
+            s_name <- names(ctx$structures)[s_idx]
+            if (is.null(s_name) || s_name == "") s_name <- paste0("Struct", s_idx)
+            s_obj <- ctx$structures[[s_idx]]
+
+            if (!is_valid_structure_mapping(get_struct_lvl(s_name, ctx$hierarchical_info), get_var_level(response, ctx$hierarchical_info, equations = ctx$equations, latent = ctx$latent, categorical_vars = ctx$categorical_vars), ctx$hierarchical_info, allow_identity = TRUE)) next
+
+            s_lvl <- get_struct_lvl(s_name, ctx$hierarchical_info)
+            s_bound <- if (is.null(s_lvl)) get_loop_bound(response, ctx$hierarchical_info, default_N = ctx$main_loop_N) else paste0("N_", s_lvl)
+            s_zeros <- if (is.null(s_lvl)) "zeros" else paste0("zeros_", s_lvl)
+            s_idx_var <- get_struct_index(s_name, response, ctx$hierarchical_info, equations = ctx$equations, latent = ctx$latent, categorical_vars = ctx$categorical_vars)
+
+            s_def <- jags_structure_definition(
+              s_obj,
+              variable_name = response,
+              s_name = s_name,
+              loop_bound = s_bound,
+              zeros_name = s_zeros,
+              is_multi = is_struct_multi(s_name, ctx$hierarchical_info),
+              i_index = s_idx_var,
+              engine = ctx$engine
+            )
+
+            if (!is.null(s_def)) {
+              ctx$model_lines <- safe_add_lines(ctx$model_lines, s_def$model_lines, ctx$declared_nodes)
+              total_u <- paste0(total_u, " + ", s_def$term)
+
+              is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
+              if (is_unified) {
+                unified_tau <- paste0("tau_u_", s_name, "_", response)
+                unified_sigma <- paste0("sigma_", s_name, "_", response)
+                ctx$param_map[[length(ctx$param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_tau, equation_index = NA, type = "structure")
+                ctx$param_map[[length(ctx$param_map) + 1]] <- list(response = response, predictor = s_name, parameter = unified_sigma, equation_index = NA, type = "structure")
+              } else {
+                ctx$param_map[[length(ctx$param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("tau_u_", response, "_", s_name), equation_index = NA, type = "structure")
+                ctx$param_map[[length(ctx$param_map) + 1]] <- list(response = response, predictor = s_name, parameter = paste0("sigma_", response, "_", s_name), equation_index = NA, type = "structure")
+              }
+            }
+          }
+        }
+
+        curr_pred <- NULL
+        for (eq in ctx$eq_list) {
+          if (eq$response == response) {
+            curr_pred <- eq$predictors
+            break
+          }
+        }
+
+        def <- tryCatch(
+          jags_family_definition(fam_obj, response, curr_pred, structure_term = total_u, loop_bound = eq_loop_N),
+          error = function(e) NULL
+        )
+
+        if (!is.null(def) && !is.null(def$model_code)) {
+          ctx$model_lines <- c(
+            ctx$model_lines,
+            paste0("  for (i in 1:", eq_loop_N, ") {")
+          )
+          ctx$model_lines <- safe_add_lines(ctx$model_lines, def$model_code, ctx$declared_nodes)
+          ctx$model_lines <- c(ctx$model_lines, "  }")
+        } else {
+          stop(paste("Unknown distribution or missing module for:", dist))
+        }
       }
     }
   }

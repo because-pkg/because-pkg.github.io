@@ -87,20 +87,40 @@ preprocess_because_args <- function(data, equations, distribution, family, struc
     for (node_name in names(family)) {
       specified_dist <- tolower(family[[node_name]])
       if (!(specified_dist %in% supported_families)) {
-        stop(
-          sprintf(
-            "Error: The distribution family '%s' specified for node '%s' is not supported in 'because'. Supported families are: %s.", 
-            specified_dist, node_name, paste(supported_families, collapse = ", ")
-          ),
-          call. = FALSE
-        )
+        fam_cls <- paste0("because_family_", specified_dist)
+        # Probe whether any loaded namespace provides jags_family_definition for
+        # this class.  getS3method() only searches registered namespaces, which
+        # misses packages loaded via devtools::load_all() during testing.
+        # We therefore also scan all attached/loaded environments for the method.
+        has_ext <- !is.null(utils::getS3method("jags_family_definition", fam_cls, optional = TRUE))
+        if (!has_ext) {
+          method_name <- paste0("jags_family_definition.", fam_cls)
+          has_ext <- exists(method_name, mode = "function", inherits = TRUE) ||
+            any(vapply(loadedNamespaces(), function(ns) {
+              tryCatch(
+                !is.null(get(method_name, envir = asNamespace(ns), inherits = FALSE)),
+                error = function(e) FALSE
+              )
+            }, logical(1)))
+        }
+        if (!has_ext) {
+          stop(
+            sprintf(
+              "Error: The distribution family '%s' specified for node '%s' is not supported in 'because'. Supported families are: %s.",
+              specified_dist, node_name, paste(supported_families, collapse = ", ")
+            ),
+            call. = FALSE
+          )
+        }
       }
     }
   }
 
   family_obj <- family
-  if (!is.null(family) && ("occupancy" %in% family || "cmr" %in% family)) {
-    class(family_obj) <- c("because_family_occupancy", class(family_obj))
+  if (!is.null(family)) {
+    for (f in unique(tolower(unlist(family)))) {
+      class(family_obj) <- unique(c(paste0("because_family_", f), class(family_obj)))
+    }
   }
   structure_obj <- structure
   if (!is.null(structure)) {

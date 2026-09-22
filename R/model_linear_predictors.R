@@ -78,7 +78,7 @@ generate_linear_predictors <- function(ctx) {
       )
     }
 
-    if (dist == "gaussian" || dist == "occupancy" || grepl("^p_", response)) {
+    if (dist == "gaussian" || !(dist %in% c("binomial", "multinomial", "ordinal", "poisson", "negbinomial", "zinb"))) {
       mu <- paste0("mu_", response, suffix)
       ctx$model_lines <- safe_add_lines(ctx$model_lines, paste0("    ", mu, "[i] <- ", linpred), ctx$declared_nodes)
     } else if (dist == "binomial") {

@@ -13,7 +13,8 @@ generate_model_variability <- function(ctx) {
     for (var in names(ctx$variability_list)) {
       type <- ctx$variability_list[[var]]
 
-      if (!is.null(ctx$dist_list[[var]]) && ctx$dist_list[[var]] == "occupancy") {
+      var_dist <- ctx$dist_list[[var]] %||% "gaussian"
+      if (!var_dist %in% c("gaussian", "normal")) {
         next
       }
 

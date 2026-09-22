@@ -567,6 +567,27 @@ is_latent_child_hook.default <- function(family, variable_name, ...) {
     return(FALSE)
 }
 
+#' DAG Expansion Hook
+#'
+#' Modules implement this to expand compound latent nodes and define compound groups for DAG plotting.
+#' @param family The S3 family list or family object.
+#' @param equations List of formulas.
+#' @param latent Character vector of latent variables.
+#' @param ... Additional arguments.
+#' @return A list with `equations` (potentially rewired), `latent` (updated latents), and `compound_groups` (NULL or list of compound groups).
+#' @keywords internal
+#' @export
+dag_expand_hook <- function(family, equations, latent, ...) {
+    UseMethod("dag_expand_hook")
+}
+
+#' Default Method for DAG Expansion Hook
+#' @keywords internal
+#' @export
+dag_expand_hook.default <- function(family, equations, latent, ...) {
+    return(list(equations = equations, latent = latent, compound_groups = NULL))
+}
+
 #' Structure Name Hook
 #'
 #' Modules implement this to provide specialized names for structure precision matrices.

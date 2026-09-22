@@ -162,70 +162,11 @@ find_reusable_tests <- function(
 #' @keywords internal
 get_dsep_support_equations <- function(test_eq, all_equations, family) {
     dsep_equations <- list(test_eq)
-
-    if (!is.null(family) && any(family == "occupancy")) {
-        added <- TRUE
-        while (added) {
-            added <- FALSE
-            current_vars <- unique(unlist(lapply(dsep_equations, all.vars)))
-
-            for (v in current_vars) {
-                is_occ <- !is.na(family[v]) && family[v] == "occupancy"
-                is_det <- grepl("^p_", v) &&
-                    !is.na(family[sub("^p_", "", v)]) &&
-                    family[sub("^p_", "", v)] == "occupancy"
-                is_psi <- grepl("^psi_", v) &&
-                    !is.na(family[sub("^psi_", "", v)]) &&
-                    family[sub("^psi_", "", v)] == "occupancy"
-
-                base_occ <- if (is_det) {
-                    sub("^p_", "", v)
-                } else if (is_psi) {
-                    sub("^psi_", "", v)
-                } else {
-                    v
-                }
-
-                if (is_occ || is_det || is_psi) {
-                    test_eq_resp <- as.character(test_eq)[2]
-
-                    # Check for p_X and psi_X equations
-                    targets <- c(
-                        paste0("p_", base_occ),
-                        paste0("psi_", base_occ)
-                    )
-
-                    for (tgt in targets) {
-                        if (tgt != test_eq_resp) {
-                            for (eq in all_equations) {
-                                # Check if eq defines tgt
-                                if (
-                                    length(as.character(eq)) == 3 &&
-                                        as.character(eq)[2] == tgt
-                                ) {
-                                    # Check if already in dsep_equations
-                                    eq_str <- paste(deparse(eq), collapse = " ")
-                                    exists <- any(sapply(
-                                        dsep_equations,
-                                        function(e) {
-                                            paste(deparse(e), collapse = " ") ==
-                                                eq_str
-                                        }
-                                    ))
-                                    if (!exists) {
-                                        dsep_equations <- c(
-                                            dsep_equations,
-                                            list(eq)
-                                        )
-                                        added <- TRUE
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    family_obj <- family
+    if (!is.null(family)) {
+        for (f in unique(tolower(unlist(family)))) {
+            class(family_obj) <- unique(c(paste0("because_family_", f), class(family_obj)))
         }
     }
-    return(dsep_equations)
+    dsep_equations_hook(family_obj, all_equations, dsep_equations, test_eq = test_eq)
 }

@@ -358,6 +358,7 @@ because <- function(
   dsep_results      <- NULL
   dsep_correlations <- NULL
   induced_cors      <- NULL
+  monitor_mode      <- NULL  # will be set by prepare_monitors_and_inits for full fit; NULL is valid for dsep path
 
   # Handle global variability setting (e.g. variability = "reps")
   variability <- normalize_global_variability(variability, equations, random, id_col)
