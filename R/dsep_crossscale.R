@@ -1,17 +1,20 @@
-
-# ==========================================================================
-# Cross-Scale D-Sep: PGLS routing
-# ==========================================================================
-# When the focal predictor lives at a *coarser* hierarchical level than the
-# response (e.g., species-level Body_Mass_s tested against obs-level Abundance),
-# a standard observation-level GLMM is non-identifiable: the group-level fixed
-# effect and the group-level random effect compete for the same variance.
+# Cross-Scale D-Separation via PGLS
 #
-# To avoid MCMC convergence issues, we run the test at the predictor's own scale:
-#   1. Aggregate the response to the predictor's level.
-#   2. Include only conditioning variables at or above that level.
-#   3. Fit GLS with the appropriate correlation structure (phylo / spatial).
-# ==========================================================================
+# When a focal predictor lives at a *coarser* hierarchical level than the
+# response (e.g., species-level Body_Mass tested against obs-level Abundance),
+# a standard GLMM is non-identifiable.  This module routes such tests to GLS
+# fitted at the predictor's own level, optionally with a phylogenetic
+# correlation structure (corPagel).
+#
+# Primary functions:
+#   - detect_crossscale_dsep()    detect coarser-level focal predictors
+#   - run_crossscale_dsep_pgls()  aggregate + GLS fit at predictor's scale
+# Internal helpers (not exported):
+#   - .cs_flatten()   flatten hierarchical data list to a data.frame
+#   - .cs_find_table() find the table containing group + test_var
+#   - .cs_build_cor() build phylogenetic correlation structure for nlme::gls
+#
+# @keywords internal
 
 #' Detect whether a d-sep test crosses hierarchical scales in the same chain
 #'
