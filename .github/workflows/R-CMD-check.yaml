@@ -50,6 +50,7 @@ jobs:
           echo "LDFLAGS=-L$(brew --prefix jags)/lib" >> $GITHUB_ENV
           echo "CPPFLAGS=-I$(brew --prefix jags)/include" >> $GITHUB_ENV
           echo "PKG_CONFIG_PATH=$(brew --prefix jags)/lib/pkgconfig" >> $GITHUB_ENV
+          echo "DYLD_FALLBACK_LIBRARY_PATH=$(brew --prefix jags)/lib:/usr/local/lib:/usr/lib" >> $GITHUB_ENV
           # CRAN binary rjags.so hard-codes /usr/local/lib (Intel path); symlink for Apple Silicon runners
           sudo mkdir -p /usr/local/lib
           sudo ln -sf "$(brew --prefix jags)/lib/libjags.4.dylib" /usr/local/lib/libjags.4.dylib
