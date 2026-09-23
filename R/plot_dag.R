@@ -1,6 +1,3 @@
-# Internal helper %||%
-`%||%` <- function(a, b) if (!is.null(a)) a else b
-
 #' Plot DAG from Equations or Fitted Model
 #'
 #' Visualizes the Directed Acyclic Graph (DAG) implied by a set of equations
@@ -20,12 +17,12 @@
 #'     \item \code{"nicely"} — automatic choice based on graph properties.
 #'     \item \code{"circle"} — nodes arranged in a circle.
 #'   }
-#'   Override node positions entirely with the \code{coords} argument. Use \code{"multiscale"} 
+#'   Override node positions entirely with the \code{coords} argument. Use \code{"multiscale"}
 #'   to automatically arrange nodes in vertical tiers based on their hierarchical level.
 #' @param latent Character vector of latent variable names. Overrides the model's
-#'   latent variables if provided. If \code{NULL} (default) and plotting from formulas, 
-#'   latent variables are **automatically detected** if they follow the SEM 
-#'   naming convention (e.g., \code{L1}, \code{L2}, \code{Latent1}, \code{lat_foo}) 
+#'   latent variables if provided. If \code{NULL} (default) and plotting from formulas,
+#'   latent variables are **automatically detected** if they follow the SEM
+#'   naming convention (e.g., \code{L1}, \code{L2}, \code{Latent1}, \code{lat_foo})
 #'   and only appear on the RHS of equations.
 #' @param node_size Size of the nodes (default 14).
 #' @param node_color Color of the node border (default "black").
@@ -40,9 +37,9 @@
 #' "monochrome" colors all edges black.
 #' @param show_coefficients Logical; whether to print coefficient values on edges (only for fitted models).
 #' @param coords Optional named list of coordinates for the nodes, e.g. \code{list(A = c(1, 1), B = c(2, 2))}.
-#' If provided, these will override the \code{layout} algorithm. **Partial coordinates** are supported: 
-#' nodes not included in \code{coords} will be positioned according to the automatic \code{layout}. 
-#' For deterministic nodes (interactions and powers), you can use the original formula string 
+#' If provided, these will override the \code{layout} algorithm. **Partial coordinates** are supported:
+#' nodes not included in \code{coords} will be positioned according to the automatic \code{layout}.
+#' For deterministic nodes (interactions and powers), you can use the original formula string
 #' as the key (e.g., \code{"I(age^2)" = c(x, y)} or \code{"X:Y" = c(x, y)}).
 #' @param family Optional named character vector of families for response variables.
 #' @param type Character; either "raw" (default) or "marginal" effects.
@@ -54,29 +51,29 @@
 #' \strong{Interaction and Deterministic Nodes:}
 #' Interaction terms (e.g. \code{BM:M}) and \code{I()} transformations are
 #' rendered as **explicit intermediate nodes** (grey diamonds), following the
-#' Interaction DAG (IDAG) convention of Attia, Holliday & Oldmeadow (2022).
+#' Interaction DAG (IDAG) convention of Attia, Holliday \& Oldmeadow (2022).
 #' This makes the deterministic nature of these terms visually clear and is
 #' consistent with how \code{because_dsep} treats them for d-separation.
 #'
 #' \strong{Latent Variable Auto-detection:}
-#' When plotting from a list of formulas, \code{plot_dag} automatically identifies 
-#' latent variables (rendering them as circles) if they match common SEM naming 
-#' conventions (like \code{L1}, \code{Latent}, \code{lat_climate}) and never 
+#' When plotting from a list of formulas, \code{plot_dag} automatically identifies
+#' latent variables (rendering them as circles) if they match common SEM naming
+#' conventions (like \code{L1}, \code{Latent}, \code{lat_climate}) and never
 #' appear as the response (LHS) of an equation.
 #'
 #' \strong{Manual Positioning with Formula Strings:}
-#' When using \code{coords}, you can specify positions for interaction or 
+#' When using \code{coords}, you can specify positions for interaction or
 #' power nodes by using their formula representation as the list key. For example:
-#' \code{coords = list(weight = c(0,0), "I(age^2)" = c(1,1), "sex:age" = c(2,2))}. 
-#' Any node not specified in the list will maintain its position from the 
+#' \code{coords = list(weight = c(0,0), "I(age^2)" = c(1,1), "sex:age" = c(2,2))}.
+#' Any node not specified in the list will maintain its position from the
 #' automatic layout.
 #'
 #' \strong{Random Effects:}
-#' Formula terms containing random effects (e.g., \code{(1|year)}) are 
+#' Formula terms containing random effects (e.g., \code{(1|year)}) are
 #' automatically filtered out for the structural DAG visualization.
 #'
 #' @references
-#' Attia, J., Holliday, E., & Oldmeadow, C. (2022). A proposal for capturing
+#' Attia, J., Holliday, E., \& Oldmeadow, C. (2022). A proposal for capturing
 #' interaction and effect modification using DAGs.
 #' \emph{International Journal of Epidemiology}, 51(4), 1047--1053.
 #' \doi{10.1093/ije/dyac105}
@@ -118,7 +115,7 @@ plot_dag <- function(
     multinomial_probabilities = TRUE
 ) {
     edge_color_scheme <- match.arg(edge_color_scheme)
-    type <- match.arg(type)
+    type              <- match.arg(type)
 
     # Check dependencies
     if (
@@ -128,472 +125,36 @@ plot_dag <- function(
             !requireNamespace("ggplot2", quietly = TRUE) ||
             !requireNamespace("dplyr", quietly = TRUE)
     ) {
-        stop(
-            "Packages 'dagitty', 'ggdag', 'ggraph', 'ggplot2', and 'dplyr' are required for plot_dag."
-        )
+        stop("Packages 'dagitty', 'ggdag', 'ggraph', 'ggplot2', and 'dplyr' are required for plot_dag.")
     }
 
-    # Normalize input to a list of objects
-    if (
-        inherits(x, "because") ||
-            inherits(x, "list") && all(sapply(x, inherits, "formula"))
-    ) {
+    # Normalize input to a named list of model objects / formula lists
+    if (inherits(x, "because") || inherits(x, "list") && all(sapply(x, inherits, "formula"))) {
         x <- list(Model = x)
     }
 
-    # Build Tidy DAG Data Frame
+    # --- Build tidy data frame for each model ---
     combined_dag_data <- NULL
 
     for (i in seq_along(x)) {
-        obj <- x[[i]]
+        obj   <- x[[i]]
         label <- names(x)[i]
-        if (is.null(label)) {
-            label <- paste("Model", i)
-        }
+        if (is.null(label)) label <- paste("Model", i)
 
-        # 1. Extract Equations and Latent Info
-        current_latent <- latent
-        current_family <- family
-        current_poly_terms <- NULL
-        equations <- NULL
-        if (inherits(obj, "because")) {
-            if (is.null(obj)) return(NULL)
-            equations <- if (!is.null(obj$equations)) obj$equations else {
-               if (!is.null(obj$input$equations)) obj$input$equations else obj$parameter_map$equations
-            }
-            
-            if (is.null(equations)) {
-                stop(
-                    "Could not find equations in 'because' object. Please refit the model or manually pass equations."
-                )
-            }
-            # Use object's latent vars if not overridden
-            if (is.null(current_latent)) {
-                current_latent <- if (!is.null(obj$latent)) obj$latent else obj$input$latent
-            }
-            # Also get family if not provided
-            if (is.null(current_family)) {
-                current_family <- if (!is.null(obj$family)) obj$family else obj$input$family
-            }
-            # Read stored poly_terms so diamond nodes are reconstructed correctly
-            current_poly_terms <- if (!is.null(obj$poly_terms)) obj$poly_terms else obj$input$poly_terms
-        } else {
-            # List of formulas
-            equations <- obj
-
-            # Auto-detect latent variables from structural equations:
-            # A variable that (a) never appears as a LHS response, and (b) matches
-            # common SEM latent naming conventions (L1, L2, Lat, Latent, lat_*, etc.)
-            # is automatically treated as latent (rendered as a circle).
-            if (is.null(current_latent)) {
-                lhs_vars <- vapply(equations, function(f) deparse(f[[2]]), character(1))
-                rhs_vars <- unique(unlist(lapply(equations, function(f) {
-                    all.vars(f[[3]])
-                })))
-                # Variables only on RHS, never a response
-                rhs_only <- setdiff(rhs_vars, lhs_vars)
-                # Match common SEM latent naming: L1, L2, Latent, latent1, lat_climate, Lat_foo
-                # Matches: L + digits, Lat/lat + optional suffix, Latent/latent + optional digits
-                latent_pattern <- "^[Ll]([0-9]+|at(ent?)?[0-9]*(_\\w*)?)$"
-                auto_latent <- rhs_only[grepl(latent_pattern, rhs_only, perl = TRUE)]
-                if (length(auto_latent) > 0) {
-                    current_latent <- unique(c(current_latent, auto_latent))
-                }
-            }
-        }
-
-        # S3 Extension Hook: Expand compound latent nodes and DAG groups
-        family_obj <- current_family
-        if (!is.null(current_family)) {
-            for (f in unique(tolower(unlist(current_family)))) {
-                class(family_obj) <- unique(c(paste0("because_family_", f), class(family_obj)))
-            }
-        }
-        dag_expansion <- dag_expand_hook(family_obj, current_equations, current_latent)
-        current_equations <- dag_expansion$equations
-        current_latent <- dag_expansion$latent
-        compound_groups <- dag_expansion$compound_groups
-        extra_dag_edges <- dag_expansion$extra_edges %||% character()
-
-        # 2. Convert to dagitty syntax
-        induced_cors <- NULL
-        if (inherits(obj, "because")) {
-            induced_cors <- if (!is.null(obj$induced_correlations)) obj$induced_correlations else obj$input$induced_correlations
-        }
-
-        # Check if DAG needs reconstruction
-        dag_obj <- NULL
-        interaction_nodes <- NULL
-        
-        if (inherits(obj, "because") && !is.null(obj$dag)) {
-           dag_obj <- obj$dag
-        } else {
-           dag_result <- equations_to_dag_string(
-               current_equations,
-               induced_cors,
-               family = current_family,
-               poly_terms = current_poly_terms,
-               collapse_expanded = (type == "marginal"),
-               extra_edges = extra_dag_edges
-           )
-           dag_str <- dag_result$dag_string
-           interaction_nodes <- dag_result$interaction_nodes
-           dag_obj <- dagitty::dagitty(dag_str)
-        }
-
-        # 3. Tidy it up using ggdag
-        # Handle multiscale layout if requested
-        if (layout == "multiscale" && inherits(obj, "because") && !is.null(obj$hierarchical_info)) {
-            # Compute coordinates manually
-            h_info <- obj$hierarchical_info
-            h_paths <- strsplit(h_info$hierarchy, "\\s*;\\s*")[[1]]
-            all_levels <- unique(trimws(unlist(strsplit(h_paths, "\\s*>\\s*"))))
-            
-            # Map variables to levels
-            var_to_lvl <- list()
-            for (lvl in names(h_info$levels)) {
-                for (v in h_info$levels[[lvl]]) {
-                    var_to_lvl[[v]] <- lvl
-                }
-            }
-            
-            # Identify all nodes in the DAG
-            all_nodes_in_dag <- names(dag_obj)
-            new_coords <- list()
-            
-            # Calculate Y for each level based on depth (inverted for top-down)
-            lvl_depths <- vapply(all_levels, function(l) get_level_depth(l, h_info$hierarchy), numeric(1))
-            
-            # For each level, find nodes belonging to it
-            for (lvl in all_levels) {
-                lvl_nodes <- all_nodes_in_dag[vapply(all_nodes_in_dag, function(n) {
-                    # Handle interaction nodes (use first parent found in h_info as proxy)
-                    clean_n <- if (!is.null(interaction_nodes) && n %in% names(interaction_nodes)) {
-                        pvars <- all.vars(parse(text=n))
-                        if (length(pvars) > 0) pvars[[1]] else n
-                    } else n
-                    (var_to_lvl[[clean_n]] %||% "unknown") == lvl
-                }, logical(1))]
-                
-                if (length(lvl_nodes) > 0) {
-                    y_val <- -lvl_depths[lvl] # Top level at 0, next at -1, etc.
-                    # Spread nodes along X
-                    x_vals <- seq(-1, 1, length.out = length(lvl_nodes))
-                    if (length(lvl_nodes) == 1) x_vals <- 0
-                    for (j in seq_along(lvl_nodes)) {
-                        new_coords[[lvl_nodes[j]]] <- c(x_vals[j], y_val)
-                    }
-                }
-            }
-            
-            # If any nodes weren't assigned a level, put them at the very bottom
-            unassigned <- setdiff(all_nodes_in_dag, names(new_coords))
-            if (length(unassigned) > 0) {
-                y_bottom <- min(sapply(new_coords, function(v) v[2])) - 1
-                x_vals <- seq(-1, 1, length.out = length(unassigned))
-                for (j in seq_along(unassigned)) {
-                    new_coords[[unassigned[j]]] <- c(x_vals[j], y_bottom)
-                }
-            }
-
-            # Inject these coords into the call logic
-            if (is.null(coords)) coords <- list()
-            for (n in names(new_coords)) {
-                if (is.null(coords[[n]])) coords[[n]] <- new_coords[[n]]
-            }
-            
-            # Use a dummy layout that we will override immediately
-            tidy_dag <- ggdag::tidy_dagitty(dag_obj, layout = "nicely")
-        } else {
-            tidy_dag <- ggdag::tidy_dagitty(dag_obj, layout = layout)
-        }
-
-        # Extract data frame for plotting (nodes + edges flattened)
-        dag_data <- as.data.frame(dplyr::as_tibble(tidy_dag))
-
-        # Apply coordinates if provided (overwrites layout only for specified nodes)
-        if (!is.null(coords)) {
-            if (!is.list(coords)) {
-                stop(
-                    "coords must be a named list of numeric vectors, e.g. list(node = c(x, y))."
-                )
-            }
-            # Update positions in the tidy data frame
-            for (coord_key in names(coords)) {
-                new_pos <- coords[[coord_key]]
-                
-                # Match the exact key or its sanitized internal version (e.g. "I(age^2)" -> "age_pow2")
-                # This allow users to use original formula strings in the coords list.
-                nm <- if (coord_key %in% dag_data$name) {
-                    coord_key
-                } else {
-                    # sanitize_term_name matches the logic used to create deterministic nodes
-                    sanitize_term_name(coord_key)
-                }
-
-                # Update source positions (affecting nodes and start of arrows)
-                is_source <- which(dag_data$name == nm)
-                if (length(is_source) > 0) {
-                    dag_data$x[is_source] <- new_pos[1]
-                    dag_data$y[is_source] <- new_pos[2]
-                }
-                
-                # Update target positions (affecting end of arrows)
-                if ("to" %in% names(dag_data)) {
-                    is_target <- which(dag_data$to == nm)
-                    if (length(is_target) > 0) {
-                        dag_data$xend[is_target] <- new_pos[1]
-                        dag_data$yend[is_target] <- new_pos[2]
-                    }
-                }
-            }
-        }
-
-        # Identify compound nodes and assign to groups for box drawing
-        dag_data$compound_group <- NA_character_
-        if (!is.null(compound_groups) && length(compound_groups) > 0) {
-            for (grp_name in names(compound_groups)) {
-                grp <- compound_groups[[grp_name]]
-                dag_data$compound_group[dag_data$name %in% grp$nodes] <- grp_name
-            }
-        }
-
-        # Label Processing: Wrap text (replace _ with \n) for regular nodes
-        dag_data$label_display <- gsub("_", "\n", dag_data$name)
-        # Override for interaction/deterministic nodes: show "BM\u00d7M" etc.
-        if (length(interaction_nodes) > 0) {
-            for (iname in names(interaction_nodes)) {
-                dag_data$label_display[
-                    dag_data$name == iname
-                ] <- interaction_nodes[[iname]]
-            }
-        }
-        # Override for compound latent nodes if specified by extension
-        if (!is.null(compound_groups) && length(compound_groups) > 0) {
-            for (grp_name in names(compound_groups)) {
-                grp <- compound_groups[[grp_name]]
-                if (!is.null(grp$labels)) {
-                    for (node_lbl in names(grp$labels)) {
-                        dag_data$label_display[dag_data$name == node_lbl] <- grp$labels[[node_lbl]]
-                    }
-                }
-            }
-        }
-
-        # Determine Node Size based on longest label (Heuristic)
-        # Assuming circular node, diameter needs to cover the rectangular text block.
-        # We find the max characters in any single line of the wrapped labels.
-        max_chars <- max(nchar(unlist(strsplit(dag_data$label_display, "\n"))))
-        # Heuristic: base size + scaling factor * chars * text_size
-        # Typically node_size=14 covers ~3 chars at text_size=4.
-        # Reduced multiplier to prevent excessive size in compact/Rmd plots.
-        calc_size <- min(25, 6 + (max_chars * 1.3 * (text_size / 3.5)))
-
-        # Use simple logic: manual node_size is a baseline, but we ensure it fits.
-        # However, user asked to "make the boxes size the same... according to the longest".
-        # So we use the calculated max size for ALL nodes stringently.
-        # We will take the maximum of the default/user input and the calculated requirement.
-        current_node_size <- if (node_size == 12) max(10, calc_size) else node_size
-
-        # Initialize columns for ALL edges
-        dag_data$edge_type <- NA_character_
-        dag_data$weight_abs <- 1.0 # Default to 1 (solid/opaque) for structural plots
-        dag_data$val <- NA_real_
-        dag_data$edge_label <- NA_character_ # Initialize edge_label column
-        dag_data$significant <- NA # Logical placeholder
-        dag_data$curvature <- 0 # Default curvature (straight)
-
-        # Mark node types (Observed vs Latent vs Interaction)
-        dag_data$type <- "Observed"
-        if (!is.null(current_latent)) {
-            dag_data$type[dag_data$name %in% current_latent] <- "Latent"
-        }
-        # Interaction/deterministic nodes are distinct from both
-        if (length(interaction_nodes) > 0) {
-            dag_data$type[
-                dag_data$name %in% names(interaction_nodes)
-            ] <- "Interaction"
-        }
-
-        # 3. Add coefficients if available
-        # Get edges metadata from dagitty for finding parameters
-        edges_meta <- dagitty::edges(dag_obj) # v, w, e
-
-        stats <- NULL
-        quantiles <- NULL
-        me_table <- NULL
-        if (inherits(obj, "because") && !is.null(obj$summary)) {
-            stats <- obj$summary$statistics
-            quantiles <- obj$summary$quantiles
-            
-            if (type == "marginal") {
-               # Compute marginal effects (High samples for consistency with plot_coef)
-               if (!is.null(obj$parameter_map)) {
-                  me_table <- marginal_effects(obj, samples = 1000, multinomial_probabilities = multinomial_probabilities)
-               }
-            }
-        }
-
-        # Process edges to find parameters
-        if (nrow(edges_meta) > 0) {
-            edges_to_remove <- c()
-            expanded_edges <- list()
-            
-            # Handle both dag_data can be a tidy_dagitty or a data.frame
-            all_names <- if (inherits(dag_data, "tidy_dagitty")) names(dag_data$data) else names(dag_data)
-            edge_rows <- if ("to" %in% all_names) which(!is.na(dag_data$to)) else c()
-            
-            for (idx in edge_rows) {
-                v <- as.character(dag_data$name[idx])
-                w <- as.character(dag_data$to[idx])
-
-                # Find corresponding edge via match (Agnostic to node order)
-                meta_match <- which(
-                    (as.character(edges_meta$v) == v & as.character(edges_meta$w) == w) |
-                    (as.character(edges_meta$v) == w & as.character(edges_meta$w) == v)
-                )
-
-                if (length(meta_match) > 0) {
-                    m_idx <- meta_match[1]
-                    e_type <- as.character(edges_meta$e[m_idx])
-                    dag_data$edge_type[idx] <- e_type
-                    
-                    actual_v <- as.character(edges_meta$v[m_idx])
-                    actual_w <- as.character(edges_meta$w[m_idx])
-
-                    # Multinomial / Marginal Effects Check
-                    processed_as_marginal <- FALSE
-                    if (any(type == "marginal") && e_type == "->") {
-                        if (!is.null(me_table)) {
-                            raw_v <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", actual_v)))
-                            raw_w <- trimws(gsub("[`]", "", gsub("^(psi_|p_|z_)", "", actual_w)))
-                            
-                            me_resp_names <- trimws(gsub("[`]", "", as.character(me_table$Response)))
-                            me_pred_names <- trimws(gsub("[`]", "", as.character(me_table$Predictor)))
-                            
-                            clean_v <- raw_v
-                            if (!(clean_v %in% me_pred_names)) {
-                               clean_v <- gsub("(_L|_Q|_C|_dummy|_\\d+|\\[[0-9]+\\])$", "", raw_v)
-                            }
-                            clean_w <- raw_w
-                            if (!(clean_w %in% me_resp_names)) {
-                               clean_w <- gsub("(_L|_Q|_C|_dummy|_\\d+|\\[[0-9]+\\])$", "", raw_w)
-                            }
-                            
-                            me_rows <- me_table[me_resp_names == clean_w & me_pred_names == clean_v, ]
-                            
-                            # Fallback for spelling/case mismatches
-                            if (nrow(me_rows) == 0 && (grepl("Income", clean_v) || grepl("Satsfied", clean_w))) {
-                                me_rows <- me_table[
-                                   grepl(substr(clean_w, 1, 7), me_resp_names, ignore.case=TRUE) & 
-                                   grepl(substr(clean_v, 1, 7), me_pred_names, ignore.case=TRUE), 
-                                ]
-                            }
-
-                            if (nrow(me_rows) > 0) {
-                                processed_as_marginal <- TRUE
-                                # MULTINOMIAL BUNDLE LOGIC
-                                edges_to_remove <- unique(c(edges_to_remove, idx))
-                                bundle_size <- nrow(me_rows)
-                                curvatures <- if (bundle_size == 1) 0 else seq(-0.3, 0.3, length.out = bundle_size)
-
-                                for (k in seq_len(bundle_size)) {
-                                   new_edge <- dag_data[idx, , drop=FALSE]
-                                   e_val <- me_rows$Effect[k]
-                                   e_low <- me_rows$Lower[k]
-                                   e_upp <- me_rows$Upper[k]
-                                   e_cat <- as.character(me_rows$Category[k])
-
-                                   new_edge$val <- e_val
-                                   new_edge$weight_abs <- abs(e_val)
-                                   new_edge$edge_label <- if (!is.na(e_cat) && e_cat != "NA") {
-                                      paste0(e_cat, ": ", round(e_val, 2))
-                                   } else round(e_val, 2)
-                                   
-                                   new_edge$curvature <- curvatures[k]
-                                   
-                                   if (edge_color_scheme != "monochrome") {
-                                      if (sign(e_low) == sign(e_upp)) {
-                                         new_edge$significant <- if (edge_color_scheme == "directional") (if (e_val > 0) "pos" else "neg") else "sig"
-                                      } else new_edge$significant <- "ns"
-                                   } else new_edge$significant <- "default"
-                                   
-                                   expanded_edges[[length(expanded_edges) + 1]] <- new_edge
-                                }
-                            }
-                        }
-                    }
-
-                    if (!processed_as_marginal) {
-                        if (!is.null(stats)) {
-                            val <- NA
-                            sig_cat <- "default"
-                            pname <- NULL
-
-                            if (e_type == "->") {
-                                # Beta: beta_w_v
-                                try_pname <- paste0("beta_", actual_w, "_", actual_v)
-                                if (try_pname %in% rownames(stats)) pname <- try_pname
-                            } else if (e_type == "<->") {
-                                pname1 <- paste0("rho_", v, "_", w)
-                                pname2 <- paste0("rho_", w, "_", v)
-                                if (pname1 %in% rownames(stats)) pname <- pname1 else if (pname2 %in% rownames(stats)) pname <- pname2
-                            }
-                            
-                            # Fallback: stats summary
-                            if (!is.null(pname) && pname %in% rownames(stats)) {
-                                val <- stats[pname, "Mean"]
-                                sig_cat <- "default"
-                                if (!is.null(quantiles) && pname %in% rownames(quantiles)) {
-                                    lower <- quantiles[pname, "2.5%"]
-                                    upper <- quantiles[pname, "97.5%"]
-                                    if (sign(lower) == sign(upper)) {
-                                        sig_cat <- if (edge_color_scheme == "directional") (if (val > 0) "pos" else "neg") else "sig"
-                                    } else sig_cat <- "ns"
-                                }
-
-                                if (!is.na(val)) {
-                                    dag_data$val[idx] <- val
-                                    dag_data$weight_abs[idx] <- abs(val)
-                                    dag_data$edge_label[idx] <- round(val, 2)
-                                    dag_data$significant[idx] <- sig_cat
-                                }
-                            }
-                        } else if (!is.null(obj$summary$results)) {
-                             # Handle list-based summary if standard statistics table is missing
-                        }
-                    }
-                }
-            }
-            # Finalize expansion
-            if (length(edges_to_remove) > 0) {
-              dag_data <- dag_data[-edges_to_remove, , drop = FALSE]
-            }
-            if (length(expanded_edges) > 0) {
-               dag_data <- rbind(dag_data, do.call(rbind, expanded_edges))
-            }
-        }
-
-        # Fill defaults for plotting if missing
-        dag_data$weight_abs[
-            is.na(dag_data$weight_abs) & !is.na(dag_data$to)
-        ] <- 1.0
-        # Default edge type to -> if not found (robustness)
-        dag_data$edge_type[
-            is.na(dag_data$edge_type) & !is.na(dag_data$to)
-        ] <- "->"
-        # Ensure factor levels for significance (Re-apply after adding bundles)
-        if (!"significant" %in% names(dag_data)) {
-            dag_data$significant <- "default"
-        }
-        dag_data$significant[is.na(dag_data$significant)] <- "default"
-        dag_data$significant <- factor(
-            as.character(dag_data$significant),
-            levels = c("pos", "neg", "sig", "ns", "default")
+        dag_data <- build_dag_data(
+            obj, label,
+            latent                   = latent,
+            family                   = family,
+            layout                   = layout,
+            coords                   = coords,
+            node_size                = node_size,
+            text_size                = text_size,
+            edge_label_size          = edge_label_size,
+            edge_color_scheme        = edge_color_scheme,
+            type                     = type,
+            multinomial_probabilities = multinomial_probabilities,
+            show_coefficients        = show_coefficients
         )
-
-        dag_data$final_node_size <- current_node_size
-        dag_data$model_label <- label
 
         if (is.null(combined_dag_data)) {
             combined_dag_data <- dag_data
@@ -602,14 +163,13 @@ plot_dag <- function(
         }
     }
 
-    # Calculate Bounding Boxes for Compound Groups (e.g. imperfect detection, state-space)
+    # --- Compound bounding boxes (imperfect detection / state-space groups) ---
     compound_boxes <- NULL
     if (
         !is.null(combined_dag_data) &&
             "compound_group" %in% names(combined_dag_data) &&
             any(!is.na(combined_dag_data$compound_group))
     ) {
-        # Check if we have coordinates
         if (any(!is.na(combined_dag_data$x))) {
             compound_boxes <- combined_dag_data |>
                 dplyr::filter(!is.na(compound_group)) |>
@@ -624,75 +184,50 @@ plot_dag <- function(
         }
     }
 
-    # Ensure type is a factor (Observed, Latent, Interaction)
+    # --- Finalize node type factor ---
     combined_dag_data$type <- factor(
         combined_dag_data$type,
         levels = c("Observed", "Latent", "Interaction")
     )
 
-    # Calculate uniform node size for plotting and caps
-    # Handle case where combined_dag_data might be missing final_node_size or empty
+    # --- Uniform node size ---
     if (is.null(combined_dag_data$final_node_size)) {
         uniform_node_size <- node_size
     } else {
-        uniform_node_size <- max(
-            combined_dag_data$final_node_size,
-            na.rm = TRUE
-        )
-        # Fallback if max is -Inf
+        uniform_node_size <- max(combined_dag_data$final_node_size, na.rm = TRUE)
         if (!is.finite(uniform_node_size)) uniform_node_size <- node_size
     }
 
-    # Define Caps based on node size
-    # Reduced multiplier from 1.5 to 1.15 to decrease white space/margins.
-    # This prevents edges from disappearing in compact plots.
     cap_size <- ggraph::circle(uniform_node_size * 1.15, "pt")
 
+    # --- ggplot assembly ---
     p <- ggplot2::ggplot(
         combined_dag_data,
         ggplot2::aes(x = x, y = y, xend = xend, yend = yend)
     )
 
-    # 0. Shadowed Boxes for Compound Groups (Background Layer)
+    # 0. Compound group bounding boxes (background layer)
     if (!is.null(compound_boxes)) {
         p <- p +
             ggplot2::geom_rect(
                 data = compound_boxes,
-                ggplot2::aes(
-                    xmin = xmin,
-                    xmax = xmax,
-                    ymin = ymin,
-                    ymax = ymax
-                ),
+                ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
                 inherit.aes = FALSE,
-                fill = "grey93",
-                color = "grey80",
-                alpha = 0.5,
-                linewidth = 0.4,
-                lty = "dashed"
+                fill = "grey93", color = "grey80",
+                alpha = 0.5, linewidth = 0.4, lty = "dashed"
             ) +
-            # Group name label for the box
             ggplot2::geom_text(
                 data = compound_boxes,
-                ggplot2::aes(
-                    x = (xmin + xmax) / 2,
-                    y = ymax + 0.05,
-                    label = compound_group
-                ),
+                ggplot2::aes(x = (xmin + xmax) / 2, y = ymax + 0.05, label = compound_group),
                 inherit.aes = FALSE,
-                size = text_size * 1.1,
-                fontface = "bold",
-                vjust = 0
+                size = text_size * 1.1, fontface = "bold", vjust = 0
             )
     }
 
     p <- p +
         ggdag::theme_dag() +
-        # Add margins back (ggdag removes them)
         ggplot2::theme(plot.margin = ggplot2::margin(10, 10, 10, 10, "mm")) +
-        # prevent clipping of large nodes
         ggplot2::coord_cartesian(clip = "off") +
-        # Expand axes to give space for nodes
         ggplot2::scale_x_continuous(expand = ggplot2::expansion(mult = 0.25)) +
         ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 0.25))
 
@@ -700,130 +235,75 @@ plot_dag <- function(
         p <- p + ggplot2::facet_wrap(~model_label)
     }
 
-    # --- Node Background Layer (drawn BEFORE edges so arrowheads show on top) ---
-    # We draw filled squares/circles here so the arrow shaft is hidden inside the node,
-    # but the arrowhead (at xend) is drawn ON TOP of this fill by the edge layers.
+    # Node background layer (drawn BEFORE edges so arrowheads show on top)
     node_data <- combined_dag_data |>
         dplyr::filter(!is.na(x) & !is.na(y)) |>
         dplyr::distinct(name, .keep_all = TRUE)
 
     p <- p +
         ggplot2::geom_point(
-            data = node_data,
+            data   = node_data,
             ggplot2::aes(x = x, y = y, shape = type, fill = type),
-            size   = uniform_node_size,
-            color  = node_color,
-            stroke = node_stroke,
-            inherit.aes = FALSE
+            size   = uniform_node_size, color = node_color,
+            stroke = node_stroke, inherit.aes = FALSE
         ) +
         ggplot2::scale_shape_manual(
             values = c(Observed = 22, Latent = 21, Interaction = 23),
-            guide = "none"
+            guide  = "none"
         ) +
         ggplot2::scale_fill_manual(
-            values = c(
-                Observed    = node_fill,
-                Latent      = node_fill,
-                Interaction = "grey85"
-            ),
-            guide = "none"
+            values = c(Observed = node_fill, Latent = node_fill, Interaction = "grey85"),
+            guide  = "none"
         )
 
+    # Edge layers
     if ("edge_type" %in% names(combined_dag_data)) {
-        # Normalize bidirected edges to curve AWAY from the graph center.
-        # Heuristic:
-        # 1. Calculate Graph Centroid.
-        # 2. For each edge, check if the "Right" side (curvature > 0) points towards or away from centroid.
-        # 3. Swap direction if it points towards center.
-
-        is_bidirected <- combined_dag_data$edge_type == "<->" &
-            !is.na(combined_dag_data$edge_type)
+        # Orient bidirected edges away from graph centroid
+        is_bidirected <- combined_dag_data$edge_type == "<->" & !is.na(combined_dag_data$edge_type)
         if (any(is_bidirected)) {
-            # Calculate Centroid of the graph layout
-            # Use unique node positions to avoid weighting by edge count
             unique_nodes <- unique(combined_dag_data[, c("name", "x", "y")])
-            centroid_x <- mean(unique_nodes$x, na.rm = TRUE)
-            centroid_y <- mean(unique_nodes$y, na.rm = TRUE)
+            centroid_x   <- mean(unique_nodes$x, na.rm = TRUE)
+            centroid_y   <- mean(unique_nodes$y, na.rm = TRUE)
 
-            # Vectorized check
-            # Current Vector P1 -> P2
             v_x <- combined_dag_data$xend - combined_dag_data$x
             v_y <- combined_dag_data$yend - combined_dag_data$y
-
-            # Midpoint
             m_x <- (combined_dag_data$x + combined_dag_data$xend) / 2
             m_y <- (combined_dag_data$y + combined_dag_data$yend) / 2
+            r_x <- v_y;  r_y <- -v_x
+            t_x <- m_x + r_x;  t_y <- m_y + r_y
 
-            # Normal Vector pointing "Right" (Curvature direction)
-            # R = (dy, -dx)
-            r_x <- v_y
-            r_y <- -v_x
-
-            # Test Point: Midpoint + Normal
-            t_x <- m_x + r_x
-            t_y <- m_y + r_y
-
-            # Distances to Centroid
-            # dist_current: distance from (Midpoint + Right) to Centroid
             dist_current <- (t_x - centroid_x)^2 + (t_y - centroid_y)^2
-
-            # dist_swapped: distance from (Midpoint - Right) to Centroid
-            # (Midpoint - Right) coincides with the curve apex if we swapped direction
-            t_swapped_x <- m_x - r_x
-            t_swapped_y <- m_y - r_y
-            dist_swapped <- (t_swapped_x - centroid_x)^2 +
-                (t_swapped_y - centroid_y)^2
-
-            # If swapped distance is GREATER (farther from center), we should swap
-            # to make the curve point that way.
-            needs_swap <- is_bidirected & (dist_swapped > dist_current)
+            t_swapped_x  <- m_x - r_x;  t_swapped_y <- m_y - r_y
+            dist_swapped <- (t_swapped_x - centroid_x)^2 + (t_swapped_y - centroid_y)^2
+            needs_swap   <- is_bidirected & (dist_swapped > dist_current)
 
             if (any(needs_swap, na.rm = TRUE)) {
                 swap_idx <- which(needs_swap)
-
-                # Temporary storage to enable swapping
                 tmp_name <- combined_dag_data$name[swap_idx]
-                tmp_x <- combined_dag_data$x[swap_idx]
-                tmp_y <- combined_dag_data$y[swap_idx]
-
-                combined_dag_data$name[swap_idx] <- combined_dag_data$to[
-                    swap_idx
-                ]
-                combined_dag_data$x[swap_idx] <- combined_dag_data$xend[
-                    swap_idx
-                ]
-                combined_dag_data$y[swap_idx] <- combined_dag_data$yend[
-                    swap_idx
-                ]
-
-                combined_dag_data$to[swap_idx] <- tmp_name
-                combined_dag_data$xend[swap_idx] <- tmp_x
-                combined_dag_data$yend[swap_idx] <- tmp_y
+                tmp_x    <- combined_dag_data$x[swap_idx]
+                tmp_y    <- combined_dag_data$y[swap_idx]
+                combined_dag_data$name[swap_idx]  <- combined_dag_data$to[swap_idx]
+                combined_dag_data$x[swap_idx]     <- combined_dag_data$xend[swap_idx]
+                combined_dag_data$y[swap_idx]     <- combined_dag_data$yend[swap_idx]
+                combined_dag_data$to[swap_idx]    <- tmp_name
+                combined_dag_data$xend[swap_idx]  <- tmp_x
+                combined_dag_data$yend[swap_idx]  <- tmp_y
             }
         }
 
-        # Handle Bidirected Edges (Deduplicate A<->B vs B<->A)
+        # Deduplicate bidirected edges (A<->B vs B<->A)
         bidirected_edges <- combined_dag_data |>
             dplyr::filter(edge_type == "<->") |>
-            dplyr::mutate(
-                edge_id = paste(
-                    pmin(name, to),
-                    pmax(name, to),
-                    sep = "_"
-                )
-            ) |>
+            dplyr::mutate(edge_id = paste(pmin(name, to), pmax(name, to), sep = "_")) |>
             dplyr::distinct(edge_id, .keep_all = TRUE) |>
             dplyr::select(-edge_id)
-        
-        # Handle Directed Edges (Preserve All for Multi-Category Bundles)
-        directed_edges <- combined_dag_data |>
+
+        directed_edges   <- combined_dag_data |>
             dplyr::filter(edge_type == "->")
 
         combined_dag_data <- dplyr::bind_rows(directed_edges, bidirected_edges)
 
-        # 1. Directed Edges - using geom_dag_edges_arc which supports start/end caps.
-        # By slicing data per curvature BEFORE building each layer, we avoid the
-        # R lazy-eval bug where all layers would use the last curvature value.
+        # Directed edges — one layer per unique curvature (avoids R lazy-eval scoping bug)
         dir_edges <- directed_edges |>
             dplyr::mutate(
                 dx    = xend - x,
@@ -839,8 +319,8 @@ plot_dag <- function(
                 ld <- dir_edges[abs(dir_edges$curvature - cv) < 1e-6, , drop = FALSE]
                 force(cv); force(ld)
                 ggdag::geom_dag_edges_arc(
-                    data       = ld,
-                    mapping    = ggplot2::aes(
+                    data      = ld,
+                    mapping   = ggplot2::aes(
                         edge_width  = weight_abs,
                         edge_colour = significant,
                         label       = edge_label
@@ -856,7 +336,7 @@ plot_dag <- function(
             p <- p + edge_layers
         }
 
-        # 2. Bidirected Edges (grey, double arrow)
+        # Bidirected edges (grey, double arrow)
         if (nrow(bidirected_edges) > 0) {
             p <- p +
                 ggdag::geom_dag_edges_arc(
@@ -870,262 +350,33 @@ plot_dag <- function(
                     label_size  = edge_label_size,
                     arrow       = ggplot2::arrow(
                         length = ggplot2::unit(2.5, "mm"),
-                        type   = "closed",
-                        ends   = "both"
+                        type   = "closed", ends = "both"
                     ),
                     start_cap   = cap_size,
                     end_cap     = cap_size
                 )
         }
 
-        # Scales (ggraph edge aesthetics)
         p <- p +
             ggraph::scale_edge_colour_manual(
-                values = c(
-                    "pos"     = "dodgerblue",
-                    "neg"     = "firebrick",
-                    "sig"     = "black",
-                    "ns"      = "grey70",
-                    "default" = "black"
-                ),
-                guide = "none"
+                values = c(pos = "dodgerblue", neg = "firebrick", sig = "black", ns = "grey70", default = "black"),
+                guide  = "none"
             ) +
-            ggraph::scale_edge_width_continuous(
-                range = edge_width_range,
-                guide = "none"
-            )
+            ggraph::scale_edge_width_continuous(range = edge_width_range, guide = "none")
+
     } else {
-        p <- p +
-            ggdag::geom_dag_edges(
-                start_cap = cap_size,
-                end_cap = cap_size
-            )
+        p <- p + ggdag::geom_dag_edges(start_cap = cap_size, end_cap = cap_size)
     }
 
-    # --- Node Text Labels (Final Top Layer) ---
+    # Node text labels (top layer)
     p <- p +
         ggdag::geom_dag_text(
-            data = node_data,
+            data       = node_data,
             ggplot2::aes(x = x, y = y, label = label_display),
-            size   = text_size,
-            colour = "black",
+            size       = text_size,
+            colour     = "black",
             inherit.aes = FALSE
         )
 
     return(p)
-}
-
-
-#' Convert Equations List to DAGitty String
-#'
-#' Implements the Attia, Holliday & Oldmeadow (2022) IDAG convention:
-#' interaction terms (e.g. \code{BM:M}) and \code{I()} terms are represented as
-#' explicit intermediate nodes rather than collapsed to direct component->response
-#' edges.
-#'
-#' @param equations List of formulas
-#' @param induced_cors List of character vectors (pairs) for bidirected edges
-#' @param family Optional named character vector of family distributions
-#' @return A named list:
-#'   \itemize{
-#'     \item \code{dag_string} — dagitty-compatible DAG string
-#'     \item \code{interaction_nodes} — named list: internal_name -> display label
-#'   }
-#' @references
-#'   Attia, J., Holliday, E., & Oldmeadow, C. (2022). A proposal for capturing
-#'   interaction and effect modification using DAGs.
-#'   \emph{International Journal of Epidemiology}, 51(4), 1047--1053.
-#' @noRd
-equations_to_dag_string <- function(
-    equations,
-    induced_cors = NULL,
-    family = NULL,
-    poly_terms = NULL, # list from get_all_polynomial_terms; used for fitted models
-    # where equations are already expanded (I(age^2) -> age_pow2)
-    collapse_expanded = FALSE,
-    extra_edges = character()
-) {
-    edges <- c()
-    interaction_nodes <- list() # internal_name -> display label (e.g. "BM\u00d7M")
-
-    # Build lookup: internal_name -> poly term info, for reconstructing diamond
-    # nodes when equations are already expanded (fitted model path).
-    poly_lookup <- list()
-    if (!is.null(poly_terms)) {
-        for (pt in poly_terms) {
-            poly_lookup[[pt$internal_name]] <- pt
-        }
-    }
-
-    # Helper: make a dagitty-safe node name from a term string
-    # make_internal_name must match sanitize_term_name() from deterministic_nodes.R
-    # so that node names in the plot align with JAGS parameter names like beta_weight_g_age_pow2.
-    make_internal_name <- function(term) sanitize_term_name(term)
-
-    # Helper: human-readable display label
-    # For interactions: BM:M   -> BM×M
-    # For I() powers:   I(age^2) -> age²  I(x^3) -> x³
-    # For other I():    I(x+y)  -> I(x+y)  (keep as-is)
-    make_display_label <- function(term) {
-        if (grepl("^I\\(", term)) {
-            # Check for simple power pattern: I(var^N)
-            m <- regmatches(
-                term,
-                regexpr("^I\\(([a-zA-Z_][a-zA-Z0-9_]*)\\^([0-9]+)\\)$", term)
-            )
-            if (length(m) > 0) {
-                inner <- sub("^I\\((.*)\\)$", "\\1", term)
-                base <- sub("\\^.*$", "", inner)
-                exp_n <- sub("^.*\\^", "", inner)
-                superscripts <- c(
-                    "\u2070",
-                    "\u00b9",
-                    "\u00b2",
-                    "\u00b3",
-                    "\u2074",
-                    "\u2075",
-                    "\u2076",
-                    "\u2077",
-                    "\u2078",
-                    "\u2079"
-                )
-                n <- as.integer(exp_n)
-                if (!is.na(n) && n >= 0 && n <= 9) {
-                    return(paste0(base, superscripts[n + 1]))
-                }
-            }
-            return(term) # fallback: keep as-is for complex I() expressions
-        }
-        gsub(":", "\u00d7", term) # "BM:M" -> "BM\u00d7M"
-    }
-
-    for (eq in equations) {
-        resp <- all.vars(eq)[1]
-        trm_lbls <- attr(terms(eq), "term.labels")
-
-        # Optional: Collapse expanded names back to base names
-        if (collapse_expanded) {
-           resp <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", resp)
-        }
-
-        actual_resp <- resp
-
-        if (length(trm_lbls) == 0) {
-            next
-        } # intercept-only, nothing to draw
-
-        # Detect pure deterministic declaration: entire RHS is a single I() call.
-        # e.g.  AgeClass ~ I(0 * (age < 0.02) + 1 * (age >= 0.02))
-        # Mark the LHS itself as the deterministic/interaction node and draw edges
-        # from the component variables directly — avoids a giant intermediate node.
-        is_pure_det <- length(trm_lbls) == 1 && grepl("^I\\(", trm_lbls[1])
-
-        if (is_pure_det) {
-            term <- trm_lbls[1]
-            interaction_nodes[[actual_resp]] <- actual_resp # LHS is the det. node
-            components <- all.vars(stats::as.formula(paste("~", term)))
-            for (comp in components) {
-                edges <- c(edges, paste(actual_resp, "<-", comp))
-            }
-            next
-        }
-
-        for (term in trm_lbls) {
-            # Skip random effects terms (e.g. 1 | year) which dagitty can't parse
-            if (grepl("|", term, fixed = TRUE)) next
-            
-            # Optional: Collapse expanded names back to base names
-            clean_term <- term
-            if (collapse_expanded) {
-               clean_term <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", term)
-            }
-            
-            # Avoid self-loops if resp and term matched the same base name
-            if (clean_term == resp) next
-
-            is_interaction <- grepl(":", clean_term, fixed = TRUE) &&
-                !grepl("^I\\(", clean_term)
-            is_I_call <- grepl("^I\\(", clean_term)
-
-            if (is_interaction || is_I_call) {
-                # --- Deterministic / interaction node (within a mixed equation) ---
-                # X:Y interactions and I() polynomial terms get a diamond node.
-                iname <- make_internal_name(clean_term)
-                d_label <- make_display_label(clean_term)
-                interaction_nodes[[iname]] <- d_label
-
-                # Component variables: split on : for interactions, all.vars for I()
-                if (is_interaction) {
-                    components <- strsplit(clean_term, ":", fixed = TRUE)[[1]]
-                } else {
-                    components <- all.vars(stats::as.formula(paste("~", clean_term)))
-                }
-
-                for (comp in components) {
-                    actual_comp <- if (comp %in% occ_vars) {
-                        paste0("psi_", comp)
-                    } else {
-                        comp
-                    }
-                    edges <- c(edges, paste(iname, "<-", actual_comp))
-                }
-                # Route through the deterministic node: response <- iname
-                # For X:Y interactions, components may not appear as separate
-                # explicit predictors, so also add comp -> resp edges.
-                # For I() polynomial terms (e.g. I(age^2)), the base variable
-                # (age) is typically an explicit separate term in the same equation,
-                # so comp -> resp is already added by the regular-predictor branch.
-                # Adding it again here creates a redundant hidden edge that
-                # collides with the direct age -> weight_g arrow in the layout.
-                edges <- c(edges, paste(actual_resp, "<-", iname))
-                if (is_interaction) {
-                    for (comp in components) {
-                        actual_comp <- if (comp %in% occ_vars) {
-                            paste0("psi_", comp)
-                        } else {
-                            comp
-                        }
-                        edges <- c(edges, paste(actual_resp, "<-", actual_comp))
-                    }
-                }
-            } else {
-                # --- Regular predictor ---
-                # If we are collapsing, we skip the expansion-specific diamond nodes
-                # and just draw an edge from the base variable to the response.
-                if (collapse_expanded && term %in% names(poly_lookup)) {
-                   # Skip the diamond node, handled by 'clean_term' falling through to Standard path
-                } else if (!collapse_expanded && term %in% names(poly_lookup)) {
-                    pt <- poly_lookup[[term]]
-                    iname <- pt$internal_name # e.g. age_pow2
-                    # ... (rest of diamond logic) ...
-                    superscripts <- c("\u2070","\u00b9","\u00b2","\u00b3","\u2074","\u2075","\u2076","\u2077","\u2078","\u2079")
-                    n <- as.integer(pt$power)
-                    d_label <- if (!is.na(n) && n >= 0 && n <= 9) paste0(pt$base_var, superscripts[n+1]) else iname
-                    interaction_nodes[[iname]] <- d_label
-                    edges <- c(edges, paste(iname, "<-", pt$base_var))
-                    edges <- c(edges, paste(actual_resp, "<-", iname))
-                } else {
-                    edges <- c(edges, paste(actual_resp, "<-", clean_term))
-                }
-            }
-        }
-    }
-
-    # Append any extra edges injected by extension packages via dag_expand_hook
-    if (length(extra_edges) > 0) {
-        edges <- c(edges, extra_edges)
-    }
-
-    if (!is.null(induced_cors)) {
-        for (pair in induced_cors) {
-            if (length(pair) == 2) {
-                edges <- c(edges, paste(pair[1], "<->", pair[2]))
-            }
-        }
-    }
-
-    list(
-        dag_string = paste("dag {", paste(unique(edges), collapse = "; "), "}"),
-        interaction_nodes = interaction_nodes
-    )
 }
