@@ -749,3 +749,50 @@ update.because <- function(object, equations, data, ...) {
     eval(call, parent.frame())
 }
 
+#' Check Multicollinearity and Bayesian Variance Inflation
+#' @param object A fitted model object.
+#' @param ... Additional arguments.
+#' @export
+check_collinearity <- function(object, ...) {
+    UseMethod("check_collinearity")
+}
+
+#' Check Normality of Errors and Q-Q Envelopes
+#' @param object A fitted model object.
+#' @param ... Additional arguments.
+#' @export
+check_normality <- function(object, ...) {
+    UseMethod("check_normality")
+}
+
+#' Plot Bayesian Q-Q Plot with Envelopes
+#' @param object A fitted model object.
+#' @param ... Additional arguments.
+#' @export
+plot_qq <- function(object, ...) {
+    UseMethod("plot_qq")
+}
+
+#' Check Homoscedasticity and Residual Dispersion
+#' @param object A fitted model object.
+#' @param ... Additional arguments.
+#' @export
+check_homoscedasticity <- function(object, ...) {
+    UseMethod("check_homoscedasticity")
+}
+
+#' Check Residual Autocorrelation and Variance Partitioning
+#' @param object A fitted model object.
+#' @param ... Additional arguments.
+#' @export
+check_residual_structure <- function(object, ...) {
+    UseMethod("check_residual_structure")
+}
+
+#' Unified Model Diagnostic Dashboard
+#' @param object A fitted model object.
+#' @param ... Additional arguments.
+#' @export
+check_model <- function(object, ...) {
+    UseMethod("check_model")
+}
