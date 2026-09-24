@@ -28,4 +28,6 @@
   Families](https://because-pkg.github.io/because/articles/12_custom_families.md):
 - [Counterfactual Simulations with the do()
   Operator](https://because-pkg.github.io/because/articles/13_counterfactual_simulations.md):
+- [Purely Bayesian Regression and SEM
+  Diagnostics](https://because-pkg.github.io/because/articles/14_purely_bayesian_diagnostics.md):
 - [Extensions](https://because-pkg.github.io/because/articles/extensions.md):
