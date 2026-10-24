@@ -62,22 +62,23 @@ The function handles all the S3 method registration automatically.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">because_structure</span><span class="op">(</span><span class="va">name</span>, <span class="va">precision_fn</span>, description <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">because_structure</span><span class="op">(</span>precision_fn <span class="op">=</span> <span class="cn">NULL</span>, name <span class="op">=</span> <span class="cn">NULL</span>, description <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
-<dd><p>Character string; the name of your structure (e.g., "spatial_knn").
-This will be used to create the S3 class and methods.</p></dd>
-
-
-<dt id="arg-precision-fn">precision_fn<a class="anchor" aria-label="anchor" href="#arg-precision-fn"></a></dt>
+<dl><dt id="arg-precision-fn">precision_fn<a class="anchor" aria-label="anchor" href="#arg-precision-fn"></a></dt>
 <dd><p>A function that takes your structure data and returns
 a precision matrix (N x N). The first return value should be the precision matrix.
 Additional list elements can be returned and will be passed to JAGS as data.</p></dd>
+
+
+<dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
+<dd><p>Optional character string; the name of your structure (e.g., "spatial_knn").
+Used to create the internal S3 class and JAGS precision matrix name (<code>Prec_&lt;name&gt;</code>).
+If omitted, an internal name is generated automatically.</p></dd>
 
 
 <dt id="arg-description">description<a class="anchor" aria-label="anchor" href="#arg-description"></a></dt>
@@ -95,7 +96,11 @@ Additional list elements can be returned and will be passed to JAGS as data.</p>
 <li><p>S3 methods for <code>prepare_structure_data</code> (prepares data for JAGS)</p></li>
 </ul><p>The precision function should return either:</p><ul><li><p>A single matrix (the precision matrix)</p></li>
 <li><p>A list with <code>Prec</code> (the precision matrix) and optionally other data</p></li>
-</ul></div>
+</ul><p><strong>Engine compatibility:</strong> Full BUGS code generation (including 3D precision
+arrays for Bayesian model averaging) is supported for <code>engine = "jags"</code> and
+<code>engine = "nimble"</code>. For <code>engine = "numpyro"</code>, standard 2D precision
+matrices are passed via fallback, whereas 3D arrays require JAGS or NIMBLE.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

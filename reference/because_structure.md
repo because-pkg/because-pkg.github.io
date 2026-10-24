@@ -8,15 +8,10 @@ automatically.
 ## Usage
 
 ``` r
-because_structure(name, precision_fn, description = NULL)
+because_structure(precision_fn = NULL, name = NULL, description = NULL)
 ```
 
 ## Arguments
-
-- name:
-
-  Character string; the name of your structure (e.g., "spatial_knn").
-  This will be used to create the S3 class and methods.
 
 - precision_fn:
 
@@ -24,6 +19,13 @@ because_structure(name, precision_fn, description = NULL)
   matrix (N x N). The first return value should be the precision matrix.
   Additional list elements can be returned and will be passed to JAGS as
   data.
+
+- name:
+
+  Optional character string; the name of your structure (e.g.,
+  "spatial_knn"). Used to create the internal S3 class and JAGS
+  precision matrix name (`Prec_<name>`). If omitted, an internal name is
+  generated automatically.
 
 - description:
 
@@ -49,6 +51,12 @@ The precision function should return either:
 - A single matrix (the precision matrix)
 
 - A list with `Prec` (the precision matrix) and optionally other data
+
+**Engine compatibility:** Full BUGS code generation (including 3D
+precision arrays for Bayesian model averaging) is supported for
+`engine = "jags"` and `engine = "nimble"`. For `engine = "numpyro"`,
+standard 2D precision matrices are passed via fallback, whereas 3D
+arrays require JAGS or NIMBLE.
 
 ## Examples
 

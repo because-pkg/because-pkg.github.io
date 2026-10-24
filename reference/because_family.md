@@ -8,19 +8,15 @@ method registration.
 
 ``` r
 because_family(
-  name,
-  jags_likelihood,
+  jags_likelihood = NULL,
   link = "identity",
   extra_priors = NULL,
+  name = NULL,
   description = NULL
 )
 ```
 
 ## Arguments
-
-- name:
-
-  Character string; the name of your family (e.g., "student_t").
 
 - jags_likelihood:
 
@@ -38,6 +34,11 @@ because_family(
   Character vector of additional JAGS prior statements. Use `{response}`
   placeholder for variable-specific naming.
 
+- name:
+
+  Optional character string; the name of your family (e.g.,
+  "student_t"). If omitted, an internal name is generated automatically.
+
 - description:
 
   Optional description of the family.
@@ -46,6 +47,14 @@ because_family(
 
 A constructor function for the family that can be passed to because(...,
 family = ...).
+
+## Details
+
+**Engine compatibility:** Custom families defined via `because_family()`
+inject BUGS-syntax likelihoods and priors into the model specification
+and are supported for `engine = "jags"` and `engine = "nimble"`
+(provided the BUGS distribution is available in NIMBLE). They are not
+supported for `engine = "numpyro"`.
 
 ## Examples
 

@@ -60,10 +60,10 @@ by providing the JAGS likelihood code. The function handles S3 method registrati
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">because_family</span><span class="op">(</span></span>
-<span>  <span class="va">name</span>,</span>
-<span>  <span class="va">jags_likelihood</span>,</span>
+<span>  jags_likelihood <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  link <span class="op">=</span> <span class="st">"identity"</span>,</span>
 <span>  extra_priors <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  description <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -72,11 +72,7 @@ by providing the JAGS likelihood code. The function handles S3 method registrati
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
-<dd><p>Character string; the name of your family (e.g., "student_t").</p></dd>
-
-
-<dt id="arg-jags-likelihood">jags_likelihood<a class="anchor" aria-label="anchor" href="#arg-jags-likelihood"></a></dt>
+<dl><dt id="arg-jags-likelihood">jags_likelihood<a class="anchor" aria-label="anchor" href="#arg-jags-likelihood"></a></dt>
 <dd><p>A character string with the JAGS likelihood code.
 Use placeholders: <code>{response}</code> for variable name, <code>{mu}</code> for mean,
 <code>{i}</code> for loop index, <code>{tau}</code> for precision parameter.</p></dd>
@@ -91,6 +87,11 @@ Use placeholders: <code>{response}</code> for variable name, <code>{mu}</code> f
 Use <code>{response}</code> placeholder for variable-specific naming.</p></dd>
 
 
+<dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
+<dd><p>Optional character string; the name of your family (e.g., "student_t").
+If omitted, an internal name is generated automatically.</p></dd>
+
+
 <dt id="arg-description">description<a class="anchor" aria-label="anchor" href="#arg-description"></a></dt>
 <dd><p>Optional description of the family.</p></dd>
 
@@ -98,6 +99,14 @@ Use <code>{response}</code> placeholder for variable-specific naming.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A constructor function for the family that can be passed to because(..., family = ...).</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p><strong>Engine compatibility:</strong> Custom families defined via <code>because_family()</code>
+inject BUGS-syntax likelihoods and priors into the model specification and are
+supported for <code>engine = "jags"</code> and <code>engine = "nimble"</code> (provided the
+BUGS distribution is available in NIMBLE). They are not supported for
+<code>engine = "numpyro"</code>.</p>
     </div>
 
     <div class="section level2">
