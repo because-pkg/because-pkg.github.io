@@ -28,26 +28,24 @@ prepare_random_effects_data <- function(
     ))
   }
 
-  if (is.data.frame(data) || (is.list(data) && !is.data.frame(data))) {
+  if (is.data.frame(data)) {
     # Check for long format data requiring matrix conversion
     # If any variability specified as 'reps', we attempt to auto-format using because_format_data
     has_reps <- any(grepl("reps", variability))
 
     if (has_reps) {
-      if (is.null(structure)) {
-        # Cannot auto-format without structure to determine species order
-        warning(
-          "Variability 'reps' specified but no structure provided. Automatic formatting requires a structure to order species rows. Assuming data is already aggregated or user handles index mapping."
-        )
-        return(data)
-      } else if (!is.null(id_col) && id_col %in% names(data)) {
-        # Extension Hook: Extract appropriate tree from structure object
-        use_tree <- get_tree_hook(structure)
+      if (!is.null(id_col) && id_col %in% names(data)) {
+        # Extension Hook: Extract appropriate tree or use structure object directly
+        use_struct <- if (!is.null(structure)) {
+          get_tree_hook(structure) %||% structure
+        } else {
+          NULL
+        }
 
         formatted_list <- because_format_data(
           data,
-          species_col = id_col,
-          tree = use_tree
+          id_col = id_col,
+          structure = use_struct
         )
 
         # Now rename the variables that are 'reps' to include '_obs' suffix
@@ -65,8 +63,13 @@ prepare_random_effects_data <- function(
           }
         }
 
-        # Update data to be this list
+        if (!is.null(attr(formatted_list, "categorical_vars"))) {
+          attr(final_data_list, "categorical_vars") <- attr(formatted_list, "categorical_vars")
+        }
+
+        # Update data and original_data to be this list
         data <- final_data_list
+        original_data <- final_data_list
 
         if (!quiet) {
           message(

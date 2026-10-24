@@ -1,75 +1,105 @@
-#' Format Data for Because Analysis
+#' Format Long-Format Repeated Measures Data for Because Analysis
 #'
-#' Converts data from long format (one row per observation) to the list format
-#' required by \code{\link{because}}.
+#' Converts data from long format (multiple rows per unit/group, such as repeated
+#' measurements per individual, site survey visits, or within-species replicates)
+#' to the named list format (unit-level vectors and replicate matrices) used by
+#' \code{\link{because}} for error-in-variables (\code{variability = "reps"}),
+#' detection/occupancy models, and structured covariance models.
 #'
-#' @param data A data.frame in long format with one row per observation.
-#' @param species_col Name of the column containing species or unit identifiers (default: "SP").
-#' @param tree A phylogenetic tree or other structural object. Optional. If provided, determines the order of units.
+#' @param data A \code{data.frame} in long format with one row per observation.
+#' @param id_col Name of the column containing unit identifiers (e.g., individual,
+#'   site, or species IDs; default: \code{"ID"}, falling back to \code{"SP"} if present).
+#' @param structure Optional covariance structure object (e.g., a spatial/pedigree
+#'   matrix with row names, a \code{because_structure} object, or a phylogenetic tree).
+#'   If provided, determines the ordering of units in the output.
+#' @param species_col Deprecated alias for \code{id_col} (retained for backward compatibility).
+#' @param tree Deprecated alias for \code{structure} (retained for backward compatibility).
 #'
 #' @return A named list where each element is either:
 #'   \itemize{
-#'     \item A numeric vector (if all species have exactly 1 observation)
-#'     \item A numeric matrix with species in rows and replicates in columns
+#'     \item A named numeric vector (if a variable is constant within each unit or all units have 1 observation)
+#'     \item A numeric matrix with units in rows and replicates in columns (padded with \code{NA})
 #'   }
-#'   Species are ordered to match \code{tree$tip.label} (if provided) or sorted alphabetically.
+#'   Units are ordered to match the labels of \code{structure} (if provided) or sorted alphabetically.
 #'
 #' @details
 #' This function handles:
 #' \itemize{
-#'   \item Different numbers of replicates per species (creates rectangular matrix with NA padding)
-#'   \item Missing values (NA)
-#'   \item Automatic alignment with phylogenetic tree tip labels (if provided)
+#'   \item Different numbers of replicates per unit (creates a rectangular matrix with \code{NA} padding)
+#'   \item Automatic distinction between unit-constant covariates (returned as vectors) and replicate-varying measurements (returned as matrices)
+#'   \item Missing values (\code{NA})
+#'   \item Automatic alignment with covariance structure labels (e.g., matrix row names or phylogenetic tree tip labels, if \code{structure} is provided)
 #' }
 #'
-#' When species have different numbers of replicates, the function creates a matrix
-#' with dimensions (number of species) x (maximum number of replicates).
-#' Species with fewer replicates are padded with NA values.
+#' When units have different numbers of replicates, the function creates a matrix
+#' with dimensions \code{(number of units) x (maximum number of replicates)}.
+#' Units with fewer replicates are padded with \code{NA} values.
 #'
-#' If a tree is provided:
-#' Species in the tree but not in the data will have all NA values.
-#' Species in the data but not in the tree will be excluded with a warning.
+#' If a \code{structure} is provided:
+#' \itemize{
+#'   \item Units present in the structure but missing from \code{data} receive all \code{NA} values (enabling Bayesian imputation).
+#'   \item Units present in \code{data} but absent from the structure are excluded with a warning.
+#' }
 #'
-#' If no tree is provided:
-#' All species in the data are included, sorted alphabetically by their ID.
+#' If no \code{structure} is provided:
+#' All units in \code{data} are included, sorted alphabetically by their identifier.
 #'
 #' @examples
 #' \dontrun{
-#' # Example data in long format
+#' # Example 1: General repeated measures / Error-in-Variables (no structure)
 #' data_long <- data.frame(
-#'   SP = c("sp1", "sp1", "sp1", "sp2", "sp2", "sp3"),
-#'   BM = c(1.2, 1.3, 1.1, 2.1, 2.2, 1.8),
-#'   NL = c(0.5, 0.6, NA, 0.7, 0.8, 0.9)
+#'   ID   = c("ind1", "ind1", "ind1", "ind2", "ind2", "ind3"),
+#'   Age  = c(3, 3, 3, 5, 5, 2),          # Constant within individual -> vector
+#'   Mass = c(1.2, 1.3, 1.1, 2.1, 2.2, 1.8), # Varying -> matrix (3 x 3)
+#'   Cort = c(0.5, 0.6, NA, 0.7, 0.8, 0.9)   # Varying -> matrix (3 x 3)
 #' )
+#' data_list <- because_format_data(data_long, id_col = "ID")
 #'
-#' # With tree
+#' # Example 2: Aligning with a covariance matrix (e.g., spatial or pedigree)
+#' prec_mat <- diag(3)
+#' rownames(prec_mat) <- colnames(prec_mat) <- c("ind3", "ind1", "ind2")
+#' data_aligned <- because_format_data(data_long, id_col = "ID", structure = prec_mat)
+#'
+#' # Example 3: Phylogenetic tree alignment (backward-compatible aliases)
 #' if (requireNamespace("ape", quietly = TRUE)) {
-#'   tree <- ape::read.tree(text = "(sp1:1,sp2:1,sp3:1);")
-#'   data_list <- because_format_data(data_long, species_col = "SP", tree = tree)
+#'   tree <- ape::read.tree(text = "(ind1:1,ind2:1,ind3:1);")
+#'   data_phylo <- because_format_data(data_long, species_col = "ID", tree = tree)
 #' }
-#'
-#' # Without tree (general repeated measures)
-#' data_list_no_tree <- because_format_data(data_long, species_col = "SP")
 #' }
 #'
 #' @export
-because_format_data <- function(data, species_col = "SP", tree = NULL) {
+because_format_data <- function(
+    data,
+    id_col = "ID",
+    structure = NULL,
+    species_col = NULL,
+    tree = NULL
+) {
     # Validate inputs
     if (!is.data.frame(data)) {
         stop("'data' must be a data.frame")
     }
 
-    if (!species_col %in% names(data)) {
-        stop(sprintf("Species column '%s' not found in data", species_col))
+    # Backward compatibility: species_col -> id_col, tree -> structure
+    if (!is.null(species_col)) {
+        id_col <- species_col
+    } else if (missing(id_col) && !("ID" %in% names(data)) && ("SP" %in% names(data))) {
+        id_col <- "SP"
     }
 
-    # No hard class check (allowed by get_order_labels_hook)
+    if (is.null(structure) && !is.null(tree)) {
+        structure <- tree
+    }
 
-    # Get trait columns (everything except species column)
-    trait_cols <- setdiff(names(data), species_col)
+    if (is.null(id_col) || !id_col %in% names(data)) {
+        stop(sprintf("Unit identifier column '%s' not found in data", as.character(id_col)))
+    }
+
+    # Get variable columns (everything except unit identifier column)
+    trait_cols <- setdiff(names(data), id_col)
 
     if (length(trait_cols) == 0) {
-        stop("No trait columns found in data")
+        stop("No variable columns found in data")
     }
 
     # Detect and expand categorical variables (factor or character)
@@ -156,84 +186,87 @@ because_format_data <- function(data, species_col = "SP", tree = NULL) {
         trait_cols <- c(setdiff(trait_cols, original_categoricals), all_dummies)
     }
 
-    # Check for species alignment
-    data_species <- unique(data[[species_col]])
+    # Check for unit alignment
+    data_units <- unique(as.character(data[[id_col]]))
 
-    if (!is.null(tree)) {
-        reference_labels <- get_order_labels_hook(tree)
+    if (!is.null(structure)) {
+        reference_labels <- get_order_labels_hook(structure)
+        if (is.null(reference_labels)) {
+            tree_obj <- get_tree_hook(structure)
+            if (!is.null(tree_obj)) {
+                reference_labels <- get_order_labels_hook(tree_obj)
+            }
+        }
         if (is.null(reference_labels)) {
             stop(
                 "Could not extract labels from structure. Ensure it has tip labels or rownames."
             )
         }
-        n_species <- length(reference_labels)
+        n_units <- length(reference_labels)
 
-        missing_in_tree <- setdiff(data_species, reference_labels)
-        missing_in_data <- setdiff(reference_labels, data_species)
+        missing_in_struct <- setdiff(data_units, reference_labels)
+        missing_in_data <- setdiff(reference_labels, data_units)
 
-        if (length(missing_in_tree) > 0) {
+        if (length(missing_in_struct) > 0) {
             warning(sprintf(
-                "Species in data but not in tree (will be excluded): %s",
-                paste(missing_in_tree, collapse = ", ")
+                "Units in data but not in structure (will be excluded): %s",
+                paste(missing_in_struct, collapse = ", ")
             ))
-            # Filter out species not in tree
-            data <- data[data[[species_col]] %in% reference_labels, ]
+            # Filter out units not in structure
+            data <- data[data[[id_col]] %in% reference_labels, ]
         }
 
         if (length(missing_in_data) > 0) {
             message(sprintf(
-                "Species in tree but not in data (will have NA values): %s",
+                "Units in structure but not in data (will have NA values): %s",
                 paste(missing_in_data, collapse = ", ")
             ))
         }
     } else {
-        # No tree: use species in data, sorted
-        reference_labels <- sort(data_species)
-        n_species <- length(reference_labels)
+        # No structure: use units in data, sorted alphabetically
+        reference_labels <- sort(data_units)
+        n_units <- length(reference_labels)
     }
 
-    # Count observations per species
-    obs_counts <- table(data[[species_col]])
-    max_reps <- max(obs_counts)
+    # Count observations per unit
+    obs_counts <- table(as.character(data[[id_col]]))
+    max_reps <- if (length(obs_counts) > 0) max(obs_counts) else 1L
 
     # Initialize output list
     data_list <- list()
 
-    # Process each trait
+    # Process each variable
     for (trait in trait_cols) {
-        # Create matrix: rows = species (in reference order), columns = replicates
-        trait_matrix <- matrix(NA, nrow = n_species, ncol = max_reps)
+        # Create matrix: rows = units (in reference order), columns = replicates
+        trait_matrix <- matrix(NA, nrow = n_units, ncol = max_reps)
         rownames(trait_matrix) <- reference_labels
 
         # Fill matrix with observations
         is_constant <- TRUE
 
         for (i in seq_along(reference_labels)) {
-            sp <- reference_labels[i]
+            unit_id <- reference_labels[i]
 
-            if (sp %in% names(obs_counts)) {
-                # Get observations for this species
-                sp_values <- data[data[[species_col]] == sp, trait, drop = TRUE]
-                n_obs <- length(sp_values)
+            if (unit_id %in% names(obs_counts)) {
+                # Get observations for this unit
+                unit_values <- data[as.character(data[[id_col]]) == unit_id, trait, drop = TRUE]
+                n_obs <- length(unit_values)
 
-                # Check for within-species variation
-                # Stricter: if multiple values exist and they differ, it's not constant
-                if (length(unique(na.omit(sp_values))) > 1) {
+                # Check for within-unit variation
+                # If multiple values exist and they differ, it's not constant
+                if (length(unique(stats::na.omit(unit_values))) > 1) {
                     is_constant <- FALSE
                 }
 
                 # Fill in the observations (rest remain NA)
-                trait_matrix[i, 1:n_obs] <- sp_values
+                trait_matrix[i, 1:n_obs] <- unit_values
             }
-            # else: species not in data, row remains all NA
+            # else: unit not in data, row remains all NA
         }
 
-        # If all species have <= 1 unique value (constant within species), convert to vector.
-        # Usually, constant variables -> vector. Varying variables -> matrix.
-
+        # If all units have <= 1 unique value (constant within unit), convert to vector.
+        # Constant variables -> vector. Varying variables -> matrix.
         if (max_reps == 1 || is_constant) {
-            # Take the first column (which contains the value for constant vars)
-            # Note: for constant vars, all replicates are identical, so col 1 is sufficient.
             trait_vector <- trait_matrix[, 1]
             names(trait_vector) <- reference_labels
             data_list[[trait]] <- trait_vector

@@ -2,65 +2,87 @@
 % Please edit documentation in R/because_format_data.R
 \name{because_format_data}
 \alias{because_format_data}
-\title{Format Data for Because Analysis}
+\title{Format Long-Format Repeated Measures Data for Because Analysis}
 \usage{
-because_format_data(data, species_col = "SP", tree = NULL)
+because_format_data(
+  data,
+  id_col = "ID",
+  structure = NULL,
+  species_col = NULL,
+  tree = NULL
+)
 }
 \arguments{
-\item{data}{A data.frame in long format with one row per observation.}
+\item{data}{A \code{data.frame} in long format with one row per observation.}
 
-\item{species_col}{Name of the column containing species or unit identifiers (default: "SP").}
+\item{id_col}{Name of the column containing unit identifiers (e.g., individual,
+site, or species IDs; default: \code{"ID"}, falling back to \code{"SP"} if present).}
 
-\item{tree}{A phylogenetic tree or other structural object. Optional. If provided, determines the order of units.}
+\item{structure}{Optional covariance structure object (e.g., a spatial/pedigree
+matrix with row names, a \code{because_structure} object, or a phylogenetic tree).
+If provided, determines the ordering of units in the output.}
+
+\item{species_col}{Deprecated alias for \code{id_col} (retained for backward compatibility).}
+
+\item{tree}{Deprecated alias for \code{structure} (retained for backward compatibility).}
 }
 \value{
 A named list where each element is either:
 \itemize{
-\item A numeric vector (if all species have exactly 1 observation)
-\item A numeric matrix with species in rows and replicates in columns
+\item A named numeric vector (if a variable is constant within each unit or all units have 1 observation)
+\item A numeric matrix with units in rows and replicates in columns (padded with \code{NA})
 }
-Species are ordered to match \code{tree$tip.label} (if provided) or sorted alphabetically.
+Units are ordered to match the labels of \code{structure} (if provided) or sorted alphabetically.
 }
 \description{
-Converts data from long format (one row per observation) to the list format
-required by \code{\link{because}}.
+Converts data from long format (multiple rows per unit/group, such as repeated
+measurements per individual, site survey visits, or within-species replicates)
+to the named list format (unit-level vectors and replicate matrices) used by
+\code{\link{because}} for error-in-variables (\code{variability = "reps"}),
+detection/occupancy models, and structured covariance models.
 }
 \details{
 This function handles:
 \itemize{
-\item Different numbers of replicates per species (creates rectangular matrix with NA padding)
-\item Missing values (NA)
-\item Automatic alignment with phylogenetic tree tip labels (if provided)
+\item Different numbers of replicates per unit (creates a rectangular matrix with \code{NA} padding)
+\item Automatic distinction between unit-constant covariates (returned as vectors) and replicate-varying measurements (returned as matrices)
+\item Missing values (\code{NA})
+\item Automatic alignment with covariance structure labels (e.g., matrix row names or phylogenetic tree tip labels, if \code{structure} is provided)
 }
 
-When species have different numbers of replicates, the function creates a matrix
-with dimensions (number of species) x (maximum number of replicates).
-Species with fewer replicates are padded with NA values.
+When units have different numbers of replicates, the function creates a matrix
+with dimensions \code{(number of units) x (maximum number of replicates)}.
+Units with fewer replicates are padded with \code{NA} values.
 
-If a tree is provided:
-Species in the tree but not in the data will have all NA values.
-Species in the data but not in the tree will be excluded with a warning.
+If a \code{structure} is provided:
+\itemize{
+\item Units present in the structure but missing from \code{data} receive all \code{NA} values (enabling Bayesian imputation).
+\item Units present in \code{data} but absent from the structure are excluded with a warning.
+}
 
-If no tree is provided:
-All species in the data are included, sorted alphabetically by their ID.
+If no \code{structure} is provided:
+All units in \code{data} are included, sorted alphabetically by their identifier.
 }
 \examples{
 \dontrun{
-# Example data in long format
+# Example 1: General repeated measures / Error-in-Variables (no structure)
 data_long <- data.frame(
-  SP = c("sp1", "sp1", "sp1", "sp2", "sp2", "sp3"),
-  BM = c(1.2, 1.3, 1.1, 2.1, 2.2, 1.8),
-  NL = c(0.5, 0.6, NA, 0.7, 0.8, 0.9)
+  ID   = c("ind1", "ind1", "ind1", "ind2", "ind2", "ind3"),
+  Age  = c(3, 3, 3, 5, 5, 2),          # Constant within individual -> vector
+  Mass = c(1.2, 1.3, 1.1, 2.1, 2.2, 1.8), # Varying -> matrix (3 x 3)
+  Cort = c(0.5, 0.6, NA, 0.7, 0.8, 0.9)   # Varying -> matrix (3 x 3)
 )
+data_list <- because_format_data(data_long, id_col = "ID")
 
-# With tree
+# Example 2: Aligning with a covariance matrix (e.g., spatial or pedigree)
+prec_mat <- diag(3)
+rownames(prec_mat) <- colnames(prec_mat) <- c("ind3", "ind1", "ind2")
+data_aligned <- because_format_data(data_long, id_col = "ID", structure = prec_mat)
+
+# Example 3: Phylogenetic tree alignment (backward-compatible aliases)
 if (requireNamespace("ape", quietly = TRUE)) {
-  tree <- ape::read.tree(text = "(sp1:1,sp2:1,sp3:1);")
-  data_list <- because_format_data(data_long, species_col = "SP", tree = tree)
+  tree <- ape::read.tree(text = "(ind1:1,ind2:1,ind3:1);")
+  data_phylo <- because_format_data(data_long, species_col = "ID", tree = tree)
 }
-
-# Without tree (general repeated measures)
-data_list_no_tree <- because_format_data(data_long, species_col = "SP")
 }
-
 }

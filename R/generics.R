@@ -544,6 +544,16 @@ get_order_labels_hook.default <- function(structure, ...) {
     if (is.matrix(structure)) {
         return(rownames(structure))
     }
+    if (is.list(structure) && !is.null(structure$Prec)) {
+        if (is.matrix(structure$Prec)) {
+            return(rownames(structure$Prec))
+        } else if (is.array(structure$Prec) && length(dim(structure$Prec)) == 3) {
+            return(dimnames(structure$Prec)[[2]])
+        }
+    }
+    if (is.list(structure) && !is.null(structure$VCV) && is.matrix(structure$VCV)) {
+        return(rownames(structure$VCV))
+    }
     return(NULL)
 }
 
