@@ -156,15 +156,15 @@ prior on the standard deviation across all engines, replacing legacy precision p
 
 
 <dt id="arg-n-iter">n.iter<a class="anchor" aria-label="anchor" href="#arg-n-iter"></a></dt>
-<dd><p>Total MCMC iterations per chain (default = 12500).</p></dd>
+<dd><p>Total MCMC iterations per chain (default = 12500 for <code>"jags"</code>/<code>"nimble"</code>, 2000 for <code>"numpyro"</code>).</p></dd>
 
 
 <dt id="arg-n-burnin">n.burnin<a class="anchor" aria-label="anchor" href="#arg-n-burnin"></a></dt>
-<dd><p>Number of burn-in iterations (default = 20% of <code>n.iter</code>).</p></dd>
+<dd><p>Number of burn-in/warmup iterations (default = 20% of <code>n.iter</code> for <code>"jags"</code>/<code>"nimble"</code>, 50% of <code>n.iter</code> for <code>"numpyro"</code>).</p></dd>
 
 
 <dt id="arg-n-thin">n.thin<a class="anchor" aria-label="anchor" href="#arg-n-thin"></a></dt>
-<dd><p>Thinning interval for MCMC chains (default = 10).</p></dd>
+<dd><p>Thinning interval for MCMC chains (default = 10 for <code>"jags"</code>/<code>"nimble"</code>, 1 for <code>"numpyro"</code>).</p></dd>
 
 
 <dt id="arg-adapt-delta">adapt_delta<a class="anchor" aria-label="anchor" href="#arg-adapt-delta"></a></dt>

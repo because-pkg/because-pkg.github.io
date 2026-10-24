@@ -101,15 +101,18 @@ because(
 
 - n.iter:
 
-  Total MCMC iterations per chain (default = 12500).
+  Total MCMC iterations per chain (default = 12500 for
+  `"jags"`/`"nimble"`, 2000 for `"numpyro"`).
 
 - n.burnin:
 
-  Number of burn-in iterations (default = 20% of `n.iter`).
+  Number of burn-in/warmup iterations (default = 20% of `n.iter` for
+  `"jags"`/`"nimble"`, 50% of `n.iter` for `"numpyro"`).
 
 - n.thin:
 
-  Thinning interval for MCMC chains (default = 10).
+  Thinning interval for MCMC chains (default = 10 for
+  `"jags"`/`"nimble"`, 1 for `"numpyro"`).
 
 - adapt_delta:
 
