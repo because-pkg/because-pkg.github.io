@@ -15,15 +15,15 @@
 #' @param nimble_waic Logical, calculate WAIC
 #' @return A list containing samples and the compiled model
 #' @export
-run_nimble_model <- function(nimble_code, constants, data, inits, 
-                             n.chains, n.iter, n.burnin, n.thin, 
-                             monitor, quiet, family = NULL, 
+run_nimble_model <- function(nimble_code, constants, data, inits,
+                             n.chains, n.iter, n.burnin, n.thin,
+                             monitor, quiet, family = NULL,
                              nimble_samplers = NULL, nimble_waic = TRUE) {
-  
+
   if (!requireNamespace("nimble", quietly = TRUE)) {
     stop("The 'nimble' package is required to use engine = 'nimble'")
   }
-  
+
   model <- tryCatch({
     nimble::nimbleModel(code = nimble_code, constants = constants, data = data, inits = inits[[1]])
   }, error = function(e) {
@@ -33,35 +33,35 @@ run_nimble_model <- function(nimble_code, constants, data, inits,
     }
     stop(e)
   })
-  
+
   cModel <- tryCatch({
     nimble::compileNimble(model, showCompilerOutput = !quiet)
   }, error = function(e) {
     stop(paste("NIMBLE compilation failed:", e$message))
   })
-  
+
   mcmc_conf <- nimble::configureMCMC(model, monitors = monitor, print = !quiet)
-  
+
   # Apply because sampler hardening
   if (exists("nimble_harden_samplers", mode = "function")) {
     nimble_harden_samplers(mcmc_conf, family, nimble_samplers, quiet)
   }
-  
+
   mcmc <- nimble::buildMCMC(mcmc_conf)
   cMcmc <- nimble::compileNimble(mcmc, project = model, showCompilerOutput = !quiet)
-  
+
   samples <- nimble::runMCMC(
-    cMcmc, 
-    niter = n.iter, 
-    nburnin = n.burnin, 
-    nchains = n.chains, 
-    thin = n.thin, 
+    cMcmc,
+    niter = n.iter,
+    nburnin = n.burnin,
+    nchains = n.chains,
+    thin = n.thin,
     inits = inits,
-    samplesAsCodaMCMC = TRUE, 
+    samplesAsCodaMCMC = TRUE,
     WAIC = nimble_waic,
     summary = FALSE
   )
-  
+
   # Format output to match standard because structure
   result <- list()
   if (n.chains == 1) {
@@ -74,7 +74,7 @@ run_nimble_model <- function(nimble_code, constants, data, inits,
       result$samples <- coda::mcmc.list(lapply(samples, coda::as.mcmc))
     }
   }
-  
+
   result$model <- cModel
   return(result)
 }
@@ -102,7 +102,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
     base   <- sub("^(err_raw_|u_std_|sigma_|tau_|beta_|alpha_)", "", base) # strip prefixes
     parts  <- strsplit(base, "_")[[1]]
     if (length(parts) < 2) return(list(var = base, structure = ""))
-    
+
     # For betas: beta_RESPONSE_PREDICTOR
     if (grepl("^beta_", node)) {
        return(list(var = parts[1], structure = "beta"))
@@ -113,8 +113,8 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
     known_structs <- c("phylo", "spatial", "survey", "site", "obs", "res")
     if (last %in% known_structs) {
        return(list(
-         var       = paste(parts[-length(parts)], collapse = "_"), 
-         structure = last                                          
+         var       = paste(parts[-length(parts)], collapse = "_"),
+         structure = last
        ))
     }
     list(var = base, structure = "")
@@ -135,7 +135,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 
   # Identify all Fixed Effects (Slopes) and Variance nodes
   hyper_nodes <- unique(grep("^(beta_|sigma_|tau_).*", sampler_targets, value = TRUE))
-  
+
   for (node in hyper_nodes) {
     # Skip if already handled by posterior_predictive logic
     current_types <- sapply(mcmc_conf$getSamplers(node), function(s) s$name)
@@ -143,7 +143,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 
     info <- parse_re_info(node)
     t_name <- info$var
-    
+
     # Heuristic for beta_RESPONSE_PREDICTOR: find the matching trait name
     if (grepl("^beta_", node)) {
        # Find which trait_group it belongs to
@@ -166,7 +166,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 
   for (t_name in names(trait_groups)) {
     group_targets <- trait_groups[[t_name]]$targets
-    
+
     # We block if there's an intercept AND at least one scale/slope component
     if (length(group_targets) > 1) {
       for (target in group_targets) {
@@ -181,7 +181,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
         target = group_targets,
         type   = sampler_type
       )
-      
+
       processed_nodes <- c(processed_nodes, group_targets)
 
       if (!quiet) {
@@ -195,12 +195,12 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
 
   # ------ 3. Handle Remaining Nodes (ESS and Defaults) ------------------------------------------------------------------------------
   remaining_targets <- setdiff(sampler_targets, processed_nodes)
-  
+
   for (target in remaining_targets) {
     current_types <- sapply(mcmc_conf$getSamplers(target), function(s) s$name)
     if (any(grepl("posterior_predictive", current_types, ignore.case = TRUE))) next
-    
-    # [NEW] Phylogenetic ESS: Force Elliptical Slice Sampler for multivariate phylo nodes.
+
+    # Phylogenetic ESS: Force Elliptical Slice Sampler for multivariate phylo nodes.
     # Matches both centered (err_raw_*_phylo) and non-centered (z_*_phylo) parameterizations.
     if (grepl("^(err_raw_|u_std_|z_).*(phylo|BM|OU|Pagel).*", target)) {
         mcmc_conf$removeSamplers(target)
@@ -216,7 +216,7 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
             mcmc_conf$addSampler(target = target, type = "RW_block")
         }
     }
-    
+
     # Standalone Scales (Standalone Defaults)
     if (grepl("^(sigma_|tau_|lambda_|r_|psi_|sigma_total_).*", target)) {
       mcmc_conf$removeSamplers(target)
@@ -373,7 +373,7 @@ run_nimble_pipeline <- function(
         buildDerivs = (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC"),
         calculate = FALSE
       )))
-      
+
       model_nodes <- m_obj$getNodeNames(stochOnly = TRUE, includeData = FALSE)
       for (node in model_nodes) {
         base_node <- sub("\\[.*\\]", "", node)
@@ -384,7 +384,7 @@ run_nimble_pipeline <- function(
           if (grepl("^r_", node)) val <- 1
           if (grepl("^sigma_total_", node)) val <- 1.0
           if (grepl("^lambda_", node)) val <- 0.5
-          
+
           try({
             curr_val <- m_obj[[node]]
             if (any(is.na(curr_val)) || any(is.nan(curr_val))) {
@@ -393,7 +393,7 @@ run_nimble_pipeline <- function(
           }, silent = TRUE)
         }
       }
-      
+
       unique_base_nodes <- unique(sub("\\[.*\\]", "", model_nodes))
       for (v in unique_base_nodes) {
           if (!v %in% names(nimble_inits)) {
@@ -402,7 +402,7 @@ run_nimble_pipeline <- function(
               }, silent = TRUE)
           }
       }
-      
+
       m_obj
     },
     error = function(e) {
@@ -444,7 +444,7 @@ run_nimble_pipeline <- function(
     }
     nimble_mcmc <- nimble::buildMCMC(mcmc_conf)
   }
-  
+
   if (!parallel || n.cores == 1 || n.chains == 1) {
     compiled_model <- nimble::compileNimble(nimble_model)
     compiled_mcmc <- nimble::compileNimble(nimble_mcmc, project = nimble_model)
@@ -532,7 +532,7 @@ run_nimble_pipeline <- function(
 
       curr_inits <- nimble_inits
       if (is.null(curr_inits)) curr_inits <- list()
-      
+
       set.seed(12345 + chain_id)
       for (p_name in names(curr_inits)) {
           val <- curr_inits[[p_name]]
@@ -549,7 +549,7 @@ run_nimble_pipeline <- function(
       if (!("package:nimble" %in% search())) {
         suppressPackageStartupMessages(attachNamespace("nimble"))
       }
-      
+
       if (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC") {
         requireNamespace("nimbleHMC", quietly = TRUE)
         if (!("package:nimbleHMC" %in% search())) {
@@ -586,7 +586,7 @@ run_nimble_pipeline <- function(
         monitors = monitor,
         enableWAIC = WAIC
       )
-      
+
       if (is.character(nimble_samplers) && length(nimble_samplers) == 1 && nimble_samplers == "HMC") {
         if (!requireNamespace("nimbleHMC", quietly = TRUE)) {
           stop("The 'nimbleHMC' package is required to use HMC samplers in NIMBLE.")
