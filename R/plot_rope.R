@@ -10,9 +10,10 @@ plot_rope <- function(object, ...) {
     UseMethod("plot_rope")
 }
 
+utils::globalVariables(c("Value", "x"))
+
 #' @rdname plot_rope
 #'
-#' @description
 #' @param object A `because` object.
 #' @param rope A numeric vector of length 2 specifying the ROPE limits. Default is `c(-0.1, 0.1)`.
 #' @param parameters Optional character vector to filter which parameters to plot.

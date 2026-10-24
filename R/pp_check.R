@@ -1,7 +1,6 @@
 #' @rdname pp_check
 #'
 #' @description
-#' @description
 #' A wrapper around \code{bayesplot::ppc_dens_overlay} and other PPC functions
 #' for \code{because} model objects.
 #'

@@ -121,6 +121,8 @@ power. Set to \code{Inf} to disable subsampling.}
 
 \item{fix_latent}{How to fix the scale of latent variables ("loading" or "variance").}
 
+\item{prior_scale_fixed}{Numeric; scale parameter for Cauchy priors on fixed effects. Defaults to \code{sqrt(2)/2}.}
+
 \item{parallel}{Logical; if \code{TRUE}, runs MCMC chains in parallel.}
 
 \item{n.cores}{Number of CPU cores for parallel execution.}

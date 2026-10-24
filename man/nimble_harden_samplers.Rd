@@ -25,8 +25,8 @@ The modified \code{mcmc_conf} object (invisibly).
 }
 \description{
 Applies robust sampler assignments to a NIMBLE MCMC configuration object.
-Exported as a standalone function so that parallel worker nodes — which
-load the package fresh — always use the current installed version of this
+Exported as a standalone function so that parallel worker nodes --- which
+load the package fresh --- always use the current installed version of this
 logic, regardless of which version of \code{because()} was originally called.
 }
 \keyword{internal}

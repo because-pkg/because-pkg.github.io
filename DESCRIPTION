@@ -1,7 +1,7 @@
 Package: because
 Type: Package
 Title: Bayesian Estimation of Causal Effects
-Version: 1.6.1
+Version: 1.8.0
 Authors@R: c(
     person(
       "Achaz", "von Hardenberg",
@@ -47,6 +47,7 @@ Suggests:
     rmarkdown,
     devtools,
     nimble,
+    nimbleHMC,
     reticulate,
     ape,
     MASS

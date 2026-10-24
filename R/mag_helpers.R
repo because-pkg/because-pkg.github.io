@@ -438,31 +438,45 @@ mag_basis_to_formulas <- function(
 
         # Build formula string
 
-        # PREDICTOR RENAMING (User Request): Use psi_Species instead of z_Species/Species as predictor
-        # This improves convergence for d-separation tests.
+        # Predictor renaming for latent-state families (occupancy, cmr, etc.)
+        # dag_expand_hook tells us which vars map to which latent state prefix.
         if (!is.null(family)) {
-            # Helper: rename if occupancy
-            rename_if_occ <- function(v) {
-                # Check if this variable is an occupancy variable
-                # (either the base name or maybe already prefixed?)
-                # Usually basis set uses base variable names (e.g. "Dingo")
-
-                # Check if 'v' itself is in family as occupancy
-                if (!is.na(family[v]) && family[v] == "occupancy") {
-                    return(paste0("psi_", v))
+            # Build a rename map: base_var -> state_var (e.g. "Y" -> "psi_Y")
+            # by calling dag_expand_hook on the family object with empty equations/latent.
+            fam_cls_obj <- family
+            class(fam_cls_obj) <- unique(c(
+                paste0("because_family_", tolower(unique(unlist(family)))),
+                class(fam_cls_obj)
+            ))
+            hook_res <- tryCatch(
+                dag_expand_hook(fam_cls_obj, list(), character()),
+                error = function(e) list(compound_groups = NULL)
+            )
+            latent_rename_map <- list()
+            if (!is.null(hook_res$compound_groups)) {
+                for (base_v in names(hook_res$compound_groups)) {
+                    grp <- hook_res$compound_groups[[base_v]]
+                    # Find the state node (not the p_ node)
+                    state_node <- grp$nodes[!grepl("^p_", grp$nodes)]
+                    if (length(state_node) == 1) {
+                        latent_rename_map[[base_v]] <- state_node
+                    }
                 }
+            }
 
-                # If it's already p_ or psi_ or z_, keep as is
-                if (grepl("^(p_|psi_|z_)", v)) {
+            rename_latent_pred <- function(v) {
+                if (grepl("^(p_|psi_|phi_|z_)", v)) {
                     return(v)
                 }
-
+                if (!is.null(latent_rename_map[[v]])) {
+                    return(latent_rename_map[[v]])
+                }
                 return(v)
             }
 
-            var2 <- rename_if_occ(var2)
+            var2 <- rename_latent_pred(var2)
             if (!is.null(cond_vars) && length(cond_vars) > 0) {
-                cond_vars <- vapply(cond_vars, rename_if_occ, character(1))
+                cond_vars <- vapply(cond_vars, rename_latent_pred, character(1))
             }
         }
 
