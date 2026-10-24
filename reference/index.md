@@ -21,7 +21,8 @@
 - [`because_mediation()`](https://because-pkg.github.io/because/reference/because_mediation.md)
   : Automated Mediation Analysis
 - [`because_model()`](https://because-pkg.github.io/because/reference/because_model.md)
-  : Generate a JAGS model string for Bayesian SEM (Because)
+  : Generate BUGS Model Code and Parameter Map for Bayesian SEM
+  (Because)
 - [`because_structure()`](https://because-pkg.github.io/because/reference/because_structure.md)
   : Create a Custom Covariance Structure for use with because
 - [`because_waic()`](https://because-pkg.github.io/because/reference/because_waic.md)
