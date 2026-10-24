@@ -164,7 +164,7 @@ for comprehensive troubleshooting and dedicated environment setups.
 - [`because_family()`](https://because-pkg.github.io/because/reference/because_family.md)
   : Create a Custom Family (Distribution) for use with because
 - [`because_format_data()`](https://because-pkg.github.io/because/reference/because_format_data.md)
-  : Format Data for Because Analysis
+  : Format Long-Format Repeated Measures Data for Because Analysis
 - [`because_loo()`](https://because-pkg.github.io/because/reference/because_loo.md)
   : Calculate LOO-CV for a Because Model
 - [`because_loo_compare()`](https://because-pkg.github.io/because/reference/because_loo_compare.md)

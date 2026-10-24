@@ -1,82 +1,118 @@
-# Format Data for Because Analysis
+# Format Long-Format Repeated Measures Data for Because Analysis
 
-Converts data from long format (one row per observation) to the list
-format required by
-[`because`](https://because-pkg.github.io/because/reference/because.md).
+Converts data from long format (multiple rows per unit/group, such as
+repeated measurements per individual, site survey visits, or
+within-species replicates) to the named list format (unit-level vectors
+and replicate matrices) used by
+[`because`](https://because-pkg.github.io/because/reference/because.md)
+for error-in-variables (`variability = "reps"`), detection/occupancy
+models, and structured covariance models.
 
 ## Usage
 
 ``` r
-because_format_data(data, species_col = "SP", tree = NULL)
+because_format_data(
+  data,
+  id_col = "ID",
+  structure = NULL,
+  species_col = NULL,
+  tree = NULL
+)
 ```
 
 ## Arguments
 
 - data:
 
-  A data.frame in long format with one row per observation.
+  A `data.frame` in long format with one row per observation.
+
+- id_col:
+
+  Name of the column containing unit identifiers (e.g., individual,
+  site, or species IDs; default: `"ID"`, falling back to `"SP"` if
+  present).
+
+- structure:
+
+  Optional covariance structure object (e.g., a spatial/pedigree matrix
+  with row names, a `because_structure` object, or a phylogenetic tree).
+  If provided, determines the ordering of units in the output.
 
 - species_col:
 
-  Name of the column containing species or unit identifiers (default:
-  "SP").
+  Deprecated alias for `id_col` (retained for backward compatibility).
 
 - tree:
 
-  A phylogenetic tree or other structural object. Optional. If provided,
-  determines the order of units.
+  Deprecated alias for `structure` (retained for backward
+  compatibility).
 
 ## Value
 
 A named list where each element is either:
 
-- A numeric vector (if all species have exactly 1 observation)
+- A named numeric vector (if a variable is constant within each unit or
+  all units have 1 observation)
 
-- A numeric matrix with species in rows and replicates in columns
+- A numeric matrix with units in rows and replicates in columns (padded
+  with `NA`)
 
-Species are ordered to match `tree$tip.label` (if provided) or sorted
-alphabetically.
+Units are ordered to match the labels of `structure` (if provided) or
+sorted alphabetically.
 
 ## Details
 
 This function handles:
 
-- Different numbers of replicates per species (creates rectangular
-  matrix with NA padding)
+- Different numbers of replicates per unit (creates a rectangular matrix
+  with `NA` padding)
 
-- Missing values (NA)
+- Automatic distinction between unit-constant covariates (returned as
+  vectors) and replicate-varying measurements (returned as matrices)
 
-- Automatic alignment with phylogenetic tree tip labels (if provided)
+- Missing values (`NA`)
 
-When species have different numbers of replicates, the function creates
-a matrix with dimensions (number of species) x (maximum number of
-replicates). Species with fewer replicates are padded with NA values.
+- Automatic alignment with covariance structure labels (e.g., matrix row
+  names or phylogenetic tree tip labels, if `structure` is provided)
 
-If a tree is provided: Species in the tree but not in the data will have
-all NA values. Species in the data but not in the tree will be excluded
-with a warning.
+When units have different numbers of replicates, the function creates a
+matrix with dimensions
+`(number of units) x (maximum number of replicates)`. Units with fewer
+replicates are padded with `NA` values.
 
-If no tree is provided: All species in the data are included, sorted
-alphabetically by their ID.
+If a `structure` is provided:
+
+- Units present in the structure but missing from `data` receive all
+  `NA` values (enabling Bayesian imputation).
+
+- Units present in `data` but absent from the structure are excluded
+  with a warning.
+
+If no `structure` is provided: All units in `data` are included, sorted
+alphabetically by their identifier.
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
-# Example data in long format
+# Example 1: General repeated measures / Error-in-Variables (no structure)
 data_long <- data.frame(
-  SP = c("sp1", "sp1", "sp1", "sp2", "sp2", "sp3"),
-  BM = c(1.2, 1.3, 1.1, 2.1, 2.2, 1.8),
-  NL = c(0.5, 0.6, NA, 0.7, 0.8, 0.9)
+  ID   = c("ind1", "ind1", "ind1", "ind2", "ind2", "ind3"),
+  Age  = c(3, 3, 3, 5, 5, 2),          # Constant within individual -> vector
+  Mass = c(1.2, 1.3, 1.1, 2.1, 2.2, 1.8), # Varying -> matrix (3 x 3)
+  Cort = c(0.5, 0.6, NA, 0.7, 0.8, 0.9)   # Varying -> matrix (3 x 3)
 )
+data_list <- because_format_data(data_long, id_col = "ID")
 
-# With tree
+# Example 2: Aligning with a covariance matrix (e.g., spatial or pedigree)
+prec_mat <- diag(3)
+rownames(prec_mat) <- colnames(prec_mat) <- c("ind3", "ind1", "ind2")
+data_aligned <- because_format_data(data_long, id_col = "ID", structure = prec_mat)
+
+# Example 3: Phylogenetic tree alignment (backward-compatible aliases)
 if (requireNamespace("ape", quietly = TRUE)) {
-  tree <- ape::read.tree(text = "(sp1:1,sp2:1,sp3:1);")
-  data_list <- because_format_data(data_long, species_col = "SP", tree = tree)
+  tree <- ape::read.tree(text = "(ind1:1,ind2:1,ind3:1);")
+  data_phylo <- because_format_data(data_long, species_col = "ID", tree = tree)
 }
-
-# Without tree (general repeated measures)
-data_list_no_tree <- because_format_data(data_long, species_col = "SP")
 } # }
 ```
