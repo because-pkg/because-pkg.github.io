@@ -54,7 +54,6 @@ ensure_log_lik <- function(model, quiet = FALSE) {
                     )
                 }
 
-                # We need enough samples for stable estimates
                 # Use coda.samples to extend the chain
                 # Note: This advances the chain from where it left off.
                 samples <- rjags::coda.samples(
@@ -99,7 +98,6 @@ ensure_log_lik <- function(model, quiet = FALSE) {
     model_string <- paste(model$model_code, collapse = "\n")
 
     # Setup minimal run for efficiency
-    # We need enough samples for stable WAIC/LOO estimates
     n_chains <- 1
     n_adapt <- 500
     n_burnin <- 500
