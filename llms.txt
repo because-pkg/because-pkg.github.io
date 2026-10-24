@@ -4,11 +4,11 @@
 
 `because` provides a unified framework for specifying and fitting
 Bayesian structural equation models in `R` using
-[JAGS](https://mcmc-jags.sourceforge.io) or
-[NIMBLE](https://r-nimble.org). The focus of `because` is on causal
-inference, providing tools to facilitate the correct estimation and
-testing of direct and indirect causal effects in complex systems and
-quantify uncertainty in the estimates.
+[JAGS](https://mcmc-jags.sourceforge.io), [NIMBLE](https://r-nimble.org)
+or [NumPyro](https://num.pyro.ai/en/stable/). The focus of `because` is
+on causal inference, providing tools to facilitate the correct
+estimation and testing of direct and indirect causal effects in complex
+systems and quantify uncertainty in the estimates.
 
 > **Note on the logo**: The package hexagon sticker features the
 > mathematical symbol for “because”, represented as three dots in an
@@ -17,8 +17,8 @@ quantify uncertainty in the estimates.
 ## Features
 
 **because** simplifies the process of running complex Bayesian
-Structural Equation Models by automatically generating JAGS or NIMBLE
-code from standard R formulas. Key features include:
+Structural Equation Models by automatically generating JAGS, NIMBLE or
+NumPyro code from standard R formulas. Key features include:
 
 - **Multiple-Engine Support**: Choose between the simplicity of **JAGS**
   or o the high-performance of **NIMBLE**
