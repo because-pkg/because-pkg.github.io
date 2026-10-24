@@ -40,17 +40,17 @@
 #' Bayesian Networks. \emph{Networks}, 20(5), 507--534.
 #'
 #' Shipley, B. (2000). A new inferential test for path models based on
-#' directed acyclic graphs. Structural Equation Modeling, 7(2), 206-218.
+#' directed acyclic graphs. \emph{Structural Equation Modeling}, 7(2), 206-218.
 #'
 #' Shipley, B. (2009). Confirmatory path analysis in a generalized multilevel
-#' context. Ecology, 90(2), 363-368.
+#' context. \emph{Ecology}, 90(2), 363-368.
 #'
-#' Shipley, B. (2016). Cause and Correlation in Biology (2nd ed.).
+#' Shipley, B. (2016). \emph{Cause and Correlation in Biology} (2nd ed.).
 #' Cambridge University Press.
 #'
 #' Shipley, B., & Douma, J. C. (2021). Testing Piecewise Structural Equations
 #' Models in the Presence of Latent Variables and Including Correlated Errors.
-#' Structural Equation Modeling: A Multidisciplinary Journal, 28(4), 582-589.
+#' \emph{Structural Equation Modeling: A Multidisciplinary Journal}, 28(4), 582-589.
 #' https://doi.org/10.1080/10705511.2020.1871355
 #'
 
