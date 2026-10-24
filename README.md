@@ -47,9 +47,16 @@ remotes::install_github("because-pkg/because", build_vignettes = TRUE)
 Before using `because`, you need to have an inference engine installed.
 
 ### JAGS (Primary Engine)
--   **macOS**: `brew install jags` or download from [SourceForge](https://mcmc-jags.sourceforge.io).
--   **Windows**: Download installer from [SourceForge](https://mcmc-jags.sourceforge.io).
+-   **macOS**: `brew install jags` or download **JAGS 4.3.2** from [SourceForge (JAGS 4.x)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/).
+-   **Windows**: Download the **JAGS 4.3.2** installer from [SourceForge (JAGS 4.x)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/).
 -   **Linux**: `sudo apt-get install jags`.
+
+> **Important (JAGS 4.x vs. JAGS 5.0):** We currently recommend installing **JAGS 4.x (e.g., 4.3.2)** because the version of `rjags` on CRAN is built for JAGS 4.x and will fail to load with JAGS 5.0.
+>
+> If you have already installed **JAGS 5.0**, you must install the matching `rjags 5.0` package from the developer repository *before* installing `because`:
+> ``` r
+> install.packages("rjags", repos = c("https://ku-awdc.github.io/drat", "https://cloud.r-project.org"))
+> ```
 
 ### NIMBLE (High-Performance Engine)
 NIMBLE is an optional backend that requires a C++ compiler to be installed on your system:
