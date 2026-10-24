@@ -1,7 +1,7 @@
 #' Calculate LOO-CV for a Because Model
 #'
 #' Calculates Leave-One-Out Cross-Validation using Pareto Smoothed Importance Sampling (PSIS-LOO)
-#' for a fitted Because model.
+#' for a fitted because model.
 #'
 #' @param model A fitted model object of class \code{"because"} returned by \code{\link{because}}.
 #'   \strong{Note}: If the model was not fitted with \code{WAIC = TRUE} (so \code{log_lik} is missing),
@@ -60,8 +60,7 @@ because_loo <- function(model, ...) {
     log_lik <- ensure_log_lik(model)
 
     # Calculate LOO
-    # Save indices needed for potential refitting? (Not implemented yet)
-    loo_result <- loo::loo(log_lik, ...)
+     loo_result <- loo::loo(log_lik, ...)
 
     return(loo_result)
 }
