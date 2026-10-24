@@ -37,14 +37,14 @@
 #' @param engine Bayesian backend: `"jags"` (default), `"nimble"`, or `"numpyro"`. 
 #'   Note: For Gaussian models, the framework now uses a robust, scale-invariant `Uniform(0, 100)`
 #'   prior on the standard deviation across all engines, replacing legacy precision priors.
-#' @param n.iter Total MCMC iterations per chain (default = 12500).
-#' @param n.burnin Number of burn-in iterations (default = 20% of `n.iter`).
+#' @param n.iter Total MCMC iterations per chain (default = 12500 for `"jags"`/`"nimble"`, 2000 for `"numpyro"`).
+#' @param n.burnin Number of burn-in/warmup iterations (default = 20% of `n.iter` for `"jags"`/`"nimble"`, 50% of `n.iter` for `"numpyro"`).
 #' @param n.chains Number of independent MCMC chains (default = 3).
 #' @param parallel Logical; if `TRUE`, runs MCMC chains in parallel.
 #' @param n.cores Number of CPU cores for parallel execution.
 #' @param monitor Monitoring mode (e.g. "interpretable", "all", or "minimal").
 #' @param nimble_samplers Optional named list of user-specified samplers for NIMBLE.
-#' @param n.thin Thinning interval for MCMC chains (default = 10).
+#' @param n.thin Thinning interval for MCMC chains (default = 10 for `"jags"`/`"nimble"`, 1 for `"numpyro"`).
 #' @param DIC Logical; if `TRUE`, calculates the Deviance Information Criterion (JAGS only).
 #' @param WAIC Logical; if `TRUE`, calculates the Watanabe-Akaike Information Criterion.
 #' @param n.adapt Number of iterations for the adaptation phase.
@@ -211,41 +211,30 @@ because <- function(
   }
 
   engine <- match.arg(tolower(engine), c("jags", "nimble", "numpyro"))
-  
-  # Auto-adjust MCMC defaults for NUTS sampler (NumPyro) if not explicitly provided
+
+  # Initialize MCMC parameters (with engine-specific defaults when omitted)
+  if (is.null(n.chains)) n.chains <- 3
   if (engine == "numpyro") {
     if (is.null(n.iter))   n.iter   <- 2000
     if (is.null(n.thin))   n.thin   <- 1
     if (is.null(n.burnin)) n.burnin <- floor(n.iter / 2)
-
+  } else {
+    if (is.null(n.iter))   n.iter   <- 12500
+    if (is.null(n.thin))   n.thin   <- 10
+    if (is.null(n.burnin)) n.burnin <- floor(n.iter / 5)
   }
+  if (is.null(n.adapt)) n.adapt <- floor(n.iter / 5)
+
+  n.chains <- as.integer(max(1, n.chains))
+  n.iter   <- as.integer(max(0, n.iter))
+  n.thin   <- as.integer(max(1, n.thin))
+  n.burnin <- as.integer(max(0, n.burnin))
+  n.adapt  <- as.integer(max(0, n.adapt))
+
   if (engine == "numpyro") {
     because_py <- setup_numpyro_environment(parallel = parallel, n.cores = n.cores, n.chains = n.chains)
   }
 
-  # --- Robust Parameter Initialization (Handle NULL inputs from recursive calls) ---
-  if (is.null(n.chains)) n.chains <- 3
-  if (is.null(n.iter)) n.iter <- 12500
-  if (is.null(n.thin)) n.thin <- 10
-  if (is.null(n.burnin)) n.burnin <- floor(n.iter / 5)
-  if (is.null(n.adapt)) n.adapt <- floor(n.iter / 5)
-
-  # [FIX] Ensure all MCMC parameters are coercible to non-negative integer for JAGS
-  n.chains <- as.integer(max(1, n.chains))
-  n.iter <- as.integer(max(0, n.iter))
-  n.thin <- as.integer(max(1, n.thin))
-  n.burnin <- as.integer(max(0, n.burnin))
-  n.adapt <- as.integer(max(0, n.adapt))
-
-  if (!quiet) {
-    is_list_debug <- is.list(data) && !is.data.frame(data)
-  }
-
-  # [PURGE] Legacy tree-to-structure alias removed. All structures handled via 'structure' argument.
-
-  # [PURGE] Legacy structure check moved to top-level argument handler.
-
-  # Validate inputs
   # Input validation
   if (is.null(data)) {
     stop("Argument 'data' must be provided.")

@@ -74,11 +74,11 @@ prior on the standard deviation across all engines, replacing legacy precision p
 
 \item{n.chains}{Number of independent MCMC chains (default = 3).}
 
-\item{n.iter}{Total MCMC iterations per chain (default = 12500).}
+\item{n.iter}{Total MCMC iterations per chain (default = 12500 for \code{"jags"}/\code{"nimble"}, 2000 for \code{"numpyro"}).}
 
-\item{n.burnin}{Number of burn-in iterations (default = 20\% of \code{n.iter}).}
+\item{n.burnin}{Number of burn-in/warmup iterations (default = 20\% of \code{n.iter} for \code{"jags"}/\code{"nimble"}, 50\% of \code{n.iter} for \code{"numpyro"}).}
 
-\item{n.thin}{Thinning interval for MCMC chains (default = 10).}
+\item{n.thin}{Thinning interval for MCMC chains (default = 10 for \code{"jags"}/\code{"nimble"}, 1 for \code{"numpyro"}).}
 
 \item{adapt_delta}{Target acceptance probability for the NUTS sampler (NumPyro only, default = 0.95).
 Increase towards 1 (e.g., \code{0.99}) for complex posteriors with funnel geometry or many
