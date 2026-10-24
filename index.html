@@ -144,12 +144,18 @@
 </h3>
 <ul>
 <li>
-<strong>macOS</strong>: <code>brew install jags</code> or download from <a href="https://mcmc-jags.sourceforge.io" class="external-link">SourceForge</a>.</li>
+<strong>macOS</strong>: <code>brew install jags</code> or download <strong>JAGS 4.3.2</strong> from <a href="https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/" class="external-link">SourceForge (JAGS 4.x)</a>.</li>
 <li>
-<strong>Windows</strong>: Download installer from <a href="https://mcmc-jags.sourceforge.io" class="external-link">SourceForge</a>.</li>
+<strong>Windows</strong>: Download the <strong>JAGS 4.3.2</strong> installer from <a href="https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/" class="external-link">SourceForge (JAGS 4.x)</a>.</li>
 <li>
 <strong>Linux</strong>: <code>sudo apt-get install jags</code>.</li>
 </ul>
+<blockquote>
+<p><strong>Important (JAGS 4.x vs. JAGS 5.0):</strong> We currently recommend installing <strong>JAGS 4.x (e.g., 4.3.2)</strong> because the version of <code>rjags</code> on CRAN is built for JAGS 4.x and will fail to load with JAGS 5.0.</p>
+<p>If you have already installed <strong>JAGS 5.0</strong>, you must install the matching <code>rjags 5.0</code> package from the developer repository <em>before</em> installing <code>because</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"rjags"</span>, repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://ku-awdc.github.io/drat"</span>, <span class="st">"https://cloud.r-project.org"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+</blockquote>
 </div>
 <div class="section level3">
 <h3 id="nimble-high-performance-engine">NIMBLE (High-Performance Engine)<a class="anchor" aria-label="anchor" href="#nimble-high-performance-engine"></a>
@@ -160,13 +166,13 @@
 <h3 id="numpyro-python-based-engine">NumPyro (Python-based Engine)<a class="anchor" aria-label="anchor" href="#numpyro-python-based-engine"></a>
 </h3>
 <p>NumPyro is an optional backend built on JAX, recommended for large datasets or GPU-accelerated sampling. It runs from R via the <code>reticulate</code> package. NumPyro requires Python 3.8 or later and the <code>reticulate</code> R package. Start by installing <code>reticulate</code> if you don’t have it yet:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"reticulate"</span><span class="op">)</span></span></code></pre></div>
 <p>If you do not already have Python installed on your system, you can skip installing it separately: <code>reticulate</code> can install Miniconda, which bundles Python and conda together:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/install_miniconda.html" class="external-link">install_miniconda</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># skip if Python is already installed</span></span></code></pre></div>
 <p><strong>One-step setup</strong>: <code>because</code> provides a built-in helper that installs all required Python packages (<code>numpyro</code>, <code>jax</code>, <code>jaxlib</code>, and the <code>because_py</code> companion module):</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/install_because_numpyro.html">install_because_numpyro</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>If you encounter any issues finding your Python environment (or if you are using Miniconda/Conda), we highly recommend referring to the <strong><a href="https://because-pkg.github.io/because_py/articles/installation.html">because NumPyro (because_py) Installation Guide</a></strong> for comprehensive troubleshooting and dedicated environment setups.</p>
 </div>
