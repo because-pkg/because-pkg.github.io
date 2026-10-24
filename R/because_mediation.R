@@ -37,48 +37,25 @@
 #'
 #' @export
 because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
-    if (is.null(fit$parameter_map)) {
+    if (!inherits(fit, "because") || is.null(fit$parameter_map)) {
         stop(
-            "Fit object does not contain a parameter_map. Please refit the model with a newer version of 'because'."
+            "'fit' must be a valid 'because' model object containing a 'parameter_map'."
         )
     }
 
     # 1. Build Graph from Parameter Map
-    # The map contains: response, predictor, parameter
-    # Since fit$parameter_map is a data frame, we can use it directly
-    if (is.data.frame(fit$parameter_map)) {
-        edges <- fit$parameter_map
-        # Rename columns to match igraph expectations (from, to)
-        colnames(edges)[colnames(edges) == "predictor"] <- "from"
-        colnames(edges)[colnames(edges) == "response"] <- "to"
-    } else {
-        # Fallback if it is somehow a list (older versions?)
-        edges <- do.call(
-            rbind,
-            lapply(fit$parameter_map, function(x) {
-                data.frame(
-                    from = x$predictor,
-                    to = x$response,
-                    parameter = x$parameter,
-                    stringsAsFactors = FALSE
-                )
-            })
-        )
-    }
+    edges <- fit$parameter_map
+    colnames(edges)[colnames(edges) == "predictor"] <- "from"
+    colnames(edges)[colnames(edges) == "response"] <- "to"
 
-    # IMPORTANT: igraph uses the FIRST TWO columns as source/target.
-    # We must ensure 'from' is 1st and 'to' is 2nd.
     if (!all(c("from", "to", "parameter") %in% colnames(edges))) {
         stop(
             "Parameter map structure unexpected. Columns 'from', 'to', 'parameter' required."
         )
     }
 
-    # Reorder explicitly
+    # igraph::graph_from_data_frame treats the first two columns as source -> target
     edges <- edges[, c("from", "to", "parameter")]
-
-    # Filter to structural betas (exclude intercepts/auxiliary if any slipped in)
-    # Ideally parameter_map only has structural predictors
 
     if (!requireNamespace("igraph", quietly = TRUE)) {
         stop(
@@ -88,7 +65,6 @@ because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
 
     g <- igraph::graph_from_data_frame(edges, directed = TRUE)
 
-    # Check node existence
     if (!exposure %in% igraph::V(g)$name) {
         stop(paste("Exposure", exposure, "not found in model graph."))
     }
@@ -97,7 +73,6 @@ because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
     }
 
     # 2. Find All Simple Paths
-    # Returns a list of vertex sequences
     paths_raw <- igraph::all_simple_paths(
         g,
         from = exposure,
@@ -111,10 +86,8 @@ because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
     }
 
     # 3. Process Paths and Calculate Effects
-    # Get MCMC samples
-    samples_mat <- as.matrix(fit$samples) # Assuming fit$samples is the coda object
+    samples_mat <- as.matrix(fit$samples)
     if (is.null(samples_mat)) {
-        # If samples not directly available, try to standard extraction
         stop("Could not extract MCMC samples from fit object.")
     }
 
@@ -127,22 +100,16 @@ because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
 
     for (i in seq_along(paths_raw)) {
         p_nodes <- igraph::as_ids(paths_raw[[i]])
-        # Construct path string: A -> B -> C
         p_str <- paste(p_nodes, collapse = " -> ")
         path_names[i] <- p_str
 
-        # Identify edges and parameters along the path
-        # Path is nodes: n1, n2, n3... Edge is (n1,n2), (n2,n3)
         path_effect <- rep(1, nrow(samples_mat))
-
         params_in_path <- c()
 
         for (j in 1:(length(p_nodes) - 1)) {
             u <- p_nodes[j]
             v <- p_nodes[j + 1]
 
-            # Find parameter name in edges df
-            # Should be unique for 'because' models (one edge per pair)
             param_name <- edges$parameter[edges$from == u & edges$to == v]
 
             if (length(param_name) == 0) {
@@ -157,15 +124,7 @@ because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
                 break
             }
 
-            # Check if sample exists
-            # param_name might be an array beta[k] or something. Param map should have exact name.
-            # If random effects formulation, structural betas are usually fixed effects.
-
-            # Handle potential mismatched names in samples vs map?
-            # Assuming map matches samples column names.
             if (!param_name %in% colnames(samples_mat)) {
-                # Try to find matching column (e.g. if partial matching needed)
-                # But 'because' usually keeps them clean.
                 stop(paste(
                     "Parameter",
                     param_name,
@@ -177,18 +136,12 @@ because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
             path_effect <- path_effect * samples_mat[, param_name]
         }
 
-        # Store samples for this path
         path_results[[p_str]] <- path_effect
-
-        # Accumulate Total Effect
         total_effect_samples <- total_effect_samples + path_effect
 
-        # Classify as Direct or Indirect
         if (length(p_nodes) == 2) {
-            # Direct path (Exposure -> Outcome)
             direct_effect_samples <- direct_effect_samples + path_effect
         } else {
-            # Indirect path
             total_indirect_samples <- total_indirect_samples + path_effect
         }
     }
@@ -208,14 +161,12 @@ because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
         )
     }
 
-    # Summary Table
     summary_df <- rbind(
         summarize_vec(total_effect_samples, "Total Effect"),
         summarize_vec(direct_effect_samples, "Direct Effect"),
         summarize_vec(total_indirect_samples, "Total Indirect Effect")
     )
 
-    # Path Table
     path_df <- do.call(
         rbind,
         lapply(names(path_results), function(p) {
@@ -231,12 +182,8 @@ because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
             )
         })
     )
-    # Clean up path df
     path_df <- path_df[, c("Path", "Type", "Mean", "SD", "Lower", "Upper")]
 
-    # Compute Proportion Mediated (on likelihood of samples, not just means)
-    # Prop = Indirect / Total
-    # Caution: unstable if Total is near 0.
     prop_mediated_samples <- total_indirect_samples / total_effect_samples
     prop_summary <- summarize_vec(prop_mediated_samples, "Proportion Mediated")
 
