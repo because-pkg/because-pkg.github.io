@@ -2,7 +2,7 @@
 % Please edit documentation in R/because_model.R
 \name{because_model}
 \alias{because_model}
-\title{Generate a JAGS model string for Bayesian SEM (Because)}
+\title{Generate BUGS Model Code and Parameter Map for Bayesian SEM (Because)}
 \usage{
 because_model(
   equations,
@@ -30,7 +30,7 @@ because_model(
 \arguments{
 \item{equations}{A list of model formulas.}
 
-\item{is_multi_structure}{Logical (Internal). If TRUE, handles 3D Precision arrays.}
+\item{is_multi_structure}{Logical; if \code{TRUE}, handles 3D Precision arrays (e.g. multi-object sampling).}
 
 \item{latent_method}{Method for handling latent variables ("correlations" or "explicit").}
 
@@ -40,24 +40,13 @@ because_model(
 
 \item{random_terms}{Optional list of random effects (response, group).}
 
-\item{vars_with_na}{Optional character vector of response variable names that have missing data.
-These variables will use element-wise likelihoods instead of multivariate normal.}
+\item{vars_with_na}{Optional character vector of response variable names that have missing data.}
 
-\item{induced_correlations}{Optional list of variable pairs with induced correlations
-from latent variables. Each element should be a character vector of length 2 specifying
-the pair of variables that share a latent common cause.}
+\item{induced_correlations}{Optional list of variable pairs with induced correlations from latent variables.}
 
-\item{variability}{Optional character vector or named character vector of variable names that have measurement error or within-species variability.
-If named, the names should be the variable names and the values should be the type of variability: "se" (for mean and standard error) or "reps" (for repeated measures).
-If unnamed, it defaults to "se" for all specified variables.
-\itemize{
-\item "se": Expects \code{Var_mean} and \code{Var_se} in the data. The model fixes observation error: \code{Var_mean ~ dnorm(Var, 1/Var_se^2)}.
-\item "reps": Expects \code{Var_obs} (matrix) and \code{N_reps_Var} (vector) in the data. The model estimates observation error: \code{Var_obs[i,j] ~ dnorm(Var[i], Var_tau)}.
-}}
+\item{variability}{Optional character vector or named character vector of variable names that have measurement error or within-unit variability.}
 
-\item{family}{Optional named character vector specifying the family/distribution for response variables.
-Default is "gaussian" for all variables. Supported values: "gaussian", "binomial", "multinomial".
-For "binomial" variables, the model uses a logit link and a Bernoulli likelihood, with phylogenetic correlation modeled on the latent scale.}
+\item{family}{Optional named character vector specifying the family/distribution for response variables.}
 
 \item{standardize_latent}{Logical (default TRUE). If TRUE, standardizes latent variables to unit variance.}
 
@@ -75,21 +64,23 @@ For "binomial" variables, the model uses a logit link and a Bernoulli likelihood
 
 \item{hierarchical_info}{Optional list containing multiscale data hierarchy (levels, link_vars).}
 
-\item{engine}{Bayesian engine to use ("jags" or "nimble").}
+\item{engine}{Bayesian engine to use (\code{"jags"}, \code{"nimble"}, or \code{"numpyro"}).}
 
 \item{quiet}{Logical; suppress status messages.}
 }
 \value{
 A list with two elements:
 \itemize{
-\item \code{model}: A character string containing the JAGS model code.
-\item \code{parameter_map}: A data frame mapping response variables to their predictors and parameter names.
+  \item \code{model}: A character string containing the BUGS/JAGS model code.
+  \item \code{parameter_map}: A data frame mapping response variables to their predictors and parameter names.
 }
 }
 \description{
-This function builds the model code to be passed to JAGS based on a set of structural equations.
-It supports custom covariance structures (spatial, phylogenetic, etc.).
-Missing values are handled both in the response and predictor variables treating all of them as stochastic nodes.
+Builds the BUGS-dialect model specification (used directly by JAGS and parsed
+into an R expression by NIMBLE) along with the canonical \code{parameter_map}
+data frame used across all engines (JAGS, NIMBLE, and NumPyro).
+Supports custom covariance structures (spatial, phylogenetic, etc.) and handles
+missing values in both response and predictor variables as stochastic nodes.
 }
 \details{
 The generated model includes:

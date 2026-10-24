@@ -1,12 +1,14 @@
-#' Generate a JAGS model string for Bayesian SEM (Because)
+#' Generate BUGS Model Code and Parameter Map for Bayesian SEM
 #'
-#' This function builds the model code to be passed to JAGS based on a set of structural equations.
-#' It supports custom covariance structures (spatial, phylogenetic, etc.).
-#' Missing values are handled both in the response and predictor variables treating all of them as stochastic nodes.
+#' Builds the BUGS-dialect model specification (used directly by JAGS and parsed
+#' into an R expression by NIMBLE) along with the canonical \code{parameter_map}
+#' data frame used across all engines (JAGS, NIMBLE, and NumPyro).
+#' Supports custom covariance structures (spatial, phylogenetic, etc.) and handles
+#' missing values in both response and predictor variables as stochastic nodes.
 #'
 #' @param equations A list of model formulas.
 #' @param is_multi_structure Logical; if \code{TRUE}, handles 3D Precision arrays (e.g. multi-object sampling).
-#' @param variability Optional character vector or named character vector of variable names that have measurement error or within-species variability.
+#' @param variability Optional character vector or named character vector of variable names that have measurement error or within-unit variability.
 #' @param family Optional named character vector specifying the family/distribution for response variables.
 #' @param vars_with_na Optional character vector of response variable names that have missing data.
 #' @param induced_correlations Optional list of variable pairs with induced correlations from latent variables.
@@ -21,12 +23,12 @@
 #' @param categorical_vars Optional character vector of categorical variable names.
 #' @param priors Optional named list of custom priors.
 #' @param hierarchical_info Optional list containing multiscale data hierarchy (levels, link_vars).
-#' @param engine Bayesian engine to use ("jags" or "nimble").
+#' @param engine Bayesian engine to use (\code{"jags"}, \code{"nimble"}, or \code{"numpyro"}).
 #' @param fix_latent Variable to fix for latent identification.
 #' @param quiet Logical; suppress status messages.
 #' @return A list with two elements:
 #' \itemize{
-#'   \item \code{model}: A character string containing the JAGS model code.
+#'   \item \code{model}: A character string containing the BUGS/JAGS model code.
 #'   \item \code{parameter_map}: A data frame mapping response variables to their predictors and parameter names.
 #' }
 #' @export
@@ -82,12 +84,12 @@ because_model <- function(
   # Deduplication: Purge random effects handled by structures
   if (!is.null(random_structure_names) && length(structure_names) > 0) {
     random_structure_names <- setdiff(random_structure_names, structure_names)
-    
+
     if (!is.null(hierarchical_info)) {
       struct_lvls <- tolower(unique(na.omit(sapply(structure_names, function(s) get_struct_lvl(s, hierarchical_info)))))
       if (length(struct_lvls) > 0) {
         keep_r <- vapply(random_structure_names, function(r) {
-          return(TRUE) 
+          return(TRUE)
         }, logical(1))
         random_structure_names <- random_structure_names[keep_r]
       }
