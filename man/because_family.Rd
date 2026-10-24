@@ -5,16 +5,14 @@
 \title{Create a Custom Family (Distribution) for use with because}
 \usage{
 because_family(
-  name,
-  jags_likelihood,
+  jags_likelihood = NULL,
   link = "identity",
   extra_priors = NULL,
+  name = NULL,
   description = NULL
 )
 }
 \arguments{
-\item{name}{Character string; the name of your family (e.g., "student_t").}
-
 \item{jags_likelihood}{A character string with the JAGS likelihood code.
 Use placeholders: \code{\{response\}} for variable name, \code{\{mu\}} for mean,
 \code{\{i\}} for loop index, \code{\{tau\}} for precision parameter.}
@@ -24,6 +22,9 @@ Use placeholders: \code{\{response\}} for variable name, \code{\{mu\}} for mean,
 \item{extra_priors}{Character vector of additional JAGS prior statements.
 Use \code{\{response\}} placeholder for variable-specific naming.}
 
+\item{name}{Optional character string; the name of your family (e.g., "student_t").
+If omitted, an internal name is generated automatically.}
+
 \item{description}{Optional description of the family.}
 }
 \value{
@@ -32,6 +33,13 @@ A constructor function for the family that can be passed to because(..., family 
 \description{
 This helper function allows users to easily create custom distribution families
 by providing the JAGS likelihood code. The function handles S3 method registration.
+}
+\details{
+\strong{Engine compatibility:} Custom families defined via \code{because_family()}
+inject BUGS-syntax likelihoods and priors into the model specification and are
+supported for \code{engine = "jags"} and \code{engine = "nimble"} (provided the
+BUGS distribution is available in NIMBLE). They are not supported for
+\code{engine = "numpyro"}.
 }
 \examples{
 \dontrun{

@@ -4,15 +4,16 @@
 \alias{because_structure}
 \title{Create a Custom Covariance Structure for use with because}
 \usage{
-because_structure(name, precision_fn, description = NULL)
+because_structure(precision_fn = NULL, name = NULL, description = NULL)
 }
 \arguments{
-\item{name}{Character string; the name of your structure (e.g., "spatial_knn").
-This will be used to create the S3 class and methods.}
-
 \item{precision_fn}{A function that takes your structure data and returns
 a precision matrix (N x N). The first return value should be the precision matrix.
 Additional list elements can be returned and will be passed to JAGS as data.}
+
+\item{name}{Optional character string; the name of your structure (e.g., "spatial_knn").
+Used to create the internal S3 class and JAGS precision matrix name (\code{Prec_<name>}).
+If omitted, an internal name is generated automatically.}
 
 \item{description}{Optional description of the structure for documentation.}
 }
@@ -37,6 +38,11 @@ The precision function should return either:
 \item A single matrix (the precision matrix)
 \item A list with \code{Prec} (the precision matrix) and optionally other data
 }
+
+\strong{Engine compatibility:} Full BUGS code generation (including 3D precision
+arrays for Bayesian model averaging) is supported for \code{engine = "jags"} and
+\code{engine = "nimble"}. For \code{engine = "numpyro"}, standard 2D precision
+matrices are passed via fallback, whereas 3D arrays require JAGS or NIMBLE.
 }
 \examples{
 \dontrun{

@@ -38,7 +38,7 @@ expand_categorical_equations <- function(
         dummies <- categorical_vars[[var]]$dummies
 
         # If the parent variable is being imputed (is in response_vars_with_na),
-        # we MUST define the dummies deterministically in JAGS to link them.
+        # we MUST define the dummies deterministically to link them.
         if (!is.null(response_vars_with_na) && var %in% response_vars_with_na) {
           for (k in 2:length(levels)) {
             dummy_name <- paste0(var, "_", levels[k])
@@ -54,7 +54,7 @@ expand_categorical_equations <- function(
 
             if (!eq_exists) {
               new_equations <- c(new_equations, list(det_eq))
-              # Also remove the dummy from the data list so JAGS uses the definition
+              # Also remove the dummy from the data list so the engine uses the definition
               if (dummy_name %in% names(data)) {
                 data[[dummy_name]] <- NULL
               }
