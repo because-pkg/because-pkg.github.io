@@ -95,13 +95,10 @@ find_reusable_tests <- function(
             match_idx <- match(curr_test_str, prev_test_strs)
 
             if (!is.na(match_idx)) {
-                # Candidate found! Test formula matches.
-                # CHECK: Do the required support equations match?
                 prev_equations <- prev_model$equations %||%
                     prev_model$input$equations
 
                 if (is.null(prev_equations)) {
-                    # Cannot verify safety - skip
                     next
                 }
 
@@ -146,7 +143,7 @@ find_reusable_tests <- function(
             n_reused
         ))
         if (length(missing_indices) == 0) {
-            message("  All tests found in cache. Skipping new JAGS runs.")
+            message("  All tests found in cache. Skipping new MCMC runs.")
         } else {
             message(sprintf(
                 "  %d tests remain to be run.",
