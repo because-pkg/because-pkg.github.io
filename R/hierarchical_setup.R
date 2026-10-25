@@ -26,7 +26,7 @@ auto_detect_hierarchical <- function(data, eq_vars, quiet = FALSE) {
     }
 
     # Only trigger hierarchical mode if we have at least 2 levels (multiple dataframes)
-    # Single dataframes in a list (common in JAGS/occupancy) are better handled
+    # Single dataframes in a list are better handled
     # by standard list-to-dataframe conversion if they aren't truly hierarchical.
     if (length(levels) < 2) {
         if (!quiet && length(levels) == 1) {
@@ -127,27 +127,27 @@ auto_detect_structure_levels <- function(structure, hierarchical_info, quiet = F
         if (n_struct == 0) {
             next
         }
-        
+
         # 2. Match against levels
         best_lvl <- NULL
         for (lvl_name in names(data_list)) {
             df <- data_list[[lvl_name]]
             if (!is.data.frame(df)) next
             n_lvl <- nrow(df)
-            
+
             # Match by sample size
             if (n_lvl == n_struct) {
                 # Match by names if possible
                 if (!is.null(names_struct)) {
                     # Find potential ID columns in this level
                     id_cols <- names(df)[sapply(df, function(x) !is.numeric(x) || all(x %% 1 == 0, na.rm = TRUE))]
-                    
+
                     match_found <- FALSE
                     cat_meta <- attr(data_list, "categorical_vars")
-                    
+
                     for (col in id_cols) {
                         df_vals <- as.character(df[[col]])
-                        
+
                         # Map integer-encoded categorical columns back to labels
                         if (!is.null(cat_meta) && col %in% names(cat_meta)) {
                             lvls <- cat_meta[[col]]$levels
@@ -159,7 +159,7 @@ auto_detect_structure_levels <- function(structure, hierarchical_info, quiet = F
                             break
                         }
                     }
-                    
+
                     if (match_found) {
                         best_lvl <- lvl_name
                         break
@@ -356,7 +356,7 @@ infer_variable_level <- function(var, levels, data = NULL, equations = NULL, lat
                         # (We only infer one level deep for simplicity)
                         tryCatch(infer_variable_level(p, levels, data), error = function(e) NA_character_)
                     }, character(1)))
-                    
+
                     if (length(pred_lvls) > 0) {
                         if (!is.null(hierarchy)) {
                             # Rank levels according to hierarchy (coarsest first)
@@ -370,7 +370,7 @@ infer_variable_level <- function(var, levels, data = NULL, equations = NULL, lat
                 }
             }
         }
-        
+
         # If it's a latent parent (not a response), find its children
         for (eq in equations) {
             preds <- all.vars(formula(eq))[-1]
@@ -434,16 +434,16 @@ parse_hierarchy_from_random <- function(random, data = NULL) {
 #' @keywords internal
 get_level_depth <- function(lvl, hierarchy_str) {
   if (is.null(lvl) || is.null(hierarchy_str)) return(NA)
-  
+
   paths <- strsplit(hierarchy_str, "\\s*;\\s*")[[1]]
   paths <- lapply(paths, function(p) trimws(strsplit(p, "\\s*>\\s*")[[1]]))
-  
+
   depths <- sapply(paths, function(p) {
     idx <- match(lvl, p)
     if (is.na(idx)) return(NA)
     return(idx)
   })
-  
+
   if (all(is.na(depths))) return(NA)
   return(max(depths, na.rm = TRUE))
 }
