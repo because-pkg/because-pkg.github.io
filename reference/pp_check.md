@@ -20,7 +20,7 @@ pp_check(
   resp = NULL,
   type = "dens_overlay",
   ndraws = 50,
-  trim = TRUE,
+  trim = FALSE,
   re_formula = NULL,
   ...
 )
@@ -44,7 +44,9 @@ pp_check(
 - type:
 
   Character string; the type of PPC plot to generate. Supported:
-  `"dens_overlay"`, `"hist"`, `"stat"`.
+  `"dens_overlay"`, `"hist"`, `"stat"`, `"stat_2d"`, `"bars"`,
+  `"bars_grouped"`, `"intervals"`, `"ecdf_overlay"`, `"scatter_avg"`.
+  Defaults to `"dens_overlay"`.
 
 - ndraws:
 
@@ -52,7 +54,8 @@ pp_check(
 
 - trim:
 
-  Logical; if TRUE, zooms plot to observed data range.
+  Logical; if TRUE, zooms plot to observed data range. Defaults to
+  `FALSE` to allow inspection of predictive tail behavior.
 
 - re_formula:
 

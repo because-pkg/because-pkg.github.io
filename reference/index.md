@@ -59,6 +59,8 @@
   : Posterior Predictive Samples
 - [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
   : Posterior Predictive Checks
+- [`predict(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/predict.because.md)
+  : Predict Method for because Model Fits
 - [`storks`](https://because-pkg.github.io/because/reference/storks.md)
   : Data on Stork Populations and Human Birth Rates
 - [`summary(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/summary.because.md)

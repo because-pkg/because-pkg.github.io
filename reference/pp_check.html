@@ -82,7 +82,7 @@ for <code>because</code> model objects.</p>
 <span>  resp <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  type <span class="op">=</span> <span class="st">"dens_overlay"</span>,</span>
 <span>  ndraws <span class="op">=</span> <span class="fl">50</span>,</span>
-<span>  trim <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  trim <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  re_formula <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -107,7 +107,9 @@ If <code>NULL</code>, takes the first response.</p></dd>
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
 <dd><p>Character string; the type of PPC plot to generate.
-Supported: <code>"dens_overlay"</code>, <code>"hist"</code>, <code>"stat"</code>.</p></dd>
+Supported: <code>"dens_overlay"</code>, <code>"hist"</code>, <code>"stat"</code>, <code>"stat_2d"</code>,
+<code>"bars"</code>, <code>"bars_grouped"</code>, <code>"intervals"</code>, <code>"ecdf_overlay"</code>,
+<code>"scatter_avg"</code>. Defaults to <code>"dens_overlay"</code>.</p></dd>
 
 
 <dt id="arg-ndraws">ndraws<a class="anchor" aria-label="anchor" href="#arg-ndraws"></a></dt>
@@ -115,7 +117,8 @@ Supported: <code>"dens_overlay"</code>, <code>"hist"</code>, <code>"stat"</code>
 
 
 <dt id="arg-trim">trim<a class="anchor" aria-label="anchor" href="#arg-trim"></a></dt>
-<dd><p>Logical; if TRUE, zooms plot to observed data range.</p></dd>
+<dd><p>Logical; if TRUE, zooms plot to observed data range.
+Defaults to <code>FALSE</code> to allow inspection of predictive tail behavior.</p></dd>
 
 
 <dt id="arg-re-formula">re_formula<a class="anchor" aria-label="anchor" href="#arg-re-formula"></a></dt>
