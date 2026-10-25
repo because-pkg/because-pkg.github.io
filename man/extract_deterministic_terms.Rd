@@ -13,7 +13,8 @@ extract_deterministic_terms(equations)
 List of deterministic term definitions
 }
 \description{
-Scans a list of formulas for terms that require deterministic nodes in JAGS
-(interactions, I() calls, etc.)
+Scans a list of formulas for terms that require deterministic node definitions
+(interactions, \code{I()} expressions, etc.) across model building, d-separation,
+and DAG construction.
 }
 \keyword{internal}

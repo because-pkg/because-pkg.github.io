@@ -2,7 +2,7 @@
 % Please edit documentation in R/deterministic_nodes.R
 \name{term_to_jags_expression}
 \alias{term_to_jags_expression}
-\title{Convert R Term to JAGS Expression}
+\title{Convert R Formula Term to BUGS Expression}
 \usage{
 term_to_jags_expression(term)
 }
@@ -10,9 +10,9 @@ term_to_jags_expression(term)
 \item{term}{Original R term (e.g., "A:B")}
 }
 \value{
-JAGS expression (e.g., "A\[i] * B\[i]")
+BUGS expression (e.g., "A\[i] * B\[i]")
 }
 \description{
-Transforms R syntax into JAGS-compatible deterministic code
+Transforms R formula syntax into indexed BUGS deterministic expressions for JAGS and NIMBLE.
 }
 \keyword{internal}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/deterministic_nodes.R
 \name{sanitize_term_name}
 \alias{sanitize_term_name}
-\title{Sanitize Term Name for JAGS}
+\title{Sanitize Formula Term Name}
 \usage{
 sanitize_term_name(term)
 }
@@ -13,6 +13,7 @@ sanitize_term_name(term)
 Sanitized string (e.g., "A_x_B", "A_pow2")
 }
 \description{
-Converts complex R terms into valid JAGS variable names
+Converts complex R formula terms into valid alphanumeric node/parameter names
+for BUGS engines (JAGS/NIMBLE), parameter maps, d-separation tests, and DAG layouts.
 }
 \keyword{internal}
