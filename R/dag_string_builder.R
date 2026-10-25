@@ -125,13 +125,13 @@ equations_to_dag_string <- function(
         for (term in trm_lbls) {
             # Skip random effects terms (e.g. 1 | year) which dagitty can't parse
             if (grepl("|", term, fixed = TRUE)) next
-            
+
             # Optional: Collapse expanded names back to base names
             clean_term <- term
             if (collapse_expanded) {
                clean_term <- gsub("(_[A-Za-z0-9]+|\\[[0-9]+\\])$", "", term)
             }
-            
+
             # Avoid self-loops if resp and term matched the same base name
             if (clean_term == resp) next
 
@@ -172,10 +172,10 @@ equations_to_dag_string <- function(
                 }
             } else {
                 # --- Regular predictor ---
-                # If we are collapsing, we skip the expansion-specific diamond nodes
-                # and just draw an edge from the base variable to the response.
+                # If collapsing, skips the expansion-specific diamond nodes
+                # and just draws an edge from the base variable to the response.
                 if (collapse_expanded && term %in% names(poly_lookup)) {
-                   # Skip the diamond node, handled by 'clean_term' falling through to Standard path
+                   # Skips the diamond node, handled by 'clean_term' falling through to Standard path
                 } else if (!collapse_expanded && term %in% names(poly_lookup)) {
                     pt <- poly_lookup[[term]]
                     iname <- pt$internal_name # e.g. age_pow2
