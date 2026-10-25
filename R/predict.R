@@ -43,7 +43,6 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
   
   if (!is.null(ndraws) && ndraws < n_total) {
     # Systematic thinning to get ndraws
-    set.seed(42)
     idx <- round(seq(1, n_total, length.out = ndraws))
     samples_mat <- samples_mat[idx, , drop = FALSE]
   }
@@ -137,6 +136,22 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
       }
       
       if (is.null(x_vals)) x_vals <- data_list[[v_name]]
+
+      if (is.null(x_vals)) {
+          sanitized_v <- gsub(":", "_x_", v_name)
+          if (sanitized_v %in% names(data_list)) {
+              x_vals <- data_list[[sanitized_v]]
+          } else if (sanitized_v %in% names(search_data)) {
+              x_vals <- search_data[[sanitized_v]]
+          } else if (grepl("(_x_|:)", v_name)) {
+              parts <- strsplit(v_name, "(_x_|:)")[[1]]
+              if (all(parts %in% names(search_data))) {
+                  x_vals <- search_data[[parts[1]]] * search_data[[parts[2]]]
+              } else if (all(parts %in% names(data_list))) {
+                  x_vals <- data_list[[parts[1]]] * data_list[[parts[2]]]
+              }
+          }
+      }
       
       # Hierarchical resolution alignment
       if (!is.null(x_vals)) {
@@ -275,7 +290,7 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
   fam <- if (!is.null(object$family) && resp %in% names(object$family)) object$family[[resp]] else "gaussian"
   y_rep <- matrix(0, nrow = n_s, ncol = n_obs)
   
-  # Identify dispersion/variance parameter
+  # Identify dispersion/variance parameter for Gaussian
   sigma_val <- rep(1, n_s)
   sigma_name <- paste0("sigma_", resp, "_res")
   tau_name <- paste0("tau_res_", resp)
@@ -284,28 +299,146 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
       sigma_val <- samples_mat[, sigma_name]
   } else if (tau_name %in% colnames(samples_mat)) {
       sigma_val <- 1/sqrt(samples_mat[, tau_name])
+  } else {
+      # Fallback for unified or custom sigma names
+      sig_match <- grep(paste0("^sigma_.*", resp, ".*res"), colnames(samples_mat), value = TRUE)
+      if (length(sig_match) > 0) sigma_val <- samples_mat[, sig_match[1]]
   }
-  
+
+  # Identify dispersion parameter for Negative Binomial (r_<resp>)
+  r_cols <- grep(paste0("^r_", resp, "($|_)"), colnames(samples_mat), value = TRUE)
+  if (length(r_cols) == 0) {
+      r_cols <- grep(paste0("^size_", resp, "($|_)"), colnames(samples_mat), value = TRUE)
+  }
+
+  # Identify zero-inflation probability for ZIP / ZINB (psi_<resp>)
+  psi_cols <- grep(paste0("^psi_", resp, "($|_)"), colnames(samples_mat), value = TRUE)
+
+  # Identify cutpoints for Ordinal
+  cp_cols <- grep(paste0("^cutpoint_", resp, "(\\[|_|$)"), colnames(samples_mat), value = TRUE)
+  if (length(cp_cols) > 0) {
+      # Sort cutpoints in ascending order (cutpoint_Y[1], cutpoint_Y[2], ...)
+      cp_nums <- as.numeric(gsub(".*\\[(\\d+)\\].*", "\\1", cp_cols))
+      if (!any(is.na(cp_nums))) {
+          cp_cols <- cp_cols[order(cp_nums)]
+      }
+  }
+
   for (s in 1:n_s) {
     mu_s <- eta[s, ]
     
     if (fam == "gaussian") {
       # If marginal, add the omitted RE variances to the simulation noise
       total_sd <- sqrt(sigma_val[s]^2 + re_variances[s])
-      y_rep[s, ] <- stats::rnorm(n_obs, mu_s, total_sd)
+      y_rep[s, ] <- stats::rnorm(n_obs, mean = mu_s, sd = total_sd)
     } else if (fam == "poisson") {
-      y_rep[s, ] <- stats::rpois(n_obs, exp(mu_s))
+      clamped_mu <- pmin(20, pmax(-20, mu_s))
+      y_rep[s, ] <- stats::rpois(n_obs, lambda = exp(clamped_mu))
     } else if (fam == "binomial") {
-      prob_s <- 1 / (1 + exp(-mu_s))
-      y_rep[s, ] <- stats::rbinom(n_obs, 1, prob_s)
+      clamped_mu <- pmin(20, pmax(-20, mu_s))
+      prob_s <- stats::plogis(clamped_mu)
+      y_rep[s, ] <- stats::rbinom(n_obs, size = 1, prob = prob_s)
     } else if (fam == "negbinomial") {
-      size_name <- paste0("size_", resp)
-      cur_size <- if (size_name %in% colnames(samples_mat)) samples_mat[s, size_name] else 1
-      y_rep[s, ] <- stats::rnbinom(n_obs, size = cur_size, mu = exp(mu_s))
+      clamped_mu <- pmin(20, pmax(-20, mu_s))
+      r_val <- if (length(r_cols) > 0) samples_mat[s, r_cols[1]] else 1
+      y_rep[s, ] <- stats::rnbinom(n_obs, size = r_val, mu = exp(clamped_mu))
+    } else if (fam == "zip") {
+      clamped_mu <- pmin(20, pmax(-20, mu_s))
+      psi_val <- if (length(psi_cols) > 0) samples_mat[s, psi_cols[1]] else 0
+      is_zero <- stats::rbinom(n_obs, size = 1, prob = psi_val)
+      pois_draws <- stats::rpois(n_obs, lambda = exp(clamped_mu))
+      y_rep[s, ] <- ifelse(is_zero == 1, 0, pois_draws)
+    } else if (fam == "zinb") {
+      clamped_mu <- pmin(20, pmax(-20, mu_s))
+      psi_val <- if (length(psi_cols) > 0) samples_mat[s, psi_cols[1]] else 0
+      r_val <- if (length(r_cols) > 0) samples_mat[s, r_cols[1]] else 1
+      is_zero <- stats::rbinom(n_obs, size = 1, prob = psi_val)
+      nb_draws <- stats::rnbinom(n_obs, size = r_val, mu = exp(clamped_mu))
+      y_rep[s, ] <- ifelse(is_zero == 1, 0, nb_draws)
+    } else if (fam == "ordinal" && length(cp_cols) > 0) {
+      cps <- samples_mat[s, cp_cols]
+      K <- length(cps) + 1
+      for (i in 1:n_obs) {
+        q_vals <- stats::plogis(cps - mu_s[i])
+        probs <- numeric(K)
+        probs[1] <- q_vals[1]
+        if (K > 2) {
+          for (k in 2:(K - 1)) {
+            probs[k] <- max(0, q_vals[k] - q_vals[k - 1])
+          }
+        }
+        probs[K] <- max(0, 1 - q_vals[K - 1])
+        probs <- probs / sum(probs)
+        y_rep[s, i] <- which(stats::rmultinom(1, size = 1, prob = probs) == 1)
+      }
+    } else {
+      warning(sprintf("Posterior predictive simulation for family '%s' is not implemented. Returning NAs.", fam))
+      y_rep[s, ] <- NA_real_
     }
   }
   
   return(y_rep)
+}
+
+#' Predict Method for because Model Fits
+#'
+#' Computes posterior predictions, fitted values, and credible intervals
+#' for a fitted \code{because} model.
+#'
+#' @param object A \code{because} fit object.
+#' @param resp Character string; name of the response variable to predict.
+#'   If \code{NULL}, defaults to the first response variable.
+#' @param newdata Optional new data frame for prediction. Currently ignored.
+#' @param summary Logical; if \code{TRUE} (default), returns a data frame
+#'   with summary statistics (\code{Estimate}, \code{Est.Error}, \code{Q2.5}, \code{Q97.5}).
+#'   If \code{FALSE}, returns the raw draws matrix from \code{\link{posterior_predict}}.
+#' @param probs Numeric vector of length 2; quantiles for summary intervals. Defaults to \code{c(0.025, 0.975)}.
+#' @param ndraws Integer; number of posterior draws to use. Defaults to all draws.
+#' @param re_formula Formula or \code{NA}; determines which random effects to include.
+#'   See \code{\link{posterior_predict}} for details.
+#' @param ... Additional arguments passed to \code{\link{posterior_predict}}.
+#'
+#' @return If \code{summary = TRUE}, a data frame containing:
+#'   \item{Estimate}{Posterior mean prediction}
+#'   \item{Est.Error}{Posterior standard deviation}
+#'   \item{Q2.5}{Lower credible limit}
+#'   \item{Q97.5}{Upper credible limit}
+#'   If \code{summary = FALSE}, an \code{[ndraws x N_obs]} matrix of posterior draws.
+#'
+#' @export
+predict.because <- function(
+    object,
+    resp = NULL,
+    newdata = NULL,
+    summary = TRUE,
+    probs = c(0.025, 0.975),
+    ndraws = NULL,
+    re_formula = NULL,
+    ...
+) {
+    draws <- posterior_predict(
+        object,
+        resp = resp,
+        newdata = newdata,
+        ndraws = ndraws,
+        re_formula = re_formula,
+        ...
+    )
+    if (!summary) {
+        return(draws)
+    }
+    est <- colMeans(draws, na.rm = TRUE)
+    se <- apply(draws, 2, stats::sd, na.rm = TRUE)
+    q_lower <- apply(draws, 2, stats::quantile, probs = probs[1], na.rm = TRUE)
+    q_upper <- apply(draws, 2, stats::quantile, probs = probs[2], na.rm = TRUE)
+
+    res <- data.frame(
+        Estimate = est,
+        Est.Error = se
+    )
+    res[[paste0("Q", probs[1] * 100)]] <- q_lower
+    res[[paste0("Q", probs[2] * 100)]] <- q_upper
+    return(res)
 }
 
 # Helper %||% if not defined elsewhere

@@ -12,7 +12,7 @@ pp_check(object, ...)
   resp = NULL,
   type = "dens_overlay",
   ndraws = 50,
-  trim = TRUE,
+  trim = FALSE,
   re_formula = NULL,
   ...
 )
@@ -26,11 +26,14 @@ pp_check(object, ...)
 If \code{NULL}, takes the first response.}
 
 \item{type}{Character string; the type of PPC plot to generate.
-Supported: \code{"dens_overlay"}, \code{"hist"}, \code{"stat"}.}
+Supported: \code{"dens_overlay"}, \code{"hist"}, \code{"stat"}, \code{"stat_2d"},
+\code{"bars"}, \code{"bars_grouped"}, \code{"intervals"}, \code{"ecdf_overlay"},
+\code{"scatter_avg"}. Defaults to \code{"dens_overlay"}.}
 
 \item{ndraws}{Integer; number of posterior draws to use. Defaults to 50.}
 
-\item{trim}{Logical; if TRUE, zooms plot to observed data range.}
+\item{trim}{Logical; if TRUE, zooms plot to observed data range.
+Defaults to \code{FALSE} to allow inspection of predictive tail behavior.}
 
 \item{re_formula}{Formula or \code{NA}; determines which random effects to include
 in the posterior predictions. See \code{\link{posterior_predict}} for details.}
