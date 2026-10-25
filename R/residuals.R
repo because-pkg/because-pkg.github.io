@@ -1,7 +1,7 @@
 #' @title Extract Fitted Values and Residuals for because Models
 #' @name residuals.because
 #' @description
-#' Purely Bayesian methods for extracting expected fitted values and residuals
+#' Bayesian methods for extracting expected fitted values and residuals
 #' from fitted \code{because} model objects.
 #'
 #' Supports:
@@ -28,7 +28,8 @@
 #' Dunn, P. K., & Smyth, G. K. (1996). Randomized quantile residuals.
 #'   \emph{Journal of Computational and Graphical Statistics}, 5(3), 236-244.
 #'
-#' Hartig, F. (2022). DHARMa: Residual Diagnostics for Hierarchical Regression Models.
+#' Hartig, F. (2022). DHARMa: Residual Diagnostics for Hierarchical
+#'   (Multi-Level / Mixed) Regression Models (R package version 0.4.6). r-project.org
 #'
 #' Gelman, A., & Hill, J. (2007). \emph{Data Analysis Using Regression and Multilevel/Hierarchical Models}.
 #'   Cambridge University Press.
@@ -42,7 +43,7 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
   if (is.null(resp)) {
     resp <- as.character(all.vars(object$equations[[1]][[2]])[1])
   }
-  
+
   # 2. Extract Posterior Samples
   samples_mat <- as.matrix(object$samples)
   n_total <- nrow(samples_mat)
@@ -51,14 +52,14 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
     samples_mat <- samples_mat[idx, , drop = FALSE]
   }
   n_s <- nrow(samples_mat)
-  
+
   # 3. Model Metadata & Resolution
   pm <- object$parameter_map
   pm_resp <- pm[pm$response == resp, ]
   if (nrow(pm_resp) == 0) {
     stop(paste("Response variable", resp, "not found in model parameters."))
   }
-  
+
   data_list <- object$data
   obs_y <- if (!is.null(newdata)) {
     if (is.data.frame(newdata)) newdata[[resp]] else if (is.list(newdata) && !is.data.frame(newdata)) {
@@ -85,7 +86,7 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
     }
     found_orig %||% data_list[[resp]]
   }
-  
+
   h_info <- object$hierarchical_info
   target_level <- "obs"
   if (!is.null(h_info)) {
@@ -96,7 +97,7 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
       }
     }
   }
-  
+
   n_obs <- if (is.matrix(obs_y)) ncol(obs_y) else length(obs_y)
   if (target_level != "obs" && !is.null(h_info$link_vars[[target_level]])) {
     idx_var <- h_info$link_vars[[target_level]]
@@ -107,15 +108,15 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
       n_obs <- max(data_list[[paste0(idx_var, "_idx")]], na.rm = TRUE)
     }
   }
-  
+
   # 4. Reconstruct Linear Predictor (eta)
   eta <- matrix(0, nrow = n_s, ncol = n_obs)
-  
+
   alpha_param <- pm_resp$parameter[pm_resp$predictor == "(Intercept)"]
   if (length(alpha_param) > 0 && alpha_param %in% colnames(samples_mat)) {
     eta <- eta + replicate(n_obs, samples_mat[, alpha_param])
   }
-  
+
   beta_rows <- pm_resp[pm_resp$type == "coefficient" & pm_resp$predictor != "(Intercept)", ]
   for (i in seq_len(nrow(beta_rows))) {
     p_name <- beta_rows$parameter[i]
@@ -135,7 +136,7 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
         }
       }
       if (is.null(x_vals)) x_vals <- data_list[[v_name]]
-      
+
       # Handle interaction terms (e.g., X1_x_X2 or X1:X2) if not directly in search_data
       if (is.null(x_vals) && (grepl("_x_", v_name) || grepl(":", v_name))) {
         parts <- if (grepl(":", v_name)) strsplit(v_name, ":")[[1]] else strsplit(v_name, "_x_")[[1]]
@@ -147,7 +148,7 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
           }
         }
       }
-      
+
       if (!is.null(x_vals)) {
         len_x <- if (is.matrix(x_vals)) ncol(x_vals) else length(x_vals)
         if (len_x > n_obs && target_level != "obs") {
@@ -194,7 +195,7 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
             x_vals <- x_vals[idx_vec]
           }
         }
-        
+
         contribution <- if (is.matrix(x_vals)) {
           (as.numeric(b_samples) * x_vals)
         } else {
@@ -204,7 +205,7 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
       }
     }
   }
-  
+
   # Random effects (if conditional)
   if (is.null(re_formula) || !is.na(re_formula)) {
     u_prefix <- paste0("u_", resp, "_")
@@ -229,7 +230,7 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
           }
           indices <- if (idx_name %in% names(data_list)) data_list[[idx_name]] else NULL
         }
-        
+
         if (!is.null(indices)) {
           sub_u_cols <- grep(paste0("^", ub, "\\["), colnames(samples_mat), value = TRUE)
           indices_numeric <- as.numeric(gsub(".*\\[(\\d+)\\].*", "\\1", sub_u_cols))
@@ -248,7 +249,7 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
       }
     }
   }
-  
+
   # 5. Inverse Link Function
   fam <- if (!is.null(object$family) && resp %in% names(object$family)) object$family[[resp]] else "gaussian"
   if (inherits(fam, "because_family")) fam <- fam$name
@@ -284,7 +285,7 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
     },
     eta
   )
-  
+
   if (summary) {
     return(colMeans(mu_mat, na.rm = TRUE))
   } else {
@@ -297,12 +298,12 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
 residuals.because <- function(object, resp = NULL, type = c("quantile", "response", "pearson"),
                               summary = TRUE, ndraws = 250, re_formula = NULL, ...) {
   type <- match.arg(type)
-  
+
   # 1. Identification
   if (is.null(resp)) {
     resp <- as.character(all.vars(object$equations[[1]][[2]])[1])
   }
-  
+
   # 2. Extract Observed Data
   y <- NULL
   if (is.data.frame(object$original_data)) {
@@ -319,7 +320,7 @@ residuals.because <- function(object, resp = NULL, type = c("quantile", "respons
   if (is.null(y)) {
     stop(paste("Could not find observed data for response:", resp))
   }
-  
+
   # Handle hierarchical resolution alignment
   h_info <- object$hierarchical_info
   target_level <- "obs"
@@ -361,42 +362,42 @@ residuals.because <- function(object, resp = NULL, type = c("quantile", "respons
       resp, length(y_vec), n_cols
     ))
   }
-  
+
   # 3. Compute Residuals Based on Type
   if (type == "quantile") {
     # Dunn & Smyth (1996) Randomized Quantile Residuals via Posterior Predictive Draws
     yrep <- posterior_predict(object, resp = resp, ndraws = ndraws, re_formula = re_formula)
     y <- align_obs_to_cols(y, ncol(yrep))
-    
+
     S <- nrow(yrep)
     N <- length(y)
     u <- rep(NA_real_, N)
-    
+
     for (i in seq_len(N)) {
       if (is.na(y[i])) next
       p_lower <- mean(yrep[, i] < y[i], na.rm = TRUE)
       p_equal <- mean(yrep[, i] == y[i], na.rm = TRUE)
-      
+
       # Probability Integral Transform with randomized jitter for discrete ties
       u_val <- p_lower + stats::runif(1) * p_equal
       # Boundary protection to avoid infinite qnorm values
       u_val <- min(max(u_val, 1 / (2 * S)), 1 - 1 / (2 * S))
       u[i] <- u_val
     }
-    
+
     # Map to standard normal scale
     res_val <- stats::qnorm(u)
     return(res_val)
-    
+
   } else {
     # Continuous / Response or Pearson Residuals
     mu_mat <- fitted.because(object, resp = resp, ndraws = ndraws, re_formula = re_formula, summary = FALSE)
     y <- align_obs_to_cols(y, ncol(mu_mat))
-    
+
     # Raw response residuals matrix: y - mu
     y_mat <- matrix(rep(y, each = nrow(mu_mat)), nrow = nrow(mu_mat))
     res_mat <- y_mat - mu_mat
-    
+
     if (type == "pearson") {
       # Standardize by family-appropriate posterior standard deviation sqrt(V(mu))
       samples_mat <- as.matrix(object$samples)
@@ -404,11 +405,11 @@ residuals.because <- function(object, resp = NULL, type = c("quantile", "respons
         idx <- round(seq(1, nrow(samples_mat), length.out = nrow(mu_mat)))
         samples_mat <- samples_mat[idx, , drop = FALSE]
       }
-      
+
       fam <- if (!is.null(object$family) && resp %in% names(object$family)) object$family[[resp]] else "gaussian"
       if (inherits(fam, "because_family")) fam <- fam$name
       fam <- tolower(as.character(fam))
-      
+
       get_r_samples <- function() {
         r_name <- paste0("r_", resp)
         size_name <- paste0("size_", resp)
@@ -420,7 +421,7 @@ residuals.because <- function(object, resp = NULL, type = c("quantile", "respons
           rep(1, nrow(mu_mat))
         }
       }
-      
+
       get_psi_samples <- function() {
         psi_name <- paste0("psi_", resp)
         logit_psi_name <- paste0("logit_psi_", resp)
@@ -432,7 +433,7 @@ residuals.because <- function(object, resp = NULL, type = c("quantile", "respons
           rep(0, nrow(mu_mat))
         }
       }
-      
+
       sd_mat <- switch(fam,
         "poisson" = sqrt(pmax(mu_mat, 1e-10)),
         "binomial" = sqrt(pmax(mu_mat * (1 - mu_mat), 1e-10)),
@@ -462,10 +463,10 @@ residuals.because <- function(object, resp = NULL, type = c("quantile", "respons
           matrix(rep(sigma_s, ncol(res_mat)), ncol = ncol(res_mat))
         }
       )
-      
+
       res_mat <- res_mat / sd_mat
     }
-    
+
     if (summary) {
       return(colMeans(res_mat, na.rm = TRUE))
     } else {

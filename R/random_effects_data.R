@@ -1,7 +1,7 @@
 #' Prepare random effects data structures for because models
 #'
 #' Expands random effects terms into the data list, creating index vectors,
-#' grouping matrices, and associated loop bounds needed by JAGS/NIMBLE.
+#' grouping matrices, and associated loop bounds needed by the model engines (JAGS, NIMBLE, NumPyro).
 #' @keywords internal
 prepare_random_effects_data <- function(
   data, random_terms, equations, hierarchical_info, is_hierarchical,
@@ -16,7 +16,7 @@ prepare_random_effects_data <- function(
   random_vars <- character(0)
 
   # --- Random Effects Data Prep (Post-Assembly) ---
-  # Create structures for JAGS using the assembled data
+  # Create group structures for the model engine using the assembled data
   if (length(random_terms) > 0) {
     rand_structs <- create_group_structures(data, random_terms)
     random_structures <- rand_structs$structures
@@ -296,8 +296,8 @@ prepare_random_effects_data <- function(
   }
 
   # Compute polynomial values
-  # We add them to original_data (for d-sep/residuals) but NOT to 'data' passed to JAGS
-  # because JAGS creates deterministic nodes for them (var_pow2 <- var^2)
+  # We add them to original_data (for d-sep/residuals) but NOT to 'data' passed to the model engine
+  # because the model compiler creates deterministic nodes for them (var_pow2 <- var^2)
   if (!is.null(all_poly_terms)) {
     for (poly_term in all_poly_terms) {
       base_var <- poly_term$base_var

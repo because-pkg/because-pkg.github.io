@@ -19,37 +19,25 @@ process_because_structures <- function(
   } else if (is.matrix(structure)) {
     structures[["custom"]] <- structure
   } else if (is.list(structure) && !inherits(structure, "list")) {
-    # It's an S3 object with list base - use class name
+    # S3 object backed by a list; unnamed elements indicate a multi-structure collection
     class_name <- class(structure)[1]
-    # Check if it's a multi-object type (contains multiple items)
-    # Defense: Ignore list-based S3 objects that represent a single entity (like 'phylo' or 'spatial_knn')
     if (length(structure) > 1 && is.null(names(structure))) {
       is_multiple <- TRUE
-      N_trees <- length(structure)
     }
     structures[[class_name]] <- structure
   } else if (
     is.list(structure) && (is.null(class(structure)) || identical(class(structure), "list"))
   ) {
-    # Plain list of structures
+    # Named list of covariance structures
     structures <- structure
-    # Check for multi-objects in the list
     for (s in structures) {
-      if (is.list(s) && length(s) > 1 && !is.matrix(s) && !inherits(s, "phylo") && !inherits(s, "because_structure")) {
-        # Generic list with multiple items (likely replicates or multiPhylo)
+      if (is.list(s) && length(s) > 1 && !is.matrix(s) && is.null(names(s)) && !inherits(s, "because_structure")) {
         is_multiple <- TRUE
-        if (!exists("N_trees")) N_trees <- length(structures)
       }
     }
   } else {
-    # Any other S3 object (phylo, spatial_knn, etc.) - use class name
     class_name <- class(structure)[1]
     structures[[class_name]] <- structure
-  }
-
-  # Ensure N_trees is available if is_multiple is true
-  if (is_multiple && !exists("N_trees")) {
-     N_trees <- length(structures)
   }
 
   # Discover total N (number of observations) early
@@ -186,12 +174,10 @@ process_because_structures <- function(
           if (dims[1] == dims[2]) {
              current_N <- dims[1]
              is_this_one_multi <- TRUE
-             if (is_multiple && !exists("N_trees")) N_trees <- dims[3]
              break
           } else if (dims[2] == dims[3]) {
              current_N <- dims[2]
              is_this_one_multi <- TRUE
-             if (is_multiple && !exists("N_trees")) N_trees <- dims[1]
              break
           }
         }

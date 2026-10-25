@@ -109,19 +109,19 @@ auto_detect_structure_levels <- function(structure, hierarchical_info, quiet = F
     for (s_name in names(structure)) {
         s_obj <- structure[[s_name]]
 
-        # 1. Try to detect dimension of structure
-        n_struct <- 0
-        names_struct <- NULL
+        # 1. Detect structure dimension and labels via S3 hook or attributes
+        names_struct <- get_order_labels_hook(s_obj)
+        n_struct <- if (!is.null(names_struct)) length(names_struct) else 0
 
-        if (inherits(s_obj, "phylo")) {
-            n_struct <- length(s_obj$tip.label)
-            names_struct <- s_obj$tip.label
-        } else if (is.matrix(s_obj)) {
-            n_struct <- nrow(s_obj)
-            names_struct <- rownames(s_obj)
-        } else if (inherits(s_obj, "multiPhylo")) {
-            n_struct <- length(s_obj[[1]]$tip.label)
-            names_struct <- s_obj[[1]]$tip.label
+        if (n_struct == 0) {
+            if (is.matrix(s_obj)) {
+                n_struct <- nrow(s_obj)
+            } else if (!is.null(attr(s_obj, "n"))) {
+                n_struct <- as.integer(attr(s_obj, "n"))[1]
+            } else if (is.list(s_obj) && !is.null(s_obj$V) && is.matrix(s_obj$V)) {
+                n_struct <- nrow(s_obj$V)
+                names_struct <- rownames(s_obj$V)
+            }
         }
 
         if (n_struct == 0) {

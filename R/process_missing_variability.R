@@ -20,7 +20,7 @@ process_missing_and_variability <- function(
   latent_method
 ) {
   # --- Map Link Variables (IDs) to Counts ---
-  # Ensures JAGS finds loop bounds for grouping variables not listed in 'levels'
+  # Ensures the model engine (JAGS, NIMBLE, or NumPyro) finds loop bounds for grouping variables not listed in 'levels'
   if (!is.null(hierarchical_info$link_vars) && !is.null(hierarchical_info$data)) {
     for (lk_var in hierarchical_info$link_vars) {
       # Find which level (dataframe) contains this link variable

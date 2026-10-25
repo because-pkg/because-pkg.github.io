@@ -319,7 +319,7 @@ preprocess_categorical_vars <- function(
           }
         }
 
-        # Convert to integer codes for JAGS
+        # Convert to integer codes for the model engine
         data[[col]] <- as.integer(f_vals)
 
         # Generate Dummy Variables explicitly ONLY if requested
