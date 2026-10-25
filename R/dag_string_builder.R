@@ -51,7 +51,7 @@ equations_to_dag_string <- function(
 
     # Helper: make a dagitty-safe node name from a term string
     # make_internal_name must match sanitize_term_name() from deterministic_nodes.R
-    # so that node names in the plot align with JAGS parameter names like beta_weight_g_age_pow2.
+    # so that node names in the plot align with model parameter names like beta_weight_g_age_pow2.
     make_internal_name <- function(term) sanitize_term_name(term)
 
     # Helper: human-readable display label

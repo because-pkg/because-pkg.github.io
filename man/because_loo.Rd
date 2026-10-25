@@ -42,7 +42,7 @@ useful for:
 }
 
 \strong{Note on implementation}:
-This function extracts the pointwise log-likelihoods calculated by the JAGS model
+This function extracts the pointwise log-likelihoods calculated during model sampling
 (monitored as \code{log_lik[i]}) when \code{WAIC = TRUE}. It does not re-compute likelihoods
 from posterior samples in R, ensuring consistency with the fitted model structure.
 }

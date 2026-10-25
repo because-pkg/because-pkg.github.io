@@ -165,7 +165,7 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
           # Case 2: x_vals is site-level but response is survey-level (Elevation_s -> Temperature)
           # We need to map len_x to n_obs
           if (len_x < n_obs) {
-              # Look for a JAGS index variable that maps these entities
+              # Look for an index variable that maps these entities
               idx_candidate <- NULL
               for (idx_name in grep("_idx$", names(data_list), value = TRUE)) {
                   if (length(data_list[[idx_name]]) == n_obs && max(data_list[[idx_name]], na.rm = TRUE) == len_x) {

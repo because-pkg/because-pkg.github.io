@@ -128,7 +128,7 @@ NULL
 #' @param family A family object
 #' @param param_name Name of the parameter (e.g. "tau_e_Abundance")
 #' @param ... Additional arguments
-#' @return Character string; JAGS prior statement (e.g. "tau_e_Abundance ~ dgamma(1, 1)")
+#' @return Character string; BUGS prior statement (e.g. "tau_e_Abundance ~ dgamma(1, 1)")
 #' @keywords internal
 #' @export
 jags_family_precision_prior <- function(family, param_name, ...) {
@@ -192,10 +192,10 @@ jags_family_precision_prior.because_family_binomial <- function(
     return(paste0(param_name, " ~ dgamma(10, 10)"))
 }
 
-#' Generate JAGS likelihood code for a distribution family
+#' Generate BUGS likelihood code for a distribution family
 #'
-#' This generic allows S3 dispatch to generate the appropriate JAGS
-#' likelihood code for any distribution family.
+#' This generic allows S3 dispatch to generate the appropriate BUGS
+#' likelihood code (for JAGS and NIMBLE) for any distribution family.
 #'
 #' @param family A family object (created by \code{\link{get_family_object}} or custom constructor)
 #' @param response Character string; name of the response variable
@@ -207,8 +207,8 @@ jags_family_precision_prior.because_family_binomial <- function(
 #'
 #' @return A list with:
 #' \describe{
-#'   \item{likelihood_code}{Character vector of JAGS likelihood statements}
-#'   \item{prior_code}{Character vector of JAGS prior statements (or NULL)}
+#'   \item{likelihood_code}{Character vector of BUGS likelihood statements}
+#'   \item{prior_code}{Character vector of BUGS prior statements (or NULL)}
 #'   \item{data_requirements}{Character vector of required data elements (or NULL)}
 #' }
 #'

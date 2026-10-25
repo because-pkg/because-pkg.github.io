@@ -13,13 +13,13 @@ because_family(
 )
 }
 \arguments{
-\item{jags_likelihood}{A character string with the JAGS likelihood code.
+\item{jags_likelihood}{A character string with the BUGS likelihood code (used by JAGS and NIMBLE).
 Use placeholders: \code{\{response\}} for variable name, \code{\{mu\}} for mean,
 \code{\{i\}} for loop index, \code{\{tau\}} for precision parameter.}
 
 \item{link}{Link function name (default: "identity"). Options: "identity", "log", "logit".}
 
-\item{extra_priors}{Character vector of additional JAGS prior statements.
+\item{extra_priors}{Character vector of additional BUGS prior statements.
 Use \code{\{response\}} placeholder for variable-specific naming.}
 
 \item{name}{Optional character string; the name of your family (e.g., "student_t").
@@ -32,7 +32,7 @@ A constructor function for the family that can be passed to because(..., family 
 }
 \description{
 This helper function allows users to easily create custom distribution families
-by providing the JAGS likelihood code. The function handles S3 method registration.
+by providing the BUGS likelihood code (for JAGS and NIMBLE). The function handles S3 method registration.
 }
 \details{
 \strong{Engine compatibility:} Custom families defined via \code{because_family()}

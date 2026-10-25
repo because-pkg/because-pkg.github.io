@@ -11,12 +11,12 @@ get_latent_predictor_name(family, predictor_name, predictor_index, ...)
 
 \item{predictor_name}{Character; the predictor variable name}
 
-\item{predictor_index}{Character; the JAGS-indexed predictor string (e.g. \code{"Species[i]"})}
+\item{predictor_index}{Character; the indexed predictor string (e.g. \code{"Species[i]"})}
 
 \item{...}{Additional arguments}
 }
 \value{
-Character; the JAGS-indexed string to use in the linear predictor
+Character; the indexed string to use in the linear predictor
 }
 \description{
 Extension packages implement this to substitute latent states when their

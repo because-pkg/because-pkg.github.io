@@ -88,12 +88,12 @@ expand_polynomial_formula <- function(formula, poly_terms) {
 }
 
 
-#' Generate JAGS Code for Polynomial Transformations
+#' Generate BUGS Code for Polynomial Transformations
 #'
-#' Creates deterministic nodes for polynomial terms
+#' Creates deterministic nodes for polynomial terms in JAGS and NIMBLE models
 #'
 #' @param poly_terms List of polynomial term info
-#' @return Character vector of JAGS code lines
+#' @return Character vector of BUGS code lines
 #' @keywords internal
 generate_polynomial_jags <- function(poly_terms) {
     if (is.null(poly_terms) || length(poly_terms) == 0) {

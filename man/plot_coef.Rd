@@ -27,7 +27,7 @@ plot_coef(object, ...)
 predictors, this represents the average shift in the outcome (e.g. probability or counts)
 associated with a one-category change. This is the recommended scale for
 comparing cross-model impacts.
-\item \code{"raw"} (default): Shows the raw structural parameters (betas/rhos) from the JAGS model.
+\item \code{"raw"} (default): Shows the raw structural parameters (betas/rhos) from the fitted model.
 Useful for model diagnostics but harder to interpret on the original data scale.
 }}
 

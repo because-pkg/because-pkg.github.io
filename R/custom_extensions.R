@@ -33,9 +33,9 @@ is_auxiliary_equation.default <- function(family, response, all_responses, ...) 
 #'
 #' @param family A family object (S3 class `because_family_*`)
 #' @param predictor_name Character; the predictor variable name
-#' @param predictor_index Character; the JAGS-indexed predictor string (e.g. `"Species[i]"`)
+#' @param predictor_index Character; the indexed predictor string (e.g. `"Species[i]"`)
 #' @param ... Additional arguments
-#' @return Character; the JAGS-indexed string to use in the linear predictor
+#' @return Character; the indexed string to use in the linear predictor
 #' @export
 get_latent_predictor_name <- function(family, predictor_name, predictor_index, ...) {
     UseMethod("get_latent_predictor_name")
@@ -55,9 +55,9 @@ get_latent_predictor_name.default <- function(family, predictor_name, predictor_
 #'
 #' @param precision_fn A function that takes your structure data and returns
 #'   a precision matrix (N x N). The first return value should be the precision matrix.
-#'   Additional list elements can be returned and will be passed to JAGS as data.
+#'   Additional list elements can be returned and will be passed to the model engine as data.
 #' @param name Optional character string; the name of your structure (e.g., "spatial_knn").
-#'   Used to create the internal S3 class and JAGS precision matrix name (\code{Prec_<name>}).
+#'   Used to create the internal S3 class and precision matrix name (\code{Prec_<name>}).
 #'   If omitted, an internal name is generated automatically.
 #' @param description Optional description of the structure for documentation.
 #'
@@ -67,8 +67,8 @@ get_latent_predictor_name.default <- function(family, predictor_name, predictor_
 #' This function creates:
 #' \itemize{
 #'   \item A constructor function (returned) for creating structure objects
-#'   \item S3 methods for \code{jags_structure_definition} (generates JAGS code)
-#'   \item S3 methods for \code{prepare_structure_data} (prepares data for JAGS)
+#'   \item S3 methods for \code{jags_structure_definition} (generates BUGS code for JAGS/NIMBLE)
+#'   \item S3 methods for \code{prepare_structure_data} (prepares data for model engines)
 #' }
 #'
 #' The precision function should return either:
@@ -310,13 +310,13 @@ because_structure <- function(precision_fn = NULL, name = NULL, description = NU
 #' Create a Custom Family (Distribution) for use with because
 #'
 #' This helper function allows users to easily create custom distribution families
-#' by providing the JAGS likelihood code. The function handles S3 method registration.
+#' by providing the BUGS likelihood code (for JAGS and NIMBLE). The function handles S3 method registration.
 #'
-#' @param jags_likelihood A character string with the JAGS likelihood code.
+#' @param jags_likelihood A character string with the BUGS likelihood code (used by JAGS and NIMBLE).
 #'   Use placeholders: \code{\{response\}} for variable name, \code{\{mu\}} for mean,
 #'   \code{\{i\}} for loop index, \code{\{tau\}} for precision parameter.
 #' @param link Link function name (default: "identity"). Options: "identity", "log", "logit".
-#' @param extra_priors Character vector of additional JAGS prior statements.
+#' @param extra_priors Character vector of additional BUGS prior statements.
 #'   Use \code{\{response\}} placeholder for variable-specific naming.
 #' @param name Optional character string; the name of your family (e.g., "student_t").
 #'   If omitted, an internal name is generated automatically.

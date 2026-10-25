@@ -66,7 +66,7 @@ extract_random_effects <- function(equations) {
     ))
 }
 
-#' Create Group Structures for JAGS
+#' Create Group Structures for BUGS Engines (JAGS/NIMBLE)
 #'
 #' Creates indices and precision matrices for random effect groups.
 #'
@@ -107,11 +107,11 @@ create_group_structures <- function(data, random_terms) {
         n_groups <- length(levels)
 
         # Create simple identity precision
-        # In JAGS: u[1:N] ~ dmnorm(zeros, Prec)
+        # In BUGS: u[1:N] ~ dmnorm(zeros, Prec)
         # Prec = Identity
 
         prec_mat <- diag(n_groups)
-        # Precision matrix for JAGS
+        # Precision matrix for BUGS engines
         # dimnames(prec_mat) <- list(levels, levels)
 
         # Store definition

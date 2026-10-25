@@ -47,7 +47,7 @@ extract_imputed <- function(object, id_col = NULL) {
     }
 
     # If id_col provided, validate length
-    # We need N (sample size). JAGS data list usually has 'N'
+    # We need N (sample size). Data list usually has 'N'
     N <- data$N
     if (is.null(N)) {
         # Try to infer N from first vector variable

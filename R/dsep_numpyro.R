@@ -356,7 +356,7 @@ run_dsep_numpyro <- function(
         new_idx <- new_idx + 1
       }
 
-      # Force uniform JAGS-style formatting for all NumPyro results 
+      # Force uniform d-sep test claim formatting for all NumPyro results
       # (including reused results cached from older versions)
       if (!is.null(dsep_df_list[[i]])) {
         eq_full <- current_tests[[i]]

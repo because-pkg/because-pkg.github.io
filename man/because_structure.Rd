@@ -9,10 +9,10 @@ because_structure(precision_fn = NULL, name = NULL, description = NULL)
 \arguments{
 \item{precision_fn}{A function that takes your structure data and returns
 a precision matrix (N x N). The first return value should be the precision matrix.
-Additional list elements can be returned and will be passed to JAGS as data.}
+Additional list elements can be returned and will be passed to the model engine as data.}
 
 \item{name}{Optional character string; the name of your structure (e.g., "spatial_knn").
-Used to create the internal S3 class and JAGS precision matrix name (\code{Prec_<name>}).
+Used to create the internal S3 class and precision matrix name (\code{Prec_<name>}).
 If omitted, an internal name is generated automatically.}
 
 \item{description}{Optional description of the structure for documentation.}
@@ -29,8 +29,8 @@ The function handles all the S3 method registration automatically.
 This function creates:
 \itemize{
 \item A constructor function (returned) for creating structure objects
-\item S3 methods for \code{jags_structure_definition} (generates JAGS code)
-\item S3 methods for \code{prepare_structure_data} (prepares data for JAGS)
+\item S3 methods for \code{jags_structure_definition} (generates BUGS code for JAGS/NIMBLE)
+\item S3 methods for \code{prepare_structure_data} (prepares data for model engines)
 }
 
 The precision function should return either:

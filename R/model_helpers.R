@@ -12,7 +12,7 @@ NULL
   tryCatch(if (!is.null(a)) a else b, error = function(e) b)
 }
 
-#' Add lines to JAGS model while preventing node redefinition
+#' Add lines to BUGS model while preventing node redefinition
 #'
 #' @param current_lines Character vector of current model lines
 #' @param new_lines Character vector of new lines to add
@@ -60,7 +60,7 @@ safe_add_lines <- function(current_lines, new_lines, declared_nodes = NULL) {
 #' @param type Type of parameter ("beta", "alpha", etc.)
 #' @param default Default prior string
 #' @param priors Named list of custom priors
-#' @return Formatted JAGS prior statement
+#' @return Formatted BUGS prior statement
 #' @keywords internal
 get_prior <- function(param_name, type = "beta", default = NULL, priors = NULL) {
   if (!is.null(priors) && param_name %in% names(priors)) {
@@ -86,7 +86,7 @@ get_prior <- function(param_name, type = "beta", default = NULL, priors = NULL) 
 #' @param var_name Name of the variable
 #' @param priors Named list of custom priors
 #' @param family Named vector/list of response families
-#' @return Formatted JAGS precision prior statement
+#' @return Formatted BUGS precision prior statement
 #' @keywords internal
 get_precision_prior <- function(param_name, var_name, priors = NULL, family = NULL) {
   if (!is.null(priors) && param_name %in% names(priors)) {

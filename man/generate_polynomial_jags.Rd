@@ -2,7 +2,7 @@
 % Please edit documentation in R/polynomial_helpers.R
 \name{generate_polynomial_jags}
 \alias{generate_polynomial_jags}
-\title{Generate JAGS Code for Polynomial Transformations}
+\title{Generate BUGS Code for Polynomial Transformations}
 \usage{
 generate_polynomial_jags(poly_terms)
 }
@@ -10,9 +10,9 @@ generate_polynomial_jags(poly_terms)
 \item{poly_terms}{List of polynomial term info}
 }
 \value{
-Character vector of JAGS code lines
+Character vector of BUGS code lines
 }
 \description{
-Creates deterministic nodes for polynomial terms
+Creates deterministic nodes for polynomial terms in JAGS and NIMBLE models
 }
 \keyword{internal}

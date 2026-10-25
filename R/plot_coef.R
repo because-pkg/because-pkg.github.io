@@ -12,7 +12,7 @@
 #'     predictors, this represents the average shift in the outcome (e.g. probability or counts) 
 #'     associated with a one-category change. This is the recommended scale for 
 #'     comparing cross-model impacts.
-#'   - `"raw"` (default): Shows the raw structural parameters (betas/rhos) from the JAGS model. 
+#'   - `"raw"` (default): Shows the raw structural parameters (betas/rhos) from the fitted model. 
 #'     Useful for model diagnostics but harder to interpret on the original data scale.
 #' @param multinomial_probabilities Logical; if `TRUE` (default), expands 
 #'   multinomial predictors into a "bundle" of category-specific effects, 

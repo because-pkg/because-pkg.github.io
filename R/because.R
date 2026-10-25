@@ -76,7 +76,7 @@
 #' @return An object of class \code{"because"} containing:
 #'   \item{samples}{MCMC samples (mcmc.list).}
 #'   \item{parameter_map}{Data frame mapping parameter names to model variables.}
-#'   \item{model}{JAGS model code.}
+#'   \item{model}{Model code (BUGS string for JAGS/NIMBLE, or Python code for NumPyro).}
 #'   \item{summary}{Summary of posterior samples.}
 #'   \item{dsep_results}{List of d-separation test results (if dsep=TRUE).}
 #'   \item{DIC}{Deviance Information Criterion (if DIC=TRUE).}

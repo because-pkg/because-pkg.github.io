@@ -45,7 +45,7 @@ are_levels_orthogonal <- function(lvl_a, lvl_b, hierarchy_str) {
 #' (e.g., one is species-level, the other is site-level) AND the conditioning
 #' set does not contain a variable from a level that connects the two branches
 #' (typically the observation level). Such tests are trivially independent by
-#' design of the hierarchical data structure and cannot be run in JAGS because
+#' design of the hierarchical data structure and cannot be run as sub-models because
 #' no cross-level index exists between orthogonal branches.
 #'
 #' @param test_eq A formula with attribute "test_var" naming the focal predictor.

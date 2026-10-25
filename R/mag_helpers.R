@@ -13,7 +13,7 @@
 #' @param deterministic_terms Optional named list returned by
 #'   \code{extract_deterministic_terms}.  Each element must have
 #'   \code{$original} (the R term string, e.g. \code{"BM:M"}) and
-#'   \code{$internal_name} (the JAGS-safe node name, e.g. \code{"BM_x_M"}).
+#'   \code{$internal_name} (the internal node name, e.g. \code{"BM_x_M"}).
 #' @return Named adjacency matrix in binary format
 #' @references
 #'   Geiger, D., Verma, T., & Pearl, J. (1990). Identifying independence in

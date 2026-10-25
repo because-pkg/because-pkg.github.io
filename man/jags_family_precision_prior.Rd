@@ -14,7 +14,7 @@ jags_family_precision_prior(family, param_name, ...)
 \item{...}{Additional arguments}
 }
 \value{
-Character string; JAGS prior statement (e.g. "tau_e_Abundance ~ dgamma(1, 1)")
+Character string; BUGS prior statement (e.g. "tau_e_Abundance ~ dgamma(1, 1)")
 }
 \description{
 Get default precision prior for a distribution family

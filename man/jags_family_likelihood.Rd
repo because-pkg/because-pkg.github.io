@@ -2,7 +2,7 @@
 % Please edit documentation in R/family_definitions.R
 \name{jags_family_likelihood}
 \alias{jags_family_likelihood}
-\title{Generate JAGS likelihood code for a distribution family}
+\title{Generate BUGS likelihood code for a distribution family}
 \usage{
 jags_family_likelihood(
   family,
@@ -32,13 +32,13 @@ jags_family_likelihood(
 \value{
 A list with:
 \describe{
-\item{likelihood_code}{Character vector of JAGS likelihood statements}
-\item{prior_code}{Character vector of JAGS prior statements (or NULL)}
+\item{likelihood_code}{Character vector of BUGS likelihood statements}
+\item{prior_code}{Character vector of BUGS prior statements (or NULL)}
 \item{data_requirements}{Character vector of required data elements (or NULL)}
 }
 }
 \description{
-This generic allows S3 dispatch to generate the appropriate JAGS
-likelihood code for any distribution family.
+This generic allows S3 dispatch to generate the appropriate BUGS
+likelihood code (for JAGS and NIMBLE) for any distribution family.
 }
 \keyword{internal}
