@@ -47,7 +47,6 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
   samples_mat <- as.matrix(object$samples)
   n_total <- nrow(samples_mat)
   if (!is.null(ndraws) && ndraws < n_total) {
-    set.seed(42)
     idx <- round(seq(1, n_total, length.out = ndraws))
     samples_mat <- samples_mat[idx, , drop = FALSE]
   }
@@ -73,7 +72,18 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
       found
     } else newdata[[resp]]
   } else {
-    object$original_data[[resp]] %||% data_list[[resp]]
+    found_orig <- NULL
+    if (is.data.frame(object$original_data)) {
+      found_orig <- object$original_data[[resp]]
+    } else if (is.list(object$original_data)) {
+      for (df_name in names(object$original_data)) {
+        if (is.data.frame(object$original_data[[df_name]]) && resp %in% names(object$original_data[[df_name]])) {
+          found_orig <- object$original_data[[df_name]][[resp]]
+          break
+        }
+      }
+    }
+    found_orig %||% data_list[[resp]]
   }
   
   h_info <- object$hierarchical_info
@@ -126,6 +136,18 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
       }
       if (is.null(x_vals)) x_vals <- data_list[[v_name]]
       
+      # Handle interaction terms (e.g., X1_x_X2 or X1:X2) if not directly in search_data
+      if (is.null(x_vals) && (grepl("_x_", v_name) || grepl(":", v_name))) {
+        parts <- if (grepl(":", v_name)) strsplit(v_name, ":")[[1]] else strsplit(v_name, "_x_")[[1]]
+        if (length(parts) == 2) {
+          v1 <- search_data[[parts[1]]] %||% data_list[[parts[1]]]
+          v2 <- search_data[[parts[2]]] %||% data_list[[parts[2]]]
+          if (!is.null(v1) && !is.null(v2) && length(v1) == length(v2)) {
+            x_vals <- v1 * v2
+          }
+        }
+      }
+      
       if (!is.null(x_vals)) {
         len_x <- if (is.matrix(x_vals)) ncol(x_vals) else length(x_vals)
         if (len_x > n_obs && target_level != "obs") {
@@ -142,6 +164,34 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
             x_vals <- x_vals[first_idx]
           } else {
             x_vals <- x_vals[1:n_obs]
+          }
+        } else if (len_x < n_obs && !is.null(h_info)) {
+          # Expand coarse-level predictor to finer target_level observations
+          pred_level <- NULL
+          for (lvl in names(h_info$levels)) {
+            if (v_name %in% h_info$levels[[lvl]]) {
+              pred_level <- lvl
+              break
+            }
+          }
+          idx_vec <- NULL
+          if (!is.null(pred_level) && !is.null(h_info$link_vars[[pred_level]])) {
+            idx_name <- paste0(h_info$link_vars[[pred_level]], "_idx")
+            if (idx_name %in% names(data_list) && length(data_list[[idx_name]]) == n_obs) {
+              idx_vec <- data_list[[idx_name]]
+            }
+          }
+          if (is.null(idx_vec)) {
+            for (nm in grep("_idx$", names(data_list), value = TRUE)) {
+              cand <- data_list[[nm]]
+              if (length(cand) == n_obs && max(cand, na.rm = TRUE) <= len_x) {
+                idx_vec <- cand
+                break
+              }
+            }
+          }
+          if (!is.null(idx_vec)) {
+            x_vals <- x_vals[idx_vec]
           }
         }
         
@@ -201,13 +251,37 @@ fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, r
   
   # 5. Inverse Link Function
   fam <- if (!is.null(object$family) && resp %in% names(object$family)) object$family[[resp]] else "gaussian"
+  if (inherits(fam, "because_family")) fam <- fam$name
+  fam <- tolower(as.character(fam))
+  eta_clamped <- pmin(pmax(eta, -20), 20)
+
+  get_zi_prob <- function() {
+    psi_name <- paste0("psi_", resp)
+    logit_psi_name <- paste0("logit_psi_", resp)
+    if (psi_name %in% colnames(samples_mat)) {
+      samples_mat[, psi_name]
+    } else if (logit_psi_name %in% colnames(samples_mat)) {
+      1 / (1 + exp(-samples_mat[, logit_psi_name]))
+    } else {
+      rep(0, n_s)
+    }
+  }
+
   mu_mat <- switch(fam,
     "gaussian"    = eta,
-    "poisson"     = exp(eta),
-    "binomial"    = 1 / (1 + exp(-eta)),
-    "negbinomial" = exp(eta),
-    "gamma"       = exp(eta),
-    "lognormal"   = exp(eta),
+    "poisson"     = exp(eta_clamped),
+    "binomial"    = 1 / (1 + exp(-eta_clamped)),
+    "negbinomial" = exp(eta_clamped),
+    "gamma"       = exp(eta_clamped),
+    "lognormal"   = exp(eta_clamped),
+    "zip"         = {
+      psi_s <- get_zi_prob()
+      (1 - psi_s) * exp(eta_clamped)
+    },
+    "zinb"        = {
+      psi_s <- get_zi_prob()
+      (1 - psi_s) * exp(eta_clamped)
+    },
     eta
   )
   
@@ -230,7 +304,18 @@ residuals.because <- function(object, resp = NULL, type = c("quantile", "respons
   }
   
   # 2. Extract Observed Data
-  y <- object$original_data[[resp]] %||% object$data[[resp]]
+  y <- NULL
+  if (is.data.frame(object$original_data)) {
+    y <- object$original_data[[resp]]
+  } else if (is.list(object$original_data)) {
+    for (df_name in names(object$original_data)) {
+      if (is.data.frame(object$original_data[[df_name]]) && resp %in% names(object$original_data[[df_name]])) {
+        y <- object$original_data[[df_name]][[resp]]
+        break
+      }
+    }
+  }
+  if (is.null(y)) y <- object$data[[resp]]
   if (is.null(y)) {
     stop(paste("Could not find observed data for response:", resp))
   }
@@ -246,33 +331,49 @@ residuals.because <- function(object, resp = NULL, type = c("quantile", "respons
       }
     }
   }
+
+  align_obs_to_cols <- function(y_vec, n_cols) {
+    if (length(y_vec) == n_cols) return(y_vec)
+    if (length(y_vec) > n_cols && target_level != "obs" && !is.null(h_info$link_vars[[target_level]])) {
+      idx_var <- h_info$link_vars[[target_level]]
+      search_data <- object$original_data
+      links <- NULL
+      if (is.data.frame(search_data) && idx_var %in% names(search_data)) {
+        links <- search_data[[idx_var]]
+      } else if (is.list(search_data)) {
+        for (df_name in names(search_data)) {
+          if (is.data.frame(search_data[[df_name]]) && idx_var %in% names(search_data[[df_name]])) {
+            if (length(search_data[[df_name]][[idx_var]]) == length(y_vec)) {
+              links <- search_data[[df_name]][[idx_var]]
+              break
+            }
+          }
+        }
+      }
+      if (is.null(links)) links <- object$data[[paste0(idx_var, "_idx")]]
+      if (!is.null(links) && length(links) == length(y_vec)) {
+        y_aligned <- y_vec[!duplicated(links)]
+        if (length(y_aligned) == n_cols) return(y_aligned)
+      }
+    }
+    stop(sprintf(
+      "Dimension mismatch in residuals.because for '%s': observed data has %d elements, but model predictions have %d columns.",
+      resp, length(y_vec), n_cols
+    ))
+  }
   
   # 3. Compute Residuals Based on Type
   if (type == "quantile") {
     # Dunn & Smyth (1996) Randomized Quantile Residuals via Posterior Predictive Draws
     yrep <- posterior_predict(object, resp = resp, ndraws = ndraws, re_formula = re_formula)
-    
-    # Align dimensions if y is observation-level but yrep is higher level
-    if (ncol(yrep) != length(y)) {
-      if (length(y) > ncol(yrep) && target_level != "obs" && !is.null(h_info$link_vars[[target_level]])) {
-        idx_var <- h_info$link_vars[[target_level]]
-        search_data <- object$original_data
-        links <- if (idx_var %in% names(search_data)) search_data[[idx_var]] else object$data[[paste0(idx_var, "_idx")]]
-        if (!is.null(links) && length(links) == length(y)) {
-          y <- y[!duplicated(links)]
-        } else {
-          y <- y[seq_len(ncol(yrep))]
-        }
-      } else {
-        yrep <- yrep[, seq_along(y), drop = FALSE]
-      }
-    }
+    y <- align_obs_to_cols(y, ncol(yrep))
     
     S <- nrow(yrep)
     N <- length(y)
-    u <- numeric(N)
+    u <- rep(NA_real_, N)
     
     for (i in seq_len(N)) {
+      if (is.na(y[i])) next
       p_lower <- mean(yrep[, i] < y[i], na.rm = TRUE)
       p_equal <- mean(yrep[, i] == y[i], na.rm = TRUE)
       
@@ -290,39 +391,79 @@ residuals.because <- function(object, resp = NULL, type = c("quantile", "respons
   } else {
     # Continuous / Response or Pearson Residuals
     mu_mat <- fitted.because(object, resp = resp, ndraws = ndraws, re_formula = re_formula, summary = FALSE)
-    
-    if (ncol(mu_mat) != length(y)) {
-      if (length(y) > ncol(mu_mat)) {
-        y <- y[seq_len(ncol(mu_mat))]
-      } else {
-        mu_mat <- mu_mat[, seq_along(y), drop = FALSE]
-      }
-    }
+    y <- align_obs_to_cols(y, ncol(mu_mat))
     
     # Raw response residuals matrix: y - mu
     y_mat <- matrix(rep(y, each = nrow(mu_mat)), nrow = nrow(mu_mat))
     res_mat <- y_mat - mu_mat
     
     if (type == "pearson") {
-      # Standardize by posterior sigma / dispersion
+      # Standardize by family-appropriate posterior standard deviation sqrt(V(mu))
       samples_mat <- as.matrix(object$samples)
       if (nrow(samples_mat) > nrow(mu_mat)) {
-        set.seed(42)
         idx <- round(seq(1, nrow(samples_mat), length.out = nrow(mu_mat)))
         samples_mat <- samples_mat[idx, , drop = FALSE]
       }
       
-      sigma_name <- paste0("sigma_", resp, "_res")
-      tau_name <- paste0("tau_res_", resp)
-      sigma_s <- if (sigma_name %in% colnames(samples_mat)) {
-        samples_mat[, sigma_name]
-      } else if (tau_name %in% colnames(samples_mat)) {
-        1 / sqrt(samples_mat[, tau_name])
-      } else {
-        rep(1, nrow(mu_mat))
+      fam <- if (!is.null(object$family) && resp %in% names(object$family)) object$family[[resp]] else "gaussian"
+      if (inherits(fam, "because_family")) fam <- fam$name
+      fam <- tolower(as.character(fam))
+      
+      get_r_samples <- function() {
+        r_name <- paste0("r_", resp)
+        size_name <- paste0("size_", resp)
+        if (r_name %in% colnames(samples_mat)) {
+          samples_mat[, r_name]
+        } else if (size_name %in% colnames(samples_mat)) {
+          samples_mat[, size_name]
+        } else {
+          rep(1, nrow(mu_mat))
+        }
       }
       
-      res_mat <- res_mat / matrix(rep(sigma_s, ncol(res_mat)), ncol = ncol(res_mat))
+      get_psi_samples <- function() {
+        psi_name <- paste0("psi_", resp)
+        logit_psi_name <- paste0("logit_psi_", resp)
+        if (psi_name %in% colnames(samples_mat)) {
+          samples_mat[, psi_name]
+        } else if (logit_psi_name %in% colnames(samples_mat)) {
+          1 / (1 + exp(-samples_mat[, logit_psi_name]))
+        } else {
+          rep(0, nrow(mu_mat))
+        }
+      }
+      
+      sd_mat <- switch(fam,
+        "poisson" = sqrt(pmax(mu_mat, 1e-10)),
+        "binomial" = sqrt(pmax(mu_mat * (1 - mu_mat), 1e-10)),
+        "negbinomial" = {
+          r_s <- matrix(rep(get_r_samples(), ncol(mu_mat)), ncol = ncol(mu_mat))
+          sqrt(pmax(mu_mat + (mu_mat^2) / r_s, 1e-10))
+        },
+        "zip" = {
+          psi_s <- pmin(matrix(rep(get_psi_samples(), ncol(mu_mat)), ncol = ncol(mu_mat)), 1 - 1e-10)
+          sqrt(pmax(mu_mat + (psi_s / (1 - psi_s)) * (mu_mat^2), 1e-10))
+        },
+        "zinb" = {
+          r_s <- matrix(rep(get_r_samples(), ncol(mu_mat)), ncol = ncol(mu_mat))
+          psi_s <- pmin(matrix(rep(get_psi_samples(), ncol(mu_mat)), ncol = ncol(mu_mat)), 1 - 1e-10)
+          sqrt(pmax(mu_mat + ((psi_s + 1 / r_s) / (1 - psi_s)) * (mu_mat^2), 1e-10))
+        },
+        {
+          sigma_name <- paste0("sigma_", resp, "_res")
+          tau_name <- paste0("tau_res_", resp)
+          sigma_s <- if (sigma_name %in% colnames(samples_mat)) {
+            samples_mat[, sigma_name]
+          } else if (tau_name %in% colnames(samples_mat)) {
+            1 / sqrt(samples_mat[, tau_name])
+          } else {
+            rep(1, nrow(mu_mat))
+          }
+          matrix(rep(sigma_s, ncol(res_mat)), ncol = ncol(res_mat))
+        }
+      )
+      
+      res_mat <- res_mat / sd_mat
     }
     
     if (summary) {

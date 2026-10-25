@@ -77,6 +77,8 @@ run_jags_pipeline <- function(
       on.exit(parallel::stopCluster(cl), add = TRUE)
     }
 
+    base_seed <- sample.int(1e6L, 1L)
+
     # Helper function to run a single chain
     run_single_chain <- function(
       chain_id,
@@ -98,7 +100,7 @@ run_jags_pipeline <- function(
         extension_inits,
         list(
           .RNG.name = "base::Wichmann-Hill",
-          .RNG.seed = 12345 + chain_id
+          .RNG.seed = base_seed + chain_id
         )
       )
 
@@ -114,7 +116,7 @@ run_jags_pipeline <- function(
       return(list(samples = samples, model = model))
     }
 
-    parallel::clusterExport(cl, c("run_single_chain", "run_jags_model", "sample_jags_model"), envir = environment())
+    parallel::clusterExport(cl, c("run_single_chain", "run_jags_model", "sample_jags_model", "base_seed"), envir = environment())
     parallel::clusterEvalQ(cl, {
       if (requireNamespace("because", quietly = TRUE)) library(because)
     })
@@ -165,12 +167,13 @@ run_jags_pipeline <- function(
       )
     }
 
+    base_seed <- sample.int(1e6L, 1L)
     inits_list <- lapply(1:n.chains, function(i) {
       c(
         extension_inits,
         list(
           .RNG.name = "base::Wichmann-Hill",
-          .RNG.seed = 12345 + i
+          .RNG.seed = base_seed + i
         )
       )
     })

@@ -60,9 +60,10 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
   n_samples <- nrow(samples_mat)
 
   # 2. Identify all Response ~ Predictor paths
-  # Exclude internal intercept/cutpoint "predictors"
+  # Exclude internal intercept/cutpoint "predictors" and non-coefficient rows
   pm <- fit$parameter_map
-  raw_paths <- pm[!pm$predictor %in% c("(Intercept)", "(Intercepts)", "(Cutpoints)"), ]
+  is_coef <- if ("type" %in% names(pm)) pm$type == "coefficient" else rep(TRUE, nrow(pm))
+  raw_paths <- pm[is_coef & !pm$predictor %in% c("(Intercept)", "(Intercepts)", "(Cutpoints)"), ]
   
   # Group by response to avoid redundant calculations
   responses <- unique(raw_paths$response)
@@ -113,8 +114,9 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
     }
 
     # Extract relevant parameters
+    is_coef_resp <- if ("type" %in% names(all_pm_resp)) all_pm_resp$type == "coefficient" else rep(TRUE, nrow(all_pm_resp))
     alpha_p <- all_pm_resp$parameter[all_pm_resp$predictor %in% c("(Intercept)", "(Intercepts)")]
-    beta_rows <- all_pm_resp[!all_pm_resp$predictor %in% c("(Intercept)", "(Intercepts)", "(Cutpoints)"), ]
+    beta_rows <- all_pm_resp[is_coef_resp & !all_pm_resp$predictor %in% c("(Intercept)", "(Intercepts)", "(Cutpoints)"), ]
     cut_p <- all_pm_resp$parameter[all_pm_resp$predictor == "(Cutpoints)"]
 
     # Compute Linear Predictor Matrix [N_s, N_obs]
@@ -214,10 +216,27 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
         }
       }
       
+      if (inherits(dist, "because_family")) dist <- dist$name
+      dist <- tolower(as.character(dist))
+      lp_clamped <- pmin(pmax(lp_mat, -20), 20)
+
       if (dist == "gaussian") {
         return(lp_mat)
       } else if (dist == "binomial") {
-        return(1 / (1 + exp(-lp_mat)))
+        return(1 / (1 + exp(-lp_clamped)))
+      } else if (dist %in% c("poisson", "negbinomial", "gamma", "lognormal")) {
+        return(exp(lp_clamped))
+      } else if (dist %in% c("zip", "zinb")) {
+        psi_name <- paste0("psi_", response_name)
+        logit_psi_name <- paste0("logit_psi_", response_name)
+        psi_s <- if (psi_name %in% colnames(samples_chunk)) {
+          samples_chunk[, psi_name]
+        } else if (logit_psi_name %in% colnames(samples_chunk)) {
+          1 / (1 + exp(-samples_chunk[, logit_psi_name]))
+        } else {
+          rep(0, N_s)
+        }
+        return(replicate(N_obs, 1 - psi_s) * exp(lp_clamped))
       } else if (dist == "ordinal") {
         base_cut_name <- gsub("\\[\\]$", "", cut_p)
         cut_samples <- get_param_samples(base_cut_name, samples_chunk)

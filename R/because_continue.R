@@ -307,15 +307,17 @@ because_continue <- function(
         n_chains, min(n.cores, n_chains), n.iter
       ))
 
+      base_seed <- sample.int(1e6L, 1L)
+
       run_chain <- function(chain_id, model_file, data, inits,
-                            var_names, n.iter, thin_val, n.adapt, quiet) {
+                            var_names, n.iter, thin_val, n.adapt, quiet, base_seed) {
         loadNamespace("rjags")
         m <- tryCatch(
           rjags::jags.model(
             file     = model_file,
             data     = data,
             inits    = c(inits, list(.RNG.name  = "base::Wichmann-Hill",
-                                     .RNG.seed  = 12345L + chain_id)),
+                                     .RNG.seed  = base_seed + chain_id)),
             n.chains = 1L,
             n.adapt  = n.adapt,
             quiet    = quiet
@@ -327,7 +329,7 @@ because_continue <- function(
                 file     = model_file,
                 data     = data,
                 inits    = list(.RNG.name = "base::Wichmann-Hill",
-                                .RNG.seed = 12345L + chain_id),
+                                .RNG.seed = base_seed + chain_id),
                 n.chains = 1L,
                 n.adapt  = n.adapt,
                 quiet    = quiet
@@ -342,7 +344,7 @@ because_continue <- function(
 
       cl <- parallel::makeCluster(min(n.cores, n_chains))
       on.exit(parallel::stopCluster(cl), add = TRUE)
-      parallel::clusterExport(cl, "run_chain", envir = environment())
+      parallel::clusterExport(cl, c("run_chain", "base_seed"), envir = environment())
 
       chain_inits <- lapply(seq_len(n_chains), make_chain_inits,
                             keep_vars = safe_scalar)
@@ -352,7 +354,7 @@ because_continue <- function(
         seq_len(n_chains),
         function(i) {
           run_chain(i, model_file, data, chain_inits[[i]],
-                    var_names, n.iter, thin_val, n.adapt, quiet)
+                    var_names, n.iter, thin_val, n.adapt, quiet, base_seed)
         }
       )
 

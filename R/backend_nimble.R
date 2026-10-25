@@ -469,6 +469,8 @@ run_nimble_pipeline <- function(
       on.exit(parallel::stopCluster(cl), add = TRUE)
     }
 
+    base_seed <- sample.int(1e6L, 1L)
+
     run_nimble_chain <- function(
       chain_id,
       model_string,
@@ -481,7 +483,8 @@ run_nimble_pipeline <- function(
       n.thin,
       WAIC,
       nimble_samplers,
-      quiet
+      quiet,
+      base_seed = 12345L
     ) {
       if (!requireNamespace("nimble", quietly = TRUE)) {
         return(NULL)
@@ -533,7 +536,7 @@ run_nimble_pipeline <- function(
       curr_inits <- nimble_inits
       if (is.null(curr_inits)) curr_inits <- list()
 
-      set.seed(12345 + chain_id)
+      set.seed(base_seed + chain_id)
       for (p_name in names(curr_inits)) {
           val <- curr_inits[[p_name]]
           if (is.numeric(val) && length(val) == 1) {
@@ -631,7 +634,7 @@ run_nimble_pipeline <- function(
       c(
         "model_string", "data", "family", "nimble_inits",
         "monitor", "n.iter", "n.burnin", "n.thin",
-        "WAIC", "quiet", "run_nimble_chain", "nimble_samplers"
+        "WAIC", "quiet", "run_nimble_chain", "nimble_samplers", "base_seed"
       ),
       envir = environment()
     )
@@ -656,7 +659,8 @@ run_nimble_pipeline <- function(
         n.thin = n.thin,
         WAIC = WAIC,
         nimble_samplers = nimble_samplers,
-        quiet = quiet
+        quiet = quiet,
+        base_seed = base_seed
       )
     })
 

@@ -261,12 +261,19 @@ check_normality.because <- function(object, resp = NULL, ndraws = 250, ...) {
     resp <- as.character(all.vars(object$equations[[1]][[2]])[1])
   }
 
-  # 1. Observed Quantile Residuals
-  res_obs <- residuals(object, resp = resp, type = "quantile", ndraws = ndraws)
+  # 1. Observed Quantile Residuals (excluding NAs)
+  res_obs_all <- residuals(object, resp = resp, type = "quantile", ndraws = ndraws)
+  valid_idx <- which(!is.na(res_obs_all))
+  res_obs <- res_obs_all[valid_idx]
   n <- length(res_obs)
 
   # 2. Generate Posterior Predictive Replicates for Empirical Envelope
-  yrep <- posterior_predict(object, resp = resp, ndraws = min(ndraws, 100))
+  yrep_all <- posterior_predict(object, resp = resp, ndraws = min(ndraws, 100))
+  yrep <- if (length(valid_idx) > 0 && ncol(yrep_all) >= max(valid_idx)) {
+    yrep_all[, valid_idx, drop = FALSE]
+  } else {
+    yrep_all
+  }
   n_rep <- nrow(yrep)
 
   # Theoretical quantiles
@@ -279,7 +286,7 @@ check_normality.because <- function(object, resp = NULL, ndraws = 250, ...) {
     # Generate quantile residuals for replicated data
     u_b <- numeric(n)
     for (i in seq_len(n)) {
-      u_b[i] <- mean(yrep[, i] < yrep[b, i]) + stats::runif(1) * mean(yrep[, i] == yrep[b, i])
+      u_b[i] <- mean(yrep[, i] < yrep[b, i], na.rm = TRUE) + stats::runif(1) * mean(yrep[, i] == yrep[b, i], na.rm = TRUE)
       u_b[i] <- min(max(u_b[i], 1 / (2 * n_rep)), 1 - 1 / (2 * n_rep))
     }
     rep_sorted_mat[b, ] <- sort(stats::qnorm(u_b))
@@ -304,13 +311,15 @@ check_normality.because <- function(object, resp = NULL, ndraws = 250, ...) {
 
   # 3. Discrepancy Statistics: Skewness and Kurtosis
   skewness_fn <- function(x) {
+    x <- x[!is.na(x)]
     m2 <- mean((x - mean(x))^2)
-    if (m2 == 0) return(0)
+    if (is.na(m2) || m2 == 0) return(0)
     mean((x - mean(x))^3) / (m2^(3/2))
   }
   kurtosis_fn <- function(x) {
+    x <- x[!is.na(x)]
     m2 <- mean((x - mean(x))^2)
-    if (m2 == 0) return(0)
+    if (is.na(m2) || m2 == 0) return(0)
     mean((x - mean(x))^4) / (m2^2)
   }
 
@@ -535,16 +544,29 @@ check_residual_structure.because <- function(object, resp = NULL, ...) {
 
   samples_mat <- as.matrix(object$samples)
 
-  # Search for structural standard deviations
-  # Patterns: sigma_phylo_VAR, sigma_spatial_VAR, sigma_VAR_phylo, etc.
-  struct_patterns <- paste0("sigma_(phylo|spatial|group)_", resp)
-  struct_cols <- grep(struct_patterns, colnames(samples_mat), value = TRUE)
+  # Search for structural and random-effect standard deviations
+  # Patterns: sigma_u_VAR_*, sigma_phylo_VAR, sigma_spatial_VAR, sigma_VAR_*, etc.
+  struct_cols <- character(0)
+  if (!is.null(object$parameter_map)) {
+    pm_s <- object$parameter_map[
+      object$parameter_map$response == resp &
+        object$parameter_map$type %in% c("structure", "random") &
+        grepl("^sigma_", object$parameter_map$parameter),
+    ]
+    struct_cols <- intersect(pm_s$parameter, colnames(samples_mat))
+  }
   if (length(struct_cols) == 0) {
-    struct_cols <- grep(paste0("sigma_", resp, "_(phylo|spatial|group)"), colnames(samples_mat), value = TRUE)
+    cand_cols <- grep(
+      paste0("^sigma_(u_", resp, "_|.*_", resp, "$|", resp, "_)"),
+      colnames(samples_mat),
+      value = TRUE
+    )
+    exclude_cols <- c(paste0("sigma_", resp, "_res"), paste0("sigma_total_", resp))
+    struct_cols <- setdiff(cand_cols, exclude_cols)
   }
 
   if (length(struct_cols) == 0) {
-    cat(paste("No phylogenetic or spatial covariance structure found for response:", resp, "\n"))
+    cat(paste("No structural or random-effect covariance found for response:", resp, "\n"))
     return(invisible(NULL))
   }
 
@@ -565,7 +587,7 @@ check_residual_structure.because <- function(object, resp = NULL, ...) {
   for (sc in struct_cols) {
     sigma_struct <- samples_mat[, sc]
     vpc_samples <- (sigma_struct^2) / (sigma_struct^2 + sigma_res^2)
-    struct_name <- gsub(paste0("sigma_|_", resp), "", sc)
+    struct_name <- gsub(paste0("^sigma_u_", resp, "_|^sigma_", resp, "_|^sigma_|_", resp, "$"), "", sc)
 
     vpc_list[[struct_name]] <- data.frame(
       Structure = struct_name,

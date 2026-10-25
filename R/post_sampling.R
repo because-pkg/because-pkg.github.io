@@ -245,13 +245,14 @@ assemble_because_result <- function(
   ) {
     message("Recompiling model for DIC/WAIC calculation...")
 
+    base_seed <- sample.int(1e6L, 1L)
     # Recompile model with 2 chains for IC calculation (DIC requires >=2)
     ic_inits <- lapply(1:2, function(i) {
       c(
         extension_inits,
         list(
           .RNG.name = "base::Wichmann-Hill",
-          .RNG.seed = 12345 + i
+          .RNG.seed = base_seed + i
         )
       )
     })

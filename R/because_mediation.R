@@ -45,6 +45,12 @@ because_mediation <- function(fit, exposure, outcome, prob = 0.95) {
 
     # 1. Build Graph from Parameter Map
     edges <- fit$parameter_map
+    if ("type" %in% colnames(edges)) {
+        edges <- edges[edges$type == "coefficient", , drop = FALSE]
+    }
+    if ("predictor" %in% colnames(edges)) {
+        edges <- edges[!edges$predictor %in% c("(Intercept)", "(Intercepts)", "(Cutpoints)"), , drop = FALSE]
+    }
     colnames(edges)[colnames(edges) == "predictor"] <- "from"
     colnames(edges)[colnames(edges) == "response"] <- "to"
 

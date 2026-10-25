@@ -254,7 +254,7 @@ do.because <- function(object, ..., ndraws = NULL, re_formula = NULL, raw_scale 
                 # then overlay any intervened/propagated values from newdata, 
                 # expanding higher-level variables to obs-level via index vectors.
                 eval_env <- as.list(object$data)  # Has idx vectors + N_obs aligned data
-                n_obs_full <- object$data$N_obs %||% length(object$data$Abundance)
+                n_obs_full <- object$data$N_obs %||% object$data$N
 
                 for (pv in all.vars(det_expr)) {
                     if (pv %in% names(newdata)) {
@@ -337,15 +337,15 @@ summary.because_counterfactual <- function(object, ...) {
         if (is.matrix(mat)) {
             # Compute global average per posterior draw first
             # (i.e. average across sites/observations for each draw)
-            global_draws <- rowMeans(mat)
+            global_draws <- rowMeans(mat, na.rm = TRUE)
             
             row_df <- data.frame(
                 Variable = var,
-                Mean = mean(global_draws),
-                SD = sd(global_draws),
-                `Q2.5` = stats::quantile(global_draws, 0.025, names = FALSE),
-                `Q50` = stats::quantile(global_draws, 0.50, names = FALSE),
-                `Q97.5` = stats::quantile(global_draws, 0.975, names = FALSE),
+                Mean = mean(global_draws, na.rm = TRUE),
+                SD = stats::sd(global_draws, na.rm = TRUE),
+                `Q2.5` = stats::quantile(global_draws, 0.025, names = FALSE, na.rm = TRUE),
+                `Q50` = stats::quantile(global_draws, 0.50, names = FALSE, na.rm = TRUE),
+                `Q97.5` = stats::quantile(global_draws, 0.975, names = FALSE, na.rm = TRUE),
                 stringsAsFactors = FALSE
             )
             # Fix column names that might get mangled by data.frame

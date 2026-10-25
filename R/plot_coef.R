@@ -70,7 +70,6 @@ plot_coef.because <- function(
             stop("Marginal effects require a parameter map. Did you fit the model with because()?")
         }
         # Use high precision for all marginal plots
-        set.seed(12345)
         me_table <- marginal_effects(
             object,
             samples = 1000,

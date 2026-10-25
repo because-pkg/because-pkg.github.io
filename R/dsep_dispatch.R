@@ -214,7 +214,6 @@ run_single_dsep_test_v2 <- function(
       if (fl %in% names(dsep_data_to_pass) && is.data.frame(dsep_data_to_pass[[fl]])) {
         n_obs <- nrow(dsep_data_to_pass[[fl]])
         if (n_obs > dsep_max_obs) {
-          set.seed(i + 42)
           dsep_data_to_pass[[fl]] <- dsep_data_to_pass[[fl]][sample(1:n_obs, dsep_max_obs), ]
           if (!quiet) message(sprintf("  (Optimized d-sep: subsampled '%s' scale to %d rows)", fl, dsep_max_obs))
         }
@@ -223,7 +222,6 @@ run_single_dsep_test_v2 <- function(
   } else if (is.data.frame(dsep_data_to_pass)) {
     n_obs <- nrow(dsep_data_to_pass)
     if (n_obs > dsep_max_obs) {
-      set.seed(i + 42)
       dsep_data_to_pass <- dsep_data_to_pass[sample(1:n_obs, dsep_max_obs), ]
       if (!quiet) message(sprintf("  (Optimized d-sep: subsampled to %d rows)", dsep_max_obs))
     }
