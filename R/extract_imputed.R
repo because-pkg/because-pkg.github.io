@@ -70,19 +70,6 @@ extract_imputed <- function(object, id_col = NULL) {
         }
     }
 
-    # Get summary statistics if available
-    sum_stats <- object$summary
-    has_summary <- !is.null(sum_stats)
-
-    if (!has_summary) {
-        # If no summary, we might need to compute from samples
-        # But for now, let's rely on summary or standard error message
-        # Or extracting from samples directly if needed.
-        # Let's try to extract from samples if summary is missing (e.g. monitor=all often generates big objects)
-        # But usually summary is computed unless suppressed.
-        # We will assume samples exist if summary doesn't cover it.
-    }
-
     results_list <- list()
 
     # Iterate over variables in data
