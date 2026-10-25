@@ -200,12 +200,12 @@ nimble_harden_samplers <- function(mcmc_conf, family = NULL, nimble_samplers = N
     current_types <- sapply(mcmc_conf$getSamplers(target), function(s) s$name)
     if (any(grepl("posterior_predictive", current_types, ignore.case = TRUE))) next
 
-    # Phylogenetic ESS: Force Elliptical Slice Sampler for multivariate phylo nodes.
+    # Structural ESS: Force Elliptical Slice Sampler for multivariate structural/phylo/spatial nodes.
     # Matches both centered (err_raw_*_phylo) and non-centered (z_*_phylo) parameterizations.
-    if (grepl("^(err_raw_|u_std_|z_).*(phylo|BM|OU|Pagel).*", target)) {
+    if (grepl("^(err_raw_|u_std_|z_).*(phylo|spatial|BM|OU|Pagel).*", target)) {
         mcmc_conf$removeSamplers(target)
         mcmc_conf$addSampler(target = target, type = "ess")
-        if (!quiet) message(sprintf("NIMBLE: Forced 'ess' (Elliptical Slice) for phylogenetic vector '%s'.", target))
+        if (!quiet) message(sprintf("NIMBLE: Forced 'ess' (Elliptical Slice) for structural vector '%s'.", target))
         next
     }
 

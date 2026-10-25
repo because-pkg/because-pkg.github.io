@@ -1,7 +1,8 @@
 #' Generate priors and variance partitioning for JAGS/BUGS model
 #'
 #' Constructs priors for intercepts (alpha), slopes (beta), residual precisions (tau),
-#' structural components (tau_u, sigma), Pagel's lambda variance partitioning,
+#' structural components (tau_u, sigma), structural variance partitioning
+#' (Variance Partition Coefficient / VPC, e.g. Pagel's lambda in phylogenetic models or spatial VPC),
 #' and family-specific auxiliary parameters.
 #'
 #' @param ctx Builder context environment
@@ -155,6 +156,8 @@ generate_model_priors <- function(ctx) {
                 tau_u_name <- paste0("tau_u_", response, suffix, s_suffix)
               }
 
+              # Structural variance partitioning (Variance Partition Coefficient / VPC,
+              # e.g., Pagel's lambda for phylogenetic models, or spatial VPC for spatial models)
               ctx$model_lines <- safe_add_lines(
                 ctx$model_lines,
                 paste0(
