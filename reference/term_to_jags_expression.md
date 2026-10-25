@@ -1,6 +1,7 @@
-# Convert R Term to JAGS Expression
+# Convert R Formula Term to BUGS Expression
 
-Transforms R syntax into JAGS-compatible deterministic code
+Transforms R formula syntax into indexed BUGS deterministic expressions
+for JAGS and NIMBLE.
 
 ## Usage
 
@@ -16,4 +17,4 @@ term_to_jags_expression(term)
 
 ## Value
 
-JAGS expression (e.g., "A\\i\] \* B\\i\]")
+BUGS expression (e.g., "A\\i\] \* B\\i\]")

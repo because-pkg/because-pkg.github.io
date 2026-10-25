@@ -1,6 +1,8 @@
-# Sanitize Term Name for JAGS
+# Sanitize Formula Term Name
 
-Converts complex R terms into valid JAGS variable names
+Converts complex R formula terms into valid alphanumeric node/parameter
+names for BUGS engines (JAGS/NIMBLE), parameter maps, d-separation
+tests, and DAG layouts.
 
 ## Usage
 
