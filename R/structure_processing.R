@@ -136,74 +136,74 @@ process_because_structures <- function(
         N <- if (is.matrix(obj) || is.array(obj)) nrow(obj) else length(obj)
       }
     }
+  } else {
+    # Temporarily inject raw string labels so prepare_structure_data can align structure IDs
+    injected_raw_cols <- character(0)
+    if (is_hierarchical && !is.null(hierarchical_info$structure_levels)) {
+      for (s_name in names(hierarchical_info$structure_levels)) {
+        lvl_name <- hierarchical_info$structure_levels[[s_name]]
+        link_var <- if (!is.null(hierarchical_info$link_vars)) hierarchical_info$link_vars[[lvl_name]] else NULL
+        if (!is.null(link_var) && is.data.frame(original_raw_data_before_preprocess[[lvl_name]])) {
+           raw_col_name <- paste0(".raw_", link_var)
+           data[[raw_col_name]] <- as.character(original_raw_data_before_preprocess[[lvl_name]][[link_var]])
+           injected_raw_cols <- c(injected_raw_cols, raw_col_name)
+        }
+      }
+    }
+
+    structure_levels <- list()
+    structure_multi <- list()
+    for (s_name in structure_names) {
+      structure_obj <- structures[[s_name]]
+      prep_res <- prepare_structure_data(structure_obj, data = data, optimize = TRUE, quiet = quiet, engine = engine, row_ids = row_ids)
+
+      if (!is.null(prep_res$data_list)) {
+        for (d_name in names(prep_res$data_list)) {
+          custom_s_name <- get_structure_name_hook(structure_obj)
+          prefixed_name <- if (d_name %in% c("Prec", "VCV", "multiVCV", custom_s_name)) paste0(d_name, "_", s_name) else d_name
+          
+          # Skip non-numeric vectors (e.g., aligned label vectors) to preserve integer index arrays
+          if (is.character(prep_res$data_list[[d_name]]) || is.factor(prep_res$data_list[[d_name]])) {
+             next
+          }
+          
+          data[[prefixed_name]] <- prep_res$data_list[[d_name]]
+        }
       } else {
-        # Temporarily inject raw string labels so prepare_structure_data can align structure IDs
-        injected_raw_cols <- character(0)
-        if (is_hierarchical && !is.null(hierarchical_info$structure_levels)) {
-          for (s_name in names(hierarchical_info$structure_levels)) {
-            lvl_name <- hierarchical_info$structure_levels[[s_name]]
-            link_var <- if (!is.null(hierarchical_info$link_vars)) hierarchical_info$link_vars[[lvl_name]] else NULL
-            if (!is.null(link_var) && is.data.frame(original_raw_data_before_preprocess[[lvl_name]])) {
-               raw_col_name <- paste0(".raw_", link_var)
-               data[[raw_col_name]] <- as.character(original_raw_data_before_preprocess[[lvl_name]][[link_var]])
-               injected_raw_cols <- c(injected_raw_cols, raw_col_name)
-            }
+        structures[[s_name]] <- NULL
+        structure_names <- setdiff(structure_names, s_name)
+        next
+      }
+
+      current_N <- NULL
+      is_this_one_multi <- FALSE
+      for (obj in prep_res$data_list) {
+        if (is.matrix(obj) && nrow(obj) == ncol(obj)) {
+          current_N <- nrow(obj)
+          break
+        } else if (is.array(obj) && length(dim(obj)) == 3) {
+          dims <- dim(obj)
+          if (dims[1] == dims[2]) {
+             current_N <- dims[1]
+             is_this_one_multi <- TRUE
+             if (is_multiple && !exists("N_trees")) N_trees <- dims[3]
+             break
+          } else if (dims[2] == dims[3]) {
+             current_N <- dims[2]
+             is_this_one_multi <- TRUE
+             if (is_multiple && !exists("N_trees")) N_trees <- dims[1]
+             break
           }
         }
+      }
 
-        structure_levels <- list()
-        structure_multi <- list()
-        for (s_name in structure_names) {
-          structure_obj <- structures[[s_name]]
-          prep_res <- prepare_structure_data(structure_obj, data = data, optimize = TRUE, quiet = quiet, engine = engine, row_ids = row_ids)
+      if (is.null(current_N)) {
+        n_attr <- attr(structure_obj, "n")
+        if (is.numeric(n_attr)) current_N <- n_attr
+      }
 
-          if (!is.null(prep_res$data_list)) {
-            for (d_name in names(prep_res$data_list)) {
-              custom_s_name <- get_structure_name_hook(structure_obj)
-              prefixed_name <- if (d_name %in% c("Prec", "VCV", "multiVCV", custom_s_name)) paste0(d_name, "_", s_name) else d_name
-              
-              # Skip non-numeric vectors (e.g., aligned label vectors) to preserve integer index arrays
-              if (is.character(prep_res$data_list[[d_name]]) || is.factor(prep_res$data_list[[d_name]])) {
-                 next
-              }
-              
-              data[[prefixed_name]] <- prep_res$data_list[[d_name]]
-            }
-          } else {
-            structures[[s_name]] <- NULL
-            structure_names <- setdiff(structure_names, s_name)
-            next
-          }
-
-          current_N <- NULL
-          is_this_one_multi <- FALSE
-          for (obj in prep_res$data_list) {
-            if (is.matrix(obj) && nrow(obj) == ncol(obj)) {
-              current_N <- nrow(obj)
-              break
-            } else if (is.array(obj) && length(dim(obj)) == 3) {
-              dims <- dim(obj)
-              if (dims[1] == dims[2]) {
-                 current_N <- dims[1]
-                 is_this_one_multi <- TRUE
-                 if (is_multiple && !exists("N_trees")) N_trees <- dims[3]
-                 break
-              } else if (dims[2] == dims[3]) {
-                 current_N <- dims[2]
-                 is_this_one_multi <- TRUE
-                 if (is_multiple && !exists("N_trees")) N_trees <- dims[1]
-                 break
-              }
-            }
-          }
-
-          if (is.null(current_N)) {
-            n_attr <- attr(structure_obj, "n")
-            if (is.numeric(n_attr)) current_N <- n_attr
-          }
-
-          # Match structure to hierarchical level by name first, then by dimension
-          s_level <- NULL
+      # Match structure to hierarchical level by name first, then by dimension
+      s_level <- NULL
       if (!is.null(hierarchical_info) && !is.null(current_N)) {
         # 1. Try Name Matching first
         if (s_name %in% names(hierarchical_info$levels)) {
