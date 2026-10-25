@@ -11,29 +11,29 @@ The focus of `because` is on causal inference, providing tools to facilitate the
 
 **because** simplifies the process of running complex Bayesian Structural Equation Models by automatically generating JAGS, NIMBLE or NumPyro code from standard R formulas. Key features include:
 
--   **Multiple-Engine Support**: Choose between the simplicity of **JAGS** or o the high-performance of  **NIMBLE**
--   **Automatic Model Generation**: Builds complex JAGS/NIMBLE/NUMPYRO models directly from a list of structural equations.
+-   **Multiple-Engine Support**: Choose between the simplicity of **JAGS**, the C++ speed of **NIMBLE**, or the HMC/NUTS performance of **NumPyro**.
+-   **Automatic Model Generation**: Builds complex JAGS/NIMBLE/NumPyro models directly from a list of structural equations.
 -   **Generalized Covariance Structures**: Supports the specification of custom covariance structures in the data.
--   **Missing Data Support**: Imputes missing values in both response and predictor variables (assuming data is missing at random (MAR) or completely at random (MCAR).
+-   **Missing Data Support**: Imputes missing values in both response and predictor variables (assuming data is missing at random (MAR) or completely at random (MCAR)).
 -   **Measurement Error**: Accounts for measurement error providing repeated measures or known error variances.
--   **Distribution families**: Supports Gaussian, Binomial, Multinomial, Ordinal, Poisson,Negative Binomial as well as Zero Inflated Poisson (ZIP) and Zero Inflated Negative Binomial (ZINB) distributions.
+-   **Distribution families**: Supports Gaussian, Binomial, Multinomial, Ordinal, Poisson, Negative Binomial as well as Zero Inflated Poisson (ZIP) and Zero Inflated Negative Binomial (ZINB) distributions.
 -   **Categorical Predictors**: Automatic handling of factor variables with dummy variable expansion.
 -   **Polynomial and Interaction Terms**: Easily include polynomial terms and interactions in structural equations.
--   **Hierachical Models**: Support for random effects and multi-level structures.
+-   **Hierarchical Models**: Support for random effects and multi-level structures.
 -   **Latent Variables**: Support for explicitly including Latent variables or modelling induced correlations from latent common causes with the Maximum Acyclic Graph (MAG) method.
 -   **Causal inference tools**: Native support for d-separation and m-separation testing, mediation analysis, and **unified marginal effects** for comparing cross-family coefficients.
--   **Counterfactual Simulations**: A fully featured \code{do()} operator to simulate structural policy interventions (atomic, shifts, percentage, stochastic) using Pearl's do-calculus.
--   **Marginal Effects**: New `marginal_effects(fit)` function converts log-odds/latent scales to "Expected Change" units (0-1 probabilities or unit values) for easy comparison across different variable types.
+-   **Counterfactual Simulations**: A fully featured `do()` operator to simulate structural policy interventions (atomic, shifts, percentage, stochastic) using Pearl's do-calculus.
+-   **Marginal Effects**: `marginal_effects(fit)` converts log-odds/latent scales to "Expected Change" units (0-1 probabilities or unit values) for easy comparison across different variable types.
 -   **Parallel Computing**: Run MCMC chains in parallel on multi-core systems for faster computation.
 -   **Visualisation tools**: Functions for visualizing model structures and posterior distributions.
 -   **Extension packages**: Full S3 support for extension packages to build on the core functionality. 
 
 ## Installation
 
-To install the **stable release** (`v1.7.0`), run:
+To install the **stable release** (`v1.9.0`), run:
 
 ``` r
-remotes::install_github("because-pkg/because@v1.7.0", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.9.0", build_vignettes = TRUE)
 ```
 
 To install the **latest development version**, run:
