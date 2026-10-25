@@ -348,11 +348,9 @@ mag_basis_to_formulas <- function(
             }
         }
 
-        # New Rule: Favor categorical variables as PREDICTORS (RHS/test_var)
-        # If var1 (potential Response) is categorical, and var2 (Predictor) is NOT,
-        # SWAP them so var1 becomes the predictor.
-        # This allows us to use proper dummy variables in the test instead of
-        # modeling the categorical variable as a Gaussian response.
+        # Favor categorical variables as predictors (RHS):
+        # Testing continuous ~ categorical + Z avoids requiring multinomial/polytomous
+        # likelihoods for categorical responses in conditional independence regressions.
         if (!is.null(categorical_vars)) {
             var1_is_cat <- var1 %in% names(categorical_vars)
             var2_is_cat <- var2 %in% names(categorical_vars)
@@ -364,26 +362,19 @@ mag_basis_to_formulas <- function(
             }
         }
 
-        # FINAL RULE (User Override): Enforce directionality for species parameters.
-        # Species parameters (p_, psi_, z_) should always be the RESPONSE in d-sep tests
-        # with covariates, as covariates cannot cause parameters (biologically).
-        # Regex to identify parameters: starts with p_, psi_, or z_
+        # Parameter hierarchy: latent detection/state parameters (p_, psi_, z_)
+        # serve as responses when paired with observational covariates.
         is_param <- function(v) grepl("^(p_|psi_|z_)", v)
 
         if (is_param(var2) && !is_param(var1)) {
-            # Predictor is parameter, Response is not. SWAP to make Parameter the Response.
             temp <- var1
             var1 <- var2
             var2 <- temp
         } else if (is_param(var2) && is_param(var1)) {
-            # Both are parameters. Tie-breaker rule (User Request):
-            # p_Species should be RESPONSE if paired with psi_Species/z_Species
-            # Hierarchy: p_ > psi_/z_ > covariate
-
+            # When pairing detection (p_) and occupancy (psi_/z_), make p_ the response
             is_p1 <- grepl("^p_", var1)
             is_p2 <- grepl("^p_", var2)
 
-            # If Predictor is p_ and Response is NOT p_ (i.e. psi/z), SWAP.
             if (is_p2 && !is_p1) {
                 temp <- var1
                 var1 <- var2
@@ -532,12 +523,6 @@ mag_basis_to_formulas <- function(
 
                     if (length(det_match) > 0) {
                         # Extract components of the deterministic node
-                        orig_cv <- det_match[[1]]$original
-                        components <- all.vars(stats::as.formula(paste(
-                            "~",
-                            orig_cv
-                        )))
-
                         orig_cv <- det_match[[1]]$original
                         components <- all.vars(stats::as.formula(paste(
                             "~",
