@@ -1,6 +1,6 @@
-# Default Method for JAGS Family Definition
+# Default Method for BUGS Family Definition
 
-Default Method for JAGS Family Definition
+Default Method for BUGS Family Definition
 
 ## Usage
 

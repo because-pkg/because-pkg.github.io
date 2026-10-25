@@ -1,7 +1,7 @@
 # Tree Extraction Hook
 
-Modules implement this to extract the appropriate tree/structure (e.g.
-tip extraction from multiPhylo).
+Backward-compatible alias for
+[`get_structure_hook`](https://because-pkg.github.io/because/reference/get_structure_hook.md).
 
 ## Usage
 

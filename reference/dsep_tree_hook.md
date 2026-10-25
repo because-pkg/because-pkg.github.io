@@ -1,7 +1,7 @@
 # D-Sep Tree Hook
 
-Modules implement this to decide if a tree should be passed to a
-specific d-separation test.
+Backward-compatible alias for
+[`dsep_structure_hook`](https://because-pkg.github.io/because/reference/dsep_structure_hook.md).
 
 ## Usage
 

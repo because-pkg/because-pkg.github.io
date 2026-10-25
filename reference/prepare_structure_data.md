@@ -1,7 +1,7 @@
 # Prepare Structure Data
 
-Modules implement this to process the structure object into data for
-JAGS.
+Modules implement this to process the structure object into data for the
+model engine (JAGS, NIMBLE, or NumPyro).
 
 ## Usage
 
@@ -25,4 +25,5 @@ prepare_structure_data(structure, data, ...)
 
 ## Value
 
-A named list of data to be passed to JAGS (e.g., list(VCV = ...)).
+A named list of data to be passed to the model engine (e.g.,
+`list(data_list = list(Prec = ...))`).

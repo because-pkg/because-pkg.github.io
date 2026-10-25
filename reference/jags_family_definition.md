@@ -1,6 +1,7 @@
-# Define JAGS Family Implementation
+# Define BUGS Family Implementation
 
-Define JAGS Family Implementation
+Modules implement this method to inject their specific BUGS likelihood
+code (for JAGS and NIMBLE) for custom families.
 
 ## Usage
 

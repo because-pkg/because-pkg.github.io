@@ -1,7 +1,7 @@
-# Define JAGS Structure Implementation
+# Define BUGS Structure Implementation
 
-Modules implement this method to inject their specific JAGS code for
-covariance structures.
+Modules implement this method to inject their specific BUGS code (for
+JAGS and NIMBLE) for covariance structures.
 
 ## Usage
 
