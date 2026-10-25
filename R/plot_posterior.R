@@ -59,7 +59,6 @@ plot_posterior <- function(
     }
 
     # Identify parameters to plot (based on first model)
-    # Intersection of parameters across all models would be safer, but first is reasonable anchor
     ref_model <- model_list[[1]]
     if (is.null(ref_model$samples)) {
         stop("Model(s) do not contain samples. Did you run with n.iter=0?")
