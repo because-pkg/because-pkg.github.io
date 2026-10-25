@@ -282,6 +282,7 @@ run_dsep_jags_nimble <- function(
           "infer_variable_level",
           "get_level_depth",
           "sanitize_term_name",
+          "dsep_structure_hook",
           "dsep_tree_hook",
           "dsep_equations_hook",
           "dsep_max_obs",

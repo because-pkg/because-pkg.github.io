@@ -229,7 +229,7 @@ run_single_dsep_test_v2 <- function(
     }
   }
 
-  sub_structure <- dsep_tree_hook(structure, test_eq, hierarchical_info, levels)
+  sub_structure <- dsep_structure_hook(structure, test_eq, hierarchical_info, levels)
 
   # Truncate hierarchy and aggregate finer-level variables when the test is locked to a coarse scale
   sub_multiscale <- multiscale

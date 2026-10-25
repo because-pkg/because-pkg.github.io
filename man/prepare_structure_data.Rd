@@ -14,9 +14,9 @@ prepare_structure_data(structure, data, ...)
 \item{...}{Additional arguments.}
 }
 \value{
-A named list of data to be passed to JAGS (e.g., list(VCV = ...)).
+A named list of data to be passed to the model engine (e.g., \code{list(data_list = list(Prec = ...))}).
 }
 \description{
-Modules implement this to process the structure object into data for JAGS.
+Modules implement this to process the structure object into data for the model engine (JAGS, NIMBLE, or NumPyro).
 }
 \keyword{internal}

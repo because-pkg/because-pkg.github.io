@@ -2,7 +2,7 @@
 % Please edit documentation in R/generics.R
 \name{jags_structure_definition}
 \alias{jags_structure_definition}
-\title{Define JAGS Structure Implementation}
+\title{Define BUGS Structure Implementation}
 \usage{
 jags_structure_definition(structure, variable_name = "err", ...)
 }
@@ -17,6 +17,6 @@ jags_structure_definition(structure, variable_name = "err", ...)
 A list containing \code{setup_code} (e.g. priors, matrix inversion) and \code{error_prior} (the likelihood/prior definition for residuals).
 }
 \description{
-Modules implement this method to inject their specific JAGS code for covariance structures.
+Modules implement this method to inject their specific BUGS code (for JAGS and NIMBLE) for covariance structures.
 }
 \keyword{internal}

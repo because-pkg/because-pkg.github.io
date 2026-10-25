@@ -35,9 +35,9 @@ prepare_random_effects_data <- function(
 
     if (has_reps) {
       if (!is.null(id_col) && id_col %in% names(data)) {
-        # Extension Hook: Extract appropriate tree or use structure object directly
+        # Extension Hook: Extract structure or use structure object directly
         use_struct <- if (!is.null(structure)) {
-          get_tree_hook(structure) %||% structure
+          get_structure_hook(structure) %||% structure
         } else {
           NULL
         }

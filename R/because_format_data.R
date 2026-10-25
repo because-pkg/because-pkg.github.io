@@ -186,9 +186,9 @@ because_format_data <- function(
     if (!is.null(structure)) {
         reference_labels <- get_order_labels_hook(structure)
         if (is.null(reference_labels)) {
-            tree_obj <- get_tree_hook(structure)
-            if (!is.null(tree_obj)) {
-                reference_labels <- get_order_labels_hook(tree_obj)
+            struct_obj <- get_structure_hook(structure)
+            if (!is.null(struct_obj)) {
+                reference_labels <- get_order_labels_hook(struct_obj)
             }
         }
         if (is.null(reference_labels)) {

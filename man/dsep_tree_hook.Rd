@@ -21,6 +21,6 @@ dsep_tree_hook(tree, test_eq, hierarchical_info, levels, ...)
 The tree object or NULL.
 }
 \description{
-Modules implement this to decide if a tree should be passed to a specific d-separation test.
+Backward-compatible alias for \code{\link{dsep_structure_hook}}.
 }
 \keyword{internal}

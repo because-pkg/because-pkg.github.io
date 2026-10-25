@@ -258,8 +258,8 @@ run_crossscale_dsep <- function(
       s_obj <- structure[[s_name]]
       s_labels <- get_order_labels_hook(s_obj)
       if (is.null(s_labels)) {
-        tree_obj <- get_tree_hook(s_obj)
-        if (!is.null(tree_obj)) s_labels <- get_order_labels_hook(tree_obj)
+        struct_obj <- get_structure_hook(s_obj)
+        if (!is.null(struct_obj)) s_labels <- get_order_labels_hook(struct_obj)
       }
       if (!is.null(s_labels) && length(intersect(s_labels, groups_present)) > 0) {
         pruned_structure[[s_name]] <- s_obj

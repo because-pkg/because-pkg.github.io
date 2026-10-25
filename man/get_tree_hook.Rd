@@ -15,6 +15,6 @@ get_tree_hook(structure, ...)
 A structure object (e.g. phylo) or NULL.
 }
 \description{
-Modules implement this to extract the appropriate tree/structure (e.g. tip extraction from multiPhylo).
+Backward-compatible alias for \code{\link{get_structure_hook}}.
 }
 \keyword{internal}

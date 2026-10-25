@@ -1,6 +1,6 @@
-#' Define JAGS Structure Implementation
+#' Define BUGS Structure Implementation
 #'
-#' Modules implement this method to inject their specific JAGS code for covariance structures.
+#' Modules implement this method to inject their specific BUGS code (for JAGS and NIMBLE) for covariance structures.
 #' @param structure The structure object (e.g., phylo, list, custom class).
 #' @param variable_name Name of the error variable (default "err").
 #' @param ... Additional arguments.
@@ -67,13 +67,6 @@ jags_structure_definition.default <- function(
         )
     } else {
         paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, "]")
-    }
-
-    engine <- args$engine %||% "jags"
-    tau_var <- if (is_unified) {
-        paste0("tau_u_", s_name, "_", variable_name)
-    } else {
-        paste0("tau_u_", variable_name, "_", s_name)
     }
 
     # Standard priors & dmnorm definition
@@ -156,11 +149,11 @@ jags_structure_definition.default <- function(
 
 #' Prepare Structure Data
 #'
-#' Modules implement this to process the structure object into data for JAGS.
+#' Modules implement this to process the structure object into data for the model engine (JAGS, NIMBLE, or NumPyro).
 #' @param structure The structure object.
 #' @param data The model data.
 #' @param ... Additional arguments.
-#' @return A named list of data to be passed to JAGS (e.g., list(VCV = ...)).
+#' @return A named list of data to be passed to the model engine (e.g., `list(data_list = list(Prec = ...))`).
 #' @keywords internal
 #' @export
 prepare_structure_data <- function(structure, data, ...) {
@@ -177,8 +170,9 @@ prepare_structure_data.default <- function(structure, data, ...) {
     return(list())
 }
 
-#' Define JAGS Family Implementation
+#' Define BUGS Family Implementation
 #'
+#' Modules implement this method to inject their specific BUGS likelihood code (for JAGS and NIMBLE) for custom families.
 #' @param family The S3 family object (e.g., because_family_occupancy).
 #' @param response The name of the response variable.
 #' @param predictors Character vector of predictor names.
@@ -190,21 +184,11 @@ jags_family_definition <- function(family, response, predictors, ...) {
     UseMethod("jags_family_definition")
 }
 
-#' Default Method for JAGS Family Definition
+#' Default Method for BUGS Family Definition
 #' @keywords internal
 #' @export
 jags_family_definition.default <- function(family, response, predictors, ...) {
-    args <- list(...)
-    prior <- args$prior
-    
-    # Define robust defaults (Weakly Informative)
-    # SD=10 (Prec=0.01) is a safe "Universal" default that fixes convergence 
-    # without biasing human-scale results.
-    beta_prior  <- prior$beta  %||% "dnorm(0, 0.01)"
-    alpha_prior <- prior$alpha %||% "dnorm(0, 0.01)"
-    
-    # ... rest of the generic code remains the same but uses these variables
-    return(NULL) # This is a generic, specific families override below
+    return(NULL)
 }
 
 #' Transform Graph for D-Separation
@@ -283,23 +267,30 @@ dsep_equations_hook.default <- function(
 #' @param levels Level mapping.
 #' @param ... Additional arguments.
 #' @return The tree object or NULL.
+#' D-Sep Structure Hook
+#'
+#' Modules implement this to decide if a covariance structure should be passed to a specific d-separation test.
+#' @param structure The structure object.
+#' @param test_eq The current d-separation test equation.
+#' @param hierarchical_info Hierarchical metadata.
+#' @param levels Level mapping.
+#' @param ... Additional arguments.
+#' @return The structure object or NULL.
 #' @keywords internal
 #' @export
-dsep_tree_hook <- function(tree, test_eq, hierarchical_info, levels, ...) {
-    UseMethod("dsep_tree_hook")
+dsep_structure_hook <- function(structure, test_eq, hierarchical_info, levels, ...) {
+    UseMethod("dsep_structure_hook")
 }
 
-#' Default Method for D-Sep Tree Hook
+#' Default Method for D-Sep Structure Hook
 #'
-#' D-separation independence tests are pure regression tests; they should not
-#' inherit the full phylogenetic or spatial covariance structure from the main
-#' model, which would cause JAGS compilation failures (dimension mismatches or
-#' undefined loop indices). Returning NULL ensures each test is fitted as a
-#' plain mixed-effects regression without structured covariance.
+#' Filters the covariance structure list for a d-separation test sub-model based
+#' on the levels active in that test (or returns \code{NULL} for flat models
+#' unless overridden by a structure-specific method).
 #' @keywords internal
 #' @export
-dsep_tree_hook.default <- function(
-    tree,
+dsep_structure_hook.default <- function(
+    structure,
     test_eq,
     hierarchical_info,
     levels,
@@ -311,26 +302,23 @@ dsep_tree_hook.default <- function(
     # Filter the structure list based on the truncated levels for this d-sep test
     if (!is.null(hierarchical_info$structure_levels) && !is.null(levels)) {
         struct_map <- hierarchical_info$structure_levels
-        # struct_map: names = structure names (e.g. "phylo"), values = level names (e.g. "species")
         kept_levels <- names(levels)
         
-        if (is.list(tree) && !is.null(names(tree))) {
-            filtered_tree <- list()
-            for (struct_name in names(tree)) {
-                # Find the level mapping to this structure
+        if (is.list(structure) && !is.null(names(structure))) {
+            filtered_structure <- list()
+            for (struct_name in names(structure)) {
                 struct_level <- struct_map[[struct_name]]
-                
-                # If the structure's level is still in the truncated levels, keep the structure
                 if (is.null(struct_level) || (struct_level %in% kept_levels)) {
-                    filtered_tree[[struct_name]] <- tree[[struct_name]]
+                    filtered_structure[[struct_name]] <- structure[[struct_name]]
                 }
             }
-            attributes(filtered_tree) <- attributes(tree)
-            if (length(filtered_tree) == 0) return(NULL)
-            return(filtered_tree)
+            for (att in setdiff(names(attributes(structure)), "names")) {
+                attr(filtered_structure, att) <- attr(structure, att)
+            }
+            if (length(filtered_structure) == 0) return(NULL)
+            return(filtered_structure)
         } else {
-            # Single object structure
-            struct_name <- class(tree)[1]
+            struct_name <- class(structure)[1]
             struct_level <- struct_map[[struct_name]]
             if (!is.null(struct_level) && !(struct_level %in% kept_levels)) {
                 return(NULL)
@@ -340,7 +328,20 @@ dsep_tree_hook.default <- function(
     
     # In hierarchical models, return the structure list/object so that the sub-model 
     # can correctly attach structured covariance to ALL relevant levels.
-    return(tree)
+    return(structure)
+}
+
+#' Backward-compatible alias for dsep_structure_hook
+#' @keywords internal
+#' @export
+dsep_tree_hook <- function(structure, test_eq, hierarchical_info, levels, ...) {
+    UseMethod("dsep_tree_hook")
+}
+
+#' @keywords internal
+#' @export
+dsep_tree_hook.default <- function(structure, test_eq, hierarchical_info, levels, ...) {
+    dsep_structure_hook(structure, test_eq, hierarchical_info, levels, ...)
 }
 
 #' D-Sep Potential Latent Hook
@@ -486,23 +487,36 @@ get_variability_type_hook.default <- function(family, variable_name, ...) {
     return(NULL)
 }
 
-#' Tree Extraction Hook
+#' Structure Extraction Hook
 #'
-#' Modules implement this to extract the appropriate tree/structure (e.g. tip extraction from multiPhylo).
+#' Modules implement this to extract the appropriate structure (e.g. from container classes).
 #' @param structure The structural object.
 #' @param ... Additional arguments.
-#' @return A structure object (e.g. phylo) or NULL.
+#' @return A structure object or NULL.
+#' @keywords internal
+#' @export
+get_structure_hook <- function(structure, ...) {
+    UseMethod("get_structure_hook")
+}
+
+#' Default Method for Structure Extraction Hook
+#' @keywords internal
+#' @export
+get_structure_hook.default <- function(structure, ...) {
+    return(NULL)
+}
+
+#' Backward-compatible alias for get_structure_hook
 #' @keywords internal
 #' @export
 get_tree_hook <- function(structure, ...) {
     UseMethod("get_tree_hook")
 }
 
-#' Default Method for Tree Extraction Hook
 #' @keywords internal
 #' @export
 get_tree_hook.default <- function(structure, ...) {
-    return(NULL)
+    get_structure_hook(structure, ...)
 }
 
 #' Monitor Variables Hook

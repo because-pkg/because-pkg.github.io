@@ -2,7 +2,7 @@
 % Please edit documentation in R/generics.R
 \name{jags_family_definition}
 \alias{jags_family_definition}
-\title{Define JAGS Family Implementation}
+\title{Define BUGS Family Implementation}
 \usage{
 jags_family_definition(family, response, predictors, ...)
 }
@@ -19,6 +19,6 @@ jags_family_definition(family, response, predictors, ...)
 A list containing \code{model_code} (the likelihood block) and \code{monitor_params}.
 }
 \description{
-Define JAGS Family Implementation
+Modules implement this method to inject their specific BUGS likelihood code (for JAGS and NIMBLE) for custom families.
 }
 \keyword{internal}
