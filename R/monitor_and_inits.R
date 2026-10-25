@@ -81,9 +81,6 @@ prepare_monitors_and_inits <- function(
       extract_names("^\\s*cutpoint")
     ))
 
-    # Remove tau_obs_* (deterministic constants, not stochastic parameters)
-    all_params <- all_params[!grepl("^tau_obs", all_params)]
-
     if (!is.null(monitor_mode) && monitor_mode == "interpretable") {
       # Filter to interpretable parameters only
       monitor <- all_params[
@@ -158,7 +155,7 @@ prepare_monitors_and_inits <- function(
       }
       # Add small diagonal jitter (nugget) to ensure positive definiteness
       # and prevent numerical singularities during C++ compilation.
-      # Ref: Rasmussen & Williams (2006), Gaussian Processes for Machine Learning.
+      # Ref: Rasmussen C.E. & Williams C.K.I (2006), Gaussian Processes for Machine Learning. MIT Press.
       diag(data[[pv]]) <- diag(data[[pv]]) + 1e-6
     }
   }
