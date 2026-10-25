@@ -1,7 +1,7 @@
-# Generate JAGS likelihood code for a distribution family
+# Generate BUGS likelihood code for a distribution family
 
-This generic allows S3 dispatch to generate the appropriate JAGS
-likelihood code for any distribution family.
+This generic allows S3 dispatch to generate the appropriate BUGS
+likelihood code (for JAGS and NIMBLE) for any distribution family.
 
 ## Usage
 
@@ -56,11 +56,11 @@ A list with:
 
 - likelihood_code:
 
-  Character vector of JAGS likelihood statements
+  Character vector of BUGS likelihood statements
 
 - prior_code:
 
-  Character vector of JAGS prior statements (or NULL)
+  Character vector of BUGS prior statements (or NULL)
 
 - data_requirements:
 

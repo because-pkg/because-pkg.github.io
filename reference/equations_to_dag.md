@@ -29,7 +29,7 @@ equations_to_dag(equations, exclude_vars = NULL, deterministic_terms = NULL)
 
   Optional named list returned by `extract_deterministic_terms`. Each
   element must have `$original` (the R term string, e.g. `"BM:M"`) and
-  `$internal_name` (the JAGS-safe node name, e.g. `"BM_x_M"`).
+  `$internal_name` (the internal node name, e.g. `"BM_x_M"`).
 
 ## Value
 

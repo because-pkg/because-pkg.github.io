@@ -17,15 +17,15 @@ because_structure(precision_fn = NULL, name = NULL, description = NULL)
 
   A function that takes your structure data and returns a precision
   matrix (N x N). The first return value should be the precision matrix.
-  Additional list elements can be returned and will be passed to JAGS as
-  data.
+  Additional list elements can be returned and will be passed to the
+  model engine as data.
 
 - name:
 
   Optional character string; the name of your structure (e.g.,
-  "spatial_knn"). Used to create the internal S3 class and JAGS
-  precision matrix name (`Prec_<name>`). If omitted, an internal name is
-  generated automatically.
+  "spatial_knn"). Used to create the internal S3 class and precision
+  matrix name (`Prec_<name>`). If omitted, an internal name is generated
+  automatically.
 
 - description:
 
@@ -42,9 +42,11 @@ This function creates:
 
 - A constructor function (returned) for creating structure objects
 
-- S3 methods for `jags_structure_definition` (generates JAGS code)
+- S3 methods for `jags_structure_definition` (generates BUGS code for
+  JAGS/NIMBLE)
 
-- S3 methods for `prepare_structure_data` (prepares data for JAGS)
+- S3 methods for `prepare_structure_data` (prepares data for model
+  engines)
 
 The precision function should return either:
 

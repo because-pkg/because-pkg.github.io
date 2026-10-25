@@ -24,5 +24,5 @@ jags_family_precision_prior(family, param_name, ...)
 
 ## Value
 
-Character string; JAGS prior statement (e.g. "tau_e_Abundance ~
+Character string; BUGS prior statement (e.g. "tau_e_Abundance ~
 dgamma(1, 1)")

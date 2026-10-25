@@ -101,7 +101,7 @@ useful for:</p><ul><li><p>Model comparison when models have different numbers of
 <li><p>0.7 &lt; k &lt; 1: Problematic (estimates unreliable)</p></li>
 <li><p>k &gt; 1: Very problematic (refit model excluding these observations)</p></li>
 </ul><p><strong>Note on implementation</strong>:
-This function extracts the pointwise log-likelihoods calculated by the JAGS model
+This function extracts the pointwise log-likelihoods calculated during model sampling
 (monitored as <code>log_lik[i]</code>) when <code>WAIC = TRUE</code>. It does not re-compute likelihoods
 from posterior samples in R, ensuring consistency with the fitted model structure.</p>
     </div>

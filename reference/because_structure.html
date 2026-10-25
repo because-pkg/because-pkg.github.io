@@ -72,12 +72,12 @@ The function handles all the S3 method registration automatically.</p>
 <dl><dt id="arg-precision-fn">precision_fn<a class="anchor" aria-label="anchor" href="#arg-precision-fn"></a></dt>
 <dd><p>A function that takes your structure data and returns
 a precision matrix (N x N). The first return value should be the precision matrix.
-Additional list elements can be returned and will be passed to JAGS as data.</p></dd>
+Additional list elements can be returned and will be passed to the model engine as data.</p></dd>
 
 
 <dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
 <dd><p>Optional character string; the name of your structure (e.g., "spatial_knn").
-Used to create the internal S3 class and JAGS precision matrix name (<code>Prec_&lt;name&gt;</code>).
+Used to create the internal S3 class and precision matrix name (<code>Prec_&lt;name&gt;</code>).
 If omitted, an internal name is generated automatically.</p></dd>
 
 
@@ -92,8 +92,8 @@ If omitted, an internal name is generated automatically.</p></dd>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>This function creates:</p><ul><li><p>A constructor function (returned) for creating structure objects</p></li>
-<li><p>S3 methods for <code>jags_structure_definition</code> (generates JAGS code)</p></li>
-<li><p>S3 methods for <code>prepare_structure_data</code> (prepares data for JAGS)</p></li>
+<li><p>S3 methods for <code>jags_structure_definition</code> (generates BUGS code for JAGS/NIMBLE)</p></li>
+<li><p>S3 methods for <code>prepare_structure_data</code> (prepares data for model engines)</p></li>
 </ul><p>The precision function should return either:</p><ul><li><p>A single matrix (the precision matrix)</p></li>
 <li><p>A list with <code>Prec</code> (the precision matrix) and optionally other data</p></li>
 </ul><p><strong>Engine compatibility:</strong> Full BUGS code generation (including 3D precision

@@ -1,7 +1,7 @@
-# Prepare Multiscale Data for JAGS
+# Prepare Multiscale Data for BUGS Engines
 
 Transforms multiscale dataframes into a flat list of vectors and ID
-indices suitable for JAGS
+indices suitable for JAGS and NIMBLE
 
 ## Usage
 
@@ -21,5 +21,5 @@ prepare_hierarchical_jags_data(hierarchical_info, vars_needed)
 
 ## Value
 
-List with 'data_list' (for jags) and 'n_vec' (named vector of sample
-sizes)
+List with 'data_list' (for JAGS/NIMBLE) and 'n_vec' (named vector of
+sample sizes)

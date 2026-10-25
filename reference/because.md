@@ -294,7 +294,7 @@ An object of class `"because"` containing:
 
 - model:
 
-  JAGS model code.
+  Model code (BUGS string for JAGS/NIMBLE, or Python code for NumPyro).
 
 - summary:
 

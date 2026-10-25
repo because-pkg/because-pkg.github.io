@@ -1,6 +1,7 @@
-# Generate JAGS Code for Polynomial Transformations
+# Generate BUGS Code for Polynomial Transformations
 
-Creates deterministic nodes for polynomial terms
+Creates deterministic nodes for polynomial terms in JAGS and NIMBLE
+models
 
 ## Usage
 
@@ -16,4 +17,4 @@ generate_polynomial_jags(poly_terms)
 
 ## Value
 
-Character vector of JAGS code lines
+Character vector of BUGS code lines

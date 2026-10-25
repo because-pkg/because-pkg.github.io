@@ -65,9 +65,10 @@ refitting the model N times. This is particularly useful for:
 - k \> 1: Very problematic (refit model excluding these observations)
 
 **Note on implementation**: This function extracts the pointwise
-log-likelihoods calculated by the JAGS model (monitored as `log_lik[i]`)
-when `WAIC = TRUE`. It does not re-compute likelihoods from posterior
-samples in R, ensuring consistency with the fitted model structure.
+log-likelihoods calculated during model sampling (monitored as
+`log_lik[i]`) when `WAIC = TRUE`. It does not re-compute likelihoods
+from posterior samples in R, ensuring consistency with the fitted model
+structure.
 
 ## Examples
 

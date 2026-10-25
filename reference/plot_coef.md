@@ -49,7 +49,7 @@ plot_coef(
     impacts.
 
   - `"raw"` (default): Shows the raw structural parameters (betas/rhos)
-    from the JAGS model. Useful for model diagnostics but harder to
+    from the fitted model. Useful for model diagnostics but harder to
     interpret on the original data scale.
 
 - multinomial_probabilities:

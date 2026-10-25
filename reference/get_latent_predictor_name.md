@@ -22,7 +22,7 @@ get_latent_predictor_name(family, predictor_name, predictor_index, ...)
 
 - predictor_index:
 
-  Character; the JAGS-indexed predictor string (e.g. `"Species[i]"`)
+  Character; the indexed predictor string (e.g. `"Species[i]"`)
 
 - ...:
 
@@ -30,4 +30,4 @@ get_latent_predictor_name(family, predictor_name, predictor_index, ...)
 
 ## Value
 
-Character; the JAGS-indexed string to use in the linear predictor
+Character; the indexed string to use in the linear predictor

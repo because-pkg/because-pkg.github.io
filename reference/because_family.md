@@ -1,8 +1,8 @@
 # Create a Custom Family (Distribution) for use with because
 
 This helper function allows users to easily create custom distribution
-families by providing the JAGS likelihood code. The function handles S3
-method registration.
+families by providing the BUGS likelihood code (for JAGS and NIMBLE).
+The function handles S3 method registration.
 
 ## Usage
 
@@ -20,9 +20,9 @@ because_family(
 
 - jags_likelihood:
 
-  A character string with the JAGS likelihood code. Use placeholders:
-  `{response}` for variable name, `{mu}` for mean, `{i}` for loop index,
-  `{tau}` for precision parameter.
+  A character string with the BUGS likelihood code (used by JAGS and
+  NIMBLE). Use placeholders: `{response}` for variable name, `{mu}` for
+  mean, `{i}` for loop index, `{tau}` for precision parameter.
 
 - link:
 
@@ -31,7 +31,7 @@ because_family(
 
 - extra_priors:
 
-  Character vector of additional JAGS prior statements. Use `{response}`
+  Character vector of additional BUGS prior statements. Use `{response}`
   placeholder for variable-specific naming.
 
 - name:
