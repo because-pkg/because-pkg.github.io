@@ -279,6 +279,35 @@ mag_basis_to_formulas <- function(
         return(pts[is_minimal])
     }), recursive = FALSE)
 
+    # S3 Extension Hook: Expand compound latent nodes and retrieve compound groups
+    compound_groups <- NULL
+    latent_rename_map <- list()
+    if (!is.null(family)) {
+        fam_cls_obj <- family
+        class(fam_cls_obj) <- unique(c(
+            paste0("because_family_", tolower(unique(unlist(family)))),
+            class(fam_cls_obj)
+        ))
+        all_candidate_vars <- unique(c(
+            unlist(basis_set),
+            if (!is.null(d_obj)) names(d_obj) else character(0)
+        ))
+        hook_res <- tryCatch(
+            dag_expand_hook(fam_cls_obj, list(), character(), vars = all_candidate_vars),
+            error = function(e) list(compound_groups = NULL)
+        )
+        if (!is.null(hook_res$compound_groups)) {
+            compound_groups <- hook_res$compound_groups
+            for (base_v in names(compound_groups)) {
+                grp <- compound_groups[[base_v]]
+                state_node <- if (!is.null(grp$state_node)) grp$state_node else grp$nodes[!grepl("^p_", grp$nodes)]
+                if (length(state_node) >= 1) {
+                    latent_rename_map[[base_v]] <- state_node[1]
+                }
+            }
+        }
+    }
+
     formulas <- list()
 
     for (test in basis_set) {
@@ -362,20 +391,33 @@ mag_basis_to_formulas <- function(
             }
         }
 
-        # Parameter hierarchy: latent detection/state parameters (p_, psi_, z_)
-        # serve as responses when paired with observational covariates.
-        is_param <- function(v) grepl("^(p_|psi_|z_)", v)
+        # Parameter hierarchy: compound node components (e.g. latent state vs observation parameters)
+        # Observational / detection parameters serve as responses when paired with covariates or state nodes.
+        is_obs_param <- function(v) {
+            if (!is.null(compound_groups)) {
+                for (grp in compound_groups) {
+                    if (!is.null(grp$obs_node) && v == grp$obs_node) return(TRUE)
+                }
+            }
+            grepl("^p_", v)
+        }
+        is_state_param <- function(v) {
+            if (!is.null(compound_groups)) {
+                for (grp in compound_groups) {
+                    if (!is.null(grp$state_node) && v == grp$state_node) return(TRUE)
+                }
+            }
+            grepl("^(psi_|z_|phi_)", v)
+        }
+        is_any_param <- function(v) is_obs_param(v) || is_state_param(v)
 
-        if (is_param(var2) && !is_param(var1)) {
+        if (is_any_param(var2) && !is_any_param(var1)) {
             temp <- var1
             var1 <- var2
             var2 <- temp
-        } else if (is_param(var2) && is_param(var1)) {
-            # When pairing detection (p_) and occupancy (psi_/z_), make p_ the response
-            is_p1 <- grepl("^p_", var1)
-            is_p2 <- grepl("^p_", var2)
-
-            if (is_p2 && !is_p1) {
+        } else if (is_any_param(var2) && is_any_param(var1)) {
+            # When pairing observation parameter and state parameter, make observation parameter the response
+            if (is_obs_param(var2) && !is_obs_param(var1)) {
                 temp <- var1
                 var1 <- var2
                 var2 <- temp
@@ -429,32 +471,8 @@ mag_basis_to_formulas <- function(
 
         # Build formula string
 
-        # Predictor renaming for latent-state families (occupancy, cmr, etc.)
-        # dag_expand_hook tells us which vars map to which latent state prefix.
-        if (!is.null(family)) {
-            # Build a rename map: base_var -> state_var (e.g. "Y" -> "psi_Y")
-            # by calling dag_expand_hook on the family object with empty equations/latent.
-            fam_cls_obj <- family
-            class(fam_cls_obj) <- unique(c(
-                paste0("because_family_", tolower(unique(unlist(family)))),
-                class(fam_cls_obj)
-            ))
-            hook_res <- tryCatch(
-                dag_expand_hook(fam_cls_obj, list(), character()),
-                error = function(e) list(compound_groups = NULL)
-            )
-            latent_rename_map <- list()
-            if (!is.null(hook_res$compound_groups)) {
-                for (base_v in names(hook_res$compound_groups)) {
-                    grp <- hook_res$compound_groups[[base_v]]
-                    # Find the state node (not the p_ node)
-                    state_node <- grp$nodes[!grepl("^p_", grp$nodes)]
-                    if (length(state_node) == 1) {
-                        latent_rename_map[[base_v]] <- state_node
-                    }
-                }
-            }
-
+        # Predictor renaming for latent-state families
+        if (length(latent_rename_map) > 0) {
             rename_latent_pred <- function(v) {
                 if (grepl("^(p_|psi_|phi_|z_)", v)) {
                     return(v)
@@ -531,13 +549,17 @@ mag_basis_to_formulas <- function(
 
                         # Robust check: identify if EITHER the response OR the test variable
                         # is a parent/component of this deterministic conditioning node.
+                        bad_components <- unique(c(resp_var, test_var_r))
+                        if (!is.null(compound_groups)) {
+                            for (grp in compound_groups) {
+                                if (any(bad_components %in% grp$nodes)) {
+                                    bad_components <- unique(c(bad_components, grp$nodes, grp$name))
+                                }
+                            }
+                        }
                         bad_components <- unique(c(
-                            resp_var,
-                            test_var_r,
-                            sub("^psi_", "", resp_var),
-                            sub("^psi_", "", test_var_r),
-                            sub("^p_", "", resp_var),
-                            sub("^p_", "", test_var_r)
+                            bad_components,
+                            sub("^(p_|psi_|z_|phi_)", "", bad_components)
                         ))
 
                         if (any(bad_components %in% components)) {
@@ -563,28 +585,33 @@ mag_basis_to_formulas <- function(
             }
 
             # -------------------------------------------------------------
-            # 2. OCCUPANCY PARAMETER COUPLING
+            # 2. COMPOUND PARAMETER COUPLING
             # -------------------------------------------------------------
-            # Helper to extract species name from p_Species or psi_Species or Species
-            get_species <- function(x) {
-                x <- sub("^p_", "", x)
-                x <- sub("^psi_", "", x)
-                x <- sub("^z_", "", x)
-                return(x)
+            # Components of the same compound entity (e.g. state vs observation process)
+            # are structurally coupled in the likelihood and cannot be tested against each other.
+            coupled_test <- FALSE
+            if (!is.null(compound_groups) && length(compound_groups) > 0) {
+                for (grp in compound_groups) {
+                    if (resp_var %in% grp$nodes && test_var_r %in% grp$nodes) {
+                        coupled_test <- TRUE
+                        break
+                    }
+                }
             }
 
-            s1 <- get_species(resp_var)
-            s2 <- get_species(test_var_r)
+            # Fallback for coupled state/observation parameters if compound_groups is not set
+            if (!coupled_test) {
+                get_base_param <- function(x) sub("^(p_|psi_|z_|phi_)", "", x)
+                b1 <- get_base_param(resp_var)
+                b2 <- get_base_param(test_var_r)
+                is_p1 <- grepl("^p_", resp_var)
+                is_p2 <- grepl("^p_", test_var_r)
+                if (b1 == b2 && ((is_p1 && !is_p2) || (!is_p1 && is_p2))) {
+                    coupled_test <- TRUE
+                }
+            }
 
-            # Check if one is p_ and the other is a state variable (psi, z, or raw species name)
-            is_p1 <- grepl("^p_", resp_var)
-            is_p2 <- grepl("^p_", test_var_r)
-
-            is_state1 <- !is_p1
-            is_state2 <- !is_p2
-
-            # Condition: Same species AND one is p, one is state
-            if (s1 == s2 && ((is_p1 && is_state2) || (is_state1 && is_p2))) {
+            if (coupled_test) {
                 keep_indices[i] <- FALSE
             }
         }
