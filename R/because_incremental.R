@@ -25,7 +25,7 @@ find_reusable_tests <- function(
     family = NULL,
     quiet = FALSE
 ) {
-    if (is.null(reuse_models) || length(reuse_models) == 0) {
+    if (is.null(reuse_models) || isFALSE(reuse_models) || length(reuse_models) == 0) {
         return(list(found = list(), missing_indices = seq_along(current_tests)))
     }
 

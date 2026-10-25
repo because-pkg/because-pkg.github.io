@@ -126,36 +126,27 @@ run_dsep_jags_nimble <- function(
     ))
     for (lbl in skipped_labels) message(lbl)
   }
-  dsep_tests_skipped <- dsep_tests[cross_hier_flags]
   dsep_tests <- dsep_tests[!cross_hier_flags]
 
   if (length(dsep_tests) == 0) {
-    warning("All d-separation tests were cross-hierarchy (trivially satisfied). ",
-            "No JAGS models will be run.")
-  }
-
-  use_parallel <- parallel && n.cores > 1 && length(dsep_tests) > 1
-
-  # INCREMENTAL D-SEP: Check for reusable tests
-  reused_results <- list()
-  tests_to_run_indices <- seq_along(dsep_tests)
-
-  if (!is.null(reuse_models)) {
-    incremental_check <- find_reusable_tests(
-      dsep_tests,
-      equations,
-      reuse_models,
-      data,
-      family = if (!is.null(family)) as.list(family) else NULL,
-      quiet = quiet
+    warning(
+      "All d-separation tests were cross-hierarchy (trivially satisfied). ",
+      "No MCMC models will be run."
     )
-    reused_results <- incremental_check$found
-    tests_to_run_indices <- incremental_check$missing_indices
-
-    if (length(tests_to_run_indices) < 2) {
-      use_parallel <- FALSE
-    }
   }
+
+  incremental_check <- find_reusable_tests(
+    dsep_tests,
+    equations,
+    reuse_models,
+    data,
+    family = if (!is.null(family)) as.list(family) else NULL,
+    quiet = quiet
+  )
+  reused_results <- incremental_check$found
+  tests_to_run_indices <- incremental_check$missing_indices
+
+  use_parallel <- parallel && n.cores > 1 && length(tests_to_run_indices) > 1
 
   if (!quiet) {
     if (use_parallel) {
@@ -186,12 +177,54 @@ run_dsep_jags_nimble <- function(
   }
 
   if (length(tests_to_run_indices) > 0) {
+    family_list <- if (!is.null(family)) as.list(family) else NULL
+
+    run_one_test <- function(i) {
+      test_eq <- dsep_tests[[i]]
+      tryCatch(
+        run_single_dsep_test_v2(
+          i,
+          test_eq,
+          "interpretable",
+          engine = engine,
+          nimble_samplers = nimble_samplers,
+          quiet = quiet,
+          original_data = original_data,
+          hierarchical_info = hierarchical_info,
+          random_terms = random_terms,
+          equations = equations,
+          family = family_list,
+          structure = structure,
+          levels = levels,
+          hierarchy = hierarchy,
+          multiscale = multiscale,
+          link_vars = link_vars,
+          fix_residual_variance = fix_residual_variance,
+          latent = latent,
+          latent_method = latent_method,
+          n.chains = n.chains,
+          n.iter = n.iter,
+          n.burnin = n.burnin,
+          n.thin = n.thin,
+          n.adapt = n.adapt,
+          variability = variability,
+          ic_recompile = ic_recompile,
+          dsep_max_obs = dsep_max_obs,
+          aggregate_crossscale = aggregate_crossscale
+        ),
+        error = function(e) {
+          list(
+            test_index = i,
+            error = e$message,
+            test_eq = test_eq
+          )
+        }
+      )
+    }
+
     if (use_parallel) {
-      cl <- NULL
-      if (is.null(cl)) {
-        cl <- parallel::makeCluster(n.cores)
-        on.exit(parallel::stopCluster(cl), add = TRUE)
-      }
+      cl <- parallel::makeCluster(n.cores)
+      on.exit(parallel::stopCluster(cl), add = TRUE)
 
       parent_exts <- grep("^because\\.", loadedNamespaces(), value = TRUE)
 
@@ -225,6 +258,7 @@ run_dsep_jags_nimble <- function(
           "n.adapt",
           "variability",
           "family",
+          "family_list",
           "latent",
           "latent_method",
           "ic_recompile",
@@ -249,211 +283,28 @@ run_dsep_jags_nimble <- function(
           "get_level_depth",
           "sanitize_term_name",
           "dsep_tree_hook",
-          "dsep_equations_hook"
+          "dsep_equations_hook",
+          "dsep_max_obs",
+          "aggregate_crossscale"
         ),
         envir = environment()
       )
 
       if (requireNamespace("pbapply", quietly = TRUE)) {
-        par_results <- pbapply::pblapply(
-          X = tests_to_run_indices,
-          cl = cl,
-          FUN = function(i) {
-            test_eq <- dsep_tests[[i]]
-            current_monitor <- "interpretable"
-
-            tryCatch({
-              run_single_dsep_test_v2(
-                i,
-                test_eq,
-                current_monitor,
-                engine = engine,
-                nimble_samplers = nimble_samplers,
-                quiet = quiet,
-                original_data = original_data,
-                hierarchical_info = hierarchical_info,
-                random_terms = random_terms,
-                equations = equations,
-                family = if (!is.null(family)) as.list(family) else NULL,
-                structure = structure,
-                levels = levels,
-                hierarchy = hierarchy,
-                multiscale = multiscale,
-                link_vars = link_vars,
-                fix_residual_variance = fix_residual_variance,
-                latent = latent,
-                latent_method = latent_method,
-                n.chains = n.chains,
-                n.iter = n.iter,
-                n.burnin = n.burnin,
-                n.thin = n.thin,
-                n.adapt = n.adapt,
-                variability = variability,
-                ic_recompile = ic_recompile,
-                dsep_max_obs = dsep_max_obs,
-                aggregate_crossscale = aggregate_crossscale
-              )
-            }, error = function(e) {
-              list(
-                test_index = i,
-                error = e$message,
-                test_eq = test_eq
-              )
-            })
-          }
-        )
+        ran_results <- pbapply::pblapply(tests_to_run_indices, run_one_test, cl = cl)
       } else {
-        par_results <- parallel::parLapply(
-          cl = cl,
-          X = tests_to_run_indices,
-          fun = function(i) {
-            test_eq <- dsep_tests[[i]]
-            current_monitor <- "interpretable"
-
-            tryCatch({
-              run_single_dsep_test_v2(
-                i,
-                test_eq,
-                current_monitor,
-                engine = engine,
-                nimble_samplers = nimble_samplers,
-                quiet = quiet,
-                original_data = original_data,
-                hierarchical_info = hierarchical_info,
-                random_terms = random_terms,
-                equations = equations,
-                family = if (!is.null(family)) as.list(family) else NULL,
-                structure = structure,
-                levels = levels,
-                hierarchy = hierarchy,
-                multiscale = multiscale,
-                link_vars = link_vars,
-                fix_residual_variance = fix_residual_variance,
-                latent = latent,
-                latent_method = latent_method,
-                n.chains = n.chains,
-                n.iter = n.iter,
-                n.burnin = n.burnin,
-                n.thin = n.thin,
-                n.adapt = n.adapt,
-                variability = variability,
-                ic_recompile = ic_recompile,
-                dsep_max_obs = dsep_max_obs,
-                aggregate_crossscale = aggregate_crossscale
-              )
-            }, error = function(e) {
-              list(
-                test_index = i,
-                error = e$message,
-                test_eq = test_eq
-              )
-            })
-          }
-        )
-      }
-
-      for (k in seq_along(tests_to_run_indices)) {
-        i <- tests_to_run_indices[k]
-        new_results_list[[i]] <- par_results[[k]]
+        ran_results <- parallel::parLapply(cl, tests_to_run_indices, run_one_test)
       }
     } else {
-      # Sequential execution
-      iterator <- tests_to_run_indices
-      if (requireNamespace("pbapply", quietly = TRUE) && length(iterator) > 0) {
-        seq_results <- pbapply::pblapply(iterator, function(i) {
-          test_eq <- dsep_tests[[i]]
-          current_monitor <- "interpretable"
-
-          tryCatch({
-            run_single_dsep_test_v2(
-              i,
-              test_eq,
-              current_monitor,
-              engine = engine,
-              nimble_samplers = nimble_samplers,
-              quiet = quiet,
-              original_data = original_data,
-              hierarchical_info = hierarchical_info,
-              random_terms = random_terms,
-              equations = equations,
-              family = if (!is.null(family)) as.list(family) else NULL,
-              structure = structure,
-              levels = levels,
-              hierarchy = hierarchy,
-              multiscale = multiscale,
-              link_vars = link_vars,
-              fix_residual_variance = fix_residual_variance,
-              latent = latent,
-              latent_method = latent_method,
-              n.chains = n.chains,
-              n.iter = n.iter,
-              n.burnin = n.burnin,
-              n.thin = n.thin,
-              n.adapt = n.adapt,
-              variability = variability,
-              ic_recompile = ic_recompile,
-              dsep_max_obs = dsep_max_obs,
-              aggregate_crossscale = aggregate_crossscale
-            )
-          }, error = function(e) {
-            list(
-              test_index = i,
-              error = e$message,
-              test_eq = test_eq
-            )
-          })
-        })
-
-        for (k in seq_along(tests_to_run_indices)) {
-          i <- tests_to_run_indices[k]
-          new_results_list[[i]] <- seq_results[[k]]
-        }
+      if (requireNamespace("pbapply", quietly = TRUE)) {
+        ran_results <- pbapply::pblapply(tests_to_run_indices, run_one_test)
       } else {
-        for (i in tests_to_run_indices) {
-          test_eq <- dsep_tests[[i]]
-          current_monitor <- "interpretable"
-
-          res <- tryCatch({
-            run_single_dsep_test_v2(
-              i,
-              test_eq,
-              current_monitor,
-              engine = engine,
-              nimble_samplers = nimble_samplers,
-              quiet = quiet,
-              original_data = original_data,
-              hierarchical_info = hierarchical_info,
-              random_terms = random_terms,
-              equations = equations,
-              family = if (!is.null(family)) as.list(family) else NULL,
-              structure = structure,
-              levels = levels,
-              hierarchy = hierarchy,
-              multiscale = multiscale,
-              link_vars = link_vars,
-              fix_residual_variance = fix_residual_variance,
-              latent = latent,
-              latent_method = latent_method,
-              n.chains = n.chains,
-              n.iter = n.iter,
-              n.burnin = n.burnin,
-              n.thin = n.thin,
-              n.adapt = n.adapt,
-              variability = variability,
-              ic_recompile = ic_recompile,
-              dsep_max_obs = dsep_max_obs,
-              aggregate_crossscale = aggregate_crossscale
-            )
-          }, error = function(e) {
-            list(
-              test_index = i,
-              error = e$message,
-              test_eq = test_eq
-            )
-          })
-          new_results_list[[i]] <- res
-        }
+        ran_results <- lapply(tests_to_run_indices, run_one_test)
       }
+    }
+
+    for (k in seq_along(tests_to_run_indices)) {
+      new_results_list[[tests_to_run_indices[k]]] <- ran_results[[k]]
     }
   }
 
