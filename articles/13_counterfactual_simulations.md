@@ -95,10 +95,10 @@ summary(res_atomic)
 #> Estimates represent the global expectation (averaged across all observations)
 #> under the intervened causal structure.
 #> 
-#>   Variable  Mean     SD  2.5%   50% 97.5%
-#>       Temp 2.000 0.0000 2.000 2.000 2.000
-#>   Resource 1.141 0.2516 0.680 1.105 1.628
-#>  Abundance 2.127 0.7548 1.189 1.880 4.054
+#>   Variable  Mean     SD   2.5%   50% 97.5%
+#>       Temp 2.000 0.0000 2.0000 2.000 2.000
+#>   Resource 1.174 0.2487 0.7375 1.190 1.638
+#>  Abundance 2.225 0.9115 1.0745 2.055 5.162
 ```
 
 Notice that the `SD` for `Temp` is exactly 0—because we intervened and
@@ -121,10 +121,10 @@ summary(res_shift)
 #> Estimates represent the global expectation (averaged across all observations)
 #> under the intervened causal structure.
 #> 
-#>   Variable   Mean     SD   2.5%    50%  97.5%
-#>       Temp 1.0000 0.0000 1.0000 1.0000 1.0000
-#>   Resource 0.5377 0.1707 0.1911 0.5421 0.8787
-#>  Abundance 1.8226 0.4966 1.0595 1.7200 3.1122
+#>   Variable  Mean     SD   2.5%    50%  97.5%
+#>       Temp 1.000 0.0000 1.0000 1.0000 1.0000
+#>   Resource 0.549 0.1852 0.2429 0.5522 0.8791
+#>  Abundance 1.847 0.5361 0.9895 1.7650 3.0065
 ```
 
 ## Intervening on the Raw Metric (`raw_scale = TRUE`)
@@ -153,10 +153,10 @@ summary(res_raw)
 #> Estimates represent the global expectation (averaged across all observations)
 #> under the intervened causal structure.
 #> 
-#>   Variable   Mean     SD   2.5%   50% 97.5%
-#>       Temp 22.130 0.0000 22.130 22.13 22.13
-#>   Resource 21.074 0.6114 19.999 21.08 22.33
-#>  Abundance  1.641 0.4063  1.018  1.58  2.74
+#>   Variable   Mean     SD   2.5%   50%  97.5%
+#>       Temp 22.130 0.0000 22.130 22.13 22.130
+#>   Resource 21.075 0.6234 20.003 21.09 22.107
+#>  Abundance  1.659 0.4760  1.068  1.60  2.901
 ```
 
 > **Important Note:** Base R’s `data.frame(Temp = scale(raw_temp))`
@@ -187,10 +187,10 @@ summary(res_perc)
 #> Estimates represent the global expectation (averaged across all observations)
 #> under the intervened causal structure.
 #> 
-#>   Variable   Mean     SD   2.5%   50%  97.5%
-#>       Temp 22.143 0.0000 22.143 22.14 22.143
-#>   Resource 21.046 0.6516 19.799 21.08 22.018
-#>  Abundance  1.614 0.4326  1.048  1.58  2.637
+#>   Variable   Mean     SD   2.5%    50%  97.5%
+#>       Temp 22.143 0.0000 22.143 22.143 22.143
+#>   Resource 21.050 0.6208 19.768 21.110 22.205
+#>  Abundance  1.626 0.4268  1.026  1.575  2.423
 ```
 
 *(Note: Under the hood, the `%` string syntax is a convenient shortcut
@@ -215,8 +215,8 @@ summary(res_stoch)
 #> 
 #>   Variable   Mean      SD   2.5%    50%  97.5%
 #>       Temp 0.9993 0.02104 0.9523 1.0038 1.0347
-#>   Resource 0.5344 0.17032 0.2598 0.5363 0.7735
-#>  Abundance 1.7719 0.50792 1.0398 1.6600 2.7905
+#>   Resource 0.5460 0.18334 0.2270 0.5368 0.8823
+#>  Abundance 1.8285 0.67707 1.0600 1.6900 3.3132
 ```
 
 ## Extracting Site-Specific Counterfactuals
@@ -240,12 +240,12 @@ dim(abund_matrix)
 
 # Calculate the mean counterfactual abundance for Site 5
 mean(abund_matrix[, 5])
-#> [1] 1.875
+#> [1] 1.8375
 
 # Calculate the 95% Credible Interval for Site 5
 quantile(abund_matrix[, 5], probs = c(0.025, 0.975))
 #>  2.5% 97.5% 
-#>  0.00  8.05
+#> 0.000 7.075
 ```
 
 This flexibility allows you to easily compute site-specific treatment
