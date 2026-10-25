@@ -52,10 +52,8 @@ marginal_effects <- function(fit, at = NULL, prob = 0.95, samples = 1000, multin
   samples_mat <- as.matrix(fit$samples)
   n_total_samples <- nrow(samples_mat)
   
-  # Subsample for performance
+  # Subsample posterior draws for performance
   if (!is.null(samples) && samples < n_total_samples) {
-    # [FIX] Use a fixed seed for deterministic subsampling across different plot calls
-    set.seed(12345)
     idx <- round(seq(1, n_total_samples, length.out = samples))
     samples_mat <- samples_mat[idx, , drop = FALSE]
   }

@@ -156,7 +156,7 @@ prepare_monitors_and_inits <- function(
       if (!is.matrix(data[[pv]])) {
         data[[pv]] <- as.matrix(data[[pv]])
       }
-      # [STABILITY] Add small diagonal jitter (nugget) to ensure positive definiteness
+      # Add small diagonal jitter (nugget) to ensure positive definiteness
       # and prevent numerical singularities during C++ compilation.
       # Ref: Rasmussen & Williams (2006), Gaussian Processes for Machine Learning.
       diag(data[[pv]]) <- diag(data[[pv]]) + 1e-6

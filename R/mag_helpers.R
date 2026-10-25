@@ -499,17 +499,9 @@ mag_basis_to_formulas <- function(
             )
         }
         f <- stats::as.formula(formula_str)
-        attr(f, "test_var") <- var2_r # The variable being tested for independence
+        attr(f, "test_var") <- var2_r
         
-        # Attach multiscale resolution (level/scale) to the test.
-        # [RESOLVED 2026-05-06] To prevent DOF inflation and massive slowdowns, 
-        # the test resolution is locked to the FINEST level among the predictors 
-        # (including conditioning variables). If the response is finer, 
-        # it will be aggregated up to this scale.
-        # Attach multiscale resolution (level/scale) to the test.
-        # [RESOLVED 2026-05-06] The test resolution is locked to the level of 
-        # the Dependent Variable (Response). This ensures appropriate sample sizes 
-        # and prevents DOF inflation for coarser-level tests.
+        # Lock multiscale test resolution to the level of the response variable
         if (!is.null(hierarchical_info) && !is.null(var1_lvl)) {
             attr(f, "scale") <- var1_lvl
         }
@@ -517,29 +509,16 @@ mag_basis_to_formulas <- function(
         formulas[[length(formulas) + 1]] <- f
     }
 
-    # EXCLUSION RULE (User Request): Remove tests between p_Species and psi_Species (or Species itself)
-    # for the same species. These are structurally coupled and testing independence is confusing/invalid.
-
     if (length(formulas) > 0) {
         keep_indices <- rep(TRUE, length(formulas))
 
         for (i in seq_along(formulas)) {
             f <- formulas[[i]]
-            test_var_r <- attr(f, "test_var") # Original R syntax or internal name
+            test_var_r <- attr(f, "test_var")
             resp_var <- as.character(f)[2]
 
-            resp_var <- as.character(f)[2]
-
-            # -------------------------------------------------------------
-            # 1. CYCLE PREVENTION: Detect Deterministic Descendants
-            # -------------------------------------------------------------
-            # If a conditioning variable is a deterministic term (e.g. BM:M)
-            # and it contains the response or test_var as a component,
-            # conditioning on it in a regression creates a JAGS cycle.
+            # 1. Cycle prevention: detect deterministic descendants
             if (!is.null(deterministic_terms)) {
-                # [FIX] Use labels(terms(f)) instead of all.vars(f) to get the ACTUAL terms
-                # on the RHS (including interactions and I(...) calls), otherwise they
-                # are decomposed into components and the match fails.
                 rhs_terms <- labels(terms(f))
 
                 for (cv in rhs_terms) {

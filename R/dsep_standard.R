@@ -254,7 +254,6 @@ dsep_standard <- function(
       cat("No elements in the basis set", "\n")
     } else {
       for (test in tests) {
-        # [FIX] Pass random_terms to show grouping variables in conditioning set
         cat(format_dsep_test(test, random_terms = random_terms), "\n")
       }
     }

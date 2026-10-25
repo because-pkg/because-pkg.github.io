@@ -316,7 +316,6 @@ dsep_with_latents <- function(
       cat("No elements in the basis set", "\n")
     } else {
       for (test in tests_for_display) {
-        # [FIX] Pass random_terms to show grouping variables in conditioning set
         cat(format_dsep_test(test, random_terms = random_terms), "\n")
       }
     }

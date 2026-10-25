@@ -78,11 +78,5 @@ data_list <- because_format_data(data_long, id_col = "ID")
 prec_mat <- diag(3)
 rownames(prec_mat) <- colnames(prec_mat) <- c("ind3", "ind1", "ind2")
 data_aligned <- because_format_data(data_long, id_col = "ID", structure = prec_mat)
-
-# Example 3: Phylogenetic tree alignment (backward-compatible aliases)
-if (requireNamespace("ape", quietly = TRUE)) {
-  tree <- ape::read.tree(text = "(ind1:1,ind2:1,ind3:1);")
-  data_phylo <- because_format_data(data_long, species_col = "ID", tree = tree)
-}
 }
 }

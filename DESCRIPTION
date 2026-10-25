@@ -49,9 +49,8 @@ Suggests:
     nimble,
     nimbleHMC,
     reticulate,
-    ape,
     MASS
-Config/Needs/website: pkgdown, ggm, nimble, ape, MASS
+Config/Needs/website: pkgdown, nimble, MASS
 VignetteBuilder: knitr, rmarkdown
 URL: https://because-pkg.github.io, https://github.com/because-pkg/because-pkg.github.io
 BugReports: https://github.com/because-pkg/because-pkg.github.io/issues

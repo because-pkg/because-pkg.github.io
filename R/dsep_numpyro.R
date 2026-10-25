@@ -71,9 +71,7 @@ run_dsep_numpyro <- function(
     }
   }
   
-  # --- HOTFIX: Ultimate safety net for Python/JAX ---
-  # Remove any character or factor vectors from data before passing to NumPyro
-  # to guarantee we never hit a JAX string dtype error.
+  # Remove character or factor vectors before passing to NumPyro
   for (n in names(data)) {
     if (is.character(data[[n]]) || is.factor(data[[n]])) {
       data[[n]] <- NULL
@@ -193,9 +191,8 @@ run_dsep_numpyro <- function(
           if (!quiet) {
             message(sprintf("  -> Cross-scale test detected: focal predictor '%s' at %s level, response '%s' at %s level", cs_info$test_var, cs_info$predictor_level, cs_info$response, cs_info$response_level))
           }
-          # Run PGLS in R instead of passing to Python
           synth_iter <- max(1000, n.iter)
-          mcmc_res <- run_crossscale_dsep_pgls(
+          mcmc_res <- run_crossscale_dsep(
             i = i, test_eq = eq, cs_info = cs_info,
             original_data = original_data, hierarchical_info = hierarchical_info,
             structure = structure, family = family, engine = engine, 
@@ -392,7 +389,6 @@ run_dsep_numpyro <- function(
         
         dsep_df_list[[i]]$Test <- test_str_base
 
-        # Also force rounding for standard Python tests so they look beautiful
         if ("Estimate" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$Estimate <- round(as.numeric(dsep_df_list[[i]]$Estimate), 3)
         if ("LowerCI" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$LowerCI <- round(as.numeric(dsep_df_list[[i]]$LowerCI), 3)
         if ("UpperCI" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$UpperCI <- round(as.numeric(dsep_df_list[[i]]$UpperCI), 3)

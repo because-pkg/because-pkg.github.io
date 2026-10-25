@@ -285,8 +285,6 @@ summary.because <- function(
             return(do.call(rbind, test_results))
         })
 
-        # Bind all results efficiently
-        # [FIX] Handle case where all results are NULL (all tests skipped/failed)
         if (is.null(results_list) || length(results_list) == 0 || all(vapply(results_list, is.null, logical(1)))) {
             results <- NULL
         } else {
@@ -471,13 +469,7 @@ print.summary.because <- function(x, ...) {
         cat("d-separation Tests\n")
         cat("==================\n\n")
         
-        # [FIX] Robust guard for empty/NULL/invalid results
-        has_results <- FALSE
-        if (!is.null(results) && is.data.frame(results)) {
-            if (nrow(results) > 0) {
-                has_results <- TRUE
-            }
-        }
+        has_results <- !is.null(results) && is.data.frame(results) && nrow(results) > 0
 
         if (!has_results) {
             cat("No test results found. Check if tests were skipped or all d-sep sub-models failed.\n\n")

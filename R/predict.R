@@ -121,14 +121,13 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
     if (p_name %in% colnames(samples_mat)) {
       b_samples <- samples_mat[, p_name]
       
-      # [Smart Lookup] Search top-level or sub-lists for predictor
+      # Search top-level or sub-lists for predictor
       x_vals <- NULL
       search_data <- if (!is.null(newdata)) newdata else object$original_data
       
       if (v_name %in% names(search_data)) {
           x_vals <- search_data[[v_name]]
       } else if (is.list(search_data) && !is.data.frame(search_data)) {
-          # Search inside site, survey, etc.
           for (df_name in names(search_data)) {
               if (is.data.frame(search_data[[df_name]]) && v_name %in% names(search_data[[df_name]])) {
                   x_vals <- search_data[[df_name]][[v_name]]
@@ -137,10 +136,9 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
           }
       }
       
-      # If still not found, check standard data list
       if (is.null(x_vals)) x_vals <- data_list[[v_name]]
       
-      # [Hierarchical Resolution Alignment]
+      # Hierarchical resolution alignment
       if (!is.null(x_vals)) {
           # Case 1: x_vals is observation-level but we need higher level (e.g. species traits)
           # Check length of x_vals; if it's a matrix, check ncol

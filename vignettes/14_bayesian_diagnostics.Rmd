@@ -1,10 +1,10 @@
 ---
-title: "Purely Bayesian Regression and SEM Diagnostics"
+title: "Bayesian Regression and SEM Diagnostics"
 author: "Achaz von Hardenberg"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Purely Bayesian Regression and SEM Diagnostics}
+  %\VignetteIndexEntry{Bayesian Regression and SEM Diagnostics}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 editor_options:
@@ -263,9 +263,10 @@ $$\lambda_{\text{Bayes}}^{(s)} = \frac{\sigma_{\text{struct}}^{2(s)}}{\sigma_{\t
 
 ```{r check-structure-matrix}
 # In core because, any numeric covariance matrix can be supplied directly:
-# e.g., spatial kernel or pre-computed phylogenetic VCV matrix:
-vcv_mat <- ape::vcv(ape::rcoal(N))
-# Ensure row names match species IDs in data
+# e.g., an exponential spatial covariance matrix:
+coords  <- cbind(runif(N), runif(N))
+vcv_mat <- exp(-as.matrix(dist(coords)))
+# Ensure row names match unit IDs in data
 rownames(vcv_mat) <- colnames(vcv_mat) <- bird_data$Species
 
 # Fit model with matrix structure

@@ -225,7 +225,7 @@ preprocess_categorical_vars <- function(
         next
       }
 
-      # [FIX] Preserve existing categorical metadata if present (to keep levels consistent in subsets)
+      # Preserve existing categorical metadata if present to keep levels consistent across subsets
       existing_metadata <- categorical_vars[[col]]
       if (!is.null(existing_metadata)) {
         levels <- existing_metadata$levels
