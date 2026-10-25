@@ -13,7 +13,7 @@
 <url><loc>https://because-pkg.github.io/because/articles/11_latent_variables_mag.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/12_custom_families.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/13_counterfactual_simulations.html</loc></url>
-<url><loc>https://because-pkg.github.io/because/articles/14_purely_bayesian_diagnostics.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/articles/14_bayesian_diagnostics.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/extensions.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/articles/index.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/authors.html</loc></url>
@@ -113,7 +113,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/prepare_structure_data.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/preprocess_categorical_vars.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/print.summary.because.html</loc></url>
-<url><loc>https://because-pkg.github.io/because/reference/run_crossscale_dsep_pgls.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/run_crossscale_dsep.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/sanitize_term_name.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/storks.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/summary.because.html</loc></url>

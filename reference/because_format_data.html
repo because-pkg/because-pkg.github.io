@@ -39,7 +39,7 @@ detection/occupancy models, and structured covariance models.'><meta property="o
     <li><a class="dropdown-item" href="../articles/11_latent_variables_mag.html">Latent Variables and the MAG Approach</a></li>
     <li><a class="dropdown-item" href="../articles/12_custom_families.html">Creating Custom Distribution Families</a></li>
     <li><a class="dropdown-item" href="../articles/13_counterfactual_simulations.html">Counterfactual Simulations with the do() Operator</a></li>
-    <li><a class="dropdown-item" href="../articles/14_purely_bayesian_diagnostics.html">Purely Bayesian Regression and SEM Diagnostics</a></li>
+    <li><a class="dropdown-item" href="../articles/14_bayesian_diagnostics.html">Bayesian Regression and SEM Diagnostics</a></li>
     <li><a class="dropdown-item" href="../articles/extensions.html">Extensions</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
@@ -141,12 +141,6 @@ All units in <code>data</code> are included, sorted alphabetically by their iden
 <span class="r-in"><span><span class="va">prec_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">prec_mat</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">prec_mat</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ind3"</span>, <span class="st">"ind1"</span>, <span class="st">"ind2"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">data_aligned</span> <span class="op">&lt;-</span> <span class="fu">because_format_data</span><span class="op">(</span><span class="va">data_long</span>, id_col <span class="op">=</span> <span class="st">"ID"</span>, structure <span class="op">=</span> <span class="va">prec_mat</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Example 3: Phylogenetic tree alignment (backward-compatible aliases)</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"ape"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="va">tree</span> <span class="op">&lt;-</span> <span class="fu">ape</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/ape/man/read.tree.html" class="external-link">read.tree</a></span><span class="op">(</span>text <span class="op">=</span> <span class="st">"(ind1:1,ind2:1,ind3:1);"</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">data_phylo</span> <span class="op">&lt;-</span> <span class="fu">because_format_data</span><span class="op">(</span><span class="va">data_long</span>, species_col <span class="op">=</span> <span class="st">"ID"</span>, tree <span class="op">=</span> <span class="va">tree</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
