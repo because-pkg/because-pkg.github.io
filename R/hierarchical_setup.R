@@ -279,14 +279,9 @@ validate_hierarchical_data <- function(
 
     # Validate link_vars if provided
     if (!is.null(link_vars)) {
-        # Convert list to vector if needed
         link_vec <- if (is.list(link_vars)) unlist(link_vars) else link_vars
 
-        # We cannot strictly enforce that EVERY link var is in EVERY dataset
-        # because of multi-membership (e.g., Species and Site are independent levels)
-        # Instead, verify that each dataset has AT LEAST one link variable,
-        # UNLESS it's the very top level of a single hierarchy.
-        # Actually, the safest validation is just ensuring they exist *somewhere* in the data
+        # Ensure all specified link variables exist in at least one dataset
         all_cols <- unique(unlist(lapply(data, colnames)))
         missing_links <- setdiff(link_vec, all_cols)
         if (length(missing_links) > 0) {
@@ -352,7 +347,7 @@ infer_variable_level <- function(var, levels, data = NULL, equations = NULL, lat
         }
     }
 
-    # 3. [AUTO-INFERENCE] If variable is latent, infer level from predictors
+    # 3. If variable is latent, infer level from its predictors or children
     if (!is.null(latent) && var %in% latent && !is.null(equations)) {
         # Find which equation this variable is the response of
         for (eq in equations) {
@@ -426,11 +421,6 @@ parse_hierarchy_from_random <- function(random, data = NULL) {
         )[[1]]
 
         if (length(matches) >= 3) {
-            # matches[2] = A, matches[3] = B
-            # Hierarchy: A > A_B (Assuming B is nested in A)
-            # Actually, (1|A/B) expands to (1|A) + (1|A:B).
-            # So hierarchy is "A > B" (conceptually) or "A > id".
-            # Let's just return "A > B" as a heuristic
             return(paste(matches[2], ">", matches[3]))
         }
     }

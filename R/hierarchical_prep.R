@@ -78,17 +78,7 @@ prepare_hierarchical_jags_data <- function(hierarchical_info, vars_needed) {
         }
     }
 
-    # 2. Generate Indexing Vectors (Linking Child -> Parent)
-    # Parse hierarchy (e.g., "Site > Species")
-    # "Site" is child (finer), "Species" is parent (coarser) ??
-    # Wait, usually hierarchy is written "Coarser > Finer" in my package?
-    # Let's check: "Traits > Site_covs > Y"
-    # User said: "Traits (50 rows) ... Site_covs (200 rows)"
-    # So "Traits" is Top Level (Parent). "Site_covs" is Middle. "Y" is Bottom (Child).
-    # Hierarchy string: "Traits > Site_covs > Y"
-    # This implies Parent > Child.
-
-    # 2. Generate Indexing Vectors (Linking Child -> Parent)
+    # 2. Generate indexing vectors linking child levels to parent levels (Parent > Child)
     for (path in hierarchy_paths) {
         levels_ordered <- trimws(strsplit(path, "\\s*>\\s*")[[1]])
 
@@ -156,26 +146,8 @@ prepare_hierarchical_jags_data <- function(hierarchical_info, vars_needed) {
                 }
 
                 idx_vec <- match(child_vals, parent_vals)
-
-                # Naming convention: {Parent}_ID_in_{Child} ?? or just {Parent}_ID?
-                # If we are in loop of Child, we access Parent[Parent_ID[i]]
-                # But Child might not be the 'main' loop?
-                # Actually, simple name: "{Parent}_ID" (vector of length Child)
-                # Wait, if there are 3 levels A > B > C.
-                # B needs A_ID (length N_B).
-                # C needs B_ID (length N_C).
-                # We name it specifically for the level it resides in?
-                # No, JAGS models usually assume implicit context.
-                # But here we have explicit loops.
-                # Loop C uses: B_var[ B_index_in_C[i] ]
-                # Loop B uses: A_var[ A_index_in_B[i] ]
-
-                idx_name <- paste0(parent_lvl, "_idx_", child_lvl) # Explicit: Parent index vector residing in Child
-
+                idx_name <- paste0(parent_lvl, "_idx_", child_lvl)
                 data_list[[idx_name]] <- idx_vec
-
-                # Store mapping for model generator
-                # We need to know: To access Parent from Child, use vector 'idx_name'
             }
         }
 
