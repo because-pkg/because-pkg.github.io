@@ -185,8 +185,7 @@ plot_posterior <- function(
             lines(x_vals, y_vals, col = col[i], lwd = lwd)
         }
 
-        # Legend (only on first plot if multiple)
-        # Or maybe on all? Let's put on all for clarity, user can suppress with legend_pos=NULL
+        # Legend for multi-model comparison
         if (!is.null(legend_pos) && length(model_list) > 1) {
             legend(
                 legend_pos,

@@ -117,12 +117,7 @@ get_data_for_variables <- function(
         }
 
         if (length(join_by) == 0) {
-            # DANGEROUS: Cross-Hierarchy Join (e.g. Species vs Site)
-            # This happens when two variables are in different branches of the hierarchy.
-            # We must warn and perform the merge but minimize the Cartesian impact by checking
-            # if we can find any ID column in data[[lvl]].
-            # For your manuscript: Abundance ~ Site will work because Abundance has SiteID.
-            # But Species ~ Site is orthogonal.
+            # Cross-hierarchy join across orthogonal branches: inner join without shared keys
             result <- merge(result, coarser_data, all = FALSE)
         } else {
             result <- merge(result, coarser_data, by = join_by, all.x = TRUE)
@@ -210,17 +205,10 @@ auto_stack_multispecies_data <- function(data, equations, quiet = FALSE) {
     new_data <- list()
 
     # 1. Stack the Pivot Variable(s)
-    # If Y is detections, we stack into a single large matrix (N_total x N_reps)
-    # We need to ensure columns (reps) align too, or pad with NA?
-    # For now, require same cols or use simplify2array logic.
-
+    # Convert list of detection matrices into a single stacked matrix (N_total x N_reps)
     for (v in target_vars) {
         # Convert list of matrices to stacked matrix
-        # Do simplistic stack: do.call(rbind, ...)
-        # This stacks Sp1, then Sp2, etc. (Order: Species fast, or Site fast? Rbind is Species slow, Site fast)
-        # Result: Rows 1..N = Sp1, Rows N+1..2N = Sp2.
-        # This aligns with interaction: SpeciesID changes every N rows.
-
+        # Order: SpeciesID changes every N_sites rows
         mat_list <- lapply(data[[v]], as.matrix)
         # Check cols
         ref_cols <- ncol(mat_list[[1]])
@@ -289,11 +277,7 @@ auto_stack_multispecies_data <- function(data, equations, quiet = FALSE) {
                 )
             }
         } else {
-            # CASE C: Constant or Other?
-            # If scalar, just keep as is? Or rep?
-            # because usually handles scalars.
-            # But dataframe construction requires vectors.
-            # If length 1, rep to N_total
+            # CASE C: Scalar or other covariate
             if (length(val) == 1) {
                 new_data[[v]] <- rep(val, N_sites * N_species)
             } else {
@@ -313,11 +297,6 @@ auto_stack_multispecies_data <- function(data, equations, quiet = FALSE) {
     }
 
     # Convert to Data Frame
-    # Note: Y might be a Matrix column. Data.frame supports matrix columns using I() or straight assignment if carefully done.
-    # safely construct:
-    # df <- data.frame(SiteID=..., SpeciesID=...)
-    # df$Y <- stacked_mat
-
     df <- data.frame(SiteID = new_data$SiteID, SpeciesID = new_data$SpeciesID)
 
     for (v in names(new_data)) {
@@ -354,7 +333,7 @@ auto_stack_multispecies_data <- function(data, equations, quiet = FALSE) {
 #' @keywords internal
 aggregate_multiscale_data <- function(data, levels, hierarchy, target_lvl) {
   if (is.null(data) || is.null(target_lvl)) return(data)
-  if (is.data.frame(data)) return(data) # Handle flat case (no-op or error?)
+  if (is.data.frame(data)) return(data)
 
   # 1. Identify levels to keep and levels to aggregate
   all_lvls <- unique(unlist(lapply(strsplit(hierarchy, "\\s*[>;]\\s*"), trimws)))

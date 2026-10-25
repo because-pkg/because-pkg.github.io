@@ -63,14 +63,8 @@ auto_detect_hierarchical <- function(data, eq_vars, quiet = FALSE) {
             ))
         }
         if (length(link_vars) > 0) {
-            # Filter dummy variables (often end with _val or _spXX) to keep output clean
-            # Heuristic: if var starts with another var in the list + "_", it's likely a dummy
-            # Or simplified: if user asks to remove SpeciesID_spXX, we filter vars containing "_" if prefix exists?
-            # Better: just look for standard dummy patterns if factor expansion happened.
-            # But here we just want to suppress verbose output.
-
+            # Filter dummy variables (often end with _val or _spXX) to keep informational output clean
             display_links <- link_vars
-            # Filter simple dummies (e.g. SpeciesID_sp1)
             is_dummy <- grepl("_.*[0-9]+$", display_links)
             # Only filter if we have non-dummies available
             if (any(!is_dummy)) {

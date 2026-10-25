@@ -113,7 +113,7 @@ pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws 
             y <- y[seq_len(ncol(yrep))]
         }
     } else {
-        # yrep is larger? Should not happen with within-sample PPC
+        # If yrep has more columns than y, truncate to observed length
         yrep <- yrep[, seq_along(y), drop=FALSE]
     }
   }

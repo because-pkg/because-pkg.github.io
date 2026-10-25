@@ -350,13 +350,7 @@ summary.because <- function(
 
         # Smart Filtering: Hide internal deterministic parameters by default
         if (!show_internal) {
-            # Regex to identify internal deterministic link parameters
-            # Matches "beta_..._det_..." AND "beta_..._1_times_..." (legacy)
-            # The 'beta' is strict because we might want to see 'sigma_det' if that ever exists?
-            # Usually these are betas linking the deterministic term.
-
-            # Pattern: ^beta_.*_det_ OR ^beta_.*_1_times_ (for the pre-fix version)
-            # Safe bet: contains "_det_" or "_1_times_" combined with beta
+            # Identify internal deterministic link parameters (e.g. beta_*_det_*)
             internal_idx <- grep("^beta_.*(_det_|_1_times_)", rownames(combined))
 
             if (length(internal_idx) > 0) {

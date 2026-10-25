@@ -269,7 +269,7 @@ because <- function(
         if (grepl("^~", r_str)) {
           r_str <- sub("^~", "", r_str)
         }
-        # Avoid duplicating if user already added it?
+        # Avoid duplicating if already specified in random formula
         if (!grepl("SpeciesID", r_str)) {
           random <- as.formula(paste("~", r_str, stack_res$random_part))
         }
@@ -593,8 +593,6 @@ because <- function(
   model_file <- tempfile(fileext = ".jg")
   writeLines(model_string, model_file)
 
-  # If latent variables are present and this is a standard run (dsep=FALSE),
-  # print the MAG structure and basis set for user verification, as requested.
   # Display MAG structure for latent variable models (non-dsep runs)
   if (
     !dsep &&
