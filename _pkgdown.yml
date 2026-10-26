@@ -35,3 +35,53 @@ articles:
       - '`12_custom_families`'
       - '`13_counterfactual_simulations`'
       - '`14_bayesian_diagnostics`'
+
+reference:
+  - title: "Model Fitting & Estimation"
+    desc: "Core functions for specifying and fitting Bayesian Structural Equation Models."
+    contents:
+      - because
+      - because_model
+      - because_continue
+      - update.because
+  - title: "Causal Evaluation & d-Separation"
+    desc: "Tools for evaluating causal DAG consistency and testing conditional independencies."
+    contents:
+      - because_dsep
+      - plot_dsep
+      - plot_rope
+  - title: "Causal Effects & Interventions"
+    desc: "Functions for estimating marginal effects, causal mediation, and structural interventions."
+    contents:
+      - marginal_effects
+      - because_mediation
+      - because_do
+  - title: "Model Diagnostics & Comparison"
+    desc: "Posterior predictive checks, information criteria, and prediction methods."
+    contents:
+      - summary.because
+      - pp_check
+      - predict.because
+      - posterior_predict
+      - extract_imputed
+      - because_compare
+      - because_loo
+      - because_loo_compare
+      - because_waic
+  - title: "Visualization"
+    desc: "Plotting methods for DAGs, coefficients, and posterior distributions."
+    contents:
+      - plot_dag
+      - plot_coef
+      - plot_posterior
+      - plot_dsep
+      - plot_rope
+  - title: "Datasets & Utilities"
+    desc: "Example datasets and setup helpers."
+    contents:
+      - storks
+      - because_family
+      - because_structure
+      - because_format_data
+      - get_family
+      - install_because_numpyro

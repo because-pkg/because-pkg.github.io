@@ -2,7 +2,10 @@
 #' @description S3 generics and methods for distribution families in because.
 #' This enables custom distributions to be added by defining S3 methods.
 #' @name family_definitions
+#' @keywords internal
 #' @importFrom stats rpois rbinom runif rnbinom rnorm dpois
+NULL
+
 # --- Global NIMBLE Distributions for because package ---
 
 # These are defined lazily to avoid a hard dependency on nimble during package installation.
