@@ -1,7 +1,7 @@
 # Expanded D-Sep Equation Hook
 
-Modules implement this to add supporting equations (e.g. detection
-models) to a d-separation test.
+Modules implement this to add supporting equations (e.g. multi-equation
+sub-models) to a d-separation test.
 
 ## Usage
 
