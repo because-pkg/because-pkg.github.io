@@ -1,7 +1,17 @@
-# because 1.9.0 (2026-10-25)
+# because 1.8.0 (2026-10-26)
 
 ## New Features & Enhancements
-* **Posterior Predictive Summaries (`predict.because`)**: Added an S3 `predict()` method for `because` models returning observation-level posterior predictive summaries (`Estimate`, `Est.Error`, and credible quantiles) or raw posterior draws (`summary = FALSE`), complementing `fitted()` and `posterior_predict()`.
+* **Bayesian Model Diagnostics Suite**: Added a comprehensive suite of model diagnostic tools:
+  * `check_model()`: Unified diagnostic visualizer.
+  * `check_normality()` & `plot_qq()`: Randomized quantile residual Q-Q plots with empirical predictive envelopes.
+  * `check_homoscedasticity()`: Binned posterior residual standard deviations across fitted value quantiles.
+  * `check_outliers()`: Posterior predictive discrepancy detection for extreme values.
+  * `check_collinearity()`: Variance Inflation Factors (VIF) for Bayesian predictor structures.
+  * `check_residual_structure()`: Posterior Variance Partition Coefficients (VPC / $\lambda_{\text{Bayes}}$) for phylogenetic, spatial, and custom grouping random effects.
+* **Bayesian Residuals & Prediction Methods**:
+  * Added `residuals.because()` supporting `"quantile"` (randomized PIT residuals; Dunn & Smyth 1996), `"response"`, and `"pearson"` residuals.
+  * Added `fitted.because()` to compute posterior expected values across Gaussian, Binomial, Poisson, Negative Binomial, ZIP, ZINB, Gamma, and Lognormal models.
+  * Added `predict.because()` returning observation-level posterior predictive summaries (`Estimate`, `Est.Error`, and credible quantiles) or full posterior prediction arrays (`summary = FALSE`).
 * **Expanded Posterior Predictive Checks (`pp_check`)**:
   * Added support for discrete and grouped `bayesplot` check types: `"bars"`, `"bars_grouped"`, `"stat_2d"`, `"intervals"`, `"ecdf_overlay"`, and `"scatter_avg"`, alongside `"dens_overlay"`, `"hist"`, `"boxplot"`, and `"stat"`.
   * Added the `group` argument for grouped posterior predictive checks.
@@ -20,14 +30,6 @@
 * **Negative Binomial Dispersion in `posterior_predict()`**: Fixed parameter lookup to extract `r_<resp>` from posterior samples rather than defaulting to $r = 1$.
 * **Response-Scale Marginal Effects for Count Models**: `marginal_effects()` now applies the exponential/zero-inflated inverse link for `poisson`, `negbinomial`, `gamma`, `lognormal`, `zip`, and `zinb` responses.
 * **Random Number Generator (RNG) Hygiene**: Removed internal `set.seed()` calls from post-estimation functions (`posterior_predict()`, `fitted()`, `residuals()`, `plot_coef()`, `dsep`) so user `.Random.seed` state is never overwritten, and derived parallel worker chain seeds dynamically from R's RNG state.
-
----
-
-# because 1.8.0 (2026-09-24)
-
-* **Bayesian Model Diagnostics Suite**: Added `check_model()`, `check_normality()`, `plot_qq()`, `check_homoscedasticity()`, `check_outliers()`, `check_collinearity()`, and `check_residual_structure()`.
-* **Bayesian Residuals & Fitted Values**: Added `residuals.because()` (supporting `"quantile"` randomized PIT residuals, `"response"`, and `"pearson"`) and `fitted.because()`.
-* **NumPyro Documentation & Installation**: Expanded documentation for the NumPyro backend and JAGS 4.x / 5.0 setup.
 
 ---
 
