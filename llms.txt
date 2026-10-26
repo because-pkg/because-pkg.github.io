@@ -67,14 +67,24 @@ To install the **stable release** (`v1.9.0`), run:
 
 ``` r
 
-remotes::install_github("because-pkg/because@v1.9.0", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because@v1.9.0")
 ```
 
 To install the **latest development version**, run:
 
 ``` r
 
-remotes::install_github("because-pkg/because", build_vignettes = TRUE)
+remotes::install_github("because-pkg/because")
+```
+
+All tutorials and vignettes are available on the **[because
+documentation website](https://because-pkg.github.io)**. If you also
+want to build the vignettes locally for offline viewing
+(`browseVignettes("because")`), run:
+
+``` r
+
+remotes::install_github("because-pkg/because", dependencies = TRUE, build_vignettes = TRUE)
 ```
 
 ## Prerequisites
