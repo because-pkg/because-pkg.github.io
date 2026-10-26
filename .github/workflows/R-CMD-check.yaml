@@ -45,11 +45,11 @@ jobs:
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          curl -L "https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Mac%20OS%20X/JAGS-4.3.2.dmg/download" -o JAGS-4.3.2.dmg
-          MOUNT_DIR=$(hdiutil attach JAGS-4.3.2.dmg | grep "/Volumes/" | sed 's/.*\/Volumes\//\/Volumes\//')
-          PKG_FILE=$(find "$MOUNT_DIR" -name "*.pkg" -maxdepth 2 | head -n 1)
-          sudo installer -pkg "$PKG_FILE" -target /
-          hdiutil detach "$MOUNT_DIR"
+          curl -fsSL -A "Mozilla/5.0" "https://downloads.sourceforge.net/project/mcmc-jags/JAGS/4.x/Mac%20OS%20X/JAGS-4.3.2.dmg" -o JAGS-4.3.2.dmg
+          hdiutil attach JAGS-4.3.2.dmg -nobrowse -mountpoint /tmp/jags-mount
+          sudo installer -pkg /tmp/jags-mount/JAGS-4.3.2.pkg -target /
+          hdiutil detach /tmp/jags-mount
+          rm -f JAGS-4.3.2.dmg
           echo "JAGS_HOME=/usr/local" >> $GITHUB_ENV
           echo "/usr/local/bin" >> $GITHUB_PATH
 
