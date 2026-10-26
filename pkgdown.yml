@@ -17,7 +17,7 @@ articles:
   13_counterfactual_simulations: 13_counterfactual_simulations.html
   14_bayesian_diagnostics: 14_bayesian_diagnostics.html
   extensions: extensions.html
-last_built: 2026-10-26T16:28Z
+last_built: 2026-10-26T22:11Z
 urls:
   reference: https://because-pkg.github.io/because/reference
   article: https://because-pkg.github.io/because/articles
