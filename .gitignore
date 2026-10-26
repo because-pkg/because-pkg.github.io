@@ -19,10 +19,10 @@ benchmark_*.txt
 /papers_external/
 /playground/
 /examples/
-/tests/
 /because_research/
 ROADMAP.md
 because_*.tar.gz
+Rplots.pdf
 
 # Previous excludes
 /doc/
