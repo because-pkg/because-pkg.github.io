@@ -1,4 +1,5 @@
 test_that("marginal_effects computes AME on Gaussian and non-Gaussian models", {
+    set.seed(123)
     # Mock samples for a 2-equation SEM:
     # M ~ X (gaussian)
     # Y ~ M + X (poisson)
@@ -69,6 +70,7 @@ test_that("marginal_effects computes AME on Gaussian and non-Gaussian models", {
 })
 
 test_that("marginal_effects handles categorical factor predictors", {
+    set.seed(123)
     # Predictor with 2 categories (Treatment vs Control)
     samples <- coda::mcmc.list(
         coda::mcmc(matrix(

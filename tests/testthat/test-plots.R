@@ -1,4 +1,5 @@
 test_that("plot_coef renders ggplot objects for raw and marginal", {
+    set.seed(123)
     skip_if_not_installed("ggplot2")
 
     samples <- coda::mcmc.list(

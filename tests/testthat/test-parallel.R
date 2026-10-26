@@ -1,5 +1,6 @@
 test_that("Parallel chains run successfully", {
     skip_on_cran()
+    skip_if(identical(Sys.getenv("R_COVR"), "true"), "Parallel clusters incompatible with covr")
 
     set.seed(123)
     N <- 20
@@ -32,6 +33,7 @@ test_that("Parallel chains run successfully", {
 
 test_that("Sequential and parallel produce compatible results", {
     skip_on_cran()
+    skip_if(identical(Sys.getenv("R_COVR"), "true"), "Parallel clusters incompatible with covr")
 
     set.seed(456)
     N <- 15

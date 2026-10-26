@@ -1,5 +1,6 @@
 test_that("Performance is acceptable for small models", {
     skip_on_cran()
+    skip_if(identical(Sys.getenv("R_COVR"), "true"), "Timing benchmarks inaccurate under covr")
 
     set.seed(123)
     N <- 50
@@ -29,6 +30,7 @@ test_that("Performance is acceptable for small models", {
 
 test_that("Performance scales reasonably with N", {
     skip_on_cran()
+    skip_if(identical(Sys.getenv("R_COVR"), "true"), "Timing benchmarks inaccurate under covr")
 
     # Compare N=20 vs N=100
     # JAGS scaling is roughly linear or N^2 depending on matrix ops

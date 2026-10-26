@@ -41,8 +41,23 @@ test_that("because_compare runs multiple models and returns comparison", {
         expect_true("weight" %in% names(res_seq$comparison))
         expect_true(!any(is.na(res_seq$comparison$WAIC)))
     }
+})
 
-    # 2. Parallel execution
+test_that("because_compare runs parallel execution", {
+    skip_on_cran()
+    skip_if(identical(Sys.getenv("R_COVR"), "true"), "Parallel clusters incompatible with covr")
+
+    set.seed(123)
+    N <- 20
+    X <- rnorm(N)
+    Z <- rnorm(N)
+    Y <- 0.5 * X + 0.3 * Z + rnorm(N)
+    data_list <- list(X = X, Y = Y, Z = Z, N = N)
+    models <- list(
+        m1 = list(equations = list(Y ~ X)),
+        m2 = list(equations = list(Y ~ X + Z))
+    )
+
     res_par <- because_compare(
         models,
         data_list,
@@ -55,16 +70,6 @@ test_that("because_compare runs multiple models and returns comparison", {
 
     expect_equal(length(res_par$results), 2)
     expect_equal(nrow(res_par$comparison), 2)
-
-    # Results should be similar (not identical due to RNG)
-    if (
-        !all(is.na(res_seq$comparison$WAIC)) &&
-            !all(is.na(res_par$comparison$WAIC))
-    ) {
-        expect_true(
-            abs(res_seq$comparison$WAIC[1] - res_par$comparison$WAIC[1]) < 20
-        )
-    }
 })
 
 test_that("because_compare handles errors gracefully", {

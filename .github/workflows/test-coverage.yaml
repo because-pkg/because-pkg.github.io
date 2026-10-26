@@ -41,3 +41,9 @@ jobs:
             install_path = file.path(Sys.getenv("RUNNER_TEMP"), "package")
           )
         shell: Rscript {0}
+
+      - name: Print failure log
+        if: failure()
+        run: |
+          find "${RUNNER_TEMP:-/tmp}" -name "*.Rout*" -exec echo "=== {} ===" \; -exec cat {} \;
+        shell: bash

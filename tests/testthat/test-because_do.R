@@ -1,4 +1,5 @@
 test_that("because_do simulates downstream interventions correctly", {
+    set.seed(123)
     # 2-step causal mediation chain:
     # X -> M -> Y
     samples <- coda::mcmc.list(

@@ -1,5 +1,6 @@
 test_that("ic_recompile computes DIC with parallel chains", {
     skip_on_cran()
+    skip_if(identical(Sys.getenv("R_COVR"), "true"), "Parallel clusters incompatible with covr")
 
     set.seed(123)
     N <- 20
@@ -33,6 +34,7 @@ test_that("ic_recompile computes DIC with parallel chains", {
 
 test_that("ic_recompile=FALSE skips DIC with parallel chains", {
     skip_on_cran()
+    skip_if(identical(Sys.getenv("R_COVR"), "true"), "Parallel clusters incompatible with covr")
 
     set.seed(456)
     N <- 15

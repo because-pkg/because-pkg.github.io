@@ -1,4 +1,5 @@
 test_that("residuals, fitted, and predict work across Gaussian and Poisson models", {
+    set.seed(123)
     samples <- coda::mcmc.list(
         coda::mcmc(matrix(
             c(rnorm(300, mean = 1.0, sd = 0.05), # alpha_Y

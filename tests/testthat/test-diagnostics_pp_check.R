@@ -1,4 +1,5 @@
 test_that("pp_check and bayesian diagnostics return ggplot or diagnostic objects", {
+    set.seed(123)
     skip_if_not_installed("bayesplot")
     skip_if_not_installed("ggplot2")
 
