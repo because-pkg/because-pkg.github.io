@@ -1,6 +1,3 @@
-library(testthat)
-library(because)
-
 # Create a mock because object for testing functions that require it
 create_mock_because <- function() {
     skip_if_not_installed("rjags")

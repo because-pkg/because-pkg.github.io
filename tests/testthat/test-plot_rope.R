@@ -20,24 +20,13 @@ test_that("plot_rope filters to betas and rhos by default on fitted models", {
         stringsAsFactors = FALSE
     )
 
-    summary_stats <- matrix(
-        c(0.5, 0.5, 0.1, 0.1, 0.8, 0.8),
-        ncol = 1,
-        dimnames = list(c(
-            "beta_prey_habitat", "beta_abundance_prey",
-            "alpha_prey", "alpha_abundance",
-            "sigma_prey_res", "sigma_abundance_res"
-        ), "Mean")
-    )
+    summ <- summary(samples)
 
     fit <- list(
         samples = samples,
         dsep = FALSE,
         parameter_map = parameter_map,
-        summary = list(
-            statistics = summary_stats,
-            results = summary_stats
-        )
+        summary = summ
     )
     class(fit) <- "because"
 

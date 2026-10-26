@@ -7,23 +7,25 @@ test_that("pp_check and bayesian diagnostics return ggplot or diagnostic objects
         coda::mcmc(matrix(
             c(rnorm(200, mean = 1.0, sd = 0.05), # alpha_Y
               rnorm(200, mean = 0.5, sd = 0.05), # beta_Y_X
+              rnorm(200, mean = -0.3, sd = 0.05), # beta_Y_Z
               rep(0.5, 200)),                    # sigma_Y_res
-            ncol = 3,
-            dimnames = list(NULL, c("alpha_Y", "beta_Y_X", "sigma_Y_res"))
+            ncol = 4,
+            dimnames = list(NULL, c("alpha_Y", "beta_Y_X", "beta_Y_Z", "sigma_Y_res"))
         ))
     )
 
     df <- data.frame(
         X = rnorm(30),
+        Z = rnorm(30),
         Y = rnorm(30, mean = 1.0, sd = 0.5)
     )
 
     parameter_map <- data.frame(
-        response = c("Y", "Y"),
-        predictor = c("(Intercept)", "X"),
-        parameter = c("alpha_Y", "beta_Y_X"),
-        type = c("intercept", "coefficient"),
-        equation_index = c(1, 1),
+        response = c("Y", "Y", "Y"),
+        predictor = c("(Intercept)", "X", "Z"),
+        parameter = c("alpha_Y", "beta_Y_X", "beta_Y_Z"),
+        type = c("intercept", "coefficient", "coefficient"),
+        equation_index = c(1, 1, 1),
         stringsAsFactors = FALSE
     )
 
@@ -34,7 +36,7 @@ test_that("pp_check and bayesian diagnostics return ggplot or diagnostic objects
         parameter_map = parameter_map,
         data = df,
         original_data = df,
-        equations = list(Y ~ X)
+        equations = list(Y ~ X + Z)
     )
     class(fit) <- "because"
 
@@ -61,5 +63,7 @@ test_that("pp_check and bayesian diagnostics return ggplot or diagnostic objects
 
     # 5. check_collinearity
     vif_res <- check_collinearity(fit)
-    expect_true(is.data.frame(vif_res) || is.list(vif_res))
+    expect_s3_class(vif_res, "because_collinearity")
+    expect_true(is.data.frame(vif_res$summary))
+    expect_equal(nrow(vif_res$summary), 2)
 })

@@ -1,4 +1,6 @@
 test_that("Handles small sample size gracefully", {
+    skip_on_cran()
+    skip_if_not_installed("rjags")
     # N=2 which is the minimum for meaningful statistics
     data <- list(X = c(1,2), Y = c(1,2), N = 2)
     equations <- list(Y ~ X)
@@ -16,6 +18,7 @@ test_that("Handles small sample size gracefully", {
 
 test_that("Handles perfect collinearity", {
     skip_on_cran()
+    skip_if_not_installed("rjags")
 
     set.seed(123)
     N <- 20
@@ -42,6 +45,8 @@ test_that("Handles perfect collinearity", {
 })
 
 test_that("Handles disconnected DAG", {
+    skip_on_cran()
+    skip_if_not_installed("rjags")
     # X -> Y, Z (Z is independent)
     set.seed(123)
     N <- 20

@@ -44,7 +44,7 @@ test_that("because_do simulates downstream interventions correctly", {
     # 1. Formula intervention: shift X by +1 SD
     cf_formula <- because_do(fit, X = ~ . + 1)
     expect_s3_class(cf_formula, "because_counterfactual")
-    expect_true(is.list(cf_formula$simulated_data))
+    expect_true(is.matrix(cf_formula$X))
 
     summ_formula <- summary(cf_formula)
     expect_s3_class(summ_formula, "data.frame")

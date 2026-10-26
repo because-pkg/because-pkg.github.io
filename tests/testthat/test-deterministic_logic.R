@@ -5,7 +5,11 @@ test_that("term_to_jags_expression converts R logic to JAGS logic", {
     # Note: running this requires 'because' to be loaded.
     # If running via devtools::test(), it is loaded.
 
-    f <- because:::term_to_jags_expression
+    f <- if (exists("term_to_jags_expression", mode = "function")) {
+        get("term_to_jags_expression", mode = "function")
+    } else {
+        because:::term_to_jags_expression
+    }
 
     # Basic variable expansion + logic replacement
     expect_equal(f("A & B"), "A[i] && B[i]")

@@ -127,10 +127,10 @@ check_collinearity.because <- function(object, equation = NULL, ...) {
 
     # Inverse covariance (precision matrix)
     omega_beta <- tryCatch(
-      stats::solve(sigma_beta),
+      solve(sigma_beta),
       error = function(e) {
         # Fallback with slight regularization if singular
-        stats::solve(sigma_beta + diag(1e-6, ncol(sigma_beta)))
+        solve(sigma_beta + diag(1e-6, ncol(sigma_beta)))
       }
     )
 
@@ -143,12 +143,13 @@ check_collinearity.because <- function(object, equation = NULL, ...) {
     max_cor_r    <- numeric(length(avail_preds))
 
     for (k in seq_along(avail_preds)) {
+      other_preds <- avail_preds[-k]
       cors_k <- cor_beta[k, -k]
       if (length(cors_k) > 0) {
         abs_cors <- abs(cors_k)
         max_idx  <- which.max(abs_cors)
-        max_cor_with[k] <- names(cors_k)[max_idx]
-        max_cor_r[k]    <- cors_k[max_idx]
+        max_cor_with[k] <- other_preds[max_idx]
+        max_cor_r[k]    <- as.numeric(cors_k[max_idx])
       } else {
         max_cor_with[k] <- NA_character_
         max_cor_r[k]    <- 0

@@ -1,6 +1,3 @@
-library(testthat)
-library(because)
-
 test_that("because() handles endogenous missing data imputation", {
     set.seed(123)
     df <- data.frame(X = rnorm(30), Y = rnorm(30))

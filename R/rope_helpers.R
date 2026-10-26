@@ -115,8 +115,9 @@ explain_rope_spec <- function(resolved_df, data = NULL) {
             or_low <- exp(rmin)
             or_upp <- exp(rmax)
             latent_sd <- max(abs(c(rmin, rmax))) / (pi / sqrt(3))
+            fam_title <- paste0(toupper(substr(fam, 1, 1)), substr(fam, 2, nchar(fam)))
             lines <- c(lines, sprintf("%s (%s): [%.2f, %.2f] (Odds Ratio [%.2f, %.2f], ±%.2f latent SD)",
-                                      toupper(substring(fam, 1, 1)) %||% fam, resp, rmin, rmax, or_low, or_upp, latent_sd))
+                                      fam_title, resp, rmin, rmax, or_low, or_upp, latent_sd))
         } else {
             lines <- c(lines, sprintf("%s (%s): [%.2f, %.2f]", fam, resp, rmin, rmax))
         }

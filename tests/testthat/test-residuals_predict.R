@@ -36,12 +36,12 @@ test_that("residuals, fitted, and predict work across Gaussian and Poisson model
     class(fit) <- "because"
 
     # 1. fitted.because
-    fit_vals <- fitted(fit, resp = "Y")
+    fit_vals <- fitted(fit, resp = "Y", ndraws = 300)
     expect_true(is.numeric(fit_vals))
     expect_equal(length(fit_vals), 40)
 
     # 2. residuals.because
-    res_raw <- residuals(fit, resp = "Y", type = "response")
+    res_raw <- residuals(fit, resp = "Y", type = "response", ndraws = 300)
     expect_equal(length(res_raw), 40)
     expect_equal(res_raw, df$Y - fit_vals, tolerance = 0.001)
 

@@ -1,6 +1,3 @@
-library(testthat)
-library(because)
-
 test_that("because() handles complex hierarchical/multi-level data across scales", {
     set.seed(42)
     

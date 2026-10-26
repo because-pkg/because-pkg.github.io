@@ -1,6 +1,3 @@
-library(testthat)
-library(because)
-
 test_that("because() calculates Rhat and handles non-convergence", {
     set.seed(42)
     df <- data.frame(X = rnorm(50), Y = rnorm(50))
