@@ -48,6 +48,8 @@ All tutorials and vignettes are available on the **[because documentation websit
 remotes::install_github("because-pkg/because", dependencies = TRUE, build_vignettes = TRUE)
 ```
 
+> **Stay updated:** To receive email notifications when new versions or features are released, click **Watch → Custom → Releases** at the top right of the [GitHub repository](https://github.com/because-pkg/because), or check the [Changelog](https://because-pkg.github.io/because/news/).
+
 ## Prerequisites
 
 Before using `because`, you need to have an inference engine installed.
