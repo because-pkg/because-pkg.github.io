@@ -1,8 +1,7 @@
 # Get the latent predictor variable name for a family
 
-Extension packages implement this to substitute latent states when their
-variable is used as a predictor (e.g., occupancy uses `z_Species[i]`
-instead of `Species[i]` in the linear predictor of dependent equations).
+Extension packages implement this to substitute latent states when a
+specialized variable is used as a predictor in downstream equations.
 
 ## Usage
 

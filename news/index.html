@@ -16,26 +16,10 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/01_getting_started.html">Getting Started with because</a></li>
-    <li><a class="dropdown-item" href="../articles/02_dseparation.html">Causal inference with d-separation</a></li>
-    <li><a class="dropdown-item" href="../articles/03_model_diagnostics_comparison.html">Model Diagnostics and Comparison</a></li>
-    <li><a class="dropdown-item" href="../articles/04_mediation.html">Mediation Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/05_non_gaussian_families.html">Non-Gaussian Distribution Families</a></li>
-    <li><a class="dropdown-item" href="../articles/06_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
-    <li><a class="dropdown-item" href="../articles/07_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
-    <li><a class="dropdown-item" href="../articles/08_multiscale_models.html">Multiscale Causal Models</a></li>
-    <li><a class="dropdown-item" href="../articles/09_missing_data.html">Bayesian Missing Data Imputation</a></li>
-    <li><a class="dropdown-item" href="../articles/10_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
-    <li><a class="dropdown-item" href="../articles/11_latent_variables_mag.html">Latent Variables and the MAG Approach</a></li>
-    <li><a class="dropdown-item" href="../articles/12_custom_families.html">Creating Custom Distribution Families</a></li>
-    <li><a class="dropdown-item" href="../articles/13_counterfactual_simulations.html">Counterfactual Simulations with the do() Operator</a></li>
-    <li><a class="dropdown-item" href="../articles/14_bayesian_diagnostics.html">Bayesian Regression and SEM Diagnostics</a></li>
-    <li><a class="dropdown-item" href="../articles/extensions.html">Extensions</a></li>
-  </ul></li>
+<li class="nav-item"><a class="nav-link" href="../articles/index.html">Articles</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
+<li class="nav-item"><a class="nav-link" href="../articles/announcing-because.html">Blog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/because-pkg/because-pkg.github.io/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -47,7 +31,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/v1.8.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
@@ -55,6 +39,8 @@
 <div class="section level3">
 <h3 id="new-features--enhancements-1-8-0">New Features &amp; Enhancements<a class="anchor" aria-label="anchor" href="#new-features--enhancements-1-8-0"></a></h3>
 <ul><li>
+<strong>Multi-Family &amp; Principled ROPE Evaluation</strong>: Added distribution-aware Region of Practical Equivalence (ROPE) evaluation to <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="../reference/plot_rope.html">plot_rope()</a></code>. Supports customized lists by family or response, uses principled defaults (Gaussian: <code>[-0.10, 0.10]</code>, Poisson/NegBin: <code>[-0.05, 0.05]</code>, Binomial/Ordinal: <code>[-0.18, 0.18]</code>), and displays human-readable rate/odds ratio interpretations alongside warnings for unstandardized continuous variables.</li>
+<li>
 <strong>Bayesian Model Diagnostics Suite</strong>: Added a comprehensive suite of model diagnostic tools:
 <ul><li>
 <code>check_model()</code>: Unified diagnostic visualizer.</li>
@@ -147,7 +133,7 @@
 <li>
 <strong>Continuation Sampling (<code>because_continue</code>)</strong>: Added <code><a href="../reference/because_continue.html">because_continue()</a></code> to extend MCMC chains for fitted JAGS and NIMBLE models without discarding existing burn-in and posterior samples.</li>
 <li>
-<strong>Counterfactual Interventions (<code><a href="../reference/do.html">do()</a></code>)</strong>: Added <code><a href="../reference/do.html">because_do()</a></code> (<code><a href="../reference/do.html">do()</a></code>) and <code>plot_counterfactual()</code> to simulate structural interventions (atomic, additive shifts, multipliers, and stochastic policies) using Pearl’s do-calculus.</li>
+<strong>Counterfactual Interventions (<code><a href="../reference/do.html">do()</a></code>)</strong>: Added <code><a href="../reference/do.html">because_do()</a></code> (<code><a href="../reference/do.html">do()</a></code>) and <code><a href="../reference/do.html">summary.because_counterfactual()</a></code> to simulate structural interventions (atomic, additive shifts, multipliers, and stochastic policies) using Pearl’s do-calculus.</li>
 <li>
 <strong>Average Marginal Effects (<code>marginal_effects</code>)</strong>: Added <code><a href="../reference/marginal_effects.html">marginal_effects()</a></code>, <code><a href="../reference/plot_coef.html">plot_coef()</a></code>, and marginal-effect edge scaling in <code><a href="../reference/plot_dag.html">plot_dag()</a></code> to compare paths across Gaussian, Binomial, Ordinal, and Multinomial responses on a unified expected-change scale.</li>
 <li>

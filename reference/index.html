@@ -16,26 +16,10 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/01_getting_started.html">Getting Started with because</a></li>
-    <li><a class="dropdown-item" href="../articles/02_dseparation.html">Causal inference with d-separation</a></li>
-    <li><a class="dropdown-item" href="../articles/03_model_diagnostics_comparison.html">Model Diagnostics and Comparison</a></li>
-    <li><a class="dropdown-item" href="../articles/04_mediation.html">Mediation Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/05_non_gaussian_families.html">Non-Gaussian Distribution Families</a></li>
-    <li><a class="dropdown-item" href="../articles/06_deterministic_nodes.html">Deterministic Nodes: Interactions, tresholds and mathematical transformations</a></li>
-    <li><a class="dropdown-item" href="../articles/07_custom_priors.html">Custom Priors and Mechanistic Constraints</a></li>
-    <li><a class="dropdown-item" href="../articles/08_multiscale_models.html">Multiscale Causal Models</a></li>
-    <li><a class="dropdown-item" href="../articles/09_missing_data.html">Bayesian Missing Data Imputation</a></li>
-    <li><a class="dropdown-item" href="../articles/10_nimble_engine.html">High-Performance SEM with the NIMBLE Engine</a></li>
-    <li><a class="dropdown-item" href="../articles/11_latent_variables_mag.html">Latent Variables and the MAG Approach</a></li>
-    <li><a class="dropdown-item" href="../articles/12_custom_families.html">Creating Custom Distribution Families</a></li>
-    <li><a class="dropdown-item" href="../articles/13_counterfactual_simulations.html">Counterfactual Simulations with the do() Operator</a></li>
-    <li><a class="dropdown-item" href="../articles/14_bayesian_diagnostics.html">Bayesian Regression and SEM Diagnostics</a></li>
-    <li><a class="dropdown-item" href="../articles/extensions.html">Extensions</a></li>
-  </ul></li>
+<li class="nav-item"><a class="nav-link" href="../articles/index.html">Articles</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
+<li class="nav-item"><a class="nav-link" href="../articles/announcing-because.html">Blog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/because-pkg/because-pkg.github.io/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -50,9 +34,9 @@
     </div>
 
     <div class="section level2">
-      <h2 id="all-functions">All functions<a class="anchor" aria-label="anchor" href="#all-functions"></a></h2>
+      <h2 id="model-fitting-estimation">Model Fitting &amp; Estimation<a class="anchor" aria-label="anchor" href="#model-fitting-estimation"></a></h2>
 
-
+      <div class="section-desc"><p>Core functions for specifying and fitting Bayesian Structural Equation Models.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -68,10 +52,10 @@
 
         <dt>
 
-          <code><a href="because_compare.html">because_compare()</a></code>
+          <code><a href="because_model.html">because_model()</a></code>
 
         </dt>
-        <dd>Compare Because Models</dd>
+        <dd>Generate BUGS Model Code and Parameter Map for Bayesian SEM (Because)</dd>
 
         <dt>
 
@@ -82,136 +66,26 @@
 
         <dt>
 
+          <code><a href="update.because.html">update(<i>&lt;because&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Update a Fitted because Model</dd>
+      </dl></div><div class="section level2">
+      <h2 id="causal-evaluation-d-separation">Causal Evaluation &amp; d-Separation<a class="anchor" aria-label="anchor" href="#causal-evaluation-d-separation"></a></h2>
+
+      <div class="section-desc"><p>Tools for evaluating causal DAG consistency and testing conditional independencies.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
           <code><a href="because_dsep.html">because_dsep()</a></code>
 
         </dt>
         <dd>Extract d-separation statements from a structural equation model</dd>
-
-        <dt>
-
-          <code><a href="because_family.html">because_family()</a></code>
-
-        </dt>
-        <dd>Create a Custom Family (Distribution) for use with because</dd>
-
-        <dt>
-
-          <code><a href="because_format_data.html">because_format_data()</a></code>
-
-        </dt>
-        <dd>Format Long-Format Repeated Measures Data for Because Analysis</dd>
-
-        <dt>
-
-          <code><a href="because_loo.html">because_loo()</a></code>
-
-        </dt>
-        <dd>Calculate LOO-CV for a Because Model</dd>
-
-        <dt>
-
-          <code><a href="because_loo_compare.html">because_loo_compare()</a></code>
-
-        </dt>
-        <dd>Compare Models Using LOO-CV</dd>
-
-        <dt>
-
-          <code><a href="because_mediation.html">because_mediation()</a></code>
-
-        </dt>
-        <dd>Automated Mediation Analysis</dd>
-
-        <dt>
-
-          <code><a href="because_model.html">because_model()</a></code>
-
-        </dt>
-        <dd>Generate BUGS Model Code and Parameter Map for Bayesian SEM (Because)</dd>
-
-        <dt>
-
-          <code><a href="because_structure.html">because_structure()</a></code>
-
-        </dt>
-        <dd>Create a Custom Covariance Structure for use with because</dd>
-
-        <dt>
-
-          <code><a href="because_waic.html">because_waic()</a></code>
-
-        </dt>
-        <dd>Calculate WAIC with Standard Errors for a Because Model</dd>
-
-        <dt>
-
-          <code><a href="do.html">do()</a></code> <code><a href="do.html">because_do()</a></code> <code><a href="do.html">summary(<i>&lt;because_counterfactual&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Causal Interventions for Structural Equation Models</dd>
-
-        <dt>
-
-          <code><a href="extract_imputed.html">extract_imputed()</a></code>
-
-        </dt>
-        <dd>Extract Imputed Values for Missing Data</dd>
-
-        <dt>
-
-          <code><a href="family_definitions.html">.nimble_fn_cache</a></code>
-
-        </dt>
-        <dd>Family Definition Generics and Default Methods</dd>
-
-        <dt>
-
-          <code><a href="get_family.html">get_family()</a></code>
-
-        </dt>
-        <dd>Create a family object for a given distribution</dd>
-
-        <dt>
-
-          <code><a href="get_latent_predictor_name.html">get_latent_predictor_name()</a></code>
-
-        </dt>
-        <dd>Get the latent predictor variable name for a family</dd>
-
-        <dt>
-
-          <code><a href="install_because_numpyro.html">install_because_numpyro()</a></code>
-
-        </dt>
-        <dd>Install NumPyro and Python dependencies for because</dd>
-
-        <dt>
-
-          <code><a href="is_auxiliary_equation.html">is_auxiliary_equation()</a></code>
-
-        </dt>
-        <dd>Is this an auxiliary equation generated by a detection-type family?</dd>
-
-        <dt>
-
-          <code><a href="marginal_effects.html">marginal_effects()</a></code>
-
-        </dt>
-        <dd>Calculate Marginal Effects for Because Fit</dd>
-
-        <dt>
-
-          <code><a href="plot_coef.html">plot_coef()</a></code>
-
-        </dt>
-        <dd>Plot Path Coefficients</dd>
-
-        <dt>
-
-          <code><a href="plot_dag.html">plot_dag()</a></code>
-
-        </dt>
-        <dd>Plot DAG from Equations or Fitted Model</dd>
 
         <dt>
 
@@ -222,24 +96,56 @@
 
         <dt>
 
-          <code><a href="plot_posterior.html">plot_posterior()</a></code>
-
-        </dt>
-        <dd>Plot Posterior Distributions for Model Comparison</dd>
-
-        <dt>
-
           <code><a href="plot_rope.html">plot_rope()</a></code>
 
         </dt>
         <dd>Plot Region of Practical Equivalence (ROPE)</dd>
+      </dl></div><div class="section level2">
+      <h2 id="causal-effects-interventions">Causal Effects &amp; Interventions<a class="anchor" aria-label="anchor" href="#causal-effects-interventions"></a></h2>
+
+      <div class="section-desc"><p>Functions for estimating marginal effects, causal mediation, and structural interventions.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="marginal_effects.html">marginal_effects()</a></code>
+
+        </dt>
+        <dd>Calculate Marginal Effects for Because Fit</dd>
 
         <dt>
 
-          <code><a href="posterior_predict.html">posterior_predict()</a></code>
+          <code><a href="because_mediation.html">because_mediation()</a></code>
 
         </dt>
-        <dd>Posterior Predictive Samples</dd>
+        <dd>Automated Mediation Analysis</dd>
+
+        <dt>
+
+          <code><a href="do.html">do()</a></code> <code><a href="do.html">because_do()</a></code> <code><a href="do.html">summary(<i>&lt;because_counterfactual&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Causal Interventions for Structural Equation Models</dd>
+      </dl></div><div class="section level2">
+      <h2 id="model-diagnostics-comparison">Model Diagnostics &amp; Comparison<a class="anchor" aria-label="anchor" href="#model-diagnostics-comparison"></a></h2>
+
+      <div class="section-desc"><p>Posterior predictive checks, information criteria, and prediction methods.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="summary.because.html">summary(<i>&lt;because&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Summary for Because Model</dd>
 
         <dt>
 
@@ -257,6 +163,101 @@
 
         <dt>
 
+          <code><a href="posterior_predict.html">posterior_predict()</a></code>
+
+        </dt>
+        <dd>Posterior Predictive Samples</dd>
+
+        <dt>
+
+          <code><a href="extract_imputed.html">extract_imputed()</a></code>
+
+        </dt>
+        <dd>Extract Imputed Values for Missing Data</dd>
+
+        <dt>
+
+          <code><a href="because_compare.html">because_compare()</a></code>
+
+        </dt>
+        <dd>Compare Because Models</dd>
+
+        <dt>
+
+          <code><a href="because_loo.html">because_loo()</a></code>
+
+        </dt>
+        <dd>Calculate LOO-CV for a Because Model</dd>
+
+        <dt>
+
+          <code><a href="because_loo_compare.html">because_loo_compare()</a></code>
+
+        </dt>
+        <dd>Compare Models Using LOO-CV</dd>
+
+        <dt>
+
+          <code><a href="because_waic.html">because_waic()</a></code>
+
+        </dt>
+        <dd>Calculate WAIC with Standard Errors for a Because Model</dd>
+      </dl></div><div class="section level2">
+      <h2 id="visualization">Visualization<a class="anchor" aria-label="anchor" href="#visualization"></a></h2>
+
+      <div class="section-desc"><p>Plotting methods for DAGs, coefficients, and posterior distributions.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="plot_dag.html">plot_dag()</a></code>
+
+        </dt>
+        <dd>Plot DAG from Equations or Fitted Model</dd>
+
+        <dt>
+
+          <code><a href="plot_coef.html">plot_coef()</a></code>
+
+        </dt>
+        <dd>Plot Path Coefficients</dd>
+
+        <dt>
+
+          <code><a href="plot_posterior.html">plot_posterior()</a></code>
+
+        </dt>
+        <dd>Plot Posterior Distributions for Model Comparison</dd>
+
+        <dt>
+
+          <code><a href="plot_dsep.html">plot_dsep()</a></code>
+
+        </dt>
+        <dd>plot_dsep</dd>
+
+        <dt>
+
+          <code><a href="plot_rope.html">plot_rope()</a></code>
+
+        </dt>
+        <dd>Plot Region of Practical Equivalence (ROPE)</dd>
+      </dl></div><div class="section level2">
+      <h2 id="datasets-utilities">Datasets &amp; Utilities<a class="anchor" aria-label="anchor" href="#datasets-utilities"></a></h2>
+
+      <div class="section-desc"><p>Example datasets and setup helpers.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
           <code><a href="storks.html">storks</a></code>
 
         </dt>
@@ -264,19 +265,41 @@
 
         <dt>
 
-          <code><a href="summary.because.html">summary(<i>&lt;because&gt;</i>)</a></code>
+          <code><a href="because_family.html">because_family()</a></code>
 
         </dt>
-        <dd>Summary for Because Model</dd>
+        <dd>Create a Custom Family (Distribution) for use with because</dd>
 
         <dt>
 
-          <code><a href="update.because.html">update(<i>&lt;because&gt;</i>)</a></code>
+          <code><a href="because_structure.html">because_structure()</a></code>
 
         </dt>
-        <dd>Update a Fitted because Model</dd>
+        <dd>Create a Custom Covariance Structure for use with because</dd>
+
+        <dt>
+
+          <code><a href="because_format_data.html">because_format_data()</a></code>
+
+        </dt>
+        <dd>Format Long-Format Repeated Measures Data for Because Analysis</dd>
+
+        <dt>
+
+          <code><a href="get_family.html">get_family()</a></code>
+
+        </dt>
+        <dd>Create a family object for a given distribution</dd>
+
+        <dt>
+
+          <code><a href="install_because_numpyro.html">install_because_numpyro()</a></code>
+
+        </dt>
+        <dd>Install NumPyro and Python dependencies for because</dd>
       </dl></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

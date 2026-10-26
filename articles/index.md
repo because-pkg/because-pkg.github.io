@@ -1,6 +1,8 @@
 # Articles
 
-### All vignettes
+### Tutorials & User Guides
+
+Comprehensive guides for Bayesian causal SEMs with because
 
 - [Getting Started with
   because](https://because-pkg.github.io/because/articles/01_getting_started.md):
@@ -30,4 +32,16 @@
   Operator](https://because-pkg.github.io/because/articles/13_counterfactual_simulations.md):
 - [Bayesian Regression and SEM
   Diagnostics](https://because-pkg.github.io/because/articles/14_bayesian_diagnostics.md):
+
+### Ecosystem & Extensions
+
+Extending because with specialized packages and domain models
+
 - [Extensions](https://because-pkg.github.io/because/articles/extensions.md):
+
+### News & Releases
+
+Release announcements and package updates
+
+- [Announcing because v1.8.0: Bayesian Estimation of Causal Effects in
+  R](https://because-pkg.github.io/because/articles/announcing-because.md):

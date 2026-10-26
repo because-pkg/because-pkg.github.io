@@ -4,6 +4,15 @@
 
 ### New Features & Enhancements
 
+- **Multi-Family & Principled ROPE Evaluation**: Added
+  distribution-aware Region of Practical Equivalence (ROPE) evaluation
+  to [`summary()`](https://rdrr.io/r/base/summary.html) and
+  [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md).
+  Supports customized lists by family or response, uses principled
+  defaults (Gaussian: `[-0.10, 0.10]`, Poisson/NegBin: `[-0.05, 0.05]`,
+  Binomial/Ordinal: `[-0.18, 0.18]`), and displays human-readable
+  rate/odds ratio interpretations alongside warnings for unstandardized
+  continuous variables.
 - **Bayesian Model Diagnostics Suite**: Added a comprehensive suite of
   model diagnostic tools:
   - `check_model()`: Unified diagnostic visualizer.
@@ -169,9 +178,9 @@
   Added
   [`because_do()`](https://because-pkg.github.io/because/reference/do.md)
   ([`do()`](https://because-pkg.github.io/because/reference/do.md)) and
-  `plot_counterfactual()` to simulate structural interventions (atomic,
-  additive shifts, multipliers, and stochastic policies) using Pearl’s
-  do-calculus.
+  [`summary.because_counterfactual()`](https://because-pkg.github.io/because/reference/do.md)
+  to simulate structural interventions (atomic, additive shifts,
+  multipliers, and stochastic policies) using Pearl’s do-calculus.
 - **Average Marginal Effects (`marginal_effects`)**: Added
   [`marginal_effects()`](https://because-pkg.github.io/because/reference/marginal_effects.md),
   [`plot_coef()`](https://because-pkg.github.io/because/reference/plot_coef.md),
