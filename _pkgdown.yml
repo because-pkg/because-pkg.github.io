@@ -35,6 +35,14 @@ articles:
       - '`12_custom_families`'
       - '`13_counterfactual_simulations`'
       - '`14_bayesian_diagnostics`'
+  - title: "Ecosystem & Extensions"
+    desc: "Extending because with specialized packages and domain models"
+    contents:
+      - '`extensions`'
+  - title: "News & Releases"
+    desc: "Release announcements and package updates"
+    contents:
+      - '`announcing-because`'
 
 reference:
   - title: "Model Fitting & Estimation"
