@@ -4,22 +4,25 @@
 # ============================================================================
 # Extension Generics for Family Hooks
 # ============================================================================
+#' Check if an equation is an auxiliary sub-model equation
 #'
-#' Extension packages (e.g., `because.phybase`) implement this generic to
-#' tell the model builder which equations should skip standalone likelihood
-#' and residual variance generation. Base `because` still emits `mu_X[i]` and
-#' `alpha_X` priors (needed by the extension's JAGS code).
+#' Extension packages implement this generic to indicate which equations
+#' should skip standalone likelihood and residual variance generation.
+#' Base `because` still emits linear predictor (`mu_X[i]`) and intercept
+#' (`alpha_X`) priors needed by the sub-model.
 #'
 #' @param family A family object (S3 class `because_family_*`)
 #' @param response Character; the response variable name
 #' @param all_responses Character vector of all response variable names in the model
 #' @param ... Additional arguments
 #' @return A list: `list(skip_likelihood = FALSE, skip_variance = FALSE)`
+#' @keywords internal
 #' @export
 is_auxiliary_equation <- function(family, response, all_responses, ...) {
     UseMethod("is_auxiliary_equation")
 }
 
+#' @keywords internal
 #' @export
 is_auxiliary_equation.default <- function(family, response, all_responses, ...) {
     list(skip_likelihood = FALSE, skip_variance = FALSE)
@@ -27,20 +30,21 @@ is_auxiliary_equation.default <- function(family, response, all_responses, ...) 
 
 #' Get the latent predictor variable name for a family
 #'
-#' Extension packages implement this to substitute latent states when their
-#' variable is used as a predictor (e.g., occupancy uses `z_Species[i]`
-#' instead of `Species[i]` in the linear predictor of dependent equations).
+#' Extension packages implement this to substitute latent states when a
+#' specialized variable is used as a predictor in downstream equations.
 #'
 #' @param family A family object (S3 class `because_family_*`)
 #' @param predictor_name Character; the predictor variable name
-#' @param predictor_index Character; the indexed predictor string (e.g. `"Species[i]"`)
+#' @param predictor_index Character; the indexed predictor string (e.g. `"X[i]"`)
 #' @param ... Additional arguments
 #' @return Character; the indexed string to use in the linear predictor
+#' @keywords internal
 #' @export
 get_latent_predictor_name <- function(family, predictor_name, predictor_index, ...) {
     UseMethod("get_latent_predictor_name")
 }
 
+#' @keywords internal
 #' @export
 get_latent_predictor_name.default <- function(family, predictor_name, predictor_index, ...) {
     predictor_index  # Default: use the predictor as-is

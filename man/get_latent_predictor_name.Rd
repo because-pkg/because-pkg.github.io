@@ -19,7 +19,7 @@ get_latent_predictor_name(family, predictor_name, predictor_index, ...)
 Character; the indexed string to use in the linear predictor
 }
 \description{
-Extension packages implement this to substitute latent states when their
-variable is used as a predictor (e.g., occupancy uses \code{z_Species[i]}
-instead of \code{Species[i]} in the linear predictor of dependent equations).
+Extension packages implement this to substitute latent states when a
+specialized variable is used as a predictor in downstream equations.
 }
+\keyword{internal}

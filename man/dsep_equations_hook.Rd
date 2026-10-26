@@ -19,7 +19,7 @@ dsep_equations_hook(family, equations, dsep_equations, ...)
 A modified list of equations.
 }
 \description{
-Modules implement this to add supporting equations (e.g. detection models)
+Modules implement this to add supporting equations (e.g. multi-equation sub-models)
 to a d-separation test.
 }
 \keyword{internal}

@@ -233,7 +233,7 @@ nimble_family_optimization.default <- function(family, model_string, ...) {
 
 #' Expanded D-Sep Equation Hook
 #'
-#' Modules implement this to add supporting equations (e.g. detection models)
+#' Modules implement this to add supporting equations (e.g. multi-equation sub-models)
 #' to a d-separation test.
 #' @param family The S3 family list.
 #' @param equations The full list of model equations.
