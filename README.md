@@ -53,13 +53,13 @@ remotes::install_github("because-pkg/because", dependencies = TRUE, build_vignet
 Before using `because`, you need to have an inference engine installed.
 
 ### JAGS (Primary Engine)
--   **macOS**: `brew install jags` or download **JAGS 4.3.2** from [SourceForge (JAGS 4.x)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/).
--   **Windows**: Download the **JAGS 4.3.2** installer from [SourceForge (JAGS 4.x)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/).
+-   **macOS**: Download the **JAGS 4.3.2** installer from [SourceForge (JAGS 4.x)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Mac%20OS%20X/) *(recommended; note that `brew install jags` now installs JAGS 5.0—see note below)*.
+-   **Windows**: Download the **JAGS 4.3.2** installer from [SourceForge (JAGS 4.x)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/).
 -   **Linux**: `sudo apt-get install jags`.
 
 > **Important (JAGS 4.x vs. JAGS 5.0):** We currently recommend installing **JAGS 4.x (e.g., 4.3.2)** because the version of `rjags` on CRAN is built for JAGS 4.x and will fail to load with JAGS 5.0.
 >
-> If you have already installed **JAGS 5.0**, you must install the matching `rjags 5.0` package from the developer repository *before* installing `because`:
+> If you have already installed **JAGS 5.0** (for example via `brew install jags` on macOS), you must install the matching `rjags 5.0` package from the developer repository *before* installing `because`:
 > ``` r
 > install.packages("rjags", repos = c("https://ku-awdc.github.io/drat", "https://cloud.r-project.org"))
 > ```

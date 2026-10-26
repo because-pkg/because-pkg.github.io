@@ -45,16 +45,13 @@ jobs:
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install jags
-          echo "JAGS_HOME=$(brew --prefix jags)" >> $GITHUB_ENV
-          echo "LDFLAGS=-L$(brew --prefix jags)/lib" >> $GITHUB_ENV
-          echo "CPPFLAGS=-I$(brew --prefix jags)/include" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$(brew --prefix jags)/lib/pkgconfig" >> $GITHUB_ENV
-          # CRAN binary rjags.so hard-codes /usr/local/lib (Intel path); symlink for Apple Silicon runners
-          sudo mkdir -p /usr/local/lib
-          sudo ln -sf "$(brew --prefix jags)/lib/libjags.4.dylib" /usr/local/lib/libjags.4.dylib
-          # rjags also hard-codes /usr/local/lib/JAGS/modules-4/ for module SOs; symlink the whole dir
-          sudo ln -sf "$(brew --prefix jags)/lib/JAGS" /usr/local/lib/JAGS
+          curl -L "https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Mac%20OS%20X/JAGS-4.3.2.dmg/download" -o JAGS-4.3.2.dmg
+          MOUNT_DIR=$(hdiutil attach JAGS-4.3.2.dmg | grep "/Volumes/" | sed 's/.*\/Volumes\//\/Volumes\//')
+          PKG_FILE=$(find "$MOUNT_DIR" -name "*.pkg" -maxdepth 2 | head -n 1)
+          sudo installer -pkg "$PKG_FILE" -target /
+          hdiutil detach "$MOUNT_DIR"
+          echo "JAGS_HOME=/usr/local" >> $GITHUB_ENV
+          echo "/usr/local/bin" >> $GITHUB_PATH
 
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
