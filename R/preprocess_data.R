@@ -388,7 +388,8 @@ collect_and_filter_model_data <- function(
   family,
   variability,
   expand_ordered = FALSE,
-  quiet = FALSE
+  quiet = FALSE,
+  structure = NULL
 ) {
   # 1. Identify all variables used in equations (fixed + random)
   all_eq_vars <- unique(unlist(lapply(equations, all.vars)))
@@ -411,11 +412,48 @@ collect_and_filter_model_data <- function(
     if (length(eq) == 3) all.vars(eq[[3]]) else character(0)
   })))
 
+  # Identify structure alignment / ID columns in data
+  structure_id_vars <- character(0)
+  if (!is.null(structure)) {
+    ref_labels <- tryCatch(get_order_labels_hook(structure), error = function(e) NULL)
+    if (is.null(ref_labels)) {
+      if (inherits(structure, "phylo") || !is.null(structure$tip.label)) {
+        ref_labels <- structure$tip.label
+      } else if (inherits(structure, "multiPhylo") || (is.list(structure) && length(structure) > 0 && !is.null(structure[[1]]$tip.label))) {
+        ref_labels <- structure[[1]]$tip.label
+      } else if (is.matrix(structure)) {
+        ref_labels <- rownames(structure) %||% colnames(structure)
+      }
+    }
+
+    if (!is.null(ref_labels) && length(ref_labels) > 0 && is.data.frame(data)) {
+      for (col in names(data)) {
+        val <- data[[col]]
+        if (is.character(val) || is.factor(val)) {
+          val_char <- as.character(val)
+          u_val <- unique(val_char[!is.na(val_char)])
+          if (length(u_val) > 0 && (sum(u_val %in% ref_labels) / length(u_val) >= 0.5 || sum(ref_labels %in% u_val) / length(ref_labels) >= 0.5)) {
+            structure_id_vars <- c(structure_id_vars, col)
+          }
+        }
+      }
+    }
+
+    common_id_names <- c("Species", "species", "SP", "sp", "ID", "id", "taxon", "Taxon", "animal", "site", "Site", "tree_id")
+    if (is.data.frame(data)) {
+      found_common <- intersect(names(data), common_id_names)
+      if (length(found_common) > 0) {
+        structure_id_vars <- unique(c(structure_id_vars, found_common))
+      }
+    }
+  }
+
   # 4. Combine all needed variables
   model_vars <- unique(c(
     all_eq_vars,
     global_random_vars,
     id_col,
+    structure_id_vars,
     link_vars,
     if (!is.null(family)) names(family),
     if (!is.null(variability) && !is.character(variability)) names(variability),

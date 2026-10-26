@@ -558,6 +558,12 @@ get_order_labels_hook.default <- function(structure, ...) {
     if (is.matrix(structure)) {
         return(rownames(structure))
     }
+    if (inherits(structure, "phylo") || !is.null(structure$tip.label)) {
+        return(structure$tip.label)
+    }
+    if (inherits(structure, "multiPhylo") || (is.list(structure) && length(structure) > 0 && !is.null(structure[[1]]$tip.label))) {
+        return(structure[[1]]$tip.label)
+    }
     if (is.list(structure) && !is.null(structure$Prec)) {
         if (is.matrix(structure$Prec)) {
             return(rownames(structure$Prec))

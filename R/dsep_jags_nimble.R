@@ -178,6 +178,7 @@ run_dsep_jags_nimble <- function(
 
   if (length(tests_to_run_indices) > 0) {
     family_list <- if (!is.null(family)) as.list(family) else NULL
+    active_structure <- structure %||% structure_obj %||% structures
 
     run_one_test <- function(i) {
       test_eq <- dsep_tests[[i]]
@@ -194,7 +195,7 @@ run_dsep_jags_nimble <- function(
           random_terms = random_terms,
           equations = equations,
           family = family_list,
-          structure = structure,
+          structure = active_structure,
           levels = levels,
           hierarchy = hierarchy,
           multiscale = multiscale,
@@ -210,7 +211,8 @@ run_dsep_jags_nimble <- function(
           variability = variability,
           ic_recompile = ic_recompile,
           dsep_max_obs = dsep_max_obs,
-          aggregate_crossscale = aggregate_crossscale
+          aggregate_crossscale = aggregate_crossscale,
+          id_col = id_col
         ),
         error = function(e) {
           list(

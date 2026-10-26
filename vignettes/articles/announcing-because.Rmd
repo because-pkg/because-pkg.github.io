@@ -13,9 +13,9 @@ vignette: >
 
 The **`because`** package is now publicly available in version **1.8.0**, providing a unified R framework for specifying, fitting, and evaluating Bayesian Structural Equation Models (BSEMs) with an explicit focus on causal inference.
 
-The package bridges Judea Pearl's graphical causal framework with applied Bayesian MCMC estimation, enabling researchers to evaluate complex networks of observational hypotheses, test whether causal graphs are supported by empirical data, and estimate direct and indirect causal pathways across mixed outcome distributions and structured dependencies.
+The package bridges Judea Pearl's graphical causal framework with applied Bayesian MCMC estimation, enabling researchers to evaluate complex networks of observational hypotheses, test whether causal graphs are supported by empirical data, and estimate direct and indirect causal pathways across mixed distributions and structured dependencies.
 
-Observational studies in ecology, evolutionary biology, epidemiology, and the social sciences routinely investigate systems with interconnected, multi-step pathways. While Structural Equation Modeling (SEM) is a standard tool for such systems, conventional implementations often face several challenges:
+Observational studies in ecology, evolutionary biology, epidemiology, and the social sciences routinely investigate systems with interconnected causal  pathways. While Structural Equation Modeling (SEM) is a standard tool for such systems, conventional implementations often face several challenges:
 
 * **Non-Gaussian traits**: Real-world processes involve count data, zero-inflation, binary outcomes, and ordered categories that violate multivariate normal assumptions.
 * **Complex dependencies**: Observational units often exhibit hierarchical clustering, phylogenetic relatedness, or spatial autocorrelation that cannot be addressed by naive linear models.
@@ -71,7 +71,7 @@ Additional custom families can be added via the S3 generic extension system.
 
 ## Quick Example: Core `because` Workflow
 
-The following self-contained example simulates a small ecological dataset ($n = 150$), evaluates the causal graph via Bayesian d-separation (`dsep = TRUE`), fits the full simultaneous model (`dsep = FALSE`), inspects the DAG with estimated posterior path coefficients, and computes Average Marginal Effects:
+The following self-contained example simulates a small ecological dataset ($n = 150$), evaluates the causal graph via d-separation (`dsep = TRUE`), fits the full simultaneous model (`dsep = FALSE`), inspects the DAG with estimated posterior path coefficients, and computes Average Marginal Effects:
 
 ```r
 library(because)
@@ -92,7 +92,7 @@ eqs <- list(
   abundance ~ prey + predators
 )
 
-# 3. Step 1: Test causal consistency using Bayesian d-separation
+# 3. Step 1: Test the conditional independencies implied by the causal model using d-separation
 dsep_res <- because(
   equations = eqs,
   data      = dat,
@@ -129,7 +129,7 @@ plot_coef(fit_full, type = "marginal")
 
 ## Phylogenetic Comparative SEM: `because.phybase`
 
-In comparative biology and evolutionary ecology, species share phylogenetic history, violating the assumption of independent and identically distributed (i.i.d.) observations. 
+In comparative evolutionary biology species share phylogenetic history, violating the assumption of independent and identically distributed (i.i.d.) observations. 
 
 The **`because.phybase`** extension module integrates Phylogenetic Bayesian Structural Equation Modeling (PhyBaSE) seamlessly into the `because` workflow. Using an optimized random effects formulation ($y_i = \mu_i + u_i + \epsilon_i$, where $u \sim \mathcal{N}(0, \sigma_{\text{phylo}}^2 \mathbf{V})$ and $\epsilon \sim \mathcal{N}(0, \sigma_{\text{res}}^2 \mathbf{I})$), Pagel's $\lambda$ is estimated directly from variance components ($\lambda = \sigma_{\text{phylo}}^2 / (\sigma_{\text{phylo}}^2 + \sigma_{\text{res}}^2)$) while pre-computing the inverse phylogenetic precision matrix once.
 

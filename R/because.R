@@ -280,11 +280,40 @@ because <- function(
     }
   }
 
+  # Auto-detect id_col if not specified and structure is present
+  if (is.null(id_col) && (!is.null(structure) || !is.null(structure_obj))) {
+    active_struct <- structure %||% structure_obj
+    ref_labels <- tryCatch(get_order_labels_hook(active_struct), error = function(e) NULL)
+    if (is.null(ref_labels)) {
+      if (inherits(active_struct, "phylo") || !is.null(active_struct$tip.label)) {
+        ref_labels <- active_struct$tip.label
+      } else if (inherits(active_struct, "multiPhylo") || (is.list(active_struct) && length(active_struct) > 0 && !is.null(active_struct[[1]]$tip.label))) {
+        ref_labels <- active_struct[[1]]$tip.label
+      } else if (is.matrix(active_struct)) {
+        ref_labels <- rownames(active_struct) %||% colnames(active_struct)
+      }
+    }
+    if (!is.null(ref_labels) && length(ref_labels) > 0 && is.data.frame(data)) {
+      for (col in names(data)) {
+        val <- data[[col]]
+        if (is.character(val) || is.factor(val)) {
+          val_char <- as.character(val)
+          u_val <- unique(val_char[!is.na(val_char)])
+          if (length(u_val) > 0 && (sum(u_val %in% ref_labels) / length(u_val) >= 0.5 || sum(ref_labels %in% u_val) / length(ref_labels) >= 0.5)) {
+            id_col <- col
+            break
+          }
+        }
+      }
+    }
+  }
+
   # --- Selective Variable Collection & Categorical Preprocessing ---
   filtered_res <- collect_and_filter_model_data(
     data           = data,
     equations      = equations,
     random         = random,
+    structure      = structure %||% structure_obj,
     id_col         = id_col,
     link_vars      = link_vars,
     family         = family,
