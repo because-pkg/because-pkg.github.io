@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,11 +51,30 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="1.9.0" id="because-190-2026-10-25">because 1.9.0 (2026-10-25)<a class="anchor" aria-label="anchor" href="#because-190-2026-10-25"></a></h2>
+<h2 class="pkg-version" data-toc-text="1.8.0" id="because-180-2026-10-26">because 1.8.0 (2026-10-26)<a class="anchor" aria-label="anchor" href="#because-180-2026-10-26"></a></h2>
 <div class="section level3">
-<h3 id="new-features--enhancements-1-9-0">New Features &amp; Enhancements<a class="anchor" aria-label="anchor" href="#new-features--enhancements-1-9-0"></a></h3>
+<h3 id="new-features--enhancements-1-8-0">New Features &amp; Enhancements<a class="anchor" aria-label="anchor" href="#new-features--enhancements-1-8-0"></a></h3>
 <ul><li>
-<strong>Posterior Predictive Summaries (<code>predict.because</code>)</strong>: Added an S3 <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> method for <code>because</code> models returning observation-level posterior predictive summaries (<code>Estimate</code>, <code>Est.Error</code>, and credible quantiles) or raw posterior draws (<code>summary = FALSE</code>), complementing <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code> and <code><a href="../reference/posterior_predict.html">posterior_predict()</a></code>.</li>
+<strong>Bayesian Model Diagnostics Suite</strong>: Added a comprehensive suite of model diagnostic tools:
+<ul><li>
+<code>check_model()</code>: Unified diagnostic visualizer.</li>
+<li>
+<code>check_normality()</code> &amp; <code>plot_qq()</code>: Randomized quantile residual Q-Q plots with empirical predictive envelopes.</li>
+<li>
+<code>check_homoscedasticity()</code>: Binned posterior residual standard deviations across fitted value quantiles.</li>
+<li>
+<code>check_outliers()</code>: Posterior predictive discrepancy detection for extreme values.</li>
+<li>
+<code>check_collinearity()</code>: Variance Inflation Factors (VIF) for Bayesian predictor structures.</li>
+<li>
+<code>check_residual_structure()</code>: Posterior Variance Partition Coefficients (VPC / <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mtext mathvariant="normal">Bayes</mtext></msub><annotation encoding="application/x-tex">\lambda_{\text{Bayes}}</annotation></semantics></math>) for phylogenetic, spatial, and custom grouping random effects.</li>
+</ul></li>
+<li>
+<strong>Bayesian Residuals &amp; Prediction Methods</strong>:
+<ul><li>Added <code>residuals.because()</code> supporting <code>"quantile"</code> (randomized PIT residuals; Dunn &amp; Smyth 1996), <code>"response"</code>, and <code>"pearson"</code> residuals.</li>
+<li>Added <code>fitted.because()</code> to compute posterior expected values across Gaussian, Binomial, Poisson, Negative Binomial, ZIP, ZINB, Gamma, and Lognormal models.</li>
+<li>Added <code><a href="../reference/predict.because.html">predict.because()</a></code> returning observation-level posterior predictive summaries (<code>Estimate</code>, <code>Est.Error</code>, and credible quantiles) or full posterior prediction arrays (<code>summary = FALSE</code>).</li>
+</ul></li>
 <li>
 <strong>Expanded Posterior Predictive Checks (<code>pp_check</code>)</strong>:
 <ul><li>Added support for discrete and grouped <code>bayesplot</code> check types: <code>"bars"</code>, <code>"bars_grouped"</code>, <code>"stat_2d"</code>, <code>"intervals"</code>, <code>"ecdf_overlay"</code>, and <code>"scatter_avg"</code>, alongside <code>"dens_overlay"</code>, <code>"hist"</code>, <code>"boxplot"</code>, and <code>"stat"</code>.</li>
@@ -76,7 +95,7 @@
 </ul></li>
 </ul></div>
 <div class="section level3">
-<h3 id="bug-fixes--statistical-rigor-1-9-0">Bug Fixes &amp; Statistical Rigor<a class="anchor" aria-label="anchor" href="#bug-fixes--statistical-rigor-1-9-0"></a></h3>
+<h3 id="bug-fixes--statistical-rigor-1-8-0">Bug Fixes &amp; Statistical Rigor<a class="anchor" aria-label="anchor" href="#bug-fixes--statistical-rigor-1-8-0"></a></h3>
 <ul><li>
 <strong>Synchronized Missing Data (<code>NA</code>) Alignment in Diagnostics</strong>: Fixed an index-alignment bug in <code><a href="../reference/pp_check.html">pp_check()</a></code>, <code><a href="https://rdrr.io/r/stats/residuals.html" class="external-link">residuals()</a></code>, and <code>check_normality()</code> where missing values (<code>NA</code>) in observed responses were stripped without subsetting the corresponding columns of <code>yrep</code>.</li>
 <li>
@@ -89,15 +108,6 @@
 <strong>Random Number Generator (RNG) Hygiene</strong>: Removed internal <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> calls from post-estimation functions (<code><a href="../reference/posterior_predict.html">posterior_predict()</a></code>, <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code>, <code><a href="https://rdrr.io/r/stats/residuals.html" class="external-link">residuals()</a></code>, <code><a href="../reference/plot_coef.html">plot_coef()</a></code>, <code>dsep</code>) so user <code>.Random.seed</code> state is never overwritten, and derived parallel worker chain seeds dynamically from R’s RNG state.</li>
 </ul><hr></div>
 </div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="1.8.0" id="because-180-2026-09-24">because 1.8.0 (2026-09-24)<a class="anchor" aria-label="anchor" href="#because-180-2026-09-24"></a></h2>
-<ul><li>
-<strong>Bayesian Model Diagnostics Suite</strong>: Added <code>check_model()</code>, <code>check_normality()</code>, <code>plot_qq()</code>, <code>check_homoscedasticity()</code>, <code>check_outliers()</code>, <code>check_collinearity()</code>, and <code>check_residual_structure()</code>.</li>
-<li>
-<strong>Bayesian Residuals &amp; Fitted Values</strong>: Added <code>residuals.because()</code> (supporting <code>"quantile"</code> randomized PIT residuals, <code>"response"</code>, and <code>"pearson"</code>) and <code>fitted.because()</code>.</li>
-<li>
-<strong>NumPyro Documentation &amp; Installation</strong>: Expanded documentation for the NumPyro backend and JAGS 4.x / 5.0 setup.</li>
-</ul><hr></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.7.0" id="because-170-2026-09-21">because 1.7.0 (2026-09-21)<a class="anchor" aria-label="anchor" href="#because-170-2026-09-21"></a></h2>
 <ul><li>
