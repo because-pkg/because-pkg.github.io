@@ -45,24 +45,53 @@ jobs:
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          curl -fsSL -A "Mozilla/5.0" "https://downloads.sourceforge.net/project/mcmc-jags/JAGS/4.x/Mac%20OS%20X/JAGS-4.3.2.dmg" -o JAGS-4.3.2.dmg
-          hdiutil attach JAGS-4.3.2.dmg -nobrowse -mountpoint /tmp/jags-mount
-          sudo installer -pkg /tmp/jags-mount/JAGS-4.3.2.pkg -target /
-          hdiutil detach /tmp/jags-mount
-          rm -f JAGS-4.3.2.dmg
-          echo "JAGS_HOME=/usr/local" >> $GITHUB_ENV
-          echo "/usr/local/bin" >> $GITHUB_PATH
+          brew install pkg-config jags
+          JAGS_PREFIX="$(brew --prefix)"
+          echo "JAGS_HOME=$JAGS_PREFIX" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$JAGS_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "$JAGS_PREFIX/bin" >> $GITHUB_PATH
+
+          # On Apple Silicon, Homebrew installs to /opt/homebrew; symlink to /usr/local/lib
+          # so CRAN binary rjags (built expecting /usr/local) finds libjags & modules seamlessly
+          JAGS_LIB="${JAGS_PREFIX}/lib/libjags.4.dylib"
+          if [ -f "$JAGS_LIB" ]; then
+            sudo mkdir -p /usr/local/lib
+            sudo ln -sf "$JAGS_LIB" /usr/local/lib/libjags.4.dylib
+          fi
+          JAGS_MODULES="${JAGS_PREFIX}/lib/JAGS"
+          if [ -d "$JAGS_MODULES" ]; then
+            sudo mkdir -p /usr/local/lib
+            sudo ln -sf "$JAGS_MODULES" /usr/local/lib/JAGS
+          fi
 
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
-        shell: powershell
+        env:
+          JAGS_VERSION: "4.3.2"
         run: |
-          $url = "https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/JAGS-4.3.1.exe/download"
-          $output = "jags.exe"
-          curl.exe -L $url -o $output
-          Start-Process -FilePath $output -ArgumentList "/S" -Wait
-          echo "JAGS_HOME=C:\Program Files\JAGS\JAGS-4.3.1" >> $env:GITHUB_ENV
-          echo "C:\Program Files\JAGS\JAGS-4.3.1\x64\bin" >> $env:GITHUB_PATH
+          $progressPreference = 'silentlyContinue'
+          $jagsUrl = "https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/JAGS-$env:JAGS_VERSION.exe/download"
+          $installer = "$env:TEMP\JAGS-$env:JAGS_VERSION.exe"
+          $maxRetries = 3
+          for ($i = 1; $i -le $maxRetries; $i++) {
+            try {
+              Invoke-WebRequest -Uri $jagsUrl -OutFile $installer -MaximumRedirection 10 -UserAgent "Mozilla/5.0"
+              if (Test-Path $installer) { break }
+            } catch {
+              Write-Host "Download attempt $i failed: $_"
+              if ($i -eq $maxRetries) { throw "JAGS installer download failed after $maxRetries attempts" }
+              Start-Sleep -Seconds 5
+            }
+          }
+          if (-not (Test-Path $installer)) { throw "JAGS installer download failed" }
+          $proc = Start-Process -FilePath $installer -ArgumentList "/S" -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "JAGS installer exited with code $($proc.ExitCode)" }
+          $jagsPath = "C:\Program Files\JAGS\JAGS-$env:JAGS_VERSION"
+          if (Test-Path "$jagsPath\x64\bin") {
+            echo "$jagsPath\x64\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+          }
+          echo "JAGS_HOME=$jagsPath" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+        shell: pwsh
 
       - uses: r-lib/actions/setup-r@v2
         with:

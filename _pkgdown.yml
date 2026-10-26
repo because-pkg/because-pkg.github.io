@@ -7,9 +7,31 @@ template:
     navbar-bg: "#0076BA"
 navbar:
   structure:
-    left: [home, reference, articles, extensions, news]
+    left: [home, reference, articles, extensions, news, blog]
     right: [search, github]
   components:
     extensions:
       text: "Extensions"
       href: articles/extensions.html
+    blog:
+      text: "Blog"
+      href: articles/announcing-because.html
+
+articles:
+  - title: "Tutorials & User Guides"
+    desc: "Comprehensive guides for Bayesian causal SEMs with because"
+    contents:
+      - '`01_getting_started`'
+      - '`02_dseparation`'
+      - '`03_model_diagnostics_comparison`'
+      - '`04_mediation`'
+      - '`05_non_gaussian_families`'
+      - '`06_deterministic_nodes`'
+      - '`07_custom_priors`'
+      - '`08_multiscale_models`'
+      - '`09_missing_data`'
+      - '`10_nimble_engine`'
+      - '`11_latent_variables_mag`'
+      - '`12_custom_families`'
+      - '`13_counterfactual_simulations`'
+      - '`14_bayesian_diagnostics`'

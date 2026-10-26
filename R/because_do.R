@@ -80,6 +80,9 @@ because_do <- do
 #' @export
 do.because <- function(object, ..., ndraws = NULL, re_formula = NULL, raw_scale = FALSE) {
     interventions <- list(...)
+    if (length(interventions) == 1 && is.list(interventions[[1]])) {
+        interventions <- interventions[[1]]
+    }
     if (length(interventions) == 0) {
         warning("No interventions specified. Returning standard predictions.")
     }
@@ -184,10 +187,9 @@ do.because <- function(object, ..., ndraws = NULL, re_formula = NULL, raw_scale 
                     base_mat <- matrix(rep(base_mat, each = ndraws), nrow = ndraws, ncol = n_obs)
                 }
                 sim_val <- base_mat * multiplier
-            } else if (inherits(iv, "formula")) {
-                # Shift or Stochastic intervention via formula (e.g. ~ . + 1.5)
-                # Convert . to current value
-                expr <- iv[[2]]
+            } else if (inherits(iv, "formula") || is.call(iv)) {
+                # Shift or Stochastic intervention via formula (e.g. ~ . + 1) or call quote(habitat + 1)
+                expr <- if (inherits(iv, "formula")) iv[[2]] else iv
                 
                 # If current_val is a vector, we need to broadcast it to a matrix
                 # so the formula applies row-wise across draws
@@ -197,8 +199,9 @@ do.because <- function(object, ..., ndraws = NULL, re_formula = NULL, raw_scale 
                 }
                 
                 # Evaluate expression
-                # We provide '.' as the base matrix, and 'n' as length for rnorm
+                # We provide '.' as the base matrix, the variable name itself, and 'n' as length for rnorm
                 eval_env <- list(. = base_mat, n = length(base_mat))
+                eval_env[[var]] <- base_mat
                 
                 # Expose all other upstream variables to the formula just in case
                 for (vname in names(newdata)) {

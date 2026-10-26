@@ -1,6 +1,7 @@
 # because 1.8.0 (2026-10-26)
 
 ## New Features & Enhancements
+* **Multi-Family & Principled ROPE Evaluation**: Added distribution-aware Region of Practical Equivalence (ROPE) evaluation to `summary()` and `plot_rope()`. Supports customized lists by family or response, uses principled defaults (Gaussian: `[-0.10, 0.10]`, Poisson/NegBin: `[-0.05, 0.05]`, Binomial/Ordinal: `[-0.18, 0.18]`), and displays human-readable rate/odds ratio interpretations alongside warnings for unstandardized continuous variables.
 * **Bayesian Model Diagnostics Suite**: Added a comprehensive suite of model diagnostic tools:
   * `check_model()`: Unified diagnostic visualizer.
   * `check_normality()` & `plot_qq()`: Randomized quantile residual Q-Q plots with empirical predictive envelopes.
@@ -67,7 +68,7 @@
 
 * **NumPyro Engine Integration**: Added `engine = "numpyro"` and `install_because_numpyro()` for GPU/CPU-accelerated Hamiltonian Monte Carlo (NUTS) sampling via JAX and `because_py`.
 * **Continuation Sampling (`because_continue`)**: Added `because_continue()` to extend MCMC chains for fitted JAGS and NIMBLE models without discarding existing burn-in and posterior samples.
-* **Counterfactual Interventions (`do()`)**: Added `because_do()` (`do()`) and `plot_counterfactual()` to simulate structural interventions (atomic, additive shifts, multipliers, and stochastic policies) using Pearl's do-calculus.
+* **Counterfactual Interventions (`do()`)**: Added `because_do()` (`do()`) and `summary.because_counterfactual()` to simulate structural interventions (atomic, additive shifts, multipliers, and stochastic policies) using Pearl's do-calculus.
 * **Average Marginal Effects (`marginal_effects`)**: Added `marginal_effects()`, `plot_coef()`, and marginal-effect edge scaling in `plot_dag()` to compare paths across Gaussian, Binomial, Ordinal, and Multinomial responses on a unified expected-change scale.
 * **Multiscale & Hierarchical Modeling**: Renamed `hierarchical` to `multiscale` with support for nested and cross-classified `(1 | group)` random effects and automatic scale inference.
 

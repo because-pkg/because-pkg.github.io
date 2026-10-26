@@ -7,16 +7,23 @@
 \usage{
 plot_rope(object, ...)
 
-\method{plot_rope}{because}(object, rope = c(-0.1, 0.1), parameters = NULL, ...)
+\method{plot_rope}{because}(object, rope = "default", parameters = NULL, ...)
 }
 \arguments{
 \item{object}{A \code{because} object.}
 
 \item{...}{Additional arguments passed to methods.}
 
-\item{rope}{A numeric vector of length 2 specifying the ROPE limits. Default is \code{c(-0.1, 0.1)}.}
+\item{rope}{Optional ROPE specification. Can be \code{"default"} (uses principled
+family defaults: \code{c(-0.10, 0.10)} for Gaussian, \code{c(-0.05, 0.05)} for Poisson/NegBin,
+\code{c(-0.18, 0.18)} for Binomial/Ordinal/Multinomial), a numeric vector of length 2
+(e.g., \code{c(-0.1, 0.1)} applied globally), or a named list specifying custom intervals by family
+(e.g., \code{list(poisson = c(-0.05, 0.05))}), by response variable, or by parameter name.}
 
-\item{parameters}{Optional character vector to filter which parameters to plot.}
+\item{parameters}{Optional character vector to filter which parameters to plot, or \code{"all"}
+to plot all monitored parameters. If \code{NULL} (default), only structural path coefficients (\code{beta_*})
+and correlations (\code{rho_*}) are plotted for standard models, excluding nuisance parameters (intercepts
+and variances).}
 }
 \value{
 A \code{ggplot} object.
@@ -24,4 +31,38 @@ A \code{ggplot} object.
 \description{
 Generic for plotting posterior density distributions and visualizing their overlap
 with a Region of Practical Equivalence (ROPE).
+}
+\details{
+The Region of Practical Equivalence (ROPE) formalizes Bayesian equivalence testing
+(Kruschke 2018; Makowski et al. 2019). When evaluating causal paths or conditional
+independence claims in d-separation, failure to reject a sharp null (\eqn{\beta = 0})
+does not provide evidence of absence. ROPE defines an explicit negligible boundary
+\eqn{[-\delta, +\delta]} around zero:
+\itemize{
+  \item \strong{Gaussian}: The default interval is \code{c(-0.10, 0.10)}, representing
+    half of Cohen's negligible effect size benchmark (\eqn{\pm 0.1 \times \text{SD}})
+    for standardized continuous traits (Kruschke 2018).
+  \item \strong{Poisson & Negative Binomial}: Coefficients sit on the log-rate scale
+    (\eqn{\log \text{IRR}}). The default interval \code{c(-0.05, 0.05)} represents an
+    approximate \eqn{\pm 5\%} relative change in expected count
+    (\eqn{\text{IRR} \in [\exp(-0.05), \exp(0.05)] \approx [0.95, 1.05]}).
+  \item \strong{Binomial, Ordinal, & Multinomial}: In logistic models, the binary outcome
+    is modeled via an underlying continuous latent variable with standard logistic error variance
+    \eqn{\sigma^2 = \pi^2 / 3} and standard deviation \eqn{\sigma = \pi / \sqrt{3} \approx 1.814}.
+    Applying Kruschke's \eqn{0.1 \times \sigma} rule to this latent scale yields
+    \eqn{\pm 0.1 \times (\pi / \sqrt{3}) \approx \pm 0.181} (Gelman et al. 2008; Makowski et al. 2019).
+    This corresponds to an Odds Ratio window of \eqn{\text{OR} \in [\exp(-0.181), \exp(0.181)] \approx [0.83, 1.20]}.
+}
+}
+\references{
+Kruschke, J. K. (2018). Rejecting or accepting parameter values in Bayesian estimation.
+\emph{Advances in Methods and Practices in Psychological Science}, 1(2), 270–280. \doi{10.1177/2515245918771304}
+
+Makowski, D., Ben-Shachar, M. S., & Lüdecke, D. (2019). bayestestR: Describing effects
+and their uncertainty, existence and significance within the Bayesian framework.
+\emph{Journal of Open Source Software}, 4(40), 1541. \doi{10.21105/joss.01541}
+
+Gelman, A., Jakulin, A., Pittau, M. G., & Su, Y. S. (2008). A weakly informative
+default prior distribution for logistic and other regression models.
+\emph{The Annals of Applied Statistics}, 2(4), 1360–1383. \doi{10.1214/08-AOAS191}
 }

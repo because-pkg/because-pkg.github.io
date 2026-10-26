@@ -9,9 +9,40 @@
 #' @param show_random Logical. If \code{TRUE}, shows random effect estimates (e.g., \code{u_...}).
 #'   Defaults to \code{FALSE}.
 #' @param prob Numeric. The credibility interval probability mass. Defaults to 0.95.
-#' @param rope A numeric vector of length 2 specifying the Region of Practical Equivalence (e.g., \code{c(-0.1, 0.1)}). If provided, calculates the proportion of posterior samples falling inside the ROPE.
+#' @param rope Optional ROPE specification. Can be \code{NULL} (default), \code{TRUE} (uses principled
+#'   family defaults: \code{c(-0.10, 0.10)} for Gaussian, \code{c(-0.05, 0.05)} for Poisson/NegBin,
+#'   \code{c(-0.18, 0.18)} for Binomial/Ordinal/Multinomial), a numeric vector of length 2
+#'   (e.g., \code{c(-0.1, 0.1)}), or a named list specifying custom intervals by family
+#'   (e.g., \code{list(poisson = c(-0.05, 0.05))}), by response variable, or by parameter name.
+#'   If provided, calculates the proportion of posterior samples falling inside the ROPE (\code{P_ROPE}).
 #' @param object A \code{because} object.
 #' @param ... Additional arguments passed to \code{\link[coda]{summary.mcmc}}.
+#'
+#' @details
+#' When \code{rope} is specified (or \code{rope = TRUE}), the function calculates \code{P_ROPE},
+#' the proportion of posterior draws falling within the Region of Practical Equivalence.
+#' By default, principled family-specific defaults are applied:
+#' \itemize{
+#'   \item \strong{Gaussian}: \code{c(-0.10, 0.10)}, representing \eqn{\pm 0.10 \times \text{SD}}
+#'     for standardized continuous traits (Kruschke 2018).
+#'   \item \strong{Poisson & Negative Binomial}: \code{c(-0.05, 0.05)}, representing an approximate
+#'     \eqn{\pm 5\%} relative change in expected count (\eqn{\text{IRR} \in [0.95, 1.05]}).
+#'   \item \strong{Binomial, Ordinal, & Multinomial}: \code{c(-0.18, 0.18)}, representing
+#'     \eqn{\pm 0.10 \times (\pi / \sqrt{3})} on the latent logistic scale
+#'     (Odds Ratio \eqn{\text{OR} \in [0.83, 1.20]}; Gelman et al. 2008; Makowski et al. 2019).
+#' }
+#'
+#' @references
+#' Kruschke, J. K. (2018). Rejecting or accepting parameter values in Bayesian estimation.
+#' \emph{Advances in Methods and Practices in Psychological Science}, 1(2), 270–280. \doi{10.1177/2515245918771304}
+#'
+#' Makowski, D., Ben-Shachar, M. S., & Lüdecke, D. (2019). bayestestR: Describing effects
+#' and their uncertainty, existence and significance within the Bayesian framework.
+#' \emph{Journal of Open Source Software}, 4(40), 1541. \doi{10.21105/joss.01541}
+#'
+#' Gelman, A., Jakulin, A., Pittau, M. G., & Su, Y. S. (2008). A weakly informative
+#' default prior distribution for logistic and other regression models.
+#' \emph{The Annals of Applied Statistics}, 2(4), 1360–1383. \doi{10.1214/08-AOAS191}
 #'
 #' @return A summary object containing statistics for the monitored parameters.
 #'   If \code{dsep = TRUE} was used in \code{because}, the summary focuses on
@@ -255,9 +286,11 @@ summary.because <- function(
                     }
                     
                     p_rope <- NA_real_
-                    if (!is.null(rope) && length(rope) == 2) {
+                    if (!is.null(rope)) {
+                        fam_i <- if (!is.null(object$family) && !is.null(response) && response %in% names(object$family)) object$family[[response]] else "gaussian"
+                        r_interval <- resolve_rope_for_param(param_name, resp = response, fam = fam_i, rope_spec = rope)
                         sub_samples_mat <- as.matrix(sub_samples)
-                        p_rope <- mean(sub_samples_mat > rope[1] & sub_samples_mat < rope[2])
+                        p_rope <- mean(sub_samples_mat > r_interval[1] & sub_samples_mat < r_interval[2])
                     }
 
                     res_row <- data.frame(
@@ -272,7 +305,7 @@ summary.because <- function(
                         stringsAsFactors = FALSE
                     )
                     
-                    if (!is.null(rope) && length(rope) == 2) {
+                    if (!is.null(rope)) {
                         res_row$P_ROPE <- paste0(format(round(100 * p_rope, 2), nsmall = 2, trim = TRUE), "%")
                     }
                     
@@ -421,21 +454,54 @@ summary.because <- function(
         }
 
         # Add P_ROPE if requested
-        if (!is.null(rope) && length(rope) == 2) {
+        rope_info <- NULL
+        if (!is.null(rope)) {
             all_samps <- as.matrix(object$samples)
             p_rope_vals <- numeric(nrow(combined))
-            
+            rope_resolved_list <- list()
+
             for (i in seq_along(p_rope_vals)) {
                 param_name <- rownames(combined)[i]
                 if (param_name %in% colnames(all_samps)) {
+                    resp_i <- NULL
+                    fam_i  <- "gaussian"
+                    if (!is.null(object$parameter_map)) {
+                        p_base <- gsub("\\[\\d+\\]$", "", param_name)
+                        p_match <- object$parameter_map[object$parameter_map$parameter == p_base |
+                                                       paste0(object$parameter_map$parameter, "[]") == p_base, ]
+                        if (nrow(p_match) > 0) {
+                            resp_i <- p_match$response[1]
+                        }
+                    }
+                    if (!is.null(resp_i) && !is.null(object$family) && resp_i %in% names(object$family)) {
+                        fam_i <- object$family[[resp_i]]
+                    }
+
+                    r_interval <- resolve_rope_for_param(param_name, resp = resp_i, fam = fam_i, rope_spec = rope)
                     s_col <- all_samps[, param_name]
-                    p_rope_vals[i] <- mean(s_col > rope[1] & s_col < rope[2])
+                    p_rope_vals[i] <- mean(s_col > r_interval[1] & s_col < r_interval[2])
+
+                    if (!is.null(resp_i)) {
+                        rope_resolved_list[[length(rope_resolved_list) + 1]] <- data.frame(
+                            Parameter = param_name,
+                            Response  = resp_i,
+                            Family    = fam_i,
+                            r_min     = r_interval[1],
+                            r_max     = r_interval[2],
+                            stringsAsFactors = FALSE
+                        )
+                    }
                 } else {
                     p_rope_vals[i] <- NA
                 }
             }
             # Add to combined
             combined <- cbind(combined, P_ROPE = paste0(format(round(100 * p_rope_vals, 2), nsmall = 2, trim = TRUE), "%"))
+
+            if (length(rope_resolved_list) > 0) {
+                res_df <- do.call(rbind, rope_resolved_list)
+                rope_info <- explain_rope_spec(res_df, data = object$data %||% object$original_data)
+            }
         }
 
         # Store components in list instead of printing
@@ -443,7 +509,8 @@ summary.because <- function(
             type = "standard",
             results = combined,
             DIC = object$DIC,
-            WAIC = object$WAIC
+            WAIC = object$WAIC,
+            rope_info = rope_info
         )
         class(out) <- "summary.because"
         return(out)
@@ -486,6 +553,16 @@ print.summary.because <- function(x, ...) {
     } else {
         # Standard summary
         print(x$results)
+
+        if (!is.null(x$rope_info) && length(x$rope_info$lines) > 0) {
+            cat("\nRegion of Practical Equivalence (ROPE):\n")
+            for (line in x$rope_info$lines) {
+                cat("  • ", line, "\n", sep = "")
+            }
+            if (!is.null(x$rope_info$note)) {
+                cat("  ", x$rope_info$note, "\n", sep = "")
+            }
+        }
 
         if (!is.null(x$DIC)) {
             cat("\nDIC:\n")
