@@ -49,58 +49,33 @@ jobs:
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install pkg-config
-          curl -fsSL -c /tmp/cookies.txt -b /tmp/cookies.txt -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" --retry 3 --retry-delay 5 \
-            -L "https://downloads.sourceforge.net/project/mcmc-jags/JAGS/4.x/Mac%20OS%20X/JAGS-4.3.2.pkg" \
-            -o /tmp/JAGS-4.3.2.pkg
-          sudo installer -pkg /tmp/JAGS-4.3.2.pkg -target /
-          rm -f /tmp/JAGS-4.3.2.pkg /tmp/cookies.txt
+          curl --retry 3 --fail-with-body -sSLO https://github.com/autobrew/bundler/releases/download/jags-4.3.2/JAGS-4.3.2.pkg
+          sudo installer -pkg JAGS-4.3.2.pkg -target /
+          rm -f JAGS-4.3.2.pkg
+          if [ -d "/opt/R/arm64/lib/pkgconfig" ]; then
+            sudo cp -f /usr/local/lib/pkgconfig/jags.pc /opt/R/arm64/lib/pkgconfig/ || true
+          fi
           echo "JAGS_HOME=/usr/local" >> $GITHUB_ENV
           echo "/usr/local/bin" >> $GITHUB_PATH
 
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
-        env:
-          JAGS_VERSION: "4.3.2"
         run: |
-          $installer = "$env:TEMP\JAGS-$env:JAGS_VERSION.exe"
-          $cookieFile = "$env:TEMP\cookies.txt"
-          $urls = @(
-            "https://downloads.sourceforge.net/project/mcmc-jags/JAGS/4.x/Windows/JAGS-$env:JAGS_VERSION.exe",
-            "https://downloads.sourceforge.net/project/mcmc-jags/JAGS/4.x/Windows/JAGS-4.3.1.exe"
-          )
-          $downloaded = $false
-          foreach ($url in $urls) {
-            Write-Host "Attempting download from: $url"
-            curl.exe -fsSL -c $cookieFile -b $cookieFile -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" --retry 3 --retry-delay 5 -L $url -o $installer
-            if ((Test-Path $installer) -and ((Get-Item $installer).Length -gt 1000000)) {
-              $downloaded = $true
-              Write-Host "Downloaded successfully ($((Get-Item $installer).Length) bytes)"
-              break
-            }
-          }
-          if (-not $downloaded) { throw "JAGS installer download failed from all mirror sources" }
-          
-          Start-Process -FilePath $installer -ArgumentList "/S" -Wait
-          
-          # Wait up to 30s for JAGS installation directory to appear
-          $jagsDir = $null
-          for ($i = 0; $i -lt 30; $i++) {
-            if (Test-Path "C:\Program Files\JAGS") {
-              $jagsDir = Get-ChildItem "C:\Program Files\JAGS" -Directory | Select-Object -First 1
-              if ($jagsDir -and (Test-Path "$($jagsDir.FullName)\x64\bin\jags.exe")) { break }
-            }
-            Start-Sleep -Seconds 1
-          }
-          
-          if ($jagsDir) {
-            $jagsPath = $jagsDir.FullName
-            Write-Host "JAGS installed at: $jagsPath"
-            Add-Content -Path $env:GITHUB_PATH -Value "$jagsPath\x64\bin"
-            Add-Content -Path $env:GITHUB_ENV -Value "JAGS_HOME=$jagsPath"
+          if ("${{ runner.arch }}" -eq "ARM64") {
+            $url = "https://github.com/r-universe-org/actions/releases/download/JAGS-4.3.2/JAGS-4.3.2-aarch64.exe"
           } else {
-            throw "Could not find installed JAGS in C:\Program Files\JAGS"
+            $url = "https://github.com/r-universe-org/actions/releases/download/JAGS-4.3.1/JAGS-4.3.1.exe"
           }
+          $jags = Join-Path $env:RUNNER_TEMP 'JAGS.exe'
+          curl.exe -sSL -o $jags $url
+          Start-Process $jags -ArgumentList '/S','/AllUsers' -Wait
+          $dir = Get-ChildItem 'C:\Program Files\JAGS\JAGS-*' | Select-Object -First 1
+          if (-not $dir) { throw 'JAGS did not install' }
+          $short = (New-Object -ComObject Scripting.FileSystemObject).GetFolder($dir.FullName).ShortPath
+          Write-Host "Setting JAGS_ROOT=$short"
+          Add-Content -Path $env:GITHUB_ENV -Value "JAGS_ROOT=$short"
+          Add-Content -Path $env:GITHUB_ENV -Value "JAGS_HOME=$short"
+          Add-Content -Path $env:GITHUB_PATH -Value "$($dir.FullName)\x64\bin"
         shell: pwsh
 
       - uses: r-lib/actions/setup-r@v2
