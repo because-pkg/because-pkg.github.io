@@ -143,6 +143,8 @@ library(because.phybase)
 data(rhino.dat, package = "because.phybase")
 data(rhino.tree, package = "because.phybase")
 
+rhino.dat[2:6] <-scale(rhino.dat[2:6])
+
 # 2. Specify the causal model (Model 8 from Gonzalez-Voyer & von Hardenberg, 2014):
 #    - Body mass (BM) affects litter size (LS)
 #    - Body mass (BM) and range size (RS) affect nose length (NL)
@@ -162,6 +164,7 @@ dsep_phylo <- because(
   dsep      = TRUE
 )
 summary(dsep_phylo)
+plot_rope(dsep_phylo)
 
 # 4. Fit the simultaneous phylogenetic SEM
 fit_phylo <- because(
@@ -210,3 +213,22 @@ remotes::install_github("because-pkg/because.phybase")
   * [https://github.com/because-pkg/because](https://github.com/because-pkg/because)
   * [https://github.com/because-pkg/because.phybase](https://github.com/because-pkg/because.phybase)
 * **Bug Reports & Issues**: [https://github.com/because-pkg/because/issues](https://github.com/because-pkg/because/issues)
+
+---
+
+## References
+
+Gonzalez-Voyer, A., & von Hardenberg, A. (2014). An introduction to phylogenetic path analysis. In L. Z. Garamszegi (Ed.), *Modern Phylogenetic Comparative Methods and Their Application in Evolutionary Biology: Concepts and Practice* (pp. 201–229). Springer, Berlin, Heidelberg. https://doi.org/10.1007/978-3-662-43550-2_8
+
+Kruschke, J. K. (2018). Rejecting or accepting parameter values in Bayesian estimation. *Advances in Methods and Practices in Psychological Science*, 1(2), 270–280. https://doi.org/10.1177/2515245918771382
+
+Pearl, J. (2009). *Causality: Models, Reasoning and Inference* (2nd ed.). Cambridge University Press. https://doi.org/10.1017/CBO9780511803161
+
+Richardson, T. S., & Spirtes, P. (2002). Ancestral graph Markov models. *The Annals of Statistics*, 30(4), 962–1030. https://doi.org/10.1214/aos/1031689015
+
+Shipley, B. (2000). A new inferential test for path models based on directed acyclic graphs. *Structural Equation Modeling*, 7(2), 206–218. https://doi.org/10.1207/S15328007SEM0702_4
+
+Shipley, B. (2016). *Cause and Correlation in Biology: A User's Guide to Path Analysis, Structural Equations and Causal Inference with R* (2nd ed.). Cambridge University Press. https://doi.org/10.1017/CBO9781139855921
+
+von Hardenberg, A., & Gonzalez-Voyer, A. (2025). PhyBaSE: A Bayesian structural equation model approach to causal inference in phylogenetic comparative analyses. *Methods in Ecology and Evolution*, 16(6), 1136–1148. https://doi.org/10.1111/2041-210X.70044
+
