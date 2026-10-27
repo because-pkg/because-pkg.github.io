@@ -92,4 +92,16 @@ test_that("explain_rope_spec produces informative explanations and notices", {
     exp_warn <- explain_rope_spec(res_df, data = df_raw)
     expect_false(is.null(exp_warn$note))
     expect_match(exp_warn$note, "mass")
+
+    # Shared specification across multiple responses (e.g. d-sep tests)
+    df_shared <- data.frame(
+        Response = c("BM", "DD", "LS", "NL", "RS"),
+        Family   = rep("gaussian", 5),
+        r_min    = rep(-0.10, 5),
+        r_max    = rep(0.10, 5),
+        stringsAsFactors = FALSE
+    )
+    exp_shared <- explain_rope_spec(df_shared)
+    expect_length(exp_shared$lines, 1)
+    expect_match(exp_shared$lines[1], "^Gaussian: \\[-0.10, 0.10\\]")
 })

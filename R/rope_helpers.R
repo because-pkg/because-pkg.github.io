@@ -83,25 +83,61 @@ resolve_rope_for_param <- function(pname, resp = NULL, fam = NULL, rope_spec = N
 explain_rope_spec <- function(resolved_df, data = NULL) {
     if (is.null(resolved_df) || nrow(resolved_df) == 0) return(list(lines = character(0), note = NULL))
 
-    # Deduplicate by Response, Family, r_min, r_max
-    u_df <- unique(resolved_df[, c("Response", "Family", "r_min", "r_max")])
+    # Keep all rows with non-NA values
+    resolved_df <- unique(resolved_df[, c("Response", "Family", "r_min", "r_max")])
+
+    # Find unique specs by Family, r_min, r_max
+    u_specs <- unique(resolved_df[, c("Family", "r_min", "r_max")])
+    total_responses <- unique(resolved_df$Response)
+    n_total_resp <- length(total_responses)
 
     lines <- character(0)
     unstandardized_vars <- character(0)
 
-    for (i in seq_len(nrow(u_df))) {
-        resp <- u_df$Response[i]
-        fam  <- tolower(as.character(u_df$Family[i]))
-        rmin <- u_df$r_min[i]
-        rmax <- u_df$r_max[i]
+    for (i in seq_len(nrow(u_specs))) {
+        fam  <- tolower(as.character(u_specs$Family[i]))
+        rmin <- u_specs$r_min[i]
+        rmax <- u_specs$r_max[i]
+
+        matching_rows <- resolved_df[tolower(as.character(resolved_df$Family)) == fam &
+                                     resolved_df$r_min == rmin &
+                                     resolved_df$r_max == rmax, ]
+        resps <- unique(matching_rows$Response)
+        resps <- resps[!is.na(resps) & resps != ""]
+
+        fam_title <- if (fam %in% c("gaussian", "normal")) "Gaussian"
+                     else if (fam %in% c("poisson", "negbinomial", "zip", "zinb")) {
+                         if (fam == "poisson") "Poisson" else toupper(fam)
+                     } else {
+                         paste0(toupper(substr(fam, 1, 1)), substr(fam, 2, nchar(fam)))
+                     }
+
+        # Build response qualifier
+        # If all responses in the plot share this exact same spec and there are multiple responses,
+        # or if resp == "All", omit per-response listing
+        resp_qualifier <- ""
+        if ((nrow(u_specs) == 1 && n_total_resp > 1) || (length(resps) == 1 && resps[1] == "All")) {
+            resp_qualifier <- ""
+        } else if (length(resps) == 1) {
+            resp_qualifier <- sprintf(" (%s)", resps[1])
+        } else if (length(resps) <= 3) {
+            resp_qualifier <- sprintf(" (%s)", paste(resps, collapse = ", "))
+        } else {
+            resp_qualifier <- sprintf(" (%s, +%d more)", paste(resps[1:2], collapse = ", "), length(resps) - 2)
+        }
 
         if (fam %in% c("gaussian", "normal")) {
-            lines <- c(lines, sprintf("Gaussian (%s): [%.2f, %.2f] (±%.2f SD if standardized)", resp, rmin, rmax, max(abs(c(rmin, rmax)))))
+            lines <- c(lines, sprintf("%s%s: [%.2f, %.2f] (±%.2f SD if standardized)",
+                                      fam_title, resp_qualifier, rmin, rmax, max(abs(c(rmin, rmax)))))
             # Check if trait is standardized in data
-            if (!is.null(data) && resp %in% names(data) && is.numeric(data[[resp]])) {
-                s_val <- stats::sd(data[[resp]], na.rm = TRUE)
-                if (!is.na(s_val) && (s_val > 1.5 || s_val < 0.6)) {
-                    unstandardized_vars <- c(unstandardized_vars, sprintf("'%s' (SD = %.2f)", resp, s_val))
+            if (!is.null(data)) {
+                for (r in resps) {
+                    if (r %in% names(data) && is.numeric(data[[r]])) {
+                        s_val <- stats::sd(data[[r]], na.rm = TRUE)
+                        if (!is.na(s_val) && (s_val > 1.5 || s_val < 0.6)) {
+                            unstandardized_vars <- c(unstandardized_vars, sprintf("'%s' (SD = %.2f)", r, s_val))
+                        }
+                    }
                 }
             }
         } else if (fam %in% c("poisson", "negbinomial", "zip", "zinb")) {
@@ -109,24 +145,23 @@ explain_rope_spec <- function(resolved_df, data = NULL) {
             irr_upp <- exp(rmax)
             pct_low <- (irr_low - 1) * 100
             pct_upp <- (irr_upp - 1) * 100
-            lines <- c(lines, sprintf("Poisson (%s): [%.2f, %.2f] (Rate Ratio [%.2f, %.2f], %.1f%% to +%.1f%% relative count)",
-                                      resp, rmin, rmax, irr_low, irr_upp, pct_low, pct_upp))
+            lines <- c(lines, sprintf("%s%s: [%.2f, %.2f] (Rate Ratio [%.2f, %.2f], %.1f%% to +%.1f%% relative count)",
+                                      fam_title, resp_qualifier, rmin, rmax, irr_low, irr_upp, pct_low, pct_upp))
         } else if (fam %in% c("binomial", "bernoulli", "ordinal", "multinomial")) {
             or_low <- exp(rmin)
             or_upp <- exp(rmax)
             latent_sd <- max(abs(c(rmin, rmax))) / (pi / sqrt(3))
-            fam_title <- paste0(toupper(substr(fam, 1, 1)), substr(fam, 2, nchar(fam)))
-            lines <- c(lines, sprintf("%s (%s): [%.2f, %.2f] (Odds Ratio [%.2f, %.2f], ±%.2f latent SD)",
-                                      fam_title, resp, rmin, rmax, or_low, or_upp, latent_sd))
+            lines <- c(lines, sprintf("%s%s: [%.2f, %.2f] (Odds Ratio [%.2f, %.2f], ±%.2f latent SD)",
+                                      fam_title, resp_qualifier, rmin, rmax, or_low, or_upp, latent_sd))
         } else {
-            lines <- c(lines, sprintf("%s (%s): [%.2f, %.2f]", fam, resp, rmin, rmax))
+            lines <- c(lines, sprintf("%s%s: [%.2f, %.2f]", fam_title, resp_qualifier, rmin, rmax))
         }
     }
 
     note <- NULL
     if (length(unstandardized_vars) > 0) {
         note <- sprintf("Note: Variable(s) %s are not standardized. ROPE is evaluated in raw units; consider standardizing continuous variables or supplying a custom ROPE interval.",
-                        paste(unstandardized_vars, collapse = ", "))
+                        paste(unique(unstandardized_vars), collapse = ", "))
     }
 
     list(lines = lines, note = note)

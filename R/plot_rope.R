@@ -267,21 +267,30 @@ plot_rope.because <- function(object, rope = "default", parameters = NULL, ...) 
 
     # Format human-readable explanation of active ROPE specifications
     rope_info <- explain_rope_spec(unique(plot_data[, c("Response", "Family", "r_min", "r_max")]), data = object$data %||% object$original_data)
-    sub_title_text <- if (length(rope_info$lines) > 0) paste(rope_info$lines, collapse = " | ") else "Density curves stacked vertically"
-    if (!is.null(rope_info$note)) {
-        sub_title_text <- paste0(sub_title_text, "\n", rope_info$note)
+    
+    # Wrap each explanation line cleanly so text never overflows the plot margin
+    wrapped_lines <- unlist(lapply(rope_info$lines, function(l) paste(strwrap(l, width = 80), collapse = "\n")))
+    sub_title_text <- if (length(wrapped_lines) > 0) paste(wrapped_lines, collapse = "\n") else "Density curves stacked vertically"
+    
+    caption_text <- if (!is.null(rope_info$note)) {
+        paste(strwrap(rope_info$note, width = 85), collapse = "\n")
+    } else {
+        NULL
     }
 
     p <- p +
         ggplot2::labs(
             title = if(is_dsep) "d-separation Tests: ROPE Overlap" else "Posterior Distributions: ROPE Overlap",
             subtitle = sub_title_text,
+            caption = caption_text,
             x = "Effect Size",
             y = ""
         ) +
         ggplot2::theme_minimal() +
         ggplot2::theme(
-            legend.position = "bottom"
+            legend.position = "bottom",
+            plot.subtitle = ggplot2::element_text(size = 9, lineheight = 1.15),
+            plot.caption = ggplot2::element_text(size = 8, color = "gray30", hjust = 0, lineheight = 1.15)
         )
         
     return(p)
