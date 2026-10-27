@@ -41,7 +41,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y jags pkg-config libnlopt-dev libglpk-dev libxml2-dev \
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y jags libjags-dev pkg-config libnlopt-dev libglpk-dev libxml2-dev \
           libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev libfontconfig1-dev \
           libarchive-dev libgit2-dev libssh2-1-dev libssl-dev libfreetype6-dev
           echo "JAGS_HOME=/usr" >> $GITHUB_ENV
@@ -49,20 +49,17 @@ jobs:
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install pkg-config jags
-          JAGS_PREFIX="$(brew --prefix)"
-          echo "JAGS_HOME=$JAGS_PREFIX" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$JAGS_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "$JAGS_PREFIX/bin" >> $GITHUB_PATH
-
-          # Symlink all JAGS libraries, modules, and headers to /usr/local
-          # so CRAN binary rjags finds libjags, libjrmath & modules seamlessly
-          sudo mkdir -p /usr/local/lib /usr/local/include
-          for f in "$JAGS_PREFIX"/lib/*jags* "$JAGS_PREFIX"/lib/*jrmath*; do
-            [ -e "$f" ] && sudo ln -sf "$f" /usr/local/lib/
-          done
-          [ -d "$JAGS_PREFIX/lib/JAGS" ] && sudo ln -sf "$JAGS_PREFIX/lib/JAGS" /usr/local/lib/
-          [ -d "$JAGS_PREFIX/include/JAGS" ] && sudo ln -sf "$JAGS_PREFIX/include/JAGS" /usr/local/include/
+          brew install pkg-config
+          dmg_url="https://downloads.sourceforge.net/project/mcmc-jags/JAGS/4.x/Mac%20OS%20X/JAGS-4.3.2.dmg"
+          fallback_url="https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Mac%20OS%20X/JAGS-4.3.2.dmg/download"
+          curl -fsSL -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" --retry 3 --retry-delay 5 -L "$dmg_url" -o /tmp/JAGS-4.3.2.dmg || \
+          curl -fsSL -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" --retry 3 --retry-delay 5 -L "$fallback_url" -o /tmp/JAGS-4.3.2.dmg
+          hdiutil attach /tmp/JAGS-4.3.2.dmg -nobrowse -mountpoint /tmp/jags-mount
+          sudo installer -pkg /tmp/jags-mount/JAGS-4.3.2.pkg -target /
+          hdiutil detach /tmp/jags-mount
+          rm -f /tmp/JAGS-4.3.2.dmg
+          echo "JAGS_HOME=/usr/local" >> $GITHUB_ENV
+          echo "/usr/local/bin" >> $GITHUB_PATH
 
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
@@ -89,15 +86,21 @@ jobs:
           
           Start-Process -FilePath $installer -ArgumentList "/S" -Wait
           
-          # Dynamically locate installed JAGS directory
-          $jagsDir = Get-ChildItem "C:\Program Files\JAGS" -Directory | Select-Object -First 1
+          # Wait up to 30s for JAGS installation directory to appear
+          $jagsDir = $null
+          for ($i = 0; $i -lt 30; $i++) {
+            if (Test-Path "C:\Program Files\JAGS") {
+              $jagsDir = Get-ChildItem "C:\Program Files\JAGS" -Directory | Select-Object -First 1
+              if ($jagsDir -and (Test-Path "$($jagsDir.FullName)\x64\bin\jags.exe")) { break }
+            }
+            Start-Sleep -Seconds 1
+          }
+          
           if ($jagsDir) {
             $jagsPath = $jagsDir.FullName
             Write-Host "JAGS installed at: $jagsPath"
-            if (Test-Path "$jagsPath\x64\bin") {
-              echo "$jagsPath\x64\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
-            }
-            echo "JAGS_HOME=$jagsPath" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+            Add-Content -Path $env:GITHUB_PATH -Value "$jagsPath\x64\bin"
+            Add-Content -Path $env:GITHUB_ENV -Value "JAGS_HOME=$jagsPath"
           } else {
             throw "Could not find installed JAGS in C:\Program Files\JAGS"
           }
