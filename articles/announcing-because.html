@@ -74,11 +74,12 @@ Hardenberg</h4>
 available in version <strong>1.8.0</strong>, providing a unified R
 framework for specifying, fitting, and evaluating Bayesian Structural
 Equation Models (BSEMs) with an explicit focus on causal inference.</p>
-<p>The package bridges Judea Pearl’s graphical causal framework with
-applied Bayesian MCMC estimation, enabling researchers to evaluate
-complex networks of observational hypotheses, test whether causal graphs
-are supported by empirical data, and estimate direct and indirect causal
-pathways across mixed distributions and structured dependencies.</p>
+<p>The package bridges Judea Pearl’s graphical causal framework (pearl,
+2009) with applied Bayesian MCMC estimation, enabling researchers to
+evaluate complex networks of observational hypotheses, test whether
+causal graphs are supported by empirical data, and estimate direct and
+indirect causal pathways across mixed distributions and structured
+dependencies.</p>
 <p>Observational studies in ecology, evolutionary biology, epidemiology,
 and the social sciences routinely investigate systems with
 interconnected causal pathways. While Structural Equation Modeling (SEM)
@@ -310,6 +311,8 @@ von Hardenberg, 2014) and von Hardenberg &amp; Gonzalez-Voyer
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">rhino.dat</span>, package <span class="op">=</span> <span class="st">"because.phybase"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">rhino.tree</span>, package <span class="op">=</span> <span class="st">"because.phybase"</span><span class="op">)</span></span>
 <span></span>
+<span><span class="va">rhino.dat</span><span class="op">[</span><span class="fl">2</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span> <span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">rhino.dat</span><span class="op">[</span><span class="fl">2</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span><span class="op">)</span></span>
+<span></span>
 <span><span class="co"># 2. Specify the causal model (Model 8 from Gonzalez-Voyer &amp; von Hardenberg, 2014):</span></span>
 <span><span class="co">#    - Body mass (BM) affects litter size (LS)</span></span>
 <span><span class="co">#    - Body mass (BM) and range size (RS) affect nose length (NL)</span></span>
@@ -329,6 +332,7 @@ von Hardenberg, 2014) and von Hardenberg &amp; Gonzalez-Voyer
 <span>  dsep      <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">dsep_phylo</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/plot_rope.html">plot_rope</a></span><span class="op">(</span><span class="va">dsep_phylo</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 4. Fit the simultaneous phylogenetic SEM</span></span>
 <span><span class="va">fit_phylo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because.html">because</a></span><span class="op">(</span></span>
@@ -397,6 +401,25 @@ comparative methods (PhyBaSE), incorporating single trees
 <strong>Bug Reports &amp; Issues</strong>: <a href="https://github.com/because-pkg/because/issues" class="external-link">https://github.com/because-pkg/because/issues</a>
 </li>
 </ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<p>Gonzalez-Voyer, A., &amp; von Hardenberg, A. (2014). An introduction
+to phylogenetic path analysis. In L. Z. Garamszegi (Ed.), <em>Modern
+Phylogenetic Comparative Methods and Their Application in Evolutionary
+Biology: Concepts and Practice</em> (pp. 201–229). Springer, Berlin,
+Heidelberg. <a href="https://doi.org/10.1007/978-3-662-43550-2_8" class="external-link uri">https://doi.org/10.1007/978-3-662-43550-2_8</a></p>
+<p>Pearl, J. (2009). <em>Causality: Models, Reasoning and Inference</em>
+(2nd ed.). Cambridge University Press. <a href="https://doi.org/10.1017/CBO9780511803161" class="external-link uri">https://doi.org/10.1017/CBO9780511803161</a></p>
+<p>Shipley, B. (2000). A new inferential test for path models based on
+directed acyclic graphs. <em>Structural Equation Modeling</em>, 7(2),
+206–218. <a href="https://doi.org/10.1207/S15328007SEM0702_4" class="external-link uri">https://doi.org/10.1207/S15328007SEM0702_4</a></p>
+<p>von Hardenberg, A., &amp; Gonzalez-Voyer, A. (2025). PhyBaSE: A
+Bayesian structural equation model approach to causal inference in
+phylogenetic comparative analyses. <em>Methods in Ecology and
+Evolution</em>, 16(6), 1136–1148. <a href="https://doi.org/10.1111/2041-210X.70044" class="external-link uri">https://doi.org/10.1111/2041-210X.70044</a></p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

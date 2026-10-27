@@ -8,11 +8,12 @@ The **`because`** package is now publicly available in version
 evaluating Bayesian Structural Equation Models (BSEMs) with an explicit
 focus on causal inference.
 
-The package bridges Judea Pearl’s graphical causal framework with
-applied Bayesian MCMC estimation, enabling researchers to evaluate
-complex networks of observational hypotheses, test whether causal graphs
-are supported by empirical data, and estimate direct and indirect causal
-pathways across mixed distributions and structured dependencies.
+The package bridges Judea Pearl’s graphical causal framework (pearl,
+2009) with applied Bayesian MCMC estimation, enabling researchers to
+evaluate complex networks of observational hypotheses, test whether
+causal graphs are supported by empirical data, and estimate direct and
+indirect causal pathways across mixed distributions and structured
+dependencies.
 
 Observational studies in ecology, evolutionary biology, epidemiology,
 and the social sciences routinely investigate systems with
@@ -224,6 +225,8 @@ library(because.phybase)
 data(rhino.dat, package = "because.phybase")
 data(rhino.tree, package = "because.phybase")
 
+rhino.dat[2:6] <-scale(rhino.dat[2:6])
+
 # 2. Specify the causal model (Model 8 from Gonzalez-Voyer & von Hardenberg, 2014):
 #    - Body mass (BM) affects litter size (LS)
 #    - Body mass (BM) and range size (RS) affect nose length (NL)
@@ -243,6 +246,7 @@ dsep_phylo <- because(
   dsep      = TRUE
 )
 summary(dsep_phylo)
+plot_rope(dsep_phylo)
 
 # 4. Fit the simultaneous phylogenetic SEM
 fit_phylo <- because(
@@ -301,3 +305,26 @@ remotes::install_github("because-pkg/because.phybase")
   - <https://github.com/because-pkg/because.phybase>
 - **Bug Reports & Issues**:
   <https://github.com/because-pkg/because/issues>
+
+------------------------------------------------------------------------
+
+## References
+
+Gonzalez-Voyer, A., & von Hardenberg, A. (2014). An introduction to
+phylogenetic path analysis. In L. Z. Garamszegi (Ed.), *Modern
+Phylogenetic Comparative Methods and Their Application in Evolutionary
+Biology: Concepts and Practice* (pp. 201–229). Springer, Berlin,
+Heidelberg. <https://doi.org/10.1007/978-3-662-43550-2_8>
+
+Pearl, J. (2009). *Causality: Models, Reasoning and Inference* (2nd
+ed.). Cambridge University Press.
+<https://doi.org/10.1017/CBO9780511803161>
+
+Shipley, B. (2000). A new inferential test for path models based on
+directed acyclic graphs. *Structural Equation Modeling*, 7(2), 206–218.
+<https://doi.org/10.1207/S15328007SEM0702_4>
+
+von Hardenberg, A., & Gonzalez-Voyer, A. (2025). PhyBaSE: A Bayesian
+structural equation model approach to causal inference in phylogenetic
+comparative analyses. *Methods in Ecology and Evolution*, 16(6),
+1136–1148. <https://doi.org/10.1111/2041-210X.70044>
