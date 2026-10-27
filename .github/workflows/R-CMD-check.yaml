@@ -41,7 +41,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y jags libjags-dev pkg-config libnlopt-dev libglpk-dev libxml2-dev \
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y jags pkg-config libnlopt-dev libglpk-dev libxml2-dev \
           libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev libfontconfig1-dev \
           libarchive-dev libgit2-dev libssh2-1-dev libssl-dev libfreetype6-dev
           echo "JAGS_HOME=/usr" >> $GITHUB_ENV
@@ -50,14 +50,11 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install pkg-config
-          dmg_url="https://downloads.sourceforge.net/project/mcmc-jags/JAGS/4.x/Mac%20OS%20X/JAGS-4.3.2.dmg"
-          fallback_url="https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Mac%20OS%20X/JAGS-4.3.2.dmg/download"
-          curl -fsSL -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" --retry 3 --retry-delay 5 -L "$dmg_url" -o /tmp/JAGS-4.3.2.dmg || \
-          curl -fsSL -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" --retry 3 --retry-delay 5 -L "$fallback_url" -o /tmp/JAGS-4.3.2.dmg
-          hdiutil attach /tmp/JAGS-4.3.2.dmg -nobrowse -mountpoint /tmp/jags-mount
-          sudo installer -pkg /tmp/jags-mount/JAGS-4.3.2.pkg -target /
-          hdiutil detach /tmp/jags-mount
-          rm -f /tmp/JAGS-4.3.2.dmg
+          curl -fsSL -c /tmp/cookies.txt -b /tmp/cookies.txt -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" --retry 3 --retry-delay 5 \
+            -L "https://downloads.sourceforge.net/project/mcmc-jags/JAGS/4.x/Mac%20OS%20X/JAGS-4.3.2.pkg" \
+            -o /tmp/JAGS-4.3.2.pkg
+          sudo installer -pkg /tmp/JAGS-4.3.2.pkg -target /
+          rm -f /tmp/JAGS-4.3.2.pkg /tmp/cookies.txt
           echo "JAGS_HOME=/usr/local" >> $GITHUB_ENV
           echo "/usr/local/bin" >> $GITHUB_PATH
 
@@ -67,15 +64,15 @@ jobs:
           JAGS_VERSION: "4.3.2"
         run: |
           $installer = "$env:TEMP\JAGS-$env:JAGS_VERSION.exe"
+          $cookieFile = "$env:TEMP\cookies.txt"
           $urls = @(
             "https://downloads.sourceforge.net/project/mcmc-jags/JAGS/4.x/Windows/JAGS-$env:JAGS_VERSION.exe",
-            "https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/JAGS-$env:JAGS_VERSION.exe/download",
             "https://downloads.sourceforge.net/project/mcmc-jags/JAGS/4.x/Windows/JAGS-4.3.1.exe"
           )
           $downloaded = $false
           foreach ($url in $urls) {
             Write-Host "Attempting download from: $url"
-            curl.exe -fsSL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" --retry 3 --retry-delay 5 -L $url -o $installer
+            curl.exe -fsSL -c $cookieFile -b $cookieFile -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" --retry 3 --retry-delay 5 -L $url -o $installer
             if ((Test-Path $installer) -and ((Get-Item $installer).Length -gt 1000000)) {
               $downloaded = $true
               Write-Host "Downloaded successfully ($((Get-Item $installer).Length) bytes)"
