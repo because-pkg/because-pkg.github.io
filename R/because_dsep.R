@@ -164,12 +164,27 @@ plot_dsep.because <- function(object, prob = 0.95, ...) {
     stop("Package 'ggplot2' is required for plot_dsep. Please install it.")
   }
 
-  # For multinomial responses, multiple parameters share the same Test string
-  # (one per category). Disambiguate by appending the specific Parameter name
+  # For multinomial responses or categorical predictors, multiple parameters share the same Test string
+  # (one per category). Disambiguate by appending the specific category name
   # so that each category gets its own row in the caterpillar plot.
   dup_tests <- duplicated(res$Test) | duplicated(res$Test, fromLast = TRUE)
   if (any(dup_tests)) {
-    res$Test[dup_tests] <- paste0(res$Test[dup_tests], " (", res$Parameter[dup_tests], ")")
+    for (idx in which(dup_tests)) {
+      test_label <- res$Test[idx]
+      param_name <- res$Parameter[idx]
+      resp_name <- sub("\\s*_\\|\\|_.*", "", test_label)
+      resp_clean <- sanitize_term_name(resp_name)
+      cat_label <- sub(paste0("^beta_", resp_clean, "_"), "", param_name)
+      clean_test <- gsub(" \\| \\{.*?\\}", "", test_label)
+      pred_name <- trimws(sub(".*_\\|\\|_\\s*", "", clean_test))
+      pred_clean <- sanitize_term_name(pred_name)
+      if (grepl(paste0("^", pred_clean, "_"), cat_label)) {
+        cat_level <- sub(paste0("^", pred_clean, "_"), "", cat_label)
+        res$Test[idx] <- paste0(res$Test[idx], " (", cat_level, ")")
+      } else {
+        res$Test[idx] <- paste0(res$Test[idx], " (", cat_label, ")")
+      }
+    }
   }
 
   # Create Simplified labels for the plot: Response _||_ TestVar

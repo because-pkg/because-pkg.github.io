@@ -90,6 +90,8 @@ plot_rope.because <- function(object, rope = "default", parameters = NULL, ...) 
         
         dsep_results <- object$dsep_results
         
+        dup_tests <- duplicated(res_table$Test) | duplicated(res_table$Test, fromLast = TRUE)
+        
         for (i in seq_len(nrow(res_table))) {
             test_label <- res_table$Test[i]
             param_name <- res_table$Parameter[i]
@@ -106,6 +108,21 @@ plot_rope.because <- function(object, rope = "default", parameters = NULL, ...) 
                         # Simplify test label by removing | {}
                         clean_label <- gsub(" \\| \\{.*?\\}", "", test_label)
                         clean_label <- trimws(clean_label)
+                        
+                        # Disambiguate tests with multiple parameters (e.g. categorical predictors / dummy variables)
+                        if (dup_tests[i]) {
+                            resp_name <- sub("\\s*_\\|\\|_.*", "", test_label)
+                            resp_clean <- sanitize_term_name(resp_name)
+                            cat_label <- sub(paste0("^beta_", resp_clean, "_"), "", param_name)
+                            pred_name <- trimws(sub(".*_\\|\\|_\\s*", "", clean_label))
+                            pred_clean <- sanitize_term_name(pred_name)
+                            if (grepl(paste0("^", pred_clean, "_"), cat_label)) {
+                                cat_level <- sub(paste0("^", pred_clean, "_"), "", cat_label)
+                                clean_label <- paste0(clean_label, " (", cat_level, ")")
+                            } else {
+                                clean_label <- paste0(clean_label, " (", cat_label, ")")
+                            }
+                        }
                         
                         # Infer response and family
                         resp_name <- sub("\\s*_\\|\\|_.*", "", test_label)
