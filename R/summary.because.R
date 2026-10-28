@@ -557,7 +557,7 @@ print.summary.because <- function(x, ...) {
         if (!is.null(x$rope_info) && length(x$rope_info$lines) > 0) {
             cat("\nRegion of Practical Equivalence (ROPE):\n")
             for (line in x$rope_info$lines) {
-                cat("  • ", line, "\n", sep = "")
+                cat("  \u2022 ", line, "\n", sep = "")
             }
             if (!is.null(x$rope_info$note)) {
                 cat("  ", x$rope_info$note, "\n", sep = "")

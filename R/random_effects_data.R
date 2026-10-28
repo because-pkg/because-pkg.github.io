@@ -343,6 +343,7 @@ prepare_random_effects_data <- function(
     data = data,
     random_structures = random_structures,
     hierarchical_info = hierarchical_info,
-    original_data = original_data
+    original_data = original_data,
+    row_ids = row_ids
   ))
 }

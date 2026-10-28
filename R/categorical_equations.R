@@ -41,7 +41,7 @@ expand_categorical_equations <- function(
         # we MUST define the dummies deterministically to link them.
         if (!is.null(response_vars_with_na) && var %in% response_vars_with_na) {
           for (k in 2:length(levels)) {
-            dummy_name <- paste0(var, "_", levels[k])
+            dummy_name <- dummies[k - 1]
 
             # Create deterministic equation: dummy ~ I(var == k)
             det_eq_str <- sprintf("%s ~ I(%s == %d)", dummy_name, var, k)
@@ -74,7 +74,7 @@ expand_categorical_equations <- function(
         eq_str <- paste(deparse(eq), collapse = " ")
 
         # Replace categorical variable with its dummies (wrapped in parentheses for proper interaction expansion like A*B)
-        pattern <- paste0("\\b", var, "\\b")
+        pattern <- paste0("\\b", gsub("([.\\^$*+?()[{\\\\|])", "\\\\\\1", var), "\\b")
         replacement <- paste0("(", paste(dummies, collapse = " + "), ")")
         eq_str <- gsub(pattern, replacement, eq_str)
 

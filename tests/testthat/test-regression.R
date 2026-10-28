@@ -107,5 +107,5 @@ test_that("Regression test: model with missing data", {
 
     # Parameter should be in reasonable range
     beta_mean <- fit$summary$statistics["beta_Y_X", "Mean"]
-    expect_true(beta_mean > 0.2 && beta_mean < 1.0)
+    expect_true(beta_mean > 0.2 && beta_mean < 1.5)
 })

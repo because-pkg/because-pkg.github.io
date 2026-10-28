@@ -47,7 +47,7 @@
 #' Hadfield, J. D. (2010). MCMC methods for multi-response generalized linear mixed models: The MCMCglmm R package.
 #'   \emph{Journal of Statistical Software}, 33(2), 1-22.
 #'
-#' @importFrom stats cov cor solve qnorm quantile median sd
+#' @importFrom stats cov cor solve qnorm quantile median sd fitted residuals
 #' @importFrom ggplot2 ggplot aes geom_point geom_line geom_ribbon geom_hline geom_col geom_errorbar labs theme_minimal coord_flip facet_wrap
 NULL
 

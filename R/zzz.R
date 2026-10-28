@@ -35,7 +35,24 @@ if (getRversion() >= "2.15.1") {
         "dx",
         "dy",
         "to",
-        "returnType"
+        "returnType",
+        "BVIF",
+        "Bin_Num",
+        "Fitted",
+        "Lower80",
+        "Lower95",
+        "Median_SD",
+        "Observed",
+        "Residual",
+        "Response",
+        "Term",
+        "Theoretical",
+        "Upper80",
+        "Upper95",
+        "compound_group",
+        "fixed_equations_temp",
+        "group",
+        "mag_exogenous_vars"
     ))
 }
 

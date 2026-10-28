@@ -259,6 +259,7 @@ preprocess_categorical_vars <- function(
         is_ord <- is.ordered(f_vals)
 
         if (is.null(existing_metadata)) {
+          clean_col <- sanitize_term_name(col)
           if (is_ord) {
             if (expand_ordered) {
               c_mat <- stats::contr.poly(length(levels))
@@ -274,7 +275,7 @@ preprocess_categorical_vars <- function(
               categorical_vars[[col]] <- list(
                 levels = levels,
                 reference = "Polynomial Contrast",
-                dummies = paste0(col, "_", c_names),
+                dummies = paste0(clean_col, "_", c_names),
                 type = "ordered",
                 contrasts = c_mat
               )
@@ -283,20 +284,22 @@ preprocess_categorical_vars <- function(
               categorical_vars[[col]] <- list(
                 levels = levels,
                 reference = "Numeric (Centered)",
-                dummies = paste0(col, "_L"),
+                dummies = paste0(clean_col, "_L"),
                 type = "ordered"
               )
             }
           } else {
+            clean_levels <- sapply(levels[-1], sanitize_term_name)
             categorical_vars[[col]] <- list(
               levels = levels,
               reference = levels[1],
-              dummies = paste0(col, "_", levels[-1]),
+              dummies = paste0(clean_col, "_", clean_levels),
               type = "unordered"
             )
           }
         } else {
           # Update existing metadata if needed
+          clean_col <- sanitize_term_name(col)
           if (is_ord && is.null(existing_metadata$contrasts) && expand_ordered) {
             c_mat <- stats::contr.poly(length(levels))
             if (ncol(c_mat) > 2) {
@@ -309,12 +312,12 @@ preprocess_categorical_vars <- function(
             c_names <- gsub("\\^", "pow", c_names)
 
             categorical_vars[[col]]$reference <- "Polynomial Contrast"
-            categorical_vars[[col]]$dummies <- paste0(col, "_", c_names)
+            categorical_vars[[col]]$dummies <- paste0(clean_col, "_", c_names)
             categorical_vars[[col]]$type <- "ordered"
             categorical_vars[[col]]$contrasts <- c_mat
           } else if (is_ord && is.null(existing_metadata$dummies) && !expand_ordered) {
             categorical_vars[[col]]$reference <- "Numeric (Centered)"
-            categorical_vars[[col]]$dummies <- paste0(col, "_L")
+            categorical_vars[[col]]$dummies <- paste0(clean_col, "_L")
             categorical_vars[[col]]$type <- "ordered"
           }
         }
@@ -342,7 +345,7 @@ preprocess_categorical_vars <- function(
             } else {
               # Linear centered (dummy name is col_L)
               raw_codes <- data[[col]]
-              data[[paste0(col, "_L")]] <- raw_codes - mean(raw_codes, na.rm = TRUE)
+              data[[dummies[1]]] <- raw_codes - mean(raw_codes, na.rm = TRUE)
             }
           } else {
             for (k in 2:length(levels)) {

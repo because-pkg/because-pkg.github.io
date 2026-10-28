@@ -127,7 +127,7 @@ explain_rope_spec <- function(resolved_df, data = NULL) {
         }
 
         if (fam %in% c("gaussian", "normal")) {
-            lines <- c(lines, sprintf("%s%s: [%.2f, %.2f] (±%.2f SD if standardized)",
+            lines <- c(lines, sprintf("%s%s: [%.2f, %.2f] (\u00b1%.2f SD if standardized)",
                                       fam_title, resp_qualifier, rmin, rmax, max(abs(c(rmin, rmax)))))
             # Check if trait is standardized in data
             if (!is.null(data)) {
@@ -151,7 +151,7 @@ explain_rope_spec <- function(resolved_df, data = NULL) {
             or_low <- exp(rmin)
             or_upp <- exp(rmax)
             latent_sd <- max(abs(c(rmin, rmax))) / (pi / sqrt(3))
-            lines <- c(lines, sprintf("%s%s: [%.2f, %.2f] (Odds Ratio [%.2f, %.2f], ±%.2f latent SD)",
+            lines <- c(lines, sprintf("%s%s: [%.2f, %.2f] (Odds Ratio [%.2f, %.2f], \u00b1%.2f latent SD)",
                                       fam_title, resp_qualifier, rmin, rmax, or_low, or_upp, latent_sd))
         } else {
             lines <- c(lines, sprintf("%s%s: [%.2f, %.2f]", fam_title, resp_qualifier, rmin, rmax))

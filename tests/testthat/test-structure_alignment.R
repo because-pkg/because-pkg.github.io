@@ -45,3 +45,23 @@ test_that("get_order_labels_hook extracts tip labels from phylo objects", {
     )
     expect_equal(get_order_labels_hook(mock_tree), c("A", "B", "C"))
 })
+
+test_that("preprocess_categorical_vars sanitizes column names with dots for dummy variables", {
+    df <- data.frame(
+        Y = rnorm(5),
+        Sample.size = c("large", "medium", "small", "tiny", "large"),
+        stringsAsFactors = FALSE
+    )
+    res <- preprocess_categorical_vars(df, target_vars = "Sample.size", dummy_vars = "Sample.size", quiet = TRUE)
+    cat_vars <- attr(res, "categorical_vars")
+    expect_true("Sample.size" %in% names(cat_vars))
+    # Dummies must use clean name with underscore
+    expect_equal(cat_vars[["Sample.size"]]$dummies, c("Sample_size_medium", "Sample_size_small", "Sample_size_tiny"))
+    expect_true(all(c("Sample_size_medium", "Sample_size_small", "Sample_size_tiny") %in% names(res)))
+
+    # Expansion in equations must use sanitized dummy names
+    eqs <- list(Y ~ Sample.size)
+    expanded <- expand_categorical_equations(eqs, res, quiet = TRUE)
+    exp_terms <- attr(terms(expanded$equations[[1]]), "term.labels")
+    expect_equal(exp_terms, c("Sample_size_medium", "Sample_size_small", "Sample_size_tiny"))
+})

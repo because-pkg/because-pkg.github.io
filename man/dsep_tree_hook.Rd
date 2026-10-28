@@ -4,10 +4,10 @@
 \alias{dsep_tree_hook}
 \title{D-Sep Tree Hook}
 \usage{
-dsep_tree_hook(tree, test_eq, hierarchical_info, levels, ...)
+dsep_tree_hook(structure, test_eq, hierarchical_info, levels, ...)
 }
 \arguments{
-\item{tree}{The structure object (e.g. phylo).}
+\item{structure}{The structure object.}
 
 \item{test_eq}{The current d-separation test equation.}
 

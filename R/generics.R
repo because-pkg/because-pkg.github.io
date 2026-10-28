@@ -258,15 +258,6 @@ dsep_equations_hook.default <- function(
     return(dsep_equations)
 }
 
-#' D-Sep Tree Hook
-#'
-#' Modules implement this to decide if a tree should be passed to a specific d-separation test.
-#' @param tree The structure object (e.g. phylo).
-#' @param test_eq The current d-separation test equation.
-#' @param hierarchical_info Hierarchical metadata.
-#' @param levels Level mapping.
-#' @param ... Additional arguments.
-#' @return The tree object or NULL.
 #' D-Sep Structure Hook
 #'
 #' Modules implement this to decide if a covariance structure should be passed to a specific d-separation test.
@@ -332,12 +323,22 @@ dsep_structure_hook.default <- function(
 }
 
 #' Backward-compatible alias for dsep_structure_hook
+#' @param structure The structure object.
+#' @param test_eq The current d-separation test equation.
+#' @param hierarchical_info Hierarchical metadata.
+#' @param levels Level mapping.
+#' @param ... Additional arguments.
 #' @keywords internal
 #' @export
 dsep_tree_hook <- function(structure, test_eq, hierarchical_info, levels, ...) {
     UseMethod("dsep_tree_hook")
 }
 
+#' @param structure The structure object.
+#' @param test_eq The current d-separation test equation.
+#' @param hierarchical_info Hierarchical metadata.
+#' @param levels Level mapping.
+#' @param ... Additional arguments.
 #' @keywords internal
 #' @export
 dsep_tree_hook.default <- function(structure, test_eq, hierarchical_info, levels, ...) {

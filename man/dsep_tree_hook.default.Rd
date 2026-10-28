@@ -4,7 +4,18 @@
 \alias{dsep_tree_hook.default}
 \title{Default Method for D-Sep Tree Hook}
 \usage{
-\method{dsep_tree_hook}{default}(tree, test_eq, hierarchical_info, levels, ...)
+\method{dsep_tree_hook}{default}(structure, test_eq, hierarchical_info, levels, ...)
+}
+\arguments{
+\item{structure}{The structure object.}
+
+\item{test_eq}{The current d-separation test equation.}
+
+\item{hierarchical_info}{Hierarchical metadata.}
+
+\item{levels}{Level mapping.}
+
+\item{...}{Additional arguments.}
 }
 \description{
 Filters the covariance structure list for a d-separation test sub-model based

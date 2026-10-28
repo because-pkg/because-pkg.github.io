@@ -353,6 +353,20 @@ because <- function(
   link_vars         <- hier_res$link_vars
   row_ids           <- hier_res$row_ids
 
+  # For flat models, extract row_ids from id_col before it gets stripped by random effects processing
+  if (is.null(row_ids) && !is.null(id_col)) {
+    if (is.data.frame(data) && id_col %in% names(data)) {
+      row_ids <- as.character(data[[id_col]])
+    } else if (is.list(data)) {
+      for (.item in data) {
+        if (is.data.frame(.item) && id_col %in% names(.item)) {
+          row_ids <- as.character(.item[[id_col]])
+          break
+        }
+      }
+    }
+  }
+
   # --- Random Effects Parsing ---
   rand_res     <- parse_model_random_effects(equations, random)
   equations    <- rand_res$equations
@@ -418,6 +432,7 @@ because <- function(
   random_structures <- re_res$random_structures
   if (!is.null(re_res$hierarchical_info)) hierarchical_info <- re_res$hierarchical_info
   if (!is.null(re_res$original_data)) original_data <- re_res$original_data
+  if (!is.null(re_res$row_ids)) row_ids <- re_res$row_ids
 
   # --- Structure Processing ---
   struct_res <- process_because_structures(
@@ -611,6 +626,17 @@ because <- function(
     ))
   }
 
+
+  # Synchronize sanitized predictor names in data if original column had dots or special characters
+  for (eq in equations) {
+    terms_in_eq <- attr(stats::terms(stats::formula(eq)), "term.labels")
+    for (t_name in terms_in_eq) {
+      san_name <- sanitize_term_name(t_name)
+      if (t_name %in% names(data) && !san_name %in% names(data)) {
+        data[[san_name]] <- data[[t_name]]
+      }
+    }
+  }
 
   # Prune unused tactical variables to avoid JAGS warnings
   for (v in c("N", "zeros", "zero_vec")) {

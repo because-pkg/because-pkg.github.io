@@ -129,7 +129,8 @@ because_format_data <- function(
                 c_names[c_names == ".C"] <- "C"
                 c_names <- gsub("\\^", "pow", c_names)
 
-                dummies <- paste0(col, "_", c_names)
+                clean_col <- sanitize_term_name(col)
+                dummies <- paste0(clean_col, "_", c_names)
 
                 categorical_vars[[col]] <- list(
                     levels = levels,
@@ -150,16 +151,19 @@ because_format_data <- function(
                 ))
             } else {
                 # Store categorical info (unordered treatment contrasts)
+                clean_col <- sanitize_term_name(col)
+                clean_levels <- sapply(levels[-1], sanitize_term_name)
+                dummies <- paste0(clean_col, "_", clean_levels)
                 categorical_vars[[col]] <- list(
                     levels = levels,
                     reference = levels[1],
-                    dummies = paste0(col, "_", levels[-1]),
+                    dummies = dummies,
                     type = "unordered"
                 )
 
                 # Create dummy variables (K-1 for K levels)
                 for (i in seq_along(levels)[-1]) {
-                    dummy_name <- paste0(col, "_", levels[i])
+                    dummy_name <- dummies[i - 1]
                     data[[dummy_name]] <- as.numeric(data[[col]] == levels[i])
                 }
 
