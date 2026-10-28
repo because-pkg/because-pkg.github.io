@@ -43,3 +43,47 @@ test_that("plot_rope filters to betas and rhos by default on fitted models", {
     p_all <- plot_rope(fit, parameters = "all")
     expect_equal(length(unique(p_all$data$Label)), 6)
 })
+
+test_that("plot_rope disambiguates categorical dummy variables for d-sep tests", {
+    samples <- coda::mcmc.list(
+        coda::mcmc(matrix(
+            rnorm(600, mean = 0),
+            ncol = 2,
+            dimnames = list(NULL, c("beta_Brain_Sample_size_medium", "beta_Brain_Sample_size_small"))
+        ))
+    )
+
+    dsep_tests <- list(Brain ~ Sample.size)
+    attr(dsep_tests[[1]], "test_var") <- "Sample.size"
+    attr(dsep_tests[[1]], "formula_string") <- "Brain _||_ Sample.size"
+
+    param_map <- data.frame(
+        response = c("Brain", "Brain"),
+        predictor = c("Sample_size_medium", "Sample_size_small"),
+        parameter = c("beta_Brain_Sample_size_medium", "beta_Brain_Sample_size_small"),
+        equation_index = c(1, 1),
+        stringsAsFactors = FALSE
+    )
+
+    fit <- list(
+        samples = samples,
+        dsep = TRUE,
+        dsep_tests = dsep_tests,
+        parameter_map = param_map,
+        dsep_results = list(
+            list(
+                samples = samples,
+                param_map = param_map
+            )
+        )
+    )
+    class(fit) <- "because"
+
+    skip_if_not_installed("ggridges")
+    p <- plot_rope(fit)
+
+    expect_s3_class(p, "ggplot")
+    labels <- levels(p$data$Label)
+    expect_true("Brain _||_ Sample.size (medium)" %in% labels)
+    expect_true("Brain _||_ Sample.size (small)" %in% labels)
+})
