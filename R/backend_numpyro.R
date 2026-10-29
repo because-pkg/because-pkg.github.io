@@ -79,6 +79,17 @@ format_numpyro_samples <- function(py_result) {
         cols <- matrix(param_data[ch, , ], ncol = param_len)
         colnames(cols) <- paste0(param_name, "[", 1:param_len, "]")
         chain_mat <- if (is.null(chain_mat)) cols else cbind(chain_mat, cols)
+      } else if (length(dim(param_data)) == 4) {
+        # Matrix parameter: shape (chains, iters, rows, cols)
+        # Specifically extract 2x2 LKJ Cholesky factor L_corr_* -> rho_* if not already present
+        if (grepl("^L_corr_", param_name) && dim(param_data)[3] == 2 && dim(param_data)[4] == 2) {
+          rho_name <- sub("^L_corr_", "rho_", param_name)
+          if (!rho_name %in% names(raw_samples) && (is.null(chain_mat) || !rho_name %in% colnames(chain_mat))) {
+            col <- matrix(param_data[ch, , 2, 1], ncol = 1)
+            colnames(col) <- rho_name
+            chain_mat <- if (is.null(chain_mat)) col else cbind(chain_mat, col)
+          }
+        }
       }
     }
     chain_list[[ch]] <- coda::mcmc(chain_mat)
@@ -242,7 +253,8 @@ run_numpyro_pipeline <- function(
     priors = priors,
     hierarchical_info = if (!is.null(is_hierarchical) && is_hierarchical) hierarchical_info else NULL,
     engine = engine,
-    quiet = quiet
+    quiet = quiet,
+    py_result = py_result
   )
   if (WAIC && !is.null(py_result$waic)) {
     waic_df <- data.frame(
