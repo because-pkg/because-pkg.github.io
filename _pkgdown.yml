@@ -7,7 +7,7 @@ template:
     navbar-bg: "#0076BA"
 navbar:
   structure:
-    left: [home, reference, articles, extensions, news, blog]
+    left: [home, reference, articles, extensions, news]
     right: [search, github]
   components:
     extensions:
@@ -39,10 +39,10 @@ articles:
     desc: "Extending because with specialized packages and domain models"
     contents:
       - '`extensions`'
-  - title: "News & Releases"
-    desc: "Release announcements and package updates"
-    contents:
-      - '`announcing-because`'
+#  - title: "News & Releases"
+#    desc: "Release announcements and package updates"
+#    contents:
+#      - '`announcing-because`'
 
 reference:
   - title: "Model Fitting & Estimation"

@@ -1,3 +1,12 @@
+# because 1.8.1 (2026-10-28)
+
+## Bug Fixes & Improvements
+* **Categorical Dummy Variable Name Sanitization**: Fixed JAGS/NIMBLE compilation errors when categorical variables or their levels contain periods (`.`) by systematically sanitizing base column and level names (e.g. `Sample.size` $\rightarrow$ `Sample_size_medium`).
+* **Categorical Dummy Disambiguation in Plots**: `plot_rope()` and `plot_dsep()` now disambiguate individual dummy coefficients for categorical predictors (e.g. `Brain _||_ Sample.size (medium)`), preventing `plot_rope()` from unintentionally pooling all category draws into a single merged density.
+* **Observation Row Ordering in Structure Preparation**: Retained observation `row_ids` in flat models during random effects / structure data formatting to prevent phylogenetic tip alignment issues.
+
+---
+
 # because 1.8.0 (2026-10-26)
 
 ## New Features & Enhancements

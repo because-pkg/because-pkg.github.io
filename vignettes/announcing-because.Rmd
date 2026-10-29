@@ -1,17 +1,17 @@
 ---
-title: "Announcing because v1.8.0: Bayesian Estimation of Causal Effects in R"
+title: "Announcing because v1.8: Bayesian Estimation of Causal Effects in R"
 author: Achaz von Hardenberg 
 date: "2026-10-26"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Announcing because v1.8.0}
+  %\VignetteIndexEntry{Announcing because v1.8}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 <img src="https://raw.githubusercontent.com/because-pkg/because/master/man/figures/logo.png" align="right" width="135" style="margin-left: 20px; margin-bottom: 20px;" alt="because hex sticker" />
 
-The **`because`** package is now publicly available in version **1.8.0**, providing a unified R framework for specifying, fitting, and evaluating Bayesian Structural Equation Models (BSEMs) with an explicit focus on causal inference.
+The **`because`** package is now publicly available in version **1.8**, providing a unified R framework for specifying, fitting, and evaluating Bayesian Structural Equation Models (BSEMs) with an explicit focus on causal inference.
 
 The package bridges Judea Pearl's graphical causal framework (pearl, 2009) with applied Bayesian MCMC estimation, enabling researchers to evaluate complex networks of observational hypotheses, test whether causal graphs are supported by empirical data, and estimate direct and indirect causal pathways across mixed distributions and structured dependencies.
 
@@ -201,10 +201,10 @@ The packages can be installed from GitHub:
 
 ```r
 # Install core package
-remotes::install_github("because-pkg/because@v1.8.0")
+remotes::install_github("because-pkg/because@v1.8.1")
 
 # Install phylogenetic extension
-remotes::install_github("because-pkg/because.phybase")
+remotes::install_github("because-pkg/because.phybase@v1.0.2")
 ```
 
 * **Core Documentation**: [https://because-pkg.github.io/because/](https://because-pkg.github.io/because/)
