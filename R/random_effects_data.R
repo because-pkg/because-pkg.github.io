@@ -11,6 +11,7 @@ prepare_random_effects_data <- function(
 ) {
   # If original_data not supplied, fall back to data
   if (is.null(original_data)) original_data <- data
+  row_ids <- if (is.list(hierarchical_info)) hierarchical_info$row_ids else NULL
   random_structures <- list()
   random_data_updates <- list()
   random_vars <- character(0)

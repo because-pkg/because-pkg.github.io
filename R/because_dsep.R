@@ -191,7 +191,7 @@ plot_dsep.because <- function(object, prob = 0.95, ...) {
   # This strips the conditioning set (e.g. | {X,Y,Z}) for better readability.
   # We match the specific formatting used in summary.because.
   res$Label <- gsub(" \\| \\{.*?\\}", "", res$Test)
-  res$Label <- trimws(res$Label)
+  res$Label <- trimws(gsub("\\s+", " ", res$Label))
 
   # Symmetric axis: always show both sides of zero for fair visual comparison.
   # Use coord_flip(ylim=) rather than scale_y_continuous(limits=) to zoom
