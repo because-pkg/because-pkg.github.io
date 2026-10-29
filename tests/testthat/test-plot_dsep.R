@@ -82,7 +82,7 @@ test_that("plot_dsep disambiguates categorical dummy variables cleanly", {
 
     p <- plot_dsep(fit)
     expect_s3_class(p, "ggplot")
-    labels <- levels(p$data$Label)
+    labels <- p$data$Label
     expect_true(any(grepl("Brain _\\|\\|_ Sample.size \\(medium\\)", labels)))
     expect_true(any(grepl("Brain _\\|\\|_ Sample.size \\(small\\)", labels)))
 })

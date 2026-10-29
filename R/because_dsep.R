@@ -190,7 +190,8 @@ plot_dsep.because <- function(object, prob = 0.95, ...) {
   # Create Simplified labels for the plot: Response _||_ TestVar
   # This strips the conditioning set (e.g. | {X,Y,Z}) for better readability.
   # We match the specific formatting used in summary.because.
-  res$Label <- gsub(" \\| \\{.*?\\}", "", res$Test)
+  res$Label <- gsub(" \\| \\{.*?\\}\\s*", "", res$Test)
+  res$Label <- gsub("\\s+", " ", res$Label)
   res$Label <- trimws(res$Label)
 
   # Symmetric axis: always show both sides of zero for fair visual comparison.

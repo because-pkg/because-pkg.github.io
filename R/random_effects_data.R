@@ -14,6 +14,7 @@ prepare_random_effects_data <- function(
   random_structures <- list()
   random_data_updates <- list()
   random_vars <- character(0)
+  row_ids <- NULL
 
   # --- Random Effects Data Prep (Post-Assembly) ---
   # Create group structures for the model engine using the assembled data
