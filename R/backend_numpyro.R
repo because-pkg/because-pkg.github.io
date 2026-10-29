@@ -16,6 +16,7 @@
 #' @return Raw result from because_py$fit
 #' @export
 run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structures,
+                              induced_correlations = NULL,
                               n_chains, n_iter, n_warmup, adapt_delta, max_treedepth,
                               prior_scale_fixed, quiet, WAIC = FALSE) {
   
@@ -29,6 +30,12 @@ run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structur
     stop("Failed to import 'because.api'. Make sure because_py is installed and reticulate is configured.")
   })
   
+  py_induced_cors <- if (!is.null(induced_correlations) && length(induced_correlations) > 0) {
+    lapply(induced_correlations, as.character)
+  } else {
+    NULL
+  }
+  
   py_result <- because_py$fit(
     equations = eq_strings,
     data = flat_data,
@@ -37,6 +44,7 @@ run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structur
     num_samples = as.integer(n_iter),
     num_warmup = as.integer(n_warmup),
     cor_matrices = py_structures,
+    induced_correlations = py_induced_cors,
     adapt_delta = adapt_delta,
     max_treedepth = as.integer(max_treedepth),
     prior_scale_fixed = prior_scale_fixed,
@@ -103,7 +111,7 @@ format_numpyro_samples <- function(py_result) {
 #' @keywords internal
 run_numpyro_pipeline <- function(
   equations, data, family, structures, priors, random_terms,
-  hierarchical_info, is_hierarchical, latent, n.chains, n.iter, n.burnin,
+  hierarchical_info, is_hierarchical, latent, induced_correlations = NULL, n.chains, n.iter, n.burnin,
   adapt_delta, max_treedepth, prior_scale_fixed, quiet, WAIC,
   model_string, parameter_map, original_call, engine = "numpyro"
 ) {
@@ -230,6 +238,7 @@ run_numpyro_pipeline <- function(
     family = if (!is.null(family)) as.list(family) else NULL,
     priors = NULL,
     py_structures = py_structures,
+    induced_correlations = induced_correlations,
     n_chains = n.chains,
     n_iter = n.iter - n.burnin,
     n_warmup = n.burnin,

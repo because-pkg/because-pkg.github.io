@@ -611,6 +611,7 @@ because <- function(
       hierarchical_info = hierarchical_info,
       is_hierarchical = is_hierarchical,
       latent = latent,
+      induced_correlations = induced_cors,
       n.chains = n.chains,
       n.iter = n.iter,
       n.burnin = n.burnin,
