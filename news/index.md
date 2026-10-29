@@ -4,14 +4,6 @@
 
 ### Bug Fixes & Improvements
 
-- **NumPyro Latent MAG Induced Correlation Reporting**: Fixed an issue
-  where induced correlation parameters (`rho_*`) resulting from
-  marginalizing latent variables (MAG approach) were missing from
-  [`summary()`](https://rdrr.io/r/base/summary.html) when using
-  `engine = "numpyro"`. `format_numpyro_samples()` and
-  `because_py$fit()` now extract the off-diagonal correlation
-  coefficient directly from the 4D LKJ Cholesky factor matrix
-  (`L_corr_*[..., 2, 1]`) and register it as `rho_*`.
 - **Hierarchical Random Effects Initialization**: Fixed an uninitialized
   variable error (`object 'row_ids' not found`) in
   `prepare_random_effects_data()` when fitting multi-level /
