@@ -317,11 +317,10 @@ Coefficient (VPC / $`\lambda_{\text{Bayes}}`$)** (Hadfield, 2010):
 > any numeric covariance/precision `matrix` (e.g., spatial distance
 > matrices or pre-computed phylogenetic VCV matrices:
 > `structure = vcv_matrix`). - **`because.phybase` Extension**: Required
-> when passing
-> [`ape::phylo`](https://rdrr.io/pkg/ape/man/read.tree.html) or
-> `multiPhylo` tree objects directly (`structure = tree`).
-> `because.phybase` provides the S3 methods that translate phylogenetic
-> trees into precision matrices and sample over topological uncertainty.
+> when passing `ape::phylo` or `multiPhylo` tree objects directly
+> (`structure = tree`). `because.phybase` provides the S3 methods that
+> translate phylogenetic trees into precision matrices and sample over
+> topological uncertainty.
 
 #### Example A: Native Covariance Matrix in Core `because`
 
@@ -349,8 +348,7 @@ check_residual_structure(fit_struct, resp = "Brain")
 
 #### Example B: Using `because.phybase` with Tree Objects
 
-If you are working with phylogenetic trees directly
-([`ape::phylo`](https://rdrr.io/pkg/ape/man/read.tree.html) or
+If you are working with phylogenetic trees directly (`ape::phylo` or
 `multiPhylo` objects), load the `because.phybase` extension package:
 
 ``` r
