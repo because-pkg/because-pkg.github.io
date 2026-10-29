@@ -1,5 +1,19 @@
 # Changelog
 
+## because 1.8.2 (2026-10-29)
+
+### Bug Fixes & Improvements
+
+- **Hierarchical Random Effects Initialization**: Fixed an uninitialized
+  variable error (`object 'row_ids' not found`) in
+  `prepare_random_effects_data()` when fitting multi-level /
+  hierarchical models.
+- **Plot Label Formatting**: Normalized whitespace handling in
+  [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md)
+  to ensure clean formatting for tests with empty conditioning sets.
+
+------------------------------------------------------------------------
+
 ## because 1.8.1 (2026-10-28)
 
 ### Bug Fixes & Improvements
