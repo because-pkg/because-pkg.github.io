@@ -348,10 +348,3 @@ Comprehensive guides for Bayesian causal SEMs with because
 Extending because with specialized packages and domain models
 
 - [Extensions](https://because-pkg.github.io/because/articles/extensions.md):
-
-### News & Releases
-
-Release announcements and package updates
-
-- [Announcing because v1.8: Bayesian Estimation of Causal Effects in
-  R](https://because-pkg.github.io/because/articles/announcing-because.md):
