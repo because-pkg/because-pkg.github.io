@@ -30,7 +30,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/v1.8.2/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
@@ -38,6 +38,8 @@
 <div class="section level3">
 <h3 id="bug-fixes--improvements-1-8-2">Bug Fixes &amp; Improvements<a class="anchor" aria-label="anchor" href="#bug-fixes--improvements-1-8-2"></a></h3>
 <ul><li>
+<strong>NumPyro Latent MAG Induced Correlation Reporting</strong>: Fixed an issue where induced correlation parameters (<code>rho_*</code>) resulting from marginalizing latent variables (MAG approach) were missing from <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> when using <code>engine = "numpyro"</code>. <code>format_numpyro_samples()</code> and <code>because_py$fit()</code> now extract the off-diagonal correlation coefficient directly from the 4D LKJ Cholesky factor matrix (<code>L_corr_*[..., 2, 1]</code>) and register it as <code>rho_*</code>.</li>
+<li>
 <strong>Hierarchical Random Effects Initialization</strong>: Fixed an uninitialized variable error (<code>object 'row_ids' not found</code>) in <code>prepare_random_effects_data()</code> when fitting multi-level / hierarchical models.</li>
 <li>
 <strong>Plot Label Formatting</strong>: Normalized whitespace handling in <code><a href="../reference/plot_dsep.html">plot_dsep()</a></code> to ensure clean formatting for tests with empty conditioning sets.</li>
