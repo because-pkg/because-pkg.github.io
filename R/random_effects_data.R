@@ -109,9 +109,7 @@ prepare_random_effects_data <- function(
     }
   }
 
-  # row_ids was already captured above (immediately after hierarchical_info was
-  # built from the raw data). For the flat path it is re-initialised below.
-  # row_ids <- NULL  # <-- original position; now handled earlier.
+  row_ids <- NULL
 
   if (
     (is.data.frame(data) || (is.list(data) && !is.data.frame(data))) &&
