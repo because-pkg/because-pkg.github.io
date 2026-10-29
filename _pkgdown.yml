@@ -39,10 +39,10 @@ articles:
     desc: "Extending because with specialized packages and domain models"
     contents:
       - '`extensions`'
-#  - title: "News & Releases"
-#    desc: "Release announcements and package updates"
-#    contents:
-#      - '`announcing-because`'
+  - title: "News & Releases"
+    desc: "Release announcements and package updates"
+    contents:
+      - '`announcing-because`'
 
 reference:
   - title: "Model Fitting & Estimation"
@@ -64,7 +64,17 @@ reference:
       - marginal_effects
       - because_mediation
       - because_do
-  - title: "Model Diagnostics & Comparison"
+      - do
+  - title: "Model Diagnostics & Residual Analysis"
+    desc: "Bayesian diagnostic suite for residual normality, homoscedasticity, collinearity, and residual structure."
+    contents:
+      - check_model
+      - check_normality
+      - check_homoscedasticity
+      - check_collinearity
+      - check_residual_structure
+      - residuals.because
+  - title: "Model Comparison & Prediction"
     desc: "Posterior predictive checks, information criteria, and prediction methods."
     contents:
       - summary.because
