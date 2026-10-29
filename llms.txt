@@ -63,11 +63,11 @@ NumPyro code from standard R formulas. Key features include:
 
 ## Installation
 
-To install the **stable release** (`v1.8.0`), run:
+To install the **stable release** (`v1.8.1`), run:
 
 ``` r
 
-remotes::install_github("because-pkg/because@v1.8.0")
+remotes::install_github("because-pkg/because@v1.8.1")
 ```
 
 To install the **latest development version**, run:
@@ -170,6 +170,24 @@ are using Miniconda/Conda), we highly recommend referring to the
 Guide](https://because-pkg.github.io/because_py/articles/installation.html)**
 for comprehensive troubleshooting and dedicated environment setups.
 
+## Citation
+
+To cite `because` in publications, please use:
+
+``` bibtex
+@Manual{,
+  title = {because: Bayesian Estimation of Causal Effects},
+  author = {Achaz von Hardenberg},
+  year = {2026},
+  note = {R package version 1.8.1},
+  url = {https://because-pkg.github.io},
+}
+```
+
+In text: \> von Hardenberg, A. (2026). *because: Bayesian Estimation of
+Causal Effects*. R package version 1.8.1,
+<https://github.com/achazhardenberg/because>.
+
 # Package index
 
 ## Model Fitting & Estimation
@@ -213,7 +231,28 @@ structural interventions.
   [`summary(`*`<because_counterfactual>`*`)`](https://because-pkg.github.io/because/reference/do.md)
   : Causal Interventions for Structural Equation Models
 
-## Model Diagnostics & Comparison
+## Model Diagnostics & Residual Analysis
+
+Bayesian diagnostic suite for residual normality, homoscedasticity,
+collinearity, and residual structure.
+
+- [`check_model()`](https://because-pkg.github.io/because/reference/check_model.md)
+  : Unified Diagnostic Dashboard for because Models
+- [`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
+  [`plot_qq()`](https://because-pkg.github.io/because/reference/check_normality.md)
+  : Bayesian Normality Check and Q-Q Envelope
+- [`check_homoscedasticity()`](https://because-pkg.github.io/because/reference/check_homoscedasticity.md)
+  : Bayesian Homoscedasticity and Residual Dispersion Diagnostics
+- [`check_collinearity()`](https://because-pkg.github.io/because/reference/check_collinearity.md)
+  [`bvif()`](https://because-pkg.github.io/because/reference/check_collinearity.md)
+  : Bayesian Collinearity and Variance Inflation Diagnostics
+- [`check_residual_structure()`](https://because-pkg.github.io/because/reference/check_residual_structure.md)
+  : Bayesian Residual Structure and Variance Partition Diagnostics
+- [`fitted(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/residuals.because.md)
+  [`residuals(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/residuals.because.md)
+  : Extract Fitted Values and Residuals for because Models
+
+## Model Comparison & Prediction
 
 Posterior predictive checks, information criteria, and prediction
 methods.
@@ -314,5 +353,5 @@ Extending because with specialized packages and domain models
 
 Release announcements and package updates
 
-- [Announcing because v1.8.0: Bayesian Estimation of Causal Effects in
+- [Announcing because v1.8: Bayesian Estimation of Causal Effects in
   R](https://because-pkg.github.io/because/articles/announcing-because.md):

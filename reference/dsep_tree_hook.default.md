@@ -8,5 +8,27 @@ models unless overridden by a structure-specific method).
 
 ``` r
 # Default S3 method
-dsep_tree_hook(tree, test_eq, hierarchical_info, levels, ...)
+dsep_tree_hook(structure, test_eq, hierarchical_info, levels, ...)
 ```
+
+## Arguments
+
+- structure:
+
+  The structure object.
+
+- test_eq:
+
+  The current d-separation test equation.
+
+- hierarchical_info:
+
+  Hierarchical metadata.
+
+- levels:
+
+  Level mapping.
+
+- ...:
+
+  Additional arguments.

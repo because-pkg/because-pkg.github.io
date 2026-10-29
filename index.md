@@ -63,11 +63,11 @@ NumPyro code from standard R formulas. Key features include:
 
 ## Installation
 
-To install the **stable release** (`v1.8.0`), run:
+To install the **stable release** (`v1.8.1`), run:
 
 ``` r
 
-remotes::install_github("because-pkg/because@v1.8.0")
+remotes::install_github("because-pkg/because@v1.8.1")
 ```
 
 To install the **latest development version**, run:
@@ -169,3 +169,21 @@ are using Miniconda/Conda), we highly recommend referring to the
 **[because NumPyro (because_py) Installation
 Guide](https://because-pkg.github.io/because_py/articles/installation.html)**
 for comprehensive troubleshooting and dedicated environment setups.
+
+## Citation
+
+To cite `because` in publications, please use:
+
+``` bibtex
+@Manual{,
+  title = {because: Bayesian Estimation of Causal Effects},
+  author = {Achaz von Hardenberg},
+  year = {2026},
+  note = {R package version 1.8.1},
+  url = {https://because-pkg.github.io},
+}
+```
+
+In text: \> von Hardenberg, A. (2026). *because: Bayesian Estimation of
+Causal Effects*. R package version 1.8.1,
+<https://github.com/achazhardenberg/because>.

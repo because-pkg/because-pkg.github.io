@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Announcing because v1.8.0: Bayesian Estimation of Causal Effects in R • because</title>
+<title>Announcing because v1.8: Bayesian Estimation of Causal Effects in R • because</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -15,7 +15,7 @@
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Announcing because v1.8.0: Bayesian Estimation of Causal Effects in R">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Announcing because v1.8: Bayesian Estimation of Causal Effects in R">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,10 +35,9 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item"><a class="nav-link" href="../articles/index.html">Articles</a></li>
+<li class="active nav-item"><a class="nav-link" href="../articles/index.html">Articles</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
-<li class="active nav-item"><a class="nav-link" href="../articles/announcing-because.html">Blog</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -57,7 +56,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Announcing because v1.8.0: Bayesian Estimation of Causal Effects in R</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Announcing because v1.8: Bayesian Estimation of Causal Effects in R</h1>
                         <h4 data-toc-skip class="author">Achaz von
 Hardenberg</h4>
             
@@ -71,7 +70,7 @@ Hardenberg</h4>
     
 <p><img src="https://raw.githubusercontent.com/because-pkg/because/master/man/figures/logo.png" align="right" width="135" style="margin-left: 20px; margin-bottom: 20px;" alt="because hex sticker"></p>
 <p>The <strong><code>because</code></strong> package is now publicly
-available in version <strong>1.8.0</strong>, providing a unified R
+available in version <strong>1.8</strong>, providing a unified R
 framework for specifying, fitting, and evaluating Bayesian Structural
 Equation Models (BSEMs) with an explicit focus on causal inference.</p>
 <p>The package bridges Judea Pearl’s graphical causal framework (pearl,
@@ -199,15 +198,15 @@ system.</p>
 <h3 id="integrated-bayesian-diagnostics-suite">6. Integrated Bayesian Diagnostics Suite<a class="anchor" aria-label="anchor" href="#integrated-bayesian-diagnostics-suite"></a>
 </h3>
 <p><code>because</code> includes a dedicated diagnostic suite for
-evaluating model assumptions: * <code>check_model()</code>: Unified
-diagnostic visualizer. * <code>check_normality()</code> /
-<code>plot_qq()</code>: Randomized quantile residuals with posterior
-predictive envelopes. * <code>check_homoscedasticity()</code>: Binned
+evaluating model assumptions: * <code><a href="../reference/check_model.html">check_model()</a></code>: Unified
+diagnostic visualizer. * <code><a href="../reference/check_normality.html">check_normality()</a></code> /
+<code><a href="../reference/check_normality.html">plot_qq()</a></code>: Randomized quantile residuals with posterior
+predictive envelopes. * <code><a href="../reference/check_homoscedasticity.html">check_homoscedasticity()</a></code>: Binned
 residual dispersion across fitted quantiles. *
 <code>check_outliers()</code>: Posterior predictive discrepancy
-detection. * <code>check_collinearity()</code>: Variance Inflation
+detection. * <code><a href="../reference/check_collinearity.html">check_collinearity()</a></code>: Variance Inflation
 Factors (VIF) adapted for Bayesian models. *
-<code>check_residual_structure()</code>: Variance Partition Coefficients
+<code><a href="../reference/check_residual_structure.html">check_residual_structure()</a></code>: Variance Partition Coefficients
 (VPC /
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mtext mathvariant="normal">Bayes</mtext></msub><annotation encoding="application/x-tex">\lambda_{\text{Bayes}}</annotation></semantics></math>)
 for phylogenetic or spatial random effects. * <code><a href="../reference/pp_check.html">pp_check()</a></code>:
@@ -379,10 +378,10 @@ comparative methods (PhyBaSE), incorporating single trees
 <p>The packages can be installed from GitHub:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install core package</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because@v1.8.0"</span><span class="op">)</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because@v1.8.1"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Install phylogenetic extension</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because.phybase"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because.phybase@v1.0.2"</span><span class="op">)</span></span></code></pre></div>
 <ul>
 <li>
 <strong>Core Documentation</strong>: <a href="https://because-pkg.github.io/because/">https://because-pkg.github.io/because/</a>

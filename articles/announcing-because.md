@@ -1,12 +1,12 @@
-# Announcing because v1.8.0: Bayesian Estimation of Causal Effects in R
+# Announcing because v1.8: Bayesian Estimation of Causal Effects in R
 
 ![because hex
 sticker](https://raw.githubusercontent.com/because-pkg/because/master/man/figures/logo.png)
 
-The **`because`** package is now publicly available in version
-**1.8.0**, providing a unified R framework for specifying, fitting, and
-evaluating Bayesian Structural Equation Models (BSEMs) with an explicit
-focus on causal inference.
+The **`because`** package is now publicly available in version **1.8**,
+providing a unified R framework for specifying, fitting, and evaluating
+Bayesian Structural Equation Models (BSEMs) with an explicit focus on
+causal inference.
 
 The package bridges Judea Pearl’s graphical causal framework (pearl,
 2009) with applied Bayesian MCMC estimation, enabling researchers to
@@ -117,15 +117,21 @@ system.
 ### 6. Integrated Bayesian Diagnostics Suite
 
 `because` includes a dedicated diagnostic suite for evaluating model
-assumptions: \* `check_model()`: Unified diagnostic visualizer. \*
-`check_normality()` / `plot_qq()`: Randomized quantile residuals with
-posterior predictive envelopes. \* `check_homoscedasticity()`: Binned
-residual dispersion across fitted quantiles. \* `check_outliers()`:
-Posterior predictive discrepancy detection. \* `check_collinearity()`:
+assumptions: \*
+[`check_model()`](https://because-pkg.github.io/because/reference/check_model.md):
+Unified diagnostic visualizer. \*
+[`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
+/
+[`plot_qq()`](https://because-pkg.github.io/because/reference/check_normality.md):
+Randomized quantile residuals with posterior predictive envelopes. \*
+[`check_homoscedasticity()`](https://because-pkg.github.io/because/reference/check_homoscedasticity.md):
+Binned residual dispersion across fitted quantiles. \*
+`check_outliers()`: Posterior predictive discrepancy detection. \*
+[`check_collinearity()`](https://because-pkg.github.io/because/reference/check_collinearity.md):
 Variance Inflation Factors (VIF) adapted for Bayesian models. \*
-`check_residual_structure()`: Variance Partition Coefficients (VPC /
-$`\lambda_{\text{Bayes}}`$) for phylogenetic or spatial random effects.
-\*
+[`check_residual_structure()`](https://because-pkg.github.io/because/reference/check_residual_structure.md):
+Variance Partition Coefficients (VPC / $`\lambda_{\text{Bayes}}`$) for
+phylogenetic or spatial random effects. \*
 [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md):
 Posterior predictive checks comparing observed data to simulated
 replicated datasets.
@@ -291,10 +297,10 @@ The packages can be installed from GitHub:
 ``` r
 
 # Install core package
-remotes::install_github("because-pkg/because@v1.8.0")
+remotes::install_github("because-pkg/because@v1.8.1")
 
 # Install phylogenetic extension
-remotes::install_github("because-pkg/because.phybase")
+remotes::install_github("because-pkg/because.phybase@v1.0.2")
 ```
 
 - **Core Documentation**: <https://because-pkg.github.io/because/>

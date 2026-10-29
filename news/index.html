@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,6 @@
 <li class="nav-item"><a class="nav-link" href="../articles/index.html">Articles</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
-<li class="nav-item"><a class="nav-link" href="../articles/announcing-because.html">Blog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/because-pkg/because-pkg.github.io/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -35,6 +34,18 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.8.1" id="because-181-2026-10-28">because 1.8.1 (2026-10-28)<a class="anchor" aria-label="anchor" href="#because-181-2026-10-28"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes--improvements-1-8-1">Bug Fixes &amp; Improvements<a class="anchor" aria-label="anchor" href="#bug-fixes--improvements-1-8-1"></a></h3>
+<ul><li>
+<strong>Categorical Dummy Variable Name Sanitization</strong>: Fixed JAGS/NIMBLE compilation errors when categorical variables or their levels contain periods (<code>.</code>) by systematically sanitizing base column and level names (e.g. <code>Sample.size</code> <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>→</mo><annotation encoding="application/x-tex">\rightarrow</annotation></semantics></math><code>Sample_size_medium</code>).</li>
+<li>
+<strong>Categorical Dummy Disambiguation in Plots</strong>: <code><a href="../reference/plot_rope.html">plot_rope()</a></code> and <code><a href="../reference/plot_dsep.html">plot_dsep()</a></code> now disambiguate individual dummy coefficients for categorical predictors (e.g. <code>Brain _||_ Sample.size (medium)</code>), preventing <code><a href="../reference/plot_rope.html">plot_rope()</a></code> from unintentionally pooling all category draws into a single merged density.</li>
+<li>
+<strong>Observation Row Ordering in Structure Preparation</strong>: Retained observation <code>row_ids</code> in flat models during random effects / structure data formatting to prevent phylogenetic tip alignment issues.</li>
+</ul><hr></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.8.0" id="because-180-2026-10-26">because 1.8.0 (2026-10-26)<a class="anchor" aria-label="anchor" href="#because-180-2026-10-26"></a></h2>
 <div class="section level3">
 <h3 id="new-features--enhancements-1-8-0">New Features &amp; Enhancements<a class="anchor" aria-label="anchor" href="#new-features--enhancements-1-8-0"></a></h3>
@@ -43,22 +54,22 @@
 <li>
 <strong>Bayesian Model Diagnostics Suite</strong>: Added a comprehensive suite of model diagnostic tools:
 <ul><li>
-<code>check_model()</code>: Unified diagnostic visualizer.</li>
+<code><a href="../reference/check_model.html">check_model()</a></code>: Unified diagnostic visualizer.</li>
 <li>
-<code>check_normality()</code> &amp; <code>plot_qq()</code>: Randomized quantile residual Q-Q plots with empirical predictive envelopes.</li>
+<code><a href="../reference/check_normality.html">check_normality()</a></code> &amp; <code><a href="../reference/check_normality.html">plot_qq()</a></code>: Randomized quantile residual Q-Q plots with empirical predictive envelopes.</li>
 <li>
-<code>check_homoscedasticity()</code>: Binned posterior residual standard deviations across fitted value quantiles.</li>
+<code><a href="../reference/check_homoscedasticity.html">check_homoscedasticity()</a></code>: Binned posterior residual standard deviations across fitted value quantiles.</li>
 <li>
 <code>check_outliers()</code>: Posterior predictive discrepancy detection for extreme values.</li>
 <li>
-<code>check_collinearity()</code>: Variance Inflation Factors (VIF) for Bayesian predictor structures.</li>
+<code><a href="../reference/check_collinearity.html">check_collinearity()</a></code>: Variance Inflation Factors (VIF) for Bayesian predictor structures.</li>
 <li>
-<code>check_residual_structure()</code>: Posterior Variance Partition Coefficients (VPC / <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mtext mathvariant="normal">Bayes</mtext></msub><annotation encoding="application/x-tex">\lambda_{\text{Bayes}}</annotation></semantics></math>) for phylogenetic, spatial, and custom grouping random effects.</li>
+<code><a href="../reference/check_residual_structure.html">check_residual_structure()</a></code>: Posterior Variance Partition Coefficients (VPC / <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mtext mathvariant="normal">Bayes</mtext></msub><annotation encoding="application/x-tex">\lambda_{\text{Bayes}}</annotation></semantics></math>) for phylogenetic, spatial, and custom grouping random effects.</li>
 </ul></li>
 <li>
 <strong>Bayesian Residuals &amp; Prediction Methods</strong>:
-<ul><li>Added <code>residuals.because()</code> supporting <code>"quantile"</code> (randomized PIT residuals; Dunn &amp; Smyth 1996), <code>"response"</code>, and <code>"pearson"</code> residuals.</li>
-<li>Added <code>fitted.because()</code> to compute posterior expected values across Gaussian, Binomial, Poisson, Negative Binomial, ZIP, ZINB, Gamma, and Lognormal models.</li>
+<ul><li>Added <code><a href="../reference/residuals.because.html">residuals.because()</a></code> supporting <code>"quantile"</code> (randomized PIT residuals; Dunn &amp; Smyth 1996), <code>"response"</code>, and <code>"pearson"</code> residuals.</li>
+<li>Added <code><a href="../reference/residuals.because.html">fitted.because()</a></code> to compute posterior expected values across Gaussian, Binomial, Poisson, Negative Binomial, ZIP, ZINB, Gamma, and Lognormal models.</li>
 <li>Added <code><a href="../reference/predict.because.html">predict.because()</a></code> returning observation-level posterior predictive summaries (<code>Estimate</code>, <code>Est.Error</code>, and credible quantiles) or full posterior prediction arrays (<code>summary = FALSE</code>).</li>
 </ul></li>
 <li>
@@ -75,7 +86,7 @@
 <strong>Engine-Aware MCMC Defaults</strong>: <code><a href="../reference/because.html">because()</a></code> now sets engine-appropriate default iteration, burn-in, and adaptation counts (<code>n.iter</code>, <code>n.burnin</code>, <code>n.adapt</code>) for <code>"jags"</code>, <code>"nimble"</code>, and <code>"numpyro"</code>.</li>
 <li>
 <strong>Generalized Extension Architecture</strong>:
-<ul><li>Extended <code>dag_expand_hook()</code> to support <code>compound_groups</code> metadata for multi-parameter observational families.</li>
+<ul><li>Extended <code><a href="../reference/dag_expand_hook.html">dag_expand_hook()</a></code> to support <code>compound_groups</code> metadata for multi-parameter observational families.</li>
 <li>Added <code><a href="../reference/dsep_structure_hook.html">dsep_structure_hook()</a></code> to delegate structure subsetting during d-separation tests cleanly to extension packages (<code>because.phybase</code>).</li>
 <li>Generalized NIMBLE’s Elliptical Slice Sampler (ESS) assignment to cover spatial random effects alongside phylogenetic structures.</li>
 </ul></li>
@@ -83,7 +94,7 @@
 <div class="section level3">
 <h3 id="bug-fixes--statistical-rigor-1-8-0">Bug Fixes &amp; Statistical Rigor<a class="anchor" aria-label="anchor" href="#bug-fixes--statistical-rigor-1-8-0"></a></h3>
 <ul><li>
-<strong>Synchronized Missing Data (<code>NA</code>) Alignment in Diagnostics</strong>: Fixed an index-alignment bug in <code><a href="../reference/pp_check.html">pp_check()</a></code>, <code><a href="https://rdrr.io/r/stats/residuals.html" class="external-link">residuals()</a></code>, and <code>check_normality()</code> where missing values (<code>NA</code>) in observed responses were stripped without subsetting the corresponding columns of <code>yrep</code>.</li>
+<strong>Synchronized Missing Data (<code>NA</code>) Alignment in Diagnostics</strong>: Fixed an index-alignment bug in <code><a href="../reference/pp_check.html">pp_check()</a></code>, <code><a href="https://rdrr.io/r/stats/residuals.html" class="external-link">residuals()</a></code>, and <code><a href="../reference/check_normality.html">check_normality()</a></code> where missing values (<code>NA</code>) in observed responses were stripped without subsetting the corresponding columns of <code>yrep</code>.</li>
 <li>
 <strong>GLM Pearson Residuals</strong>: <code>residuals(..., type = "pearson")</code> now standardizes by the family variance function <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mrow><mi>V</mi><mo stretchy="false" form="prefix">(</mo><mi>μ</mi><mo stretchy="false" form="postfix">)</mo></mrow></msqrt><annotation encoding="application/x-tex">\sqrt{V(\mu)}</annotation></semantics></math> for Poisson, Binomial, Negative Binomial, ZIP, and ZINB models instead of assuming Gaussian residual standard deviation.</li>
 <li>

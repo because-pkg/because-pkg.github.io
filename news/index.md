@@ -1,5 +1,28 @@
 # Changelog
 
+## because 1.8.1 (2026-10-28)
+
+### Bug Fixes & Improvements
+
+- **Categorical Dummy Variable Name Sanitization**: Fixed JAGS/NIMBLE
+  compilation errors when categorical variables or their levels contain
+  periods (`.`) by systematically sanitizing base column and level names
+  (e.g. `Sample.size` $`\rightarrow`$`Sample_size_medium`).
+- **Categorical Dummy Disambiguation in Plots**:
+  [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md)
+  and
+  [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md)
+  now disambiguate individual dummy coefficients for categorical
+  predictors (e.g. `Brain _||_ Sample.size (medium)`), preventing
+  [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md)
+  from unintentionally pooling all category draws into a single merged
+  density.
+- **Observation Row Ordering in Structure Preparation**: Retained
+  observation `row_ids` in flat models during random effects / structure
+  data formatting to prevent phylogenetic tip alignment issues.
+
+------------------------------------------------------------------------
+
 ## because 1.8.0 (2026-10-26)
 
 ### New Features & Enhancements
@@ -15,25 +38,33 @@
   continuous variables.
 - **Bayesian Model Diagnostics Suite**: Added a comprehensive suite of
   model diagnostic tools:
-  - `check_model()`: Unified diagnostic visualizer.
-  - `check_normality()` & `plot_qq()`: Randomized quantile residual Q-Q
-    plots with empirical predictive envelopes.
-  - `check_homoscedasticity()`: Binned posterior residual standard
-    deviations across fitted value quantiles.
+  - [`check_model()`](https://because-pkg.github.io/because/reference/check_model.md):
+    Unified diagnostic visualizer.
+  - [`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
+    &
+    [`plot_qq()`](https://because-pkg.github.io/because/reference/check_normality.md):
+    Randomized quantile residual Q-Q plots with empirical predictive
+    envelopes.
+  - [`check_homoscedasticity()`](https://because-pkg.github.io/because/reference/check_homoscedasticity.md):
+    Binned posterior residual standard deviations across fitted value
+    quantiles.
   - `check_outliers()`: Posterior predictive discrepancy detection for
     extreme values.
-  - `check_collinearity()`: Variance Inflation Factors (VIF) for
-    Bayesian predictor structures.
-  - `check_residual_structure()`: Posterior Variance Partition
-    Coefficients (VPC / $`\lambda_{\text{Bayes}}`$) for phylogenetic,
-    spatial, and custom grouping random effects.
+  - [`check_collinearity()`](https://because-pkg.github.io/because/reference/check_collinearity.md):
+    Variance Inflation Factors (VIF) for Bayesian predictor structures.
+  - [`check_residual_structure()`](https://because-pkg.github.io/because/reference/check_residual_structure.md):
+    Posterior Variance Partition Coefficients (VPC /
+    $`\lambda_{\text{Bayes}}`$) for phylogenetic, spatial, and custom
+    grouping random effects.
 - **Bayesian Residuals & Prediction Methods**:
-  - Added `residuals.because()` supporting `"quantile"` (randomized PIT
-    residuals; Dunn & Smyth 1996), `"response"`, and `"pearson"`
-    residuals.
-  - Added `fitted.because()` to compute posterior expected values across
-    Gaussian, Binomial, Poisson, Negative Binomial, ZIP, ZINB, Gamma,
-    and Lognormal models.
+  - Added
+    [`residuals.because()`](https://because-pkg.github.io/because/reference/residuals.because.md)
+    supporting `"quantile"` (randomized PIT residuals; Dunn & Smyth
+    1996), `"response"`, and `"pearson"` residuals.
+  - Added
+    [`fitted.because()`](https://because-pkg.github.io/because/reference/residuals.because.md)
+    to compute posterior expected values across Gaussian, Binomial,
+    Poisson, Negative Binomial, ZIP, ZINB, Gamma, and Lognormal models.
   - Added
     [`predict.because()`](https://because-pkg.github.io/because/reference/predict.because.md)
     returning observation-level posterior predictive summaries
@@ -63,8 +94,10 @@
   counts (`n.iter`, `n.burnin`, `n.adapt`) for `"jags"`, `"nimble"`, and
   `"numpyro"`.
 - **Generalized Extension Architecture**:
-  - Extended `dag_expand_hook()` to support `compound_groups` metadata
-    for multi-parameter observational families.
+  - Extended
+    [`dag_expand_hook()`](https://because-pkg.github.io/because/reference/dag_expand_hook.md)
+    to support `compound_groups` metadata for multi-parameter
+    observational families.
   - Added
     [`dsep_structure_hook()`](https://because-pkg.github.io/because/reference/dsep_structure_hook.md)
     to delegate structure subsetting during d-separation tests cleanly
@@ -78,8 +111,9 @@
   an index-alignment bug in
   [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md),
   [`residuals()`](https://rdrr.io/r/stats/residuals.html), and
-  `check_normality()` where missing values (`NA`) in observed responses
-  were stripped without subsetting the corresponding columns of `yrep`.
+  [`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
+  where missing values (`NA`) in observed responses were stripped
+  without subsetting the corresponding columns of `yrep`.
 - **GLM Pearson Residuals**: `residuals(..., type = "pearson")` now
   standardizes by the family variance function $`\sqrt{V(\mu)}`$ for
   Poisson, Binomial, Negative Binomial, ZIP, and ZINB models instead of

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,6 @@
 <li class="nav-item"><a class="nav-link" href="../articles/index.html">Articles</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
-<li class="nav-item"><a class="nav-link" href="../articles/announcing-because.html">Blog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/because-pkg/because-pkg.github.io/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -131,7 +130,58 @@
         </dt>
         <dd>Causal Interventions for Structural Equation Models</dd>
       </dl></div><div class="section level2">
-      <h2 id="model-diagnostics-comparison">Model Diagnostics &amp; Comparison<a class="anchor" aria-label="anchor" href="#model-diagnostics-comparison"></a></h2>
+      <h2 id="model-diagnostics-residual-analysis">Model Diagnostics &amp; Residual Analysis<a class="anchor" aria-label="anchor" href="#model-diagnostics-residual-analysis"></a></h2>
+
+      <div class="section-desc"><p>Bayesian diagnostic suite for residual normality, homoscedasticity, collinearity, and residual structure.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="check_model.html">check_model()</a></code>
+
+        </dt>
+        <dd>Unified Diagnostic Dashboard for because Models</dd>
+
+        <dt>
+
+          <code><a href="check_normality.html">check_normality()</a></code> <code><a href="check_normality.html">plot_qq()</a></code>
+
+        </dt>
+        <dd>Bayesian Normality Check and Q-Q Envelope</dd>
+
+        <dt>
+
+          <code><a href="check_homoscedasticity.html">check_homoscedasticity()</a></code>
+
+        </dt>
+        <dd>Bayesian Homoscedasticity and Residual Dispersion Diagnostics</dd>
+
+        <dt>
+
+          <code><a href="check_collinearity.html">check_collinearity()</a></code> <code><a href="check_collinearity.html">bvif()</a></code>
+
+        </dt>
+        <dd>Bayesian Collinearity and Variance Inflation Diagnostics</dd>
+
+        <dt>
+
+          <code><a href="check_residual_structure.html">check_residual_structure()</a></code>
+
+        </dt>
+        <dd>Bayesian Residual Structure and Variance Partition Diagnostics</dd>
+
+        <dt>
+
+          <code><a href="residuals.because.html">fitted(<i>&lt;because&gt;</i>)</a></code> <code><a href="residuals.because.html">residuals(<i>&lt;because&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Extract Fitted Values and Residuals for because Models</dd>
+      </dl></div><div class="section level2">
+      <h2 id="model-comparison-prediction">Model Comparison &amp; Prediction<a class="anchor" aria-label="anchor" href="#model-comparison-prediction"></a></h2>
 
       <div class="section-desc"><p>Posterior predictive checks, information criteria, and prediction methods.</p></div>
 

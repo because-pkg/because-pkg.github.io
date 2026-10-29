@@ -6,14 +6,14 @@ Backward-compatible alias for
 ## Usage
 
 ``` r
-dsep_tree_hook(tree, test_eq, hierarchical_info, levels, ...)
+dsep_tree_hook(structure, test_eq, hierarchical_info, levels, ...)
 ```
 
 ## Arguments
 
-- tree:
+- structure:
 
-  The structure object (e.g. phylo).
+  The structure object.
 
 - test_eq:
 

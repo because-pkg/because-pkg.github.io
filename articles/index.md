@@ -43,5 +43,5 @@ Extending because with specialized packages and domain models
 
 Release announcements and package updates
 
-- [Announcing because v1.8.0: Bayesian Estimation of Causal Effects in
+- [Announcing because v1.8: Bayesian Estimation of Causal Effects in
   R](https://because-pkg.github.io/because/articles/announcing-because.md):

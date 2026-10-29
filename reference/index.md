@@ -41,7 +41,28 @@ structural interventions.
   [`summary(`*`<because_counterfactual>`*`)`](https://because-pkg.github.io/because/reference/do.md)
   : Causal Interventions for Structural Equation Models
 
-## Model Diagnostics & Comparison
+## Model Diagnostics & Residual Analysis
+
+Bayesian diagnostic suite for residual normality, homoscedasticity,
+collinearity, and residual structure.
+
+- [`check_model()`](https://because-pkg.github.io/because/reference/check_model.md)
+  : Unified Diagnostic Dashboard for because Models
+- [`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
+  [`plot_qq()`](https://because-pkg.github.io/because/reference/check_normality.md)
+  : Bayesian Normality Check and Q-Q Envelope
+- [`check_homoscedasticity()`](https://because-pkg.github.io/because/reference/check_homoscedasticity.md)
+  : Bayesian Homoscedasticity and Residual Dispersion Diagnostics
+- [`check_collinearity()`](https://because-pkg.github.io/because/reference/check_collinearity.md)
+  [`bvif()`](https://because-pkg.github.io/because/reference/check_collinearity.md)
+  : Bayesian Collinearity and Variance Inflation Diagnostics
+- [`check_residual_structure()`](https://because-pkg.github.io/because/reference/check_residual_structure.md)
+  : Bayesian Residual Structure and Variance Partition Diagnostics
+- [`fitted(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/residuals.because.md)
+  [`residuals(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/residuals.because.md)
+  : Extract Fitted Values and Residuals for because Models
+
+## Model Comparison & Prediction
 
 Posterior predictive checks, information criteria, and prediction
 methods.

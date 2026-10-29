@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,7 +38,6 @@
 <li class="active nav-item"><a class="nav-link" href="../articles/index.html">Articles</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/extensions.html">Extensions</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
-<li class="nav-item"><a class="nav-link" href="../articles/announcing-because.html">Blog</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -61,7 +60,7 @@
                         <h4 data-toc-skip class="author">Achaz von
 Hardenberg</h4>
             
-            <h4 data-toc-skip class="date">2026-10-27</h4>
+            <h4 data-toc-skip class="date">2026-10-29</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/vignettes/14_bayesian_diagnostics.Rmd" class="external-link"><code>vignettes/14_bayesian_diagnostics.Rmd</code></a></small>
       <div class="d-none name"><code>14_bayesian_diagnostics.Rmd</code></div>
@@ -235,13 +234,13 @@ causal DAG, <code>Mass</code> and <code>Brain</code> share variance
 because <code>Mass</code> causally affects <code>Brain</code>.
 <strong>Dropping <code>Mass</code> to “fix” collinearity would open
 backdoor paths and introduce confounding bias!</strong></p>
-<p><code>check_collinearity()</code> evaluates collinearity through
+<p><code><a href="../reference/check_collinearity.html">check_collinearity()</a></code> evaluates collinearity through
 <strong>Leamer’s Bayesian Variance Inflation Factor (BVIF)</strong> and
 the <strong>Posterior Parameter Correlation Matrix</strong>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">Cor</mtext><mo stretchy="false" form="prefix">(</mo><mi>𝛃</mi><mo>∣</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\text{Cor}(\boldsymbol{\beta} \mid y)</annotation></semantics></math>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Check collinearity across all equations with &gt;= 2 predictors</span></span>
-<span><span class="va">collin</span> <span class="op">&lt;-</span> <span class="fu">check_collinearity</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="va">collin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_collinearity.html">check_collinearity</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">collin</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code>=== Bayesian Collinearity &amp; Variance Inflation Diagnostics ===
 Framework: Leamer (1973, 1978) Posterior Variance Inflation
@@ -292,12 +291,12 @@ use
 (<code>check_normality</code>)<a class="anchor" aria-label="anchor" href="#normality-posterior-predictive-q-q-envelopes-check_normality"></a>
 </h2>
 <p>To assess distributional assumptions without resorting to frequentist
-tests like Shapiro-Wilk, <code>check_normality()</code> constructs
+tests like Shapiro-Wilk, <code><a href="../reference/check_normality.html">check_normality()</a></code> constructs
 <strong>Empirical Simulation Envelopes</strong> (Landwehr, Pregibon,
 &amp; Shoemaker, 1984) and evaluates <strong>realized discrepancies for
 skewness and kurtosis</strong> (Gelman, Meng, &amp; Stern, 1996).</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">norm_check</span> <span class="op">&lt;-</span> <span class="fu">check_normality</span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Migration"</span>, ndraws <span class="op">=</span> <span class="fl">250</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">norm_check</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_normality.html">check_normality</a></span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Migration"</span>, ndraws <span class="op">=</span> <span class="fl">250</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">norm_check</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code>=== Bayesian Normality Check (Randomized Quantile Residuals) ===
 Response Variable: Migration 
@@ -313,7 +312,7 @@ indicate that observed skewness or kurtosis is atypical under model replications
 <h4 id="visualizing-the-q-q-envelope">Visualizing the Q-Q Envelope<a class="anchor" aria-label="anchor" href="#visualizing-the-q-q-envelope"></a>
 </h4>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">plot_qq</span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Migration"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/check_normality.html">plot_qq</a></span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Migration"</span><span class="op">)</span></span></code></pre></div>
 <p>The plot displays the observed randomized quantile residuals against
 theoretical quantiles, surrounded by shaded <strong>50% and 95%
 posterior predictive credible bands</strong>. Because the observed
@@ -328,12 +327,12 @@ assumption is well-supported.</p>
 (<code>check_homoscedasticity</code>)<a class="anchor" aria-label="anchor" href="#homoscedasticity-binned-posterior-variances-check_homoscedasticity"></a>
 </h2>
 <p>To evaluate whether residual variance is constant across the range of
-predictions (homoscedasticity), <code>check_homoscedasticity()</code>
+predictions (homoscedasticity), <code><a href="../reference/check_homoscedasticity.html">check_homoscedasticity()</a></code>
 partitions fitted values into quantile bins and tracks the posterior
 distribution of residual standard deviation across iterations (Gelman
 &amp; Hill, 2007).</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">homo_check</span> <span class="op">&lt;-</span> <span class="fu">check_homoscedasticity</span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Migration"</span>, n_bins <span class="op">=</span> <span class="fl">5</span>, ndraws <span class="op">=</span> <span class="fl">250</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">homo_check</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_homoscedasticity.html">check_homoscedasticity</a></span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Migration"</span>, n_bins <span class="op">=</span> <span class="fl">5</span>, ndraws <span class="op">=</span> <span class="fl">250</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">homo_check</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code>=== Bayesian Homoscedasticity Diagnostics (Gelman &amp; Hill 2007) ===
 Response Variable: Migration 
@@ -375,7 +374,7 @@ variation is partitioned into structural variance
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>σ</mi><mtext mathvariant="normal">struct</mtext><mn>2</mn></msubsup><annotation encoding="application/x-tex">\sigma_{\text{struct}}^2</annotation></semantics></math>
 and observation noise
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>σ</mi><mtext mathvariant="normal">res</mtext><mn>2</mn></msubsup><annotation encoding="application/x-tex">\sigma_{\text{res}}^2</annotation></semantics></math>.</p>
-<p><code>check_residual_structure()</code> summarizes the posterior
+<p><code><a href="../reference/check_residual_structure.html">check_residual_structure()</a></code> summarizes the posterior
 distribution of the <strong>Variance Partition Coefficient (VPC /
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mtext mathvariant="normal">Bayes</mtext></msub><annotation encoding="application/x-tex">\lambda_{\text{Bayes}}</annotation></semantics></math>)</strong>
 (Hadfield, 2010):</p>
@@ -414,7 +413,7 @@ matrices and sample over topological uncertainty.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Evaluate posterior phylogenetic signal / heritability</span></span>
-<span><span class="fu">check_residual_structure</span><span class="op">(</span><span class="va">fit_struct</span>, resp <span class="op">=</span> <span class="st">"Brain"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/check_residual_structure.html">check_residual_structure</a></span><span class="op">(</span><span class="va">fit_struct</span>, resp <span class="op">=</span> <span class="st">"Brain"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="example-b-using-because-phybase-with-tree-objects">Example B: Using <code>because.phybase</code> with Tree Objects<a class="anchor" aria-label="anchor" href="#example-b-using-because-phybase-with-tree-objects"></a>
@@ -435,7 +434,7 @@ matrices and sample over topological uncertainty.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Check posterior heritability / lambda_Bayes</span></span>
-<span><span class="fu">check_residual_structure</span><span class="op">(</span><span class="va">fit_phylo</span>, resp <span class="op">=</span> <span class="st">"Brain"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/check_residual_structure.html">check_residual_structure</a></span><span class="op">(</span><span class="va">fit_phylo</span>, resp <span class="op">=</span> <span class="st">"Brain"</span><span class="op">)</span></span></code></pre></div>
 <p>A posterior distribution of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mtext mathvariant="normal">Bayes</mtext></msub><annotation encoding="application/x-tex">\lambda_{\text{Bayes}}</annotation></semantics></math>
 centered near 1 indicates strong phylogenetic or spatial conservatism,
@@ -449,10 +448,10 @@ idiosyncratic observation noise.</p>
 (<code>check_model</code>)<a class="anchor" aria-label="anchor" href="#unified-model-diagnostic-dashboard-check_model"></a>
 </h2>
 <p>To inspect all diagnostic checks simultaneously for publication or
-routine model criticism, call <code>check_model()</code>:</p>
+routine model criticism, call <code><a href="../reference/check_model.html">check_model()</a></code>:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Generates a 5-panel Bayesian diagnostic dashboard</span></span>
-<span><span class="fu">check_model</span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Migration"</span>, ndraws <span class="op">=</span> <span class="fl">250</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/check_model.html">check_model</a></span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Migration"</span>, ndraws <span class="op">=</span> <span class="fl">250</span><span class="op">)</span></span></code></pre></div>
 <p>The unified dashboard displays: 1. <strong>PPC Density
 Overlay</strong>: Observed
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>

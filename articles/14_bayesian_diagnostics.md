@@ -150,9 +150,9 @@ variance because `Mass` causally affects `Brain`. **Dropping `Mass` to
 “fix” collinearity would open backdoor paths and introduce confounding
 bias!**
 
-`check_collinearity()` evaluates collinearity through **Leamer’s
-Bayesian Variance Inflation Factor (BVIF)** and the **Posterior
-Parameter Correlation Matrix**
+[`check_collinearity()`](https://because-pkg.github.io/because/reference/check_collinearity.md)
+evaluates collinearity through **Leamer’s Bayesian Variance Inflation
+Factor (BVIF)** and the **Posterior Parameter Correlation Matrix**
 $`\text{Cor}(\boldsymbol{\beta} \mid y)`$:
 
 ``` r
@@ -206,10 +206,11 @@ plot(collin)
 ## 5. Normality & Posterior Predictive Q-Q Envelopes (`check_normality`)
 
 To assess distributional assumptions without resorting to frequentist
-tests like Shapiro-Wilk, `check_normality()` constructs **Empirical
-Simulation Envelopes** (Landwehr, Pregibon, & Shoemaker, 1984) and
-evaluates **realized discrepancies for skewness and kurtosis** (Gelman,
-Meng, & Stern, 1996).
+tests like Shapiro-Wilk,
+[`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
+constructs **Empirical Simulation Envelopes** (Landwehr, Pregibon, &
+Shoemaker, 1984) and evaluates **realized discrepancies for skewness and
+kurtosis** (Gelman, Meng, & Stern, 1996).
 
 ``` r
 
@@ -249,9 +250,11 @@ well-supported.
 ## 6. Homoscedasticity & Binned Posterior Variances (`check_homoscedasticity`)
 
 To evaluate whether residual variance is constant across the range of
-predictions (homoscedasticity), `check_homoscedasticity()` partitions
-fitted values into quantile bins and tracks the posterior distribution
-of residual standard deviation across iterations (Gelman & Hill, 2007).
+predictions (homoscedasticity),
+[`check_homoscedasticity()`](https://because-pkg.github.io/because/reference/check_homoscedasticity.md)
+partitions fitted values into quantile bins and tracks the posterior
+distribution of residual standard deviation across iterations (Gelman &
+Hill, 2007).
 
 ``` r
 
@@ -302,9 +305,9 @@ variation is partitioned into structural variance
 $`\sigma_{\text{struct}}^2`$ and observation noise
 $`\sigma_{\text{res}}^2`$.
 
-`check_residual_structure()` summarizes the posterior distribution of
-the **Variance Partition Coefficient (VPC /
-$`\lambda_{\text{Bayes}}`$)** (Hadfield, 2010):
+[`check_residual_structure()`](https://because-pkg.github.io/because/reference/check_residual_structure.md)
+summarizes the posterior distribution of the **Variance Partition
+Coefficient (VPC / $`\lambda_{\text{Bayes}}`$)** (Hadfield, 2010):
 
 ``` math
 \lambda_{\text{Bayes}}^{(s)} = \frac{\sigma_{\text{struct}}^{2(s)}}{\sigma_{\text{struct}}^{2(s)} + \sigma_{\text{res}}^{2(s)}}
@@ -377,7 +380,8 @@ observation noise.
 ## 8. Unified Model Diagnostic Dashboard (`check_model`)
 
 To inspect all diagnostic checks simultaneously for publication or
-routine model criticism, call `check_model()`:
+routine model criticism, call
+[`check_model()`](https://because-pkg.github.io/because/reference/check_model.md):
 
 ``` r
 

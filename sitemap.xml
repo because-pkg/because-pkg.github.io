@@ -36,6 +36,12 @@
 <url><loc>https://because-pkg.github.io/because/reference/because_model.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_structure.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/because_waic.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/check_collinearity.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/check_homoscedasticity.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/check_model.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/check_normality.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/check_residual_structure.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/dag_expand_hook.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/dag_matrix_to_dagitty.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/detect_crossscale_dsep.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/do.html</loc></url>
@@ -119,6 +125,7 @@
 <url><loc>https://because-pkg.github.io/because/reference/prepare_structure_data.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/preprocess_categorical_vars.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/print.summary.because.html</loc></url>
+<url><loc>https://because-pkg.github.io/because/reference/residuals.because.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/run_crossscale_dsep.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/sanitize_term_name.html</loc></url>
 <url><loc>https://because-pkg.github.io/because/reference/storks.html</loc></url>
