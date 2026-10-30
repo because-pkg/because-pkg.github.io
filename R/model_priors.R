@@ -48,7 +48,7 @@ generate_model_priors <- function(ctx) {
       needs_residual_variance <- !is_non_identity && !isTRUE(aux_flags$skip_variance)
       needs_random_variance <- !ctx$independent &&
         (length(ctx$structure_names) > 0 || length(ctx$random_structure_names) > 0) &&
-        !is_non_identity && !isTRUE(aux_flags$skip_variance)
+        !isTRUE(aux_flags$skip_variance)
 
       if (
         (is.null(ctx$vars_with_na) || !response %in% ctx$vars_with_na || TRUE) &&
@@ -56,49 +56,53 @@ generate_model_priors <- function(ctx) {
           !isTRUE(aux_flags$skip_variance)
       ) {
         if (ctx$independent) {
-          if (
-            !is.null(ctx$fix_residual_variance) &&
-              (response %in% names(ctx$fix_residual_variance) || length(ctx$fix_residual_variance) == 1)
-          ) {
-            val <- if (response %in% names(ctx$fix_residual_variance)) {
-              ctx$fix_residual_variance[[response]]
+          if (needs_residual_variance) {
+            if (
+              !is.null(ctx$fix_residual_variance) &&
+                (response %in% names(ctx$fix_residual_variance) || length(ctx$fix_residual_variance) == 1)
+            ) {
+              val <- if (response %in% names(ctx$fix_residual_variance)) {
+                ctx$fix_residual_variance[[response]]
+              } else {
+                ctx$fix_residual_variance[[1]]
+              }
+              prec <- 1 / val
+              ctx$model_lines <- c(
+                ctx$model_lines,
+                paste0("  tau_res_", response, suffix, " <- ", prec, " # Fixed residual variance")
+              )
             } else {
-              ctx$fix_residual_variance[[1]]
-            }
-            prec <- 1 / val
-            ctx$model_lines <- c(
-              ctx$model_lines,
-              paste0("  tau_res_", response, suffix, " <- ", prec, " # Fixed residual variance")
-            )
-          } else {
-            ctx$model_lines <- safe_add_lines(
-              ctx$model_lines,
-              paste0("  ", get_precision_prior(paste0("tau_res_", response, suffix), response, priors = ctx$priors, family = ctx$family)),
-              ctx$declared_nodes
-            )
-          }
-        } else {
-          if (
-            !is.null(ctx$fix_residual_variance) &&
-              (response %in% names(ctx$fix_residual_variance) || length(ctx$fix_residual_variance) == 1)
-          ) {
-            val <- if (response %in% names(ctx$fix_residual_variance)) {
-              ctx$fix_residual_variance[[response]]
-            } else {
-              ctx$fix_residual_variance[[1]]
-            }
-            prec <- 1 / val
-            ctx$model_lines <- c(
-              ctx$model_lines,
-              paste0("  tau_res_", response, suffix, " <- ", prec, " # Fixed residual variance")
-            )
-          } else {
-            if (!dist %in% c("negbinomial", "zinb")) {
               ctx$model_lines <- safe_add_lines(
                 ctx$model_lines,
                 paste0("  ", get_precision_prior(paste0("tau_res_", response, suffix), response, priors = ctx$priors, family = ctx$family)),
                 ctx$declared_nodes
               )
+            }
+          }
+        } else {
+          if (needs_residual_variance) {
+            if (
+              !is.null(ctx$fix_residual_variance) &&
+                (response %in% names(ctx$fix_residual_variance) || length(ctx$fix_residual_variance) == 1)
+            ) {
+              val <- if (response %in% names(ctx$fix_residual_variance)) {
+                ctx$fix_residual_variance[[response]]
+              } else {
+                ctx$fix_residual_variance[[1]]
+              }
+              prec <- 1 / val
+              ctx$model_lines <- c(
+                ctx$model_lines,
+                paste0("  tau_res_", response, suffix, " <- ", prec, " # Fixed residual variance")
+              )
+            } else {
+              if (!dist %in% c("negbinomial", "zinb")) {
+                ctx$model_lines <- safe_add_lines(
+                  ctx$model_lines,
+                  paste0("  ", get_precision_prior(paste0("tau_res_", response, suffix), response, priors = ctx$priors, family = ctx$family)),
+                  ctx$declared_nodes
+                )
+              }
             }
           }
 
@@ -140,7 +144,8 @@ generate_model_priors <- function(ctx) {
           }
 
           if (
-            length(ctx$structure_names) == 1 &&
+            needs_residual_variance &&
+              length(ctx$structure_names) == 1 &&
               length(ctx$random_structure_names) == 0 &&
               !dist %in% c("negbinomial", "zinb") &&
               !response %in% ctx$partitioned_responses

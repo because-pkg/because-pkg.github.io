@@ -89,3 +89,21 @@ test_that("Default distribution is Gaussian", {
     expect_match(model_output$model, "dnorm")
     expect_false(grepl("dbern", model_output$model))
 })
+
+test_that("Poisson distribution with structure generates structural precision and sigma priors", {
+    equations <- list(Abundance ~ X)
+    distribution <- c(Abundance = "poisson")
+    dummy_spatial <- diag(5)
+
+    model_output <- because_model(
+        equations,
+        family = distribution,
+        structures = list(spatial = dummy_spatial)
+    )
+
+    # Should define structural priors for Poisson response
+    expect_match(model_output$model, "tau_u_spatial_Abundance")
+    expect_match(model_output$model, "sigma_spatial_Abundance <- 1/sqrt\\(tau_u_spatial_Abundance\\)")
+    # Should NOT declare residual variance tau_res for Poisson
+    expect_false(grepl("tau_res_Abundance", model_output$model))
+})
