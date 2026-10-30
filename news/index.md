@@ -1,5 +1,22 @@
 # Changelog
 
+## because 1.8.3 (2026-10-30)
+
+### Bug Fixes & Improvements
+
+- **Structured Random Effects for Non-Gaussian Responses**: Fixed a
+  regression (introduced when the model compiler was modularized) where
+  responses with a link function (e.g. `poisson`, `binomial`,
+  `negbinomial`) combined with a `structure` (phylogenetic, spatial or
+  group) failed JAGS compilation with
+  `Unknown variable sigma_<structure>_<response>`. The structural
+  variance priors (`tau_u_*`, `sigma_*`) are now declared for all
+  families, while residual variance (`tau_res_*`) and Pagel’s
+  $`\lambda`$ remain restricted to families with additive residual
+  variance. Added a regression test in `test-distributions.R`.
+
+------------------------------------------------------------------------
+
 ## because 1.8.2 (2026-10-29)
 
 ### Bug Fixes & Improvements

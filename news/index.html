@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,14 @@
       <small>Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.8.3" id="because-183-2026-10-30">because 1.8.3 (2026-10-30)<a class="anchor" aria-label="anchor" href="#because-183-2026-10-30"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes--improvements-1-8-3">Bug Fixes &amp; Improvements<a class="anchor" aria-label="anchor" href="#bug-fixes--improvements-1-8-3"></a></h3>
+<ul><li>
+<strong>Structured Random Effects for Non-Gaussian Responses</strong>: Fixed a regression (introduced when the model compiler was modularized) where responses with a link function (e.g. <code>poisson</code>, <code>binomial</code>, <code>negbinomial</code>) combined with a <code>structure</code> (phylogenetic, spatial or group) failed JAGS compilation with <code>Unknown variable sigma_&lt;structure&gt;_&lt;response&gt;</code>. The structural variance priors (<code>tau_u_*</code>, <code>sigma_*</code>) are now declared for all families, while residual variance (<code>tau_res_*</code>) and Pagel’s <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math> remain restricted to families with additive residual variance. Added a regression test in <code>test-distributions.R</code>.</li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.8.2" id="because-182-2026-10-29">because 1.8.2 (2026-10-29)<a class="anchor" aria-label="anchor" href="#because-182-2026-10-29"></a></h2>
 <div class="section level3">
