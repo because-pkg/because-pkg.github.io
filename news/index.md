@@ -14,14 +14,18 @@
   families, while residual variance (`tau_res_*`) and Pagel’s
   $`\lambda`$ remain restricted to families with additive residual
   variance. Added a regression test in `test-distributions.R`.
-- **Latent MAG Indicators Excluded from Pagel’s Lambda**: Measurement
-  indicator variables linked to marginalized latent variables in the
-  Mixed Ancestral Graph (MAG) approach (e.g. `Brain`, `HWI`, `Mass` for
-  latent `Size`) have induced residual covariance structures (`rho_*` /
-  `TAU_res_*`), for which a univariate Pagel’s $`\lambda`$ is undefined.
-  These indicator variables are now systematically excluded from Pagel’s
-  $`\lambda`$ calculations and monitoring across both `because` and
-  `because_py` (v0.2.10).
+- **Latent MAG Indicators Excluded from Pagel’s Lambda and Redundant
+  Variance Nodes**: Measurement indicator variables linked to
+  marginalized latent variables in the Mixed Ancestral Graph (MAG)
+  approach (e.g. `Brain`, `HWI`, `Mass` for latent `Size`) have induced
+  residual covariance structures (`rho_*` / `TAU_res_*`), for which a
+  univariate Pagel’s $`\lambda`$ is undefined. These indicator variables
+  are now systematically excluded from Pagel’s $`\lambda`$ calculations
+  and monitoring across both `because` and `because_py` (v0.2.10). In
+  addition, redundant internal variance partitioning nodes
+  (`sigma_tot_*` and `sigma_*_<structure>`) for these indicators are
+  excluded from model reporting, matching the clean output of the JAGS
+  engine.
 - **Robust Monitor Regex Matching for Structural Group Suffixes**:
   Strengthened regex patterns in `prepare_monitors_and_inits()` so
   parameters with structural suffixes (such as
