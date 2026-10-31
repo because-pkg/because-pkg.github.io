@@ -1,7 +1,7 @@
 # because 1.8.4 (2026-10-31)
 
 ## Bug Fixes & Improvements
-* **Latent MAG Indicators Excluded from Pagel's Lambda**: Measurement indicator variables linked to marginalized latent variables in the Mixed Ancestral Graph (MAG) approach (e.g. `Brain`, `HWI`, `Mass` for latent `Size`) have induced residual covariance structures (`rho_*` / `TAU_res_*`), for which a univariate Pagel's $\lambda$ is undefined. These indicator variables are now systematically excluded from Pagel's $\lambda$ calculations and monitoring across both `because` and `because_py` (v0.2.8).
+* **Latent MAG Indicators Excluded from Pagel's Lambda**: Measurement indicator variables linked to marginalized latent variables in the Mixed Ancestral Graph (MAG) approach (e.g. `Brain`, `HWI`, `Mass` for latent `Size`) have induced residual covariance structures (`rho_*` / `TAU_res_*`), for which a univariate Pagel's $\lambda$ is undefined. These indicator variables are now systematically excluded from Pagel's $\lambda$ calculations and monitoring across both `because` and `because_py` (v0.2.10).
 * **Robust Monitor Regex Matching for Structural Group Suffixes**: Strengthened regex patterns in `prepare_monitors_and_inits()` so parameters with structural suffixes (such as `lambda_<var>_<structure>` and `alpha_<var>_<structure>`) are correctly matched against response variables and filtered out for MAG exogenous variables.
 
 ---
