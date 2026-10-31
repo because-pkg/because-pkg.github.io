@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,21 +34,15 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="1.8.4" id="because-184-2026-10-31">because 1.8.4 (2026-10-31)<a class="anchor" aria-label="anchor" href="#because-184-2026-10-31"></a></h2>
-<div class="section level3">
-<h3 id="bug-fixes--improvements-1-8-4">Bug Fixes &amp; Improvements<a class="anchor" aria-label="anchor" href="#bug-fixes--improvements-1-8-4"></a></h3>
-<ul><li>
-<strong>Latent MAG Indicators Excluded from Pagel’s Lambda</strong>: Measurement indicator variables linked to marginalized latent variables in the Mixed Ancestral Graph (MAG) approach (e.g. <code>Brain</code>, <code>HWI</code>, <code>Mass</code> for latent <code>Size</code>) have induced residual covariance structures (<code>rho_*</code> / <code>TAU_res_*</code>), for which a univariate Pagel’s <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math> is undefined. These indicator variables are now systematically excluded from Pagel’s <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math> calculations and monitoring across both <code>because</code> and <code>because_py</code> (v0.2.10).</li>
-<li>
-<strong>Robust Monitor Regex Matching for Structural Group Suffixes</strong>: Strengthened regex patterns in <code>prepare_monitors_and_inits()</code> so parameters with structural suffixes (such as <code>lambda_&lt;var&gt;_&lt;structure&gt;</code> and <code>alpha_&lt;var&gt;_&lt;structure&gt;</code>) are correctly matched against response variables and filtered out for MAG exogenous variables.</li>
-</ul><hr></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="1.8.3" id="because-183-2026-10-30">because 1.8.3 (2026-10-30)<a class="anchor" aria-label="anchor" href="#because-183-2026-10-30"></a></h2>
+<h2 class="pkg-version" data-toc-text="1.8.3" id="because-183-2026-10-31">because 1.8.3 (2026-10-31)<a class="anchor" aria-label="anchor" href="#because-183-2026-10-31"></a></h2>
 <div class="section level3">
 <h3 id="bug-fixes--improvements-1-8-3">Bug Fixes &amp; Improvements<a class="anchor" aria-label="anchor" href="#bug-fixes--improvements-1-8-3"></a></h3>
 <ul><li>
 <strong>Structured Random Effects for Non-Gaussian Responses</strong>: Fixed a regression (introduced when the model compiler was modularized) where responses with a link function (e.g. <code>poisson</code>, <code>binomial</code>, <code>negbinomial</code>) combined with a <code>structure</code> (phylogenetic, spatial or group) failed JAGS compilation with <code>Unknown variable sigma_&lt;structure&gt;_&lt;response&gt;</code>. The structural variance priors (<code>tau_u_*</code>, <code>sigma_*</code>) are now declared for all families, while residual variance (<code>tau_res_*</code>) and Pagel’s <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math> remain restricted to families with additive residual variance. Added a regression test in <code>test-distributions.R</code>.</li>
+<li>
+<strong>Latent MAG Indicators Excluded from Pagel’s Lambda</strong>: Measurement indicator variables linked to marginalized latent variables in the Mixed Ancestral Graph (MAG) approach (e.g. <code>Brain</code>, <code>HWI</code>, <code>Mass</code> for latent <code>Size</code>) have induced residual covariance structures (<code>rho_*</code> / <code>TAU_res_*</code>), for which a univariate Pagel’s <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math> is undefined. These indicator variables are now systematically excluded from Pagel’s <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math> calculations and monitoring across both <code>because</code> and <code>because_py</code> (v0.2.10).</li>
+<li>
+<strong>Robust Monitor Regex Matching for Structural Group Suffixes</strong>: Strengthened regex patterns in <code>prepare_monitors_and_inits()</code> so parameters with structural suffixes (such as <code>lambda_&lt;var&gt;_&lt;structure&gt;</code> and <code>alpha_&lt;var&gt;_&lt;structure&gt;</code>) are correctly matched against response variables and filtered out for MAG exogenous variables.</li>
 </ul><hr></div>
 </div>
     <div class="section level2">
