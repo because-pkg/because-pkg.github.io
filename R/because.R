@@ -678,11 +678,16 @@ because <- function(
     function(eq) as.character(all.vars(eq[[2]])[1]),
     character(1)
   ))
+  mag_exogenous_vars <- if (!is.null(induced_cors) && length(induced_cors) > 0) {
+    unique(unlist(induced_cors))
+  } else {
+    character(0)
+  }
   mon_inits <- prepare_monitors_and_inits(
     model_string        = model_string,
     monitor             = monitor,
     response_vars       = response_vars,
-    mag_exogenous_vars  = if (exists("mag_exogenous_vars")) mag_exogenous_vars else character(0),
+    mag_exogenous_vars  = mag_exogenous_vars,
     family_obj          = family_obj,
     equations           = equations,
     engine              = engine,

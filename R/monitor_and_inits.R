@@ -83,10 +83,31 @@ prepare_monitors_and_inits <- function(
 
     if (!is.null(monitor_mode) && monitor_mode == "interpretable") {
       # Filter to interpretable parameters only
+      mag_pat <- if (length(mag_exogenous_vars) > 0) {
+        paste0("^lambda_?(", paste(mag_exogenous_vars, collapse = "|"), ")(_|$)")
+      } else {
+        "^$"
+      }
+      resp_pat <- if (length(response_vars) > 0) {
+        paste0("^lambda_?(", paste(response_vars, collapse = "|"), ")(_|$)")
+      } else {
+        "^$"
+      }
+      alpha_mag_pat <- if (length(mag_exogenous_vars) > 0) {
+        paste0("^alpha_?(", paste(mag_exogenous_vars, collapse = "|"), ")(_|$)")
+      } else {
+        "^$"
+      }
+      alpha_resp_pat <- if (length(response_vars) > 0) {
+        paste0("^alpha_?(", paste(response_vars, collapse = "|"), ")(_|$)")
+      } else {
+        "^$"
+      }
+
       monitor <- all_params[
         (grepl("^alpha", all_params) &
-          gsub("^alpha_?", "", all_params) %in% response_vars &
-          !gsub("^alpha_?", "", all_params) %in% mag_exogenous_vars) |
+          grepl(alpha_resp_pat, all_params) &
+          !grepl(alpha_mag_pat, all_params)) |
           grepl("^beta", all_params) |
           grepl("^rho", all_params) |
           grepl("^sigma", all_params) |
@@ -97,8 +118,8 @@ prepare_monitors_and_inits <- function(
           grepl("^cutpoint", all_params) |
           grepl("^K_", all_params) |
           (grepl("^lambda", all_params) &
-            gsub("^lambda_?", "", all_params) %in% response_vars &
-            !gsub("^lambda_?", "", all_params) %in% mag_exogenous_vars)
+            grepl(resp_pat, all_params) &
+            !grepl(mag_pat, all_params))
       ]
     } else {
       # monitor_mode == "all" or NULL: include everything
