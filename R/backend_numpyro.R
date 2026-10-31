@@ -261,6 +261,7 @@ run_numpyro_pipeline <- function(
     dsep = NULL,
     priors = priors,
     hierarchical_info = if (!is.null(is_hierarchical) && is_hierarchical) hierarchical_info else NULL,
+    induced_correlations = induced_correlations,
     engine = engine,
     quiet = quiet,
     py_result = py_result

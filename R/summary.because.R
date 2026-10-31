@@ -389,6 +389,27 @@ summary.because <- function(
             if (length(internal_idx) > 0) {
                 combined <- combined[-internal_idx, , drop = FALSE]
             }
+
+            # Filter redundant variance components for latent indicator variables (MAG approach)
+            mag_cors <- object$induced_correlations %||% object$input$induced_correlations %||% object$induced_cors
+            if (!is.null(mag_cors) && length(mag_cors) > 0) {
+                mag_vars <- unique(unlist(mag_cors))
+                if (length(mag_vars) > 0) {
+                    for (mv in mag_vars) {
+                        drop_pats <- c(
+                            paste0("^sigma_tot_", mv, "$"),
+                            paste0("^sigma_", mv, "_(?!res$)[a-zA-Z0-9]+$"),
+                            paste0("^lambda_", mv, "(_|$)")
+                        )
+                        for (dp in drop_pats) {
+                            drop_idx <- grep(dp, rownames(combined), perl = TRUE)
+                            if (length(drop_idx) > 0) {
+                                combined <- combined[-drop_idx, , drop = FALSE]
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         # Filter Nodes (e.g. Age[1], Rank[5]...)
