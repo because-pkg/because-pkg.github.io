@@ -392,20 +392,40 @@ summary.because <- function(
 
             # Filter redundant variance components for latent indicator variables (MAG approach)
             mag_cors <- object$induced_correlations %||% object$input$induced_correlations %||% object$induced_cors
+            mag_vars <- character(0)
             if (!is.null(mag_cors) && length(mag_cors) > 0) {
                 mag_vars <- unique(unlist(mag_cors))
-                if (length(mag_vars) > 0) {
-                    for (mv in mag_vars) {
-                        drop_pats <- c(
-                            paste0("^sigma_tot_", mv, "$"),
-                            paste0("^sigma_", mv, "_(?!res$)[a-zA-Z0-9]+$"),
-                            paste0("^lambda_", mv, "(_|$)")
-                        )
-                        for (dp in drop_pats) {
-                            drop_idx <- grep(dp, rownames(combined), perl = TRUE)
-                            if (length(drop_idx) > 0) {
-                                combined <- combined[-drop_idx, , drop = FALSE]
-                            }
+            } else {
+                # Fallback: detect participating variables from rho_* parameters in the model
+                rho_params <- grep("^rho_", rownames(combined), value = TRUE)
+                if (length(rho_params) > 0) {
+                    resp_vars <- if (!is.null(object$equations)) {
+                        unique(vapply(object$equations, function(eq) as.character(all.vars(eq[[2]])[1]), character(1)))
+                    } else character(0)
+                    for (rp in rho_params) {
+                        clean_rp <- sub("^rho_", "", rp)
+                        if (length(resp_vars) > 0) {
+                            matched <- resp_vars[vapply(resp_vars, function(v) grepl(paste0("(^|_)", v, "(_|$)"), clean_rp), logical(1))]
+                            mag_vars <- unique(c(mag_vars, matched))
+                        } else {
+                            parts <- strsplit(clean_rp, "_")[[1]]
+                            mag_vars <- unique(c(mag_vars, parts))
+                        }
+                    }
+                }
+            }
+
+            if (length(mag_vars) > 0) {
+                for (mv in mag_vars) {
+                    drop_pats <- c(
+                        paste0("^sigma_tot_", mv, "$"),
+                        paste0("^sigma_", mv, "_(?!res$)[a-zA-Z0-9]+$"),
+                        paste0("^lambda_", mv, "(_|$)")
+                    )
+                    for (dp in drop_pats) {
+                        drop_idx <- grep(dp, rownames(combined), perl = TRUE)
+                        if (length(drop_idx) > 0) {
+                            combined <- combined[-drop_idx, , drop = FALSE]
                         }
                     }
                 }
