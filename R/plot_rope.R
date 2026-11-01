@@ -76,9 +76,9 @@ plot_rope.because <- function(object, rope = "default", parameters = NULL, ...) 
     plot_data <- data.frame()
     
     if (is_dsep) {
-        # Check for pre-computed numpyro dsep results
-        if (is.list(object$dsep) && !is.null(object$dsep$results)) {
-            stop("ROPE plots are not currently supported for numpyro d-sep tests because the raw samples are not preserved.")
+        # Check if dsep results are missing samples
+        if (is.null(object$dsep_results) && is.list(object$dsep) && !is.null(object$dsep$results)) {
+            stop("ROPE plots are not supported for this d-sep object because raw posterior samples are not preserved.")
         }
         
         summ <- summary(object)

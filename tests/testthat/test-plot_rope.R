@@ -87,3 +87,32 @@ test_that("plot_rope disambiguates categorical dummy variables for d-sep tests",
     expect_true("Brain _||_ Sample.size (medium)" %in% labels)
     expect_true("Brain _||_ Sample.size (small)" %in% labels)
 })
+
+testthat::test_that("plot_rope works with numpyro-style d-sep objects with preserved samples", {
+    samples <- coda::as.mcmc(matrix(rnorm(100), ncol = 1, dimnames = list(NULL, "beta_Z_X")))
+    res_df <- data.frame(
+        Test = "Z _||_ X | {Y}",
+        Parameter = "beta_Z_X",
+        Estimate = -0.05,
+        LowerCI = -0.2,
+        UpperCI = 0.1,
+        Rhat = 1.0,
+        n.eff = 100,
+        Scale = NA,
+        stringsAsFactors = FALSE
+    )
+    fit <- list(
+        dsep = list(results = res_df),
+        dsep_results = list(list(samples = samples)),
+        dsep_tests = list(Z ~ Y + X)
+    )
+    class(fit) <- "because"
+
+    testthat::skip_if_not_installed("ggridges")
+    p <- plot_rope(fit, rope = c(-0.1, 0.1))
+    testthat::expect_s3_class(p, "ggplot")
+    testthat::expect_true("Z _||_ X" %in% levels(p$data$Label))
+
+    s <- summary(fit, rope = c(-0.1, 0.1))
+    testthat::expect_true("P_ROPE" %in% names(s$results))
+})

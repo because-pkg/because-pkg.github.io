@@ -173,6 +173,7 @@ run_dsep_numpyro <- function(
       # Format tests into structured list for Python to bypass its internal graph logic
       dsep_equations_to_run <- list()
       cs_results <- list()
+      cs_samples <- list()
       
       for (i in tests_to_run_indices) {
         eq <- current_tests[[i]]
@@ -268,6 +269,7 @@ run_dsep_numpyro <- function(
             stringsAsFactors = FALSE
           )
           cs_results[[as.character(i)]] <- cs_df
+          cs_samples[[as.character(i)]] <- samples_mcmc
         } else {
           # Standard test, prepare for Python
           resp <- as.character(eq)[2]
@@ -316,24 +318,40 @@ run_dsep_numpyro <- function(
   }
 
   new_dsep_df <- NULL
+  py_samples_list <- list()
   if (!is.null(py_result$dsep_results) && length(py_result$dsep_results) > 0) {
-    new_dsep_df <- do.call(rbind, lapply(py_result$dsep_results, function(x) as.data.frame(x, stringsAsFactors = FALSE)))
-    if (nrow(new_dsep_df) > 0) {
-      names(new_dsep_df)[names(new_dsep_df) == "claim"] <- "Test"
-      names(new_dsep_df)[names(new_dsep_df) == "coefficient"] <- "Parameter"
-      names(new_dsep_df)[names(new_dsep_df) == "mean"] <- "Estimate"
-      names(new_dsep_df)[names(new_dsep_df) == "ci_2.5"] <- "LowerCI"
-      names(new_dsep_df)[names(new_dsep_df) == "ci_97.5"] <- "UpperCI"
-      names(new_dsep_df)[names(new_dsep_df) == "rhat"] <- "Rhat"
-      names(new_dsep_df)[names(new_dsep_df) == "n_eff"] <- "n.eff"
-      new_dsep_df$Scale <- NA
-      new_dsep_df$is_independent <- NULL
-      new_dsep_df$equation <- NULL
+    row_list <- list()
+    for (k in seq_along(py_result$dsep_results)) {
+      item <- py_result$dsep_results[[k]]
+      samps <- item$samples
+      item$samples <- NULL
+      row_list[[k]] <- as.data.frame(item, stringsAsFactors = FALSE)
+      if (!is.null(samps)) {
+        p_name <- item$coefficient
+        mat <- matrix(as.numeric(samps), ncol = 1, dimnames = list(NULL, p_name))
+        py_samples_list[[k]] <- list(samples = mat)
+      }
+    }
+    if (length(row_list) > 0) {
+      new_dsep_df <- do.call(rbind, row_list)
+      if (nrow(new_dsep_df) > 0) {
+        names(new_dsep_df)[names(new_dsep_df) == "claim"] <- "Test"
+        names(new_dsep_df)[names(new_dsep_df) == "coefficient"] <- "Parameter"
+        names(new_dsep_df)[names(new_dsep_df) == "mean"] <- "Estimate"
+        names(new_dsep_df)[names(new_dsep_df) == "ci_2.5"] <- "LowerCI"
+        names(new_dsep_df)[names(new_dsep_df) == "ci_97.5"] <- "UpperCI"
+        names(new_dsep_df)[names(new_dsep_df) == "rhat"] <- "Rhat"
+        names(new_dsep_df)[names(new_dsep_df) == "n_eff"] <- "n.eff"
+        new_dsep_df$Scale <- NA
+        new_dsep_df$is_independent <- NULL
+        new_dsep_df$equation <- NULL
+      }
     }
   }
   
   # Merge reused results back into the final dataframe in the original order
   dsep_df_list <- list()
+  dsep_results_final <- list()
   new_idx <- 1
   if (length(current_tests) > 0) {
     for (i in seq_along(current_tests)) {
@@ -341,6 +359,9 @@ run_dsep_numpyro <- function(
         dsep_df_list[[i]] <- reused_results[[i]]
       } else if (!is.null(cs_results[[as.character(i)]])) {
         dsep_df_list[[i]] <- cs_results[[as.character(i)]]
+        if (!is.null(cs_samples[[as.character(i)]])) {
+          dsep_results_final[[i]] <- list(samples = cs_samples[[as.character(i)]])
+        }
         names(dsep_df_list[[i]])[names(dsep_df_list[[i]]) == "claim"] <- "Test"
         names(dsep_df_list[[i]])[names(dsep_df_list[[i]]) == "coefficient"] <- "Parameter"
         names(dsep_df_list[[i]])[names(dsep_df_list[[i]]) == "mean"] <- "Estimate"
@@ -353,6 +374,9 @@ run_dsep_numpyro <- function(
         dsep_df_list[[i]]$equation <- NULL
       } else if (!is.null(new_dsep_df) && new_idx <= nrow(new_dsep_df)) {
         dsep_df_list[[i]] <- new_dsep_df[new_idx, , drop = FALSE]
+        if (new_idx <= length(py_samples_list)) {
+          dsep_results_final[[i]] <- py_samples_list[[new_idx]]
+        }
         new_idx <- new_idx + 1
       }
 
@@ -400,6 +424,7 @@ run_dsep_numpyro <- function(
   dsep_df <- if (length(dsep_df_list) > 0) do.call(rbind, dsep_df_list) else NULL
   result <- list(
     dsep = if (!is.null(dsep_df)) list(results = dsep_df) else NULL,
+    dsep_results = if (length(dsep_results_final) > 0) dsep_results_final else NULL,
     dsep_tests = current_tests,
     equations = equations,
     data = data,

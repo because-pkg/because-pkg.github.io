@@ -85,9 +85,28 @@ summary.because <- function(
     if (!is.null(object$dsep) && (isTRUE(object$dsep) || is.list(object$dsep))) {
         # Check if dsep results were pre-computed by a backend engine (e.g., numpyro)
         if (is.list(object$dsep) && !is.null(object$dsep$results)) {
+            res_df <- object$dsep$results
+            if (!is.null(rope) && !is.null(object$dsep_results)) {
+                p_rope_vals <- rep(NA_real_, nrow(res_df))
+                for (i in seq_len(nrow(res_df))) {
+                    param_name <- res_df$Parameter[i]
+                    for (dr in object$dsep_results) {
+                        if (!is.null(dr)) {
+                            samps <- as.matrix(dr$samples)
+                            if (param_name %in% colnames(samps)) {
+                                r_interval <- resolve_rope_for_param(param_name, resp = NULL, fam = "gaussian", rope_spec = rope)
+                                sub_s <- samps[, param_name]
+                                p_rope_vals[i] <- mean(sub_s > r_interval[1] & sub_s < r_interval[2])
+                                break
+                            }
+                        }
+                    }
+                }
+                res_df$P_ROPE <- paste0(format(round(100 * p_rope_vals, 2), nsmall = 2, trim = TRUE), "%")
+            }
             out <- list(
                 type = "dsep",
-                results = object$dsep$results
+                results = res_df
             )
             class(out) <- "summary.because"
             return(out)
