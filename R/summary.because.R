@@ -90,11 +90,14 @@ summary.because <- function(
                 p_rope_vals <- rep(NA_real_, nrow(res_df))
                 for (i in seq_len(nrow(res_df))) {
                     param_name <- res_df$Parameter[i]
+                    test_label <- res_df$Test[i]
+                    resp_name <- sub("\\s*_\\|\\|_.*", "", test_label)
+                    fam_i <- if (!is.null(object$family) && resp_name %in% names(object$family)) object$family[[resp_name]] else "gaussian"
                     for (dr in object$dsep_results) {
                         if (!is.null(dr)) {
                             samps <- as.matrix(dr$samples)
                             if (param_name %in% colnames(samps)) {
-                                r_interval <- resolve_rope_for_param(param_name, resp = NULL, fam = "gaussian", rope_spec = rope)
+                                r_interval <- resolve_rope_for_param(param_name, resp = resp_name, fam = fam_i, rope_spec = rope)
                                 sub_s <- samps[, param_name]
                                 p_rope_vals[i] <- mean(sub_s > r_interval[1] & sub_s < r_interval[2])
                                 break
