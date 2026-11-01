@@ -131,10 +131,35 @@ often seen with extremely “flat” priors in complex hierarchical
 models.</p>
 <p>For Gaussian response variables, the <strong>residual standard
 deviation</strong> gets a half-uniform prior:
-<code>sigma_e ~ dunif(0, 100)</code>, from which the precision is
-derived as <code>tau_e &lt;- 1 / (sigma_e * sigma_e)</code>. This is
-scale-invariant and works safely whether data are standardised or on
-their original (raw) scale.</p>
+<code>sigma ~ dunif(0, 100)</code>, from which the precision is derived
+as <code>tau &lt;- 1 / (sigma * sigma)</code>.</p>
+<blockquote>
+<p><strong>Important Note on Variable Scaling &amp; Prior
+Truncation:</strong><br>
+These default priors are designed under the standard convention in
+structural equation modeling that <strong>continuous variables are
+standardized (mean = 0, SD = 1)</strong> prior to fitting, ensuring that
+path coefficients represent comparable standardized effect sizes.</p>
+<ul>
+<li>
+<strong>On standardized data</strong>
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">SD</mtext><mo>≈</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\text{SD} \approx 1</annotation></semantics></math>),
+an upper ceiling of 100 on standard deviations is 100 times larger than
+the data variance, making it completely flat and non-informative.</li>
+<li>
+<strong>On unstandardized data</strong> with large variances (e.g.,
+body mass in grams,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">SD</mtext><mo>&gt;</mo><mn>20</mn></mrow><annotation encoding="application/x-tex">\text{SD} &gt; 20</annotation></semantics></math>),
+an upper bound of 100 could inadvertently truncate the posterior.</li>
+</ul>
+<p>To safeguard against this, <code>because</code> automatically
+inspects empirical variances and issues an informative diagnostic
+warning if large unstandardized continuous variables are passed without
+custom priors. When working with unstandardized data, you should either
+standardize your variables (e.g., using <code><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale()</a></code>) or supply
+scale-adapted custom priors (e.g.,
+<code>sigma_Growth_g_day_res = "dunif(0, 500)"</code>).</p>
+</blockquote>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_default</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because.html">because</a></span><span class="op">(</span></span>
 <span>    equations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">Growth_g_day</span> <span class="op">~</span> <span class="va">Temp_Centered</span><span class="op">)</span>,</span>
@@ -158,13 +183,13 @@ around <strong>0.5 g/day/°C</strong>.</p>
 <p><strong>Slopes</strong>: <code>beta_{Response}_{Predictor}</code>
 (e.g., <code>beta_Growth_g_day_Temp_Centered</code>)</p>
 <p><strong>Residual SD (Gaussian):</strong>
-<code>sigma_e_{Response}</code> (e.g.,
-<code>sigma_e_Growth_g_day</code>) — this is what you override in
+<code>sigma_{Response}_res</code> (e.g.,
+<code>sigma_Growth_g_day_res</code>) — this is what you override in
 <code>priors</code> for Gaussian responses.</p>
 <p><strong>Residual precision (derived):</strong>
-<code>tau_e_{Response}</code> — set automatically from
-<code>sigma_e</code>; do not set directly unless you need a legacy
-dgamma override.</p>
+<code>tau_res_{Response}</code> — set automatically from
+<code>sigma</code>; do not set directly unless you need a legacy dgamma
+override.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Define our custom priors</span></span>
 <span><span class="va">my_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
@@ -456,7 +481,12 @@ override the default <code>dunif(0, 100)</code></strong>
 <li>
 <code>lambda_{Response}</code>: Phylogenetic signal (0–1)</li>
 <li>
-<code>psi_{Response}</code>: Zero-inflation probability</li>
+<code>r_{Response}</code>: Negative Binomial size / dispersion
+parameter (defaults to weakly informative
+<code>dgamma(2, 0.1)</code>)</li>
+<li>
+<code>psi_{Response}</code>: Zero-inflation probability (defaults to
+<code>dunif(0, 1)</code>)</li>
 </ul>
 <p>If you are unsure, run a quick model with
 <code>n.adapt=0, n.iter=0</code> (just compilation) and check the

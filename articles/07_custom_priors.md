@@ -59,10 +59,30 @@ while preventing the numerical instability and convergence failure
 hierarchical models.
 
 For Gaussian response variables, the **residual standard deviation**
-gets a half-uniform prior: `sigma_e ~ dunif(0, 100)`, from which the
-precision is derived as `tau_e <- 1 / (sigma_e * sigma_e)`. This is
-scale-invariant and works safely whether data are standardised or on
-their original (raw) scale.
+gets a half-uniform prior: `sigma ~ dunif(0, 100)`, from which the
+precision is derived as `tau <- 1 / (sigma * sigma)`.
+
+> **Important Note on Variable Scaling & Prior Truncation:**  
+> These default priors are designed under the standard convention in
+> structural equation modeling that **continuous variables are
+> standardized (mean = 0, SD = 1)** prior to fitting, ensuring that path
+> coefficients represent comparable standardized effect sizes.
+>
+> - **On standardized data** ($`\text{SD} \approx 1`$), an upper ceiling
+>   of 100 on standard deviations is 100 times larger than the data
+>   variance, making it completely flat and non-informative.
+> - **On unstandardized data** with large variances (e.g., body mass in
+>   grams, $`\text{SD} > 20`$), an upper bound of 100 could
+>   inadvertently truncate the posterior.
+>
+> To safeguard against this, `because` automatically inspects empirical
+> variances and issues an informative diagnostic warning if large
+> unstandardized continuous variables are passed without custom priors.
+> When working with unstandardized data, you should either standardize
+> your variables (e.g., using
+> [`scale()`](https://rdrr.io/r/base/scale.html)) or supply
+> scale-adapted custom priors (e.g.,
+> `sigma_Growth_g_day_res = "dunif(0, 500)"`).
 
 ``` r
 
@@ -89,13 +109,13 @@ The parameter names usually follow this convention:
 **Slopes**: `beta_{Response}_{Predictor}` (e.g.,
 `beta_Growth_g_day_Temp_Centered`)
 
-**Residual SD (Gaussian):** `sigma_e_{Response}` (e.g.,
-`sigma_e_Growth_g_day`) — this is what you override in `priors` for
+**Residual SD (Gaussian):** `sigma_{Response}_res` (e.g.,
+`sigma_Growth_g_day_res`) — this is what you override in `priors` for
 Gaussian responses.
 
-**Residual precision (derived):** `tau_e_{Response}` — set automatically
-from `sigma_e`; do not set directly unless you need a legacy dgamma
-override.
+**Residual precision (derived):** `tau_res_{Response}` — set
+automatically from `sigma`; do not set directly unless you need a legacy
+dgamma override.
 
 ``` r
 
@@ -314,7 +334,10 @@ Common patterns:
 - `tau_e_{Response}`: Residual precision (derived from `sigma_e`; not
   directly set via priors — use `sigma_e_*` instead)
 - `lambda_{Response}`: Phylogenetic signal (0–1)
-- `psi_{Response}`: Zero-inflation probability
+- `r_{Response}`: Negative Binomial size / dispersion parameter
+  (defaults to weakly informative `dgamma(2, 0.1)`)
+- `psi_{Response}`: Zero-inflation probability (defaults to
+  `dunif(0, 1)`)
 
 If you are unsure, run a quick model with `n.adapt=0, n.iter=0` (just
 compilation) and check the generated model code:
