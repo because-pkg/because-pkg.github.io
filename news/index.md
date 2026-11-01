@@ -4,6 +4,12 @@
 
 ### New Features & Improvements
 
+- **NumPyro ROPE and Ridge Plots for d-Separation**: NumPyro
+  d-separation runs now preserve raw posterior draws across individual
+  conditional independence tests in `dsep_results`. This enables full
+  ROPE support for the NumPyro engine, including `P_ROPE` columns in
+  `summary(fit, rope = ...)` and graphical ridge visualizations with
+  `plot_rope(fit)`.
 - **Sensible Weakly Informative Prior for Negative Binomial Dispersion
   (`r`)**: Replaced the legacy BUGS default prior
   `r ~ dgamma(0.01, 0.01)` (which concentrated 96% of its prior mass
