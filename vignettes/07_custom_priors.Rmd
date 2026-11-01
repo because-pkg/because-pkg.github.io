@@ -258,7 +258,8 @@ Common patterns:
 -   `sigma_e_{Response}`: Residual standard deviation for Gaussian responses — **use this key in `priors` to override the default `dunif(0, 100)`**
 -   `tau_e_{Response}`: Residual precision (derived from `sigma_e`; not directly set via priors — use `sigma_e_*` instead)
 -   `lambda_{Response}`: Phylogenetic signal (0–1)
--   `psi_{Response}`: Zero-inflation probability
+-   `r_{Response}`: Negative Binomial size / dispersion parameter (defaults to weakly informative `dgamma(2, 0.1)`)
+-   `psi_{Response}`: Zero-inflation probability (defaults to `dunif(0, 1)`)
 
 If you are unsure, run a quick model with `n.adapt=0, n.iter=0` (just compilation) and check the generated model code:
 

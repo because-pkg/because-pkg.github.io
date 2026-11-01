@@ -377,7 +377,7 @@ generate_model_priors <- function(ctx) {
         ctx$model_lines <- c(
           ctx$model_lines,
           paste0("  # Priors for ", response, suffix, " (Negative Binomial size parameter)"),
-          paste0("  ", r_name, " ~ dgamma(0.01, 0.01)")
+          paste0("  ", get_prior(r_name, type = "r", default = "dgamma(2, 0.1)", priors = ctx$priors))
         )
         ctx$param_map[[length(ctx$param_map) + 1]] <- list(
           response = response,
@@ -440,7 +440,7 @@ generate_model_priors <- function(ctx) {
         psi_name <- paste0("psi_", response, suffix)
         ctx$model_lines <- c(
           ctx$model_lines,
-          paste0("  ", psi_name, " ~ dunif(0, 1) # Zero-inflation probability")
+          paste0("  ", get_prior(psi_name, type = "psi", default = "dunif(0, 1)", priors = ctx$priors), " # Zero-inflation probability")
         )
       }
     }
