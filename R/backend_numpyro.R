@@ -1,3 +1,29 @@
+#' Build variable-to-level map for Python/NumPyro
+#' @keywords internal
+.build_py_levels <- function(hierarchical_info) {
+  if (is.null(hierarchical_info) || is.null(hierarchical_info$levels)) {
+    return(NULL)
+  }
+  py_levels <- lapply(hierarchical_info$levels, as.character)
+  if (!is.null(hierarchical_info$structure_levels)) {
+    for (s_name in names(hierarchical_info$structure_levels)) {
+      s_lvl <- hierarchical_info$structure_levels[[s_name]]
+      if (!is.null(s_lvl) && s_lvl %in% names(py_levels)) {
+        py_levels[[s_lvl]] <- unique(c(py_levels[[s_lvl]], s_name))
+      }
+    }
+  }
+  if (!is.null(hierarchical_info$link_vars)) {
+    for (l_name in names(hierarchical_info$link_vars)) {
+      l_var <- hierarchical_info$link_vars[[l_name]]
+      if (!is.null(l_var) && l_name %in% names(py_levels)) {
+        py_levels[[l_name]] <- unique(c(py_levels[[l_name]], as.character(l_var)))
+      }
+    }
+  }
+  lapply(py_levels, as.list)
+}
+
 #' Run a NumPyro model via because_py
 #'
 #' @param eq_strings Character vector of equations
@@ -18,7 +44,7 @@
 run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structures,
                               induced_correlations = NULL,
                               n_chains, n_iter, n_warmup, adapt_delta, max_treedepth,
-                              prior_scale_fixed, quiet, WAIC = FALSE) {
+                              prior_scale_fixed, quiet, WAIC = FALSE, levels = NULL) {
   
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     stop("The 'reticulate' package is required to use engine = 'numpyro'")
@@ -49,7 +75,8 @@ run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structur
     max_treedepth = as.integer(max_treedepth),
     prior_scale_fixed = prior_scale_fixed,
     calculate_waic = WAIC,
-    quiet = quiet
+    quiet = quiet,
+    levels = levels
   )
   
   return(py_result)
@@ -125,8 +152,10 @@ run_numpyro_pipeline <- function(
     # Determine matrix name in the prepared data
     custom_s_name <- get_structure_name_hook(s_obj)
     mat_name <- if (!is.null(custom_s_name)) paste0(custom_s_name, "_", s_name) else paste0("VCV_", s_name)
+    is_prec <- FALSE
     if (is.null(data[[mat_name]]) && !is.null(data[[paste0("Prec_", s_name)]])) {
       mat_name <- paste0("Prec_", s_name)
+      is_prec <- TRUE
     }
     
     if (!is.null(data[[mat_name]])) {
@@ -146,8 +175,8 @@ run_numpyro_pipeline <- function(
           )
         }
       } else {
-        # Fallback to pure matrix
-        py_structures[[s_name]] <- data[[mat_name]]
+        # Fallback to pure covariance matrix
+        py_structures[[s_name]] <- if (is_prec) solve(data[[mat_name]]) else data[[mat_name]]
       }
       
       # Append + (1 | s_name) to valid endogenous equations
@@ -232,6 +261,8 @@ run_numpyro_pipeline <- function(
       }
   }
 
+  py_levels <- .build_py_levels(hierarchical_info)
+
   py_result <- run_numpyro_model(
     eq_strings = eq_strings,
     flat_data = flat_data,
@@ -246,7 +277,8 @@ run_numpyro_pipeline <- function(
     max_treedepth = max_treedepth,
     prior_scale_fixed = prior_scale_fixed,
     quiet = quiet,
-    WAIC = WAIC
+    WAIC = WAIC,
+    levels = py_levels
   )
   mcmc_samples <- format_numpyro_samples(py_result)
   

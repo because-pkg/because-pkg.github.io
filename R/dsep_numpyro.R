@@ -52,8 +52,10 @@ run_dsep_numpyro <- function(
     s_obj <- structures[[s_name]]
     custom_s_name <- get_structure_name_hook(s_obj)
     mat_name <- if (!is.null(custom_s_name)) paste0(custom_s_name, "_", s_name) else paste0("VCV_", s_name)
+    is_prec <- FALSE
     if (is.null(data[[mat_name]]) && !is.null(data[[paste0("Prec_", s_name)]])) {
       mat_name <- paste0("Prec_", s_name)
+      is_prec <- TRUE
     }
     if (!is.null(data[[mat_name]])) {
       py_code <- numpyro_structure_definition(s_obj, engine = "numpyro")
@@ -66,7 +68,7 @@ run_dsep_numpyro <- function(
           py_structures[[s_name]] <- list(matrix = data[[mat_name]], transform_func = env[[func_name]], type = class(s_obj)[1])
         }
       } else {
-        py_structures[[s_name]] <- data[[mat_name]]
+        py_structures[[s_name]] <- if (is_prec) solve(data[[mat_name]]) else data[[mat_name]]
       }
     }
   }
@@ -81,7 +83,16 @@ run_dsep_numpyro <- function(
   flat_data <- flatten_for_python(data)
   for (s_name in names(structures)) {
     if (is.null(flat_data[[s_name]])) {
-      N_val <- if (!is.null(flat_data[["N"]])) flat_data[["N"]] else length(flat_data[[1]])
+      N_val <- NULL
+      if (!is.null(hierarchical_info) && !is.null(hierarchical_info$structure_levels)) {
+        s_lvl <- hierarchical_info$structure_levels[[s_name]]
+        if (!is.null(s_lvl)) {
+          N_val <- flat_data[[paste0("N_", s_lvl)]]
+        }
+      }
+      if (is.null(N_val)) {
+        N_val <- if (!is.null(flat_data[["N"]])) flat_data[["N"]] else length(flat_data[[1]])
+      }
       flat_data[[s_name]] <- 0:(N_val - 1)
     }
   }
@@ -277,7 +288,7 @@ run_dsep_numpyro <- function(
           
           rhs_str <- paste(deparse(eq[[3]]), collapse = " ")
           rhs_parts <- trimws(strsplit(rhs_str, "\\+")[[1]])
-          cond_set <- rhs_parts[rhs_parts != test_var]
+          cond_set <- rhs_parts[rhs_parts != test_var & !grepl("\\|", rhs_parts)]
           
           if (is.null(test_var)) {
             vars <- all.vars(eq)
@@ -285,17 +296,50 @@ run_dsep_numpyro <- function(
             cond_set <- setdiff(vars, c(resp, test_var))
           }
           
+          eq_str_base <- paste(deparse(eq), collapse = " ")
+          eq_str_compile <- eq_str_base
+          for (s_name in names(py_structures)) {
+            is_valid <- TRUE
+            if (!is.null(hierarchical_info)) {
+              s_lvl <- hierarchical_info$structure_levels[[s_name]]
+              tryCatch({
+                resp_lvl <- infer_variable_level(
+                  resp,
+                  hierarchical_info$levels,
+                  data = NULL,
+                  equations = equations,
+                  latent = latent,
+                  hierarchy = hierarchical_info$hierarchy
+                )
+                if (is.null(resp_lvl)) {
+                  is_valid <- FALSE
+                } else if (!is_valid_structure_mapping_dsep(s_lvl, resp_lvl, hierarchical_info)) {
+                  is_valid <- FALSE
+                }
+              }, error = function(e) {
+                is_valid <<- FALSE
+              })
+            }
+            if (is_valid) {
+              if (!grepl(paste0("\\(1\\s*\\|\\s*", s_name, "\\)"), eq_str_compile)) {
+                eq_str_compile <- paste0(eq_str_compile, " + (1|", s_name, ")")
+              }
+            }
+          }
+          
           dsep_equations_to_run[[length(dsep_equations_to_run) + 1]] <- list(
             type = "dsep",
             response = resp,
             test_node = test_var,
             conditioning_set = as.list(cond_set),
-            equation_string = paste(deparse(eq), collapse = " ")
+            equation_string = eq_str_base,
+            compile_equation_string = eq_str_compile
           )
         }
       }
     }
     
+    py_levels <- .build_py_levels(hierarchical_info)
     py_result <- because_py$fit(
       equations = eq_strings,
       data = flat_data,
@@ -313,7 +357,8 @@ run_dsep_numpyro <- function(
       quiet = quiet,
       cor_matrices = py_structures,
       dsep_equations_to_run = if (!is.null(dsep_equations_to_run)) as.list(dsep_equations_to_run) else NULL,
-      prior_scale_fixed = prior_scale_fixed
+      prior_scale_fixed = prior_scale_fixed,
+      levels = py_levels
     )
   }
 

@@ -695,8 +695,12 @@ plot_dsep <- function(object, ...) {
 #' @keywords internal
 #' @export
 prepare_structure_data.matrix <- function(structure, data, ...) {
+    args <- list(...)
+    if (!is.null(args$engine) && identical(args$engine, "numpyro")) {
+        return(list(data_list = list(VCV = structure)))
+    }
     # Treat matrix as covariance, invert to get Precision
-    return(list(data_list = list(Prec = solve(structure))))
+    return(list(data_list = list(Prec = solve(structure), VCV = structure)))
 }
 
 #' @keywords internal
