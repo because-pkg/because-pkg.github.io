@@ -89,9 +89,27 @@ get_prior <- function(param_name, type = "beta", default = NULL, priors = NULL) 
 #' @return Formatted BUGS precision prior statement
 #' @keywords internal
 get_precision_prior <- function(param_name, var_name, priors = NULL, family = NULL) {
-  if (!is.null(priors) && param_name %in% names(priors)) {
-    return(paste0(param_name, " ~ ", priors[[param_name]]))
+  if (!is.null(priors)) {
+    if (param_name %in% names(priors)) {
+      return(paste0(param_name, " ~ ", priors[[param_name]]))
+    }
+
+    # Support overriding Gaussian residual SD directly via sigma_*_res, sigma_*, or sigma_e_*
+    if (grepl("^tau_res_", param_name)) {
+      sig_res  <- paste0(sub("^tau_res_", "sigma_", param_name), "_res")
+      sig_base <- sub("^tau_res_", "sigma_", param_name)
+      sig_e    <- paste0("sigma_e_", var_name)
+
+      sig_val <- priors[[sig_res]] %||% priors[[sig_base]] %||% priors[[sig_e]]
+      if (!is.null(sig_val)) {
+        return(c(
+          paste0(sig_res, " ~ ", sig_val),
+          paste0(param_name, " <- 1 / (", sig_res, " * ", sig_res, ")")
+        ))
+      }
+    }
   }
+
   var_family <- if (!is.null(family) && var_name %in% names(family)) {
     family[[var_name]]
   } else {
