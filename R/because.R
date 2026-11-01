@@ -477,6 +477,8 @@ because <- function(
   latent                <- mv_res$latent
   response_vars_with_na <- mv_res$response_vars_with_na
 
+  # --- Check Empirical Scale vs Default Priors for Continuous Variables ---
+  check_prior_scale(data = data, equations = equations, family = family, priors = priors, quiet = quiet)
 
   # --- D-Separation Tests ---
   dsep_res <- run_because_dsep(
