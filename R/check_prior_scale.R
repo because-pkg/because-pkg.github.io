@@ -20,7 +20,7 @@ check_prior_scale <- function(data, equations, family = NULL, priors = NULL, qui
     f_eq <- tryCatch(stats::formula(eq), error = function(e) NULL)
     if (is.null(f_eq) || length(f_eq) < 2) next
     resp <- as.character(f_eq[[2]])[1]
-    fam <- if (!is.null(family[[resp]])) tolower(family[[resp]]) else "gaussian"
+    fam <- if (!is.null(family) && resp %in% names(family)) tolower(family[[resp]]) else "gaussian"
     if (fam %in% c("gaussian", "normal")) {
       gaussian_responses <- c(gaussian_responses, resp)
     }
