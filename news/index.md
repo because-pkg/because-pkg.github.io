@@ -62,6 +62,33 @@
 
 ### Bug Fixes
 
+- **Multiscale Hierarchical d-Separation & Cross-Level Indexing in
+  NumPyro**: Fixed three issues in the NumPyro backend (`because` and
+  `because_py`) for multiscale / hierarchical models:
+  - `run_dsep_numpyro()` now injects applicable structural random
+    effects (`+ (1 | <structure>)`) via `compile_equation_string` into
+    each d-separation sub-model and initializes structure index vectors
+    using `hierarchical_info$structure_levels`.
+  - `because` now passes explicit level-to-variable and structure
+    mappings (`levels`) to `because_py`, preventing cross-level index
+    collisions (`<level>_idx_<child>`) when two orthogonal hierarchy
+    branches have identical sample sizes (e.g. `N_site == N_species`)
+    across fixed predictors, [`I()`](https://rdrr.io/r/base/AsIs.html)
+    deterministic terms, and random effects.
+  - `prepare_structure_data.matrix()` now preserves the covariance
+    matrix (`VCV`) alongside the precision matrix (`Prec`) so NumPyro
+    computes the Cholesky factor of the covariance matrix rather than
+    its inverse.
+- **Partial Named Vector `family` Handling in d-Separation and
+  [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md)**:
+  Fixed a `"subscript out of bounds"` error when `family` is passed as a
+  partial named character vector
+  (e.g. `family = c(Abundance = "poisson")`) during d-separation
+  testing, and updated
+  [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md)
+  to apply response-specific family ROPE thresholds (`[-0.05, 0.05]` for
+  Poisson/NegBin, `[-0.18, 0.18]` for Binomial/Ordinal, `[-0.10, 0.10]`
+  for Gaussian) per test in multi-family models.
 - **Structured Random Effects for Non-Gaussian Responses**: Fixed a
   regression (introduced when the model compiler was modularized) where
   responses with a link function (e.g. `poisson`, `binomial`,
