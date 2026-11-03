@@ -1,6 +1,6 @@
 # Changelog
 
-## because 1.8.3 (2026-11-01)
+## because 1.8.3 (2026-11-03)
 
 ### New Features & Improvements
 
@@ -58,10 +58,37 @@
   `tests/testthat/test-dispersion-priors.R` covering scale diagnostics,
   custom prior overrides, discrete family exemptions, quiet mode, and
   dispersion/zero-inflation custom priors, bringing the package test
-  suite to 35 test files and 292 passing tests.
+  suite to 35 test files and 296 passing tests.
 
 ### Bug Fixes
 
+- **Restored Observation Precision & Conjugacy for Latent MAG Indicators
+  in JAGS**:
+  - Fixed an issue in `generate_likelihoods()` where measurement
+    indicator variables with correlated residual errors (MAG approach,
+    e.g. `Brain` and `Mass` for latent `Size`) were compiled using
+    `tau_res_<var>` instead of `tau_obs_<var>`. This had caused the
+    model compiler to assign an unidentifiable non-conjugate
+    `dunif(0, 100)` prior on residual standard deviation
+    (`sigma_<var>_res`), creating four competing variance components
+    (`TAU_res_*` Wishart matrix, `sigma_<var>_res`, `sigma_obs_*`, and
+    `sigma_<struct>_*`) that led to boundary collapse
+    (`sigma_res -> 0`), multimodal variance swapping, and severe MCMC
+    mixing / convergence issues (elevated $`\hat{R} > 2.0`$ and low
+    ESS).
+  - Restored conjugate observation precision
+    `tau_obs_<var> ~ dgamma(1, 1)` and derived standard deviation
+    `sigma_obs_<var> <- 1/sqrt(tau_obs_<var>)`, eliminating the
+    conflicting `sigma_<var>_res` prior.
+  - Eliminated duplicate phantom prior declarations
+    (`tau_u_<var>_<struct>` vs `tau_u_<struct>_<var>`) in
+    `generate_model_priors()`.
+  - Corrected parameter regex filtering in
+    [`summary.because()`](https://because-pkg.github.io/because/reference/summary.because.md)
+    and `prepare_monitors_and_inits()` so redundant structural and
+    residual variances for MAG indicators are omitted from monitoring
+    and summary tables while retaining observation and residual error
+    parameters (`sigma_obs_*`, `sigma_res_*`, and `rho_*`).
 - **Multiscale Hierarchical d-Separation & Cross-Level Indexing in
   NumPyro**: Fixed three issues in the NumPyro backend (`because` and
   `because_py`) for multiscale / hierarchical models:

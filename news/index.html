@@ -30,11 +30,11 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/v1.8.3/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="1.8.3" id="because-183-2026-11-01">because 1.8.3 (2026-11-01)<a class="anchor" aria-label="anchor" href="#because-183-2026-11-01"></a></h2>
+<h2 class="pkg-version" data-toc-text="1.8.3" id="because-183-2026-11-03">because 1.8.3 (2026-11-03)<a class="anchor" aria-label="anchor" href="#because-183-2026-11-03"></a></h2>
 <div class="section level3">
 <h3 id="new-features--improvements-1-8-3">New Features &amp; Improvements<a class="anchor" aria-label="anchor" href="#new-features--improvements-1-8-3"></a></h3>
 <ul><li>
@@ -50,11 +50,18 @@
 <li>
 <strong>Documentation &amp; Vignette Clarifications on Prior Scaling</strong>: Updated <code>vignettes/07_custom_priors.Rmd</code> with dedicated guidance on variable scaling and prior bounds, clarifying that default priors are designed for standardized traits to ensure comparable effect sizes, and illustrating how to specify custom priors for unstandardized raw data.</li>
 <li>
-<strong>Expanded Test Suite</strong>: Added <code>tests/testthat/test-check_prior_scale.R</code> and <code>tests/testthat/test-dispersion-priors.R</code> covering scale diagnostics, custom prior overrides, discrete family exemptions, quiet mode, and dispersion/zero-inflation custom priors, bringing the package test suite to 35 test files and 292 passing tests.</li>
+<strong>Expanded Test Suite</strong>: Added <code>tests/testthat/test-check_prior_scale.R</code> and <code>tests/testthat/test-dispersion-priors.R</code> covering scale diagnostics, custom prior overrides, discrete family exemptions, quiet mode, and dispersion/zero-inflation custom priors, bringing the package test suite to 35 test files and 296 passing tests.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-1-8-3">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-1-8-3"></a></h3>
 <ul><li>
+<strong>Restored Observation Precision &amp; Conjugacy for Latent MAG Indicators in JAGS</strong>:
+<ul><li>Fixed an issue in <code>generate_likelihoods()</code> where measurement indicator variables with correlated residual errors (MAG approach, e.g. <code>Brain</code> and <code>Mass</code> for latent <code>Size</code>) were compiled using <code>tau_res_&lt;var&gt;</code> instead of <code>tau_obs_&lt;var&gt;</code>. This had caused the model compiler to assign an unidentifiable non-conjugate <code>dunif(0, 100)</code> prior on residual standard deviation (<code>sigma_&lt;var&gt;_res</code>), creating four competing variance components (<code>TAU_res_*</code> Wishart matrix, <code>sigma_&lt;var&gt;_res</code>, <code>sigma_obs_*</code>, and <code>sigma_&lt;struct&gt;_*</code>) that led to boundary collapse (<code>sigma_res -&gt; 0</code>), multimodal variance swapping, and severe MCMC mixing / convergence issues (elevated <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>R</mi><mo accent="true">̂</mo></mover><mo>&gt;</mo><mn>2.0</mn></mrow><annotation encoding="application/x-tex">\hat{R} &gt; 2.0</annotation></semantics></math> and low ESS).</li>
+<li>Restored conjugate observation precision <code>tau_obs_&lt;var&gt; ~ dgamma(1, 1)</code> and derived standard deviation <code>sigma_obs_&lt;var&gt; &lt;- 1/sqrt(tau_obs_&lt;var&gt;)</code>, eliminating the conflicting <code>sigma_&lt;var&gt;_res</code> prior.</li>
+<li>Eliminated duplicate phantom prior declarations (<code>tau_u_&lt;var&gt;_&lt;struct&gt;</code> vs <code>tau_u_&lt;struct&gt;_&lt;var&gt;</code>) in <code>generate_model_priors()</code>.</li>
+<li>Corrected parameter regex filtering in <code><a href="../reference/summary.because.html">summary.because()</a></code> and <code>prepare_monitors_and_inits()</code> so redundant structural and residual variances for MAG indicators are omitted from monitoring and summary tables while retaining observation and residual error parameters (<code>sigma_obs_*</code>, <code>sigma_res_*</code>, and <code>rho_*</code>).</li>
+</ul></li>
+<li>
 <strong>Multiscale Hierarchical d-Separation &amp; Cross-Level Indexing in NumPyro</strong>: Fixed three issues in the NumPyro backend (<code>because</code> and <code>because_py</code>) for multiscale / hierarchical models:
 <ul><li>
 <code>run_dsep_numpyro()</code> now injects applicable structural random effects (<code>+ (1 | &lt;structure&gt;)</code>) via <code>compile_equation_string</code> into each d-separation sub-model and initializes structure index vectors using <code>hierarchical_info$structure_levels</code>.</li>
