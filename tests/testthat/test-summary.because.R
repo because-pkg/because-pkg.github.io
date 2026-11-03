@@ -123,3 +123,47 @@ test_that("format_numpyro_samples extracts rho from 4D L_corr and summary retain
     expect_true("rho_Brain_Mass" %in% rownames(summ$results))
     expect_equal(round(summ$results["rho_Brain_Mass", "Mean"], 2), 0.75)
 })
+
+test_that("summary.because filters redundant MAG indicator variance components", {
+    # Mock samples with various variance parameters for MAG indicator variables
+    param_names <- c(
+        "beta_Brain_Mass",
+        "rho_Brain_Mass",
+        "sigma_res_Brain_Mass",
+        "sigma_obs_Brain",
+        "sigma_obs_Mass",
+        "sigma_multiPhylo_Brain",
+        "sigma_multiPhylo_Mass",
+        "sigma_tot_Brain",
+        "sigma_tot_Mass",
+        "sigma_Brain_res",
+        "sigma_Mass_res"
+    )
+    mat <- matrix(rnorm(100 * length(param_names), mean = 1, sd = 0.1), ncol = length(param_names), dimnames = list(NULL, param_names))
+    samples <- coda::mcmc.list(coda::mcmc(mat))
+
+    fit <- list(
+        samples = samples,
+        dsep = FALSE,
+        induced_correlations = list(c("Brain", "Mass"))
+    )
+    class(fit) <- "because"
+
+    summ <- summary(fit)
+    rows <- rownames(summ$results)
+
+    # Retained parameters
+    expect_true("beta_Brain_Mass" %in% rows)
+    expect_true("rho_Brain_Mass" %in% rows)
+    expect_true("sigma_res_Brain_Mass" %in% rows)
+    expect_true("sigma_obs_Brain" %in% rows)
+    expect_true("sigma_obs_Mass" %in% rows)
+
+    # Dropped redundant parameters
+    expect_false("sigma_multiPhylo_Brain" %in% rows)
+    expect_false("sigma_multiPhylo_Mass" %in% rows)
+    expect_false("sigma_tot_Brain" %in% rows)
+    expect_false("sigma_tot_Mass" %in% rows)
+    expect_false("sigma_Brain_res" %in% rows)
+    expect_false("sigma_Mass_res" %in% rows)
+})

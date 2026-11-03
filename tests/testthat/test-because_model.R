@@ -56,4 +56,9 @@ test_that("because_model handles latent variables", {
 
     expect_match(model_output$model, "rho_X_Y")
     expect_match(model_output$model, "dmnorm")
+    expect_match(model_output$model, "tau_obs_X ~ dgamma\\(1, 1\\)")
+    expect_match(model_output$model, "tau_obs_Y ~ dgamma\\(1, 1\\)")
+    expect_match(model_output$model, "sigma_obs_X <- 1/sqrt\\(tau_obs_X\\)")
+    expect_false(grepl("sigma_X_res ~ dunif", model_output$model))
+    expect_false(grepl("sigma_Y_res ~ dunif", model_output$model))
 })

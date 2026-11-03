@@ -442,6 +442,8 @@ summary.because <- function(
                     drop_pats <- c(
                         paste0("^sigma_tot_", mv, "$"),
                         paste0("^sigma_", mv, "_(?!res$)[a-zA-Z0-9]+$"),
+                        paste0("^sigma_(?!obs_|res_)[a-zA-Z0-9]+_", mv, "$"),
+                        paste0("^sigma_", mv, "_res$"),
                         paste0("^lambda_", mv, "(_|$)")
                     )
                     for (dp in drop_pats) {

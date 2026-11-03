@@ -403,7 +403,10 @@ generate_model_priors <- function(ctx) {
       if (ctx$independent) {
         ctx$model_lines <- safe_add_lines(
           ctx$model_lines,
-          paste0("  ", get_precision_prior(paste0("tau_res_", var), var, priors = ctx$priors, family = ctx$family)),
+          c(
+            paste0("  ", get_precision_prior(paste0("tau_obs_", var), var, priors = ctx$priors, family = ctx$family)),
+            paste0("  sigma_obs_", var, " <- 1/sqrt(tau_obs_", var, ")")
+          ),
           ctx$declared_nodes
         )
       } else {
@@ -415,16 +418,23 @@ generate_model_priors <- function(ctx) {
             if (!is_valid_structure_mapping(get_struct_lvl(s_name, ctx$hierarchical_info), get_var_level(var, ctx$hierarchical_info, equations = ctx$equations, latent = ctx$latent, categorical_vars = ctx$categorical_vars), ctx$hierarchical_info, allow_identity = TRUE)) next
             
             tau_u_var <- paste0("tau_u_", var, "_", s_name)
-            ctx$model_lines <- safe_add_lines(
-              ctx$model_lines,
-              paste0("  ", get_precision_prior(tau_u_var, var, priors = ctx$priors, family = ctx$family)),
-              ctx$declared_nodes
-            )
+            tau_u_alt <- paste0("tau_u_", s_name, "_", var)
+            known_nodes <- if (is.environment(ctx$declared_nodes)) ctx$declared_nodes$nodes else ctx$declared_nodes
+            if (!(tau_u_var %in% known_nodes || tau_u_alt %in% known_nodes)) {
+              ctx$model_lines <- safe_add_lines(
+                ctx$model_lines,
+                paste0("  ", get_precision_prior(tau_u_var, var, priors = ctx$priors, family = ctx$family)),
+                ctx$declared_nodes
+              )
+            }
           }
         }
         ctx$model_lines <- safe_add_lines(
           ctx$model_lines,
-          paste0("  ", get_precision_prior(paste0("tau_res_", var), var, priors = ctx$priors, family = ctx$family)),
+          c(
+            paste0("  ", get_precision_prior(paste0("tau_obs_", var), var, priors = ctx$priors, family = ctx$family)),
+            paste0("  sigma_obs_", var, " <- 1/sqrt(tau_obs_", var, ")")
+          ),
           ctx$declared_nodes
         )
       }

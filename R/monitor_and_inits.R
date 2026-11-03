@@ -103,6 +103,11 @@ prepare_monitors_and_inits <- function(
       } else {
         "^$"
       }
+      sigma_mag_drop_pat <- if (length(mag_exogenous_vars) > 0) {
+        paste0("^sigma_((?!obs_|res_)[a-zA-Z0-9]+_(", paste(mag_exogenous_vars, collapse = "|"), ")$|tot_(", paste(mag_exogenous_vars, collapse = "|"), ")$|(", paste(mag_exogenous_vars, collapse = "|"), ")_res$)")
+      } else {
+        "^$"
+      }
 
       monitor <- all_params[
         (grepl("^alpha", all_params) &
@@ -110,7 +115,7 @@ prepare_monitors_and_inits <- function(
           !grepl(alpha_mag_pat, all_params)) |
           grepl("^beta", all_params) |
           grepl("^rho", all_params) |
-          grepl("^sigma", all_params) |
+          (grepl("^sigma", all_params) & !grepl(sigma_mag_drop_pat, all_params, perl = TRUE)) |
           grepl("^psi", all_params) |
           grepl("^p_", all_params) |
           grepl("^z_", all_params) |

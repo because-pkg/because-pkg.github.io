@@ -103,18 +103,18 @@ generate_likelihoods <- function(ctx) {
 
     error_sum   <- paste(c(err_terms), collapse = " + ")
     mu_var      <- paste0("mu_", var, suffix)
-    tau_res_var <- paste0("tau_res_", var, suffix)
+    tau_obs_var <- paste0("tau_obs_", var, suffix)
 
     ctx$model_lines <- c(
       ctx$model_lines,
       paste0("  # Likelihood for ", var, " (with correlated residual errors)"),
       paste0("  for (i in 1:", loop_bound, ") {"),
-      paste0("    ", var, "[i] ~ dnorm(", mu_var, "[i] + ", error_sum, structure_term_str, ", ", tau_res_var, ")")
+      paste0("    ", var, "[i] ~ dnorm(", mu_var, "[i] + ", error_sum, structure_term_str, ", ", tau_obs_var, ")")
     )
     if (ctx$engine == "jags") {
       ctx$model_lines <- c(
         ctx$model_lines,
-        paste0("    log_lik_", var, suffix, "[i] <- logdensity.norm(", var, "[i], ", mu_var, "[i] + ", error_sum, structure_term_str, ", ", tau_res_var, ")")
+        paste0("    log_lik_", var, suffix, "[i] <- logdensity.norm(", var, "[i], ", mu_var, "[i] + ", error_sum, structure_term_str, ", ", tau_obs_var, ")")
       )
     }
     ctx$model_lines <- safe_add_lines(ctx$model_lines, "  }", ctx$declared_nodes)
