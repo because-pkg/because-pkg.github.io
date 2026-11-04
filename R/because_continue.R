@@ -249,23 +249,31 @@ because_continue <- function(
   new_model   <- NULL
 
   if (!is.null(object$model) && inherits(object$model, "jags")) {
-    if (!quiet) message(sprintf(
-      "Live JAGS model found. Sampling %d additional iterations across %d chain(s)...",
-      n.iter, n_chains
-    ))
-    tryCatch({
-      new_samples <- rjags::coda.samples(
-        model          = object$model,
-        variable.names = var_names,
-        n.iter         = n.iter,
-        thin           = thin_val
-      )
-      new_model <- object$model
-    }, error = function(e) {
-      if (!quiet) message(
-        "Live model object unusable. Falling back to rebuild..."
-      )
-    })
+    # Check if the JAGS model pointer is actually live before attempting continuation
+    is_live <- tryCatch({
+      object$model$iter()
+      TRUE
+    }, error = function(e) FALSE)
+
+    if (is_live) {
+      if (!quiet) message(sprintf(
+        "Live JAGS model found. Sampling %d additional iterations across %d chain(s)...",
+        n.iter, n_chains
+      ))
+      tryCatch({
+        new_samples <- rjags::coda.samples(
+          model          = object$model,
+          variable.names = var_names,
+          n.iter         = n.iter,
+          thin           = thin_val
+        )
+        new_model <- object$model
+      }, error = function(e) {
+        if (!quiet) message(
+          "Live model object unusable. Falling back to rebuild..."
+        )
+      })
+    }
   }
 
   # ---- Strategy 2 & 3: rebuild ----
@@ -280,6 +288,7 @@ because_continue <- function(
     if (is.null(object$data)) {
       stop("object$data is missing. Cannot rebuild the model.")
     }
+    model_data <- object$data
 
     # Build warm-start init sets.
     # JAGS cannot initialise *deterministic* nodes (sigma_*_res, lambda_*,
@@ -353,7 +362,7 @@ because_continue <- function(
         cl,
         seq_len(n_chains),
         function(i) {
-          run_chain(i, model_file, data, chain_inits[[i]],
+          run_chain(i, model_file, model_data, chain_inits[[i]],
                     var_names, n.iter, thin_val, n.adapt, quiet, base_seed)
         }
       )
