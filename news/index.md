@@ -62,6 +62,24 @@
 
 ### Bug Fixes
 
+- **Fixed
+  [`because_continue()`](https://because-pkg.github.io/because/reference/because_continue.md)
+  Parallel Rebuild Data Argument**: Fixed an issue in
+  [`because_continue()`](https://because-pkg.github.io/because/reference/because_continue.md)
+  where Strategy 2 (parallel model rebuild across worker nodes)
+  referenced an unbound variable `data` instead of `object$data`. When
+  worker nodes evaluated the closure, `data` resolved to the base R
+  function [`utils::data`](https://rdrr.io/r/utils/data.html), causing
+  JAGS compilation to crash with
+  `Error in checkForRemoteErrors(val) : 3 nodes produced errors; first error: data must be a list or environment`.
+  [`because_continue()`](https://because-pkg.github.io/because/reference/because_continue.md)
+  now properly defines and passes `model_data <- object$data`, safely
+  checks whether the live JAGS external pointer is valid via
+  `object$model$iter()` before attempting in-session continuation, and
+  falls back cleanly to parallel or sequential warm-start rebuild when
+  reading saved `.rds` / `.Rdat` model files or continuing across
+  separate R sessions. Added comprehensive regression tests in
+  `test-because_continue.R`.
 - **Restored Observation Precision & Conjugacy for Latent MAG Indicators
   in JAGS**:
   - Fixed an issue in `generate_likelihoods()` where measurement
