@@ -617,7 +617,7 @@ print.summary.because <- function(x, ...) {
         }
     } else {
         # Standard summary
-        print(x$results)
+        print(x$results, quote = FALSE)
 
         if (!is.null(x$rope_info) && length(x$rope_info$lines) > 0) {
             cat("\nRegion of Practical Equivalence (ROPE):\n")

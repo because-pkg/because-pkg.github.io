@@ -34,6 +34,36 @@ test_that("summary.because handles standard output", {
     expect_match(output, "WAIC")
 })
 
+test_that("summary.because prints cleanly without quotes when rope is specified", {
+    samples <- coda::mcmc.list(
+        coda::mcmc(matrix(
+            rnorm(100),
+            ncol = 2,
+            dimnames = list(NULL, c("alpha", "beta"))
+        )),
+        coda::mcmc(matrix(
+            rnorm(100),
+            ncol = 2,
+            dimnames = list(NULL, c("alpha", "beta"))
+        ))
+    )
+
+    fit <- list(
+        samples = samples,
+        dsep = FALSE
+    )
+    class(fit) <- "because"
+
+    summ <- summary(fit, rope = c(-0.1, 0.1))
+    output <- capture_output({
+        print(summ)
+    })
+
+    expect_s3_class(summ, "summary.because")
+    expect_true("P_ROPE" %in% colnames(summ$results))
+    expect_false(grepl('"', output))
+})
+
 test_that("summary.because handles d-sep output", {
     # Mock a d-sep because object
     # Use 2 parameters to ensure summary returns a matrix
