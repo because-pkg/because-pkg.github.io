@@ -64,11 +64,13 @@ reference:
   - title: "Model Diagnostics & Residual Analysis"
     desc: "Bayesian diagnostic suite for residual normality, homoscedasticity, collinearity, and residual structure."
     contents:
+      - bayesian_diagnostics
       - check_model
       - check_normality
       - check_homoscedasticity
       - check_collinearity
       - check_residual_structure
+      - check_multicov
       - residuals.because
   - title: "Model Comparison & Prediction"
     desc: "Posterior predictive checks, information criteria, and prediction methods."
@@ -90,6 +92,7 @@ reference:
       - plot_posterior
       - plot_dsep
       - plot_rope
+      - plot_qq
   - title: "Datasets & Utilities"
     desc: "Example datasets and setup helpers."
     contents:

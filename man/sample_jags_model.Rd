@@ -23,3 +23,4 @@ mcmc.list of samples
 \description{
 Sample from a compiled JAGS model
 }
+\keyword{internal}

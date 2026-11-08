@@ -14,6 +14,7 @@
 #' @param nimble_samplers Optional custom sampler list
 #' @param nimble_waic Logical, calculate WAIC
 #' @return A list containing samples and the compiled model
+#' @keywords internal
 #' @export
 run_nimble_model <- function(nimble_code, constants, data, inits,
                              n.chains, n.iter, n.burnin, n.thin,

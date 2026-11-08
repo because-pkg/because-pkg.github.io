@@ -15,3 +15,4 @@ coda::mcmc.list
 \description{
 Convert NumPyro output into coda mcmc.list
 }
+\keyword{internal}

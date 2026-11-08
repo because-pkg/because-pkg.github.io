@@ -8,6 +8,7 @@
 #' @param quiet Logical, suppress output
 #' @param model_string The model string (for error reporting)
 #' @return A compiled jags.model object
+#' @keywords internal
 #' @export
 run_jags_model <- function(model_file, data, inits_list, n.chains, n.adapt, quiet, model_string) {
   tryCatch(
@@ -40,6 +41,7 @@ run_jags_model <- function(model_file, data, inits_list, n.chains, n.adapt, quie
 #' @param n.burnin Number of burnin iterations
 #' @param n.thin Thinning interval
 #' @return mcmc.list of samples
+#' @keywords internal
 #' @export
 sample_jags_model <- function(model, monitor, n.iter, n.burnin, n.thin) {
   if (n.iter > n.burnin) {

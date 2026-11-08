@@ -53,3 +53,4 @@ A list containing samples and the compiled model
 \description{
 Compile and run a NIMBLE model with standard because settings
 }
+\keyword{internal}

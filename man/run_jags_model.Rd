@@ -35,3 +35,4 @@ A compiled jags.model object
 \description{
 Run a JAGS model with standard because settings
 }
+\keyword{internal}

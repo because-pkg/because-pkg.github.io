@@ -153,6 +153,7 @@ run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structur
 #'
 #' @param py_result Result list from fit_numpyro_model
 #' @return coda::mcmc.list
+#' @keywords internal
 #' @export
 format_numpyro_samples <- function(py_result) {
   raw_samples <- py_result$samples
