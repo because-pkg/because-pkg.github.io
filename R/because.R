@@ -40,8 +40,13 @@
 #' @param n.iter Total MCMC iterations per chain (default = 12500 for `"jags"`/`"nimble"`, 2000 for `"numpyro"`).
 #' @param n.burnin Number of burn-in/warmup iterations (default = 20% of `n.iter` for `"jags"`/`"nimble"`, 50% of `n.iter` for `"numpyro"`).
 #' @param n.chains Number of independent MCMC chains (default = 3).
-#' @param parallel Logical; if `TRUE`, runs MCMC chains in parallel.
-#' @param n.cores Number of CPU cores for parallel execution.
+#' @param parallel Logical; if `TRUE`, runs MCMC chains in parallel across CPU cores.
+#'   Automatically set to `TRUE` if `n.cores > 1` is explicitly specified by the user.
+#' @param n.cores Number of CPU cores for parallel execution. When omitted, automatically
+#'   detects allocated cores from HPC scheduler variables (`SLURM_CPUS_PER_TASK`, `PBS_NP`,
+#'   `NSLOTS`, `LSB_DJOB_NUMPROC`, Linux cgroups) before falling back to `detectCores() - 1`.
+#'   For `multiPhylo` ensembles in NumPyro, up to `n.cores` chains across multiple trees
+#'   are executed simultaneously in parallel waves.
 #' @param monitor Monitoring mode (e.g. "interpretable", "all", or "minimal").
 #' @param nimble_samplers Optional named list of user-specified samplers for NIMBLE.
 #' @param n.thin Thinning interval for MCMC chains (default = 10 for `"jags"`/`"nimble"`, 1 for `"numpyro"`).
@@ -71,7 +76,9 @@
 #' @param structure_multi Logical; if `TRUE`, handles multiple covariance structures.
 #' @param structure_levels Mapping of variables to covariance structure levels.
 #' @param aggregate_crossscale Optional. Set to `"all"` to aggregate all cross-scale d-sep tests (evaluating coarse-scale conditional independencies by aggregating fine-scale data via group means), or provide a numeric vector specifying specific test indices to aggregate. By default, paths between a fine-scale and coarse-scale variable are flattened with hierarchical random effects instead.
-#' @param ... Additional arguments passed to the underlying model engines.
+#' @param ... Additional arguments passed to structure preparation methods (e.g., for `multiPhylo`
+#'   phylogenetic structures in `because.phybase`: `tree_method = "ensemble"` [default] or `"dcat"`,
+#'   where `n.chains` sets the number of independent MCMC chains run per tree).
 #'
 #' @return An object of class \code{"because"} containing:
 #'   \item{samples}{MCMC samples (mcmc.list).}
@@ -147,7 +154,7 @@ because <- function(
   fix_latent = "loading",
   prior_scale_fixed = NULL,
   parallel = FALSE,
-  n.cores = parallel::detectCores() - 1,
+  n.cores = NULL,
   cl = NULL,
   ic_recompile = FALSE,
   random = NULL,
@@ -187,6 +194,134 @@ because <- function(
     warning("Argument 'tree' is deprecated. Please use 'structure' instead.")
     structure <- args$tree
   }
+
+  # --- Generic Multi-Structure Ensemble Flattener ---
+  # Recognizes grouped lists of candidate covariance structures, e.g.:
+  #   structure = list(GroupA = list(S1, S2), GroupB = list(S3, S4))
+  #   structure = list(Jetz = jetz_trees, McTavish = mctav_trees)
+  # or flat lists of candidate matrices:
+  #   structure = list(mat1, mat2, mat3)
+  if (!is.null(structure) && is.list(structure) && !is.matrix(structure)) {
+    .is_single_structure <- function(x) {
+      is.matrix(x) || inherits(x, "phylo") || inherits(x, "because_structure")
+    }
+    .is_structure_collection <- function(x) {
+      inherits(x, "multiPhylo") || inherits(x, "structure_collection") ||
+        (is.array(x) && length(dim(x)) == 3 && dim(x)[1] == dim(x)[2]) ||
+        (is.list(x) && length(x) > 0 && all(vapply(x, .is_single_structure, logical(1))))
+    }
+
+    # Case A: Grouped list of structure collections
+    if (length(structure) > 1 && all(vapply(structure, .is_structure_collection, logical(1)))) {
+      grp_names <- names(structure)
+      if (is.null(grp_names) || any(grp_names == "")) {
+        grp_names <- paste0("Group_", seq_along(structure))
+      }
+      flat_structs <- list()
+      grp_vec <- character(0)
+      for (i in seq_along(structure)) {
+        item <- structure[[i]]
+        g_name <- grp_names[i]
+        if (inherits(item, "multiPhylo") || inherits(item, "structure_collection") || is.list(item)) {
+          for (k in seq_along(item)) {
+            flat_structs[[length(flat_structs) + 1L]] <- item[[k]]
+            grp_vec <- c(grp_vec, g_name)
+          }
+        } else {
+          flat_structs[[length(flat_structs) + 1L]] <- item
+          grp_vec <- c(grp_vec, g_name)
+        }
+      }
+      # Preserve multiPhylo class if all are phylo, else structure_collection
+      all_phylo <- all(vapply(flat_structs, function(x) inherits(x, "phylo"), logical(1)))
+      class(flat_structs) <- if (all_phylo) "multiPhylo" else c("structure_collection", "list")
+      attr(flat_structs, "group") <- grp_vec
+      attr(flat_structs, "backbone") <- grp_vec
+      attr(flat_structs, "structure_method") <- args$structure_method %||% args$tree_method %||% "ensemble"
+      attr(flat_structs, "tree_method") <- attr(flat_structs, "structure_method")
+      structure <- flat_structs
+
+    # Case B: Flat list of candidate matrices/structures for a single covariance effect
+    } else if (length(structure) > 1 && all(vapply(structure, .is_single_structure, logical(1)))) {
+      all_phylo <- all(vapply(structure, function(x) inherits(x, "phylo"), logical(1)))
+      class(structure) <- if (all_phylo) "multiPhylo" else c("structure_collection", "list")
+      attr(structure, "structure_method") <- args$structure_method %||% args$tree_method %||% "ensemble"
+      attr(structure, "tree_method") <- attr(structure, "structure_method")
+    }
+  }
+
+  # Allow explicit group/backbone vector via args
+  if (!is.null(args$group) && !is.null(structure)) {
+    attr(structure, "group") <- as.character(args$group)
+    attr(structure, "backbone") <- as.character(args$group)
+  }
+  if (!is.null(args$backbone) && !is.null(structure)) {
+    attr(structure, "group") <- as.character(args$backbone)
+    attr(structure, "backbone") <- as.character(args$backbone)
+  }
+
+  # Check if model uses a multi-structure ensemble mode
+  has_structure_ensemble <- FALSE
+  if (!is.null(structure)) {
+    .is_ens <- function(s) {
+      if (inherits(s, c("multiPhylo", "structure_collection"))) {
+        tm <- attr(s, "structure_method") %||% attr(s, "tree_method") %||% args$structure_method %||% args$tree_method %||% "ensemble"
+        return(identical(tolower(tm[1]), "ensemble"))
+      }
+      FALSE
+    }
+    has_structure_ensemble <- if (.is_ens(structure)) {
+      TRUE
+    } else if (is.list(structure) && !inherits(structure, "phylo")) {
+      any(vapply(structure, .is_ens, logical(1)))
+    } else {
+      FALSE
+    }
+  }
+  has_multiphylo_ensemble <- has_structure_ensemble
+
+  engine <- match.arg(tolower(engine), c("jags", "nimble", "numpyro"))
+
+  # Initialize MCMC parameters (with engine- and structure-specific defaults when omitted)
+  if (is.null(n.chains)) {
+    n.chains <- if (has_multiphylo_ensemble) 2L else 3L
+  }
+  if (engine == "numpyro") {
+    if (is.null(n.iter))   n.iter   <- 2000
+    if (is.null(n.thin))   n.thin   <- 1
+    if (is.null(n.burnin)) n.burnin <- floor(n.iter / 2)
+  } else {
+    if (is.null(n.iter))   n.iter   <- 12500
+    if (is.null(n.thin))   n.thin   <- 10
+    if (is.null(n.burnin)) n.burnin <- floor(n.iter / 5)
+  }
+  if (is.null(n.adapt)) n.adapt <- floor(n.iter / 5)
+
+  n.chains <- as.integer(max(1, n.chains))
+  n.iter   <- as.integer(max(0, n.iter))
+  n.thin   <- as.integer(max(1, n.thin))
+  n.burnin <- as.integer(max(0, n.burnin))
+  n.adapt  <- as.integer(max(0, n.adapt))
+
+  # Attach multiPhylo / multi-structure control arguments (tree_method, structure_method, n.chains) from ... and call
+  if (!is.null(structure)) {
+    .attach_tree_opts <- function(s) {
+      if (inherits(s, c("multiPhylo", "structure_collection"))) {
+        tm <- args$structure_method %||% args$tree_method
+        if (!is.null(tm)) {
+          attr(s, "structure_method") <- tm
+          attr(s, "tree_method") <- tm
+        }
+        attr(s, "n.chains") <- n.chains
+      }
+      s
+    }
+    if (inherits(structure, c("multiPhylo", "structure_collection"))) {
+      structure <- .attach_tree_opts(structure)
+    } else if (is.list(structure) && !inherits(structure, "phylo")) {
+      structure <- lapply(structure, .attach_tree_opts)
+    }
+  }
   
   # multi.tree -> is_multi (passed to because_model)
   is_multi <- if (!is.null(args$is_multi)) args$is_multi else if (!is.null(args$multi.tree)) args$multi.tree else FALSE
@@ -210,29 +345,39 @@ because <- function(
     equations <- list(equations)
   }
 
-  engine <- match.arg(tolower(engine), c("jags", "nimble", "numpyro"))
-
-  # Initialize MCMC parameters (with engine-specific defaults when omitted)
-  if (is.null(n.chains)) n.chains <- 3
-  if (engine == "numpyro") {
-    if (is.null(n.iter))   n.iter   <- 2000
-    if (is.null(n.thin))   n.thin   <- 1
-    if (is.null(n.burnin)) n.burnin <- floor(n.iter / 2)
+  # Resolve CPU cores (cluster / SLURM / PBS / cgroup safe) and auto-enable parallel if n.cores > 1 was passed
+  user_passed_ncores <- "n.cores" %in% names(original_call)
+  user_passed_parallel <- "parallel" %in% names(original_call)
+  if (is.null(n.cores) || is.na(n.cores)) {
+    n.cores <- .detect_available_cores()
   } else {
-    if (is.null(n.iter))   n.iter   <- 12500
-    if (is.null(n.thin))   n.thin   <- 10
-    if (is.null(n.burnin)) n.burnin <- floor(n.iter / 5)
+    n.cores <- as.integer(max(1L, n.cores))
   }
-  if (is.null(n.adapt)) n.adapt <- floor(n.iter / 5)
+  if (user_passed_ncores && n.cores > 1L && !user_passed_parallel) {
+    parallel <- TRUE
+  }
 
-  n.chains <- as.integer(max(1, n.chains))
-  n.iter   <- as.integer(max(0, n.iter))
-  n.thin   <- as.integer(max(1, n.thin))
-  n.burnin <- as.integer(max(0, n.burnin))
-  n.adapt  <- as.integer(max(0, n.adapt))
+  # Compute effective chain count (accounting for multi-structure ensembles)
+  effective_chains <- n.chains
+  if (!is.null(structure) && has_structure_ensemble) {
+    .get_ens_chains <- function(s) {
+      if (inherits(s, c("multiPhylo", "structure_collection"))) {
+        return(as.integer(length(s) * n.chains))
+      }
+      0L
+    }
+    ens_ch <- if (inherits(structure, c("multiPhylo", "structure_collection"))) {
+      .get_ens_chains(structure)
+    } else if (is.list(structure) && !inherits(structure, "phylo")) {
+      max(c(0L, vapply(structure, .get_ens_chains, integer(1))))
+    } else {
+      0L
+    }
+    if (ens_ch > 0L) effective_chains <- ens_ch
+  }
 
   if (engine == "numpyro") {
-    because_py <- setup_numpyro_environment(parallel = parallel, n.cores = n.cores, n.chains = n.chains)
+    because_py <- setup_numpyro_environment(parallel = parallel, n.cores = n.cores, n.chains = effective_chains)
   }
 
   # Input validation
@@ -285,12 +430,14 @@ because <- function(
     active_struct <- structure %||% structure_obj
     ref_labels <- tryCatch(get_order_labels_hook(active_struct), error = function(e) NULL)
     if (is.null(ref_labels)) {
-      if (inherits(active_struct, "phylo") || !is.null(active_struct$tip.label)) {
+      if (inherits(active_struct, "phylo") || (!is.atomic(active_struct) && !is.null(active_struct$tip.label))) {
         ref_labels <- active_struct$tip.label
-      } else if (inherits(active_struct, "multiPhylo") || (is.list(active_struct) && length(active_struct) > 0 && !is.null(active_struct[[1]]$tip.label))) {
+      } else if (inherits(active_struct, "multiPhylo") || (is.list(active_struct) && length(active_struct) > 0 && !is.atomic(active_struct[[1]]) && !is.null(active_struct[[1]]$tip.label))) {
         ref_labels <- active_struct[[1]]$tip.label
       } else if (is.matrix(active_struct)) {
         ref_labels <- rownames(active_struct) %||% colnames(active_struct)
+      } else if (is.list(active_struct) && length(active_struct) > 0 && is.matrix(active_struct[[1]])) {
+        ref_labels <- rownames(active_struct[[1]]) %||% colnames(active_struct[[1]])
       }
     }
     if (!is.null(ref_labels) && length(ref_labels) > 0 && is.data.frame(data)) {
@@ -577,7 +724,7 @@ because <- function(
   # JAGS model code
   model_output <- because_model(
     equations = equations,
-    is_multi_structure = is_multiple,
+    is_multi_structure = is_multiple && !has_structure_ensemble,
     variability = variability_list,
     family = if (!is.null(family)) as.list(family) else NULL,
     vars_with_na = response_vars_with_na,
@@ -625,7 +772,9 @@ because <- function(
       model_string = model_string,
       parameter_map = parameter_map,
       original_call = original_call,
-      engine = engine
+      engine = engine,
+      parallel = parallel,
+      n.cores = n.cores
     ))
   }
 

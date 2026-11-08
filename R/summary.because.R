@@ -371,20 +371,73 @@ summary.because <- function(
             error = function(e) return(NULL)
         )
 
-        # Gelman-Rubin diagnostic (Rhat)
-        # Use stored Rhat if available (calculated in because)
+        # Gelman-Rubin diagnostic (Rhat) and Ensemble Tree Sensitivity (Rhat_tree)
+        # Use stored Rhat / Rhat_tree if available (calculated in because)
         rhat <- NULL
+        rhat_tree <- NULL
         if ("Rhat" %in% colnames(summ$statistics)) {
             rhat <- summ$statistics[, "Rhat"]
             names(rhat) <- rownames(summ$statistics)
-        } else if (n_chains > 1) {
-            # Calculate if not stored
-            rhat <- tryCatch(
-                coda::gelman.diag(object$samples, multivariate = FALSE)$psrf[,
-                    1
-                ],
-                error = function(e) return(NULL)
-            )
+        }
+        if ("Rhat_tree" %in% colnames(summ$statistics)) {
+            rhat_tree <- summ$statistics[, "Rhat_tree"]
+            names(rhat_tree) <- rownames(summ$statistics)
+        }
+        if (is.null(rhat) && n_chains > 1) {
+            # Check if this is a multiPhylo ensemble run (e.g., from JAGS/NIMBLE)
+            var_names_all <- colnames(object$samples[[1]])
+            k_cols <- grep("^K_tree_", var_names_all, value = TRUE)
+            is_ens_samples <- FALSE
+            if (length(k_cols) > 0) {
+                k_col <- k_cols[1]
+                chain_k_vals <- vapply(object$samples, function(ch) round(mean(as.numeric(ch[, k_col]), na.rm = TRUE)), numeric(1))
+                chain_k_sd <- vapply(object$samples, function(ch) stats::sd(as.numeric(ch[, k_col]), na.rm = TRUE), numeric(1))
+                tab_k <- table(chain_k_vals)
+                if (all(chain_k_sd == 0) && length(tab_k) > 1 && all(tab_k >= 2)) {
+                    is_ens_samples <- TRUE
+                    calc_rhat_vec <- function(mat_list) {
+                        m <- length(mat_list)
+                        if (m < 2) return(NA_real_)
+                        n <- length(mat_list[[1]])
+                        if (n < 2) return(NA_real_)
+                        c_means <- vapply(mat_list, mean, numeric(1), na.rm = TRUE)
+                        c_vars  <- vapply(mat_list, stats::var, numeric(1), na.rm = TRUE)
+                        W <- mean(c_vars, na.rm = TRUE)
+                        B <- n * stats::var(c_means, na.rm = TRUE)
+                        if (is.na(W) || W <= 1e-12) return(1.0)
+                        var_plus <- ((n - 1) / n) * W + (1 / n) * B
+                        sqrt(var_plus / W)
+                    }
+                    rhat <- stats::setNames(rep(NA_real_, length(var_names_all)), var_names_all)
+                    rhat_tree <- stats::setNames(rep(NA_real_, length(var_names_all)), var_names_all)
+                    unique_trees <- sort(unique(chain_k_vals))
+                    for (p_idx in seq_along(var_names_all)) {
+                        pname <- var_names_all[p_idx]
+                        if (pname %in% k_cols) next
+                        tree_rhats <- numeric(0)
+                        for (tk in unique_trees) {
+                            c_idx <- which(chain_k_vals == tk)
+                            if (length(c_idx) >= 2) {
+                                sub_vecs <- lapply(c_idx, function(ci) as.numeric(object$samples[[ci]][, p_idx]))
+                                gd <- calc_rhat_vec(sub_vecs)
+                                if (is.finite(gd)) tree_rhats <- c(tree_rhats, gd)
+                            }
+                        }
+                        if (length(tree_rhats) > 0) rhat[pname] <- max(tree_rhats, na.rm = TRUE)
+                        all_vecs <- lapply(seq_along(object$samples), function(ci) as.numeric(object$samples[[ci]][, p_idx]))
+                        rhat_tree[pname] <- calc_rhat_vec(all_vecs)
+                    }
+                }
+            }
+            if (!is_ens_samples) {
+                # Calculate standard Rhat if not stored
+                rhat <- tryCatch(
+                    coda::gelman.diag(object$samples, multivariate = FALSE)$psrf[,
+                        1
+                    ],
+                    error = function(e) return(NULL)
+                )
+            }
         }
 
         # Combine statistics with diagnostics
@@ -483,11 +536,15 @@ summary.because <- function(
             combined <- combined[to_keep, , drop = FALSE]
         }
 
-        # Add Rhat if available
+        # Add Rhat and Rhat_tree if available
         if (!is.null(rhat)) {
             # Ensure alignment
             rhat_aligned <- rhat[rownames(combined)]
             combined <- cbind(combined, Rhat = rhat_aligned)
+        }
+        if (!is.null(rhat_tree)) {
+            rhat_tree_aligned <- rhat_tree[rownames(combined)]
+            combined <- cbind(combined, Rhat_tree = rhat_tree_aligned)
         }
 
         # Add n.eff if available
@@ -498,7 +555,7 @@ summary.because <- function(
 
         # Round output for cleaner display
         # Mean, SD, SE, quantiles: 3 decimal places
-        # Rhat: 3 decimal places
+        # Rhat, Rhat_tree: 3 decimal places
         # n.eff: 0 decimal places (integer)
         cols_to_round_3 <- intersect(
             colnames(combined),
@@ -508,7 +565,8 @@ summary.because <- function(
                 "Naive SE",
                 "Time-series SE",
                 colnames(quant_table),
-                "Rhat"
+                "Rhat",
+                "Rhat_tree"
             )
         )
         for (col in cols_to_round_3) {

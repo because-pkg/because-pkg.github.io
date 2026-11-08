@@ -48,16 +48,3 @@ If \code{summary = FALSE}, an \code{[ndraws x N_obs]} matrix of posterior draws.
 Computes posterior predictions, fitted values, and credible intervals
 for a fitted \code{because} model.
 }
-\examples{
-\dontrun{
-df <- data.frame(Y = rnorm(100), X = rnorm(100))
-fit <- because(list(Y ~ X), data = df)
-
-# Fitted summary with 95\% credible intervals
-preds <- predict(fit, resp = "Y")
-head(preds)
-
-# Raw posterior draws
-draws <- predict(fit, resp = "Y", summary = FALSE)
-}
-}

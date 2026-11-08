@@ -1,7 +1,7 @@
 Package: because
 Type: Package
 Title: Bayesian Estimation of Causal Effects
-Version: 1.8.3
+Version: 1.9.0
 Authors@R: c(
     person(
       "Achaz", "von Hardenberg",
@@ -39,7 +39,6 @@ Imports:
     ggridges
 Depends: 
     R (>= 4.1.0)
-RoxygenNote: 7.3.3
 Roxygen: list(markdown = TRUE)
 Suggests: 
     testthat (>= 3.0.0),
@@ -57,3 +56,4 @@ VignetteBuilder: knitr, rmarkdown
 URL: https://because-pkg.github.io/because, https://github.com/because-pkg/because-pkg.github.io
 BugReports: https://github.com/because-pkg/because-pkg.github.io/issues
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.1

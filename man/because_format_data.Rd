@@ -79,4 +79,5 @@ prec_mat <- diag(3)
 rownames(prec_mat) <- colnames(prec_mat) <- c("ind3", "ind1", "ind2")
 data_aligned <- because_format_data(data_long, id_col = "ID", structure = prec_mat)
 }
+
 }

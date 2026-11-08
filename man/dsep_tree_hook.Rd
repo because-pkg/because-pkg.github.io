@@ -2,7 +2,7 @@
 % Please edit documentation in R/generics.R
 \name{dsep_tree_hook}
 \alias{dsep_tree_hook}
-\title{D-Sep Tree Hook}
+\title{Backward-compatible alias for dsep_structure_hook}
 \usage{
 dsep_tree_hook(structure, test_eq, hierarchical_info, levels, ...)
 }
@@ -17,10 +17,7 @@ dsep_tree_hook(structure, test_eq, hierarchical_info, levels, ...)
 
 \item{...}{Additional arguments.}
 }
-\value{
-The tree object or NULL.
-}
 \description{
-Backward-compatible alias for \code{\link{dsep_structure_hook}}.
+Backward-compatible alias for dsep_structure_hook
 }
 \keyword{internal}

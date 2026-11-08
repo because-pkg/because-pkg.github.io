@@ -304,10 +304,90 @@ check_residual_structure(fit_phylo, resp = "Brain")
 
 A posterior distribution of $\lambda_{\text{Bayes}}$ centered near 1 indicates strong phylogenetic or spatial conservatism, while values near 0 indicate that the response variation is largely idiosyncratic observation noise.
 
+---
+
+# 8. Multi-Structure Ensembles & Sensitivity Diagnostics (`check_multicov`)
+
+Scientific analyses frequently encounter structural uncertainty where multiple candidate covariance matrices or structures are plausible:
+
+- **Spatial models**: Alternative spatial kernel functions (e.g. Exponential vs. Gaussian decay) or distance metrics (Euclidean geographic distance vs. environmental resistance surface).
+- **Quantitative genetics**: Alternative relationship matrices (pedigree-based $A$ vs. genomic $G$).
+- **Social network analysis**: Competing association matrices (direct physical contact vs. proximity).
+- **Phylogenetics**: Competing tree topologies, branch-length distributions, or alternative phylogenetic backbones (e.g. Jetz vs. McTavish bird trees).
+
+### Specifying Multi-Structure Ensembles in `because`
+
+In `because`, multiple candidate covariance structures can be supplied directly as a list or a grouped named list to `structure`:
+
+```r
+# Competing spatial distance kernels:
+kernels <- list(
+  Exponential = exp(-dist_mat / 50),
+  Gaussian    = exp(-(dist_mat / 50)^2)
+)
+
+fit_multi <- because(
+  equations = list(Abundance ~ Climate),
+  data      = site_data,
+  structure = kernels,
+  id_col    = "SiteID",
+  engine    = "numpyro",
+  n.chains  = 2 # 2 chains per candidate structure
+)
+```
+
+For nested multi-group hypotheses (such as competing phylogenetic backbones via `because.phybase`):
+
+```r
+library(because.phybase)
+
+# Competing backbone hypotheses with posterior tree distributions:
+backbones <- list(
+  Jetz     = jetz_trees,      # ape::multiPhylo object
+  McTavish = mctavish_trees   # ape::multiPhylo object
+)
+
+fit_bb <- because(
+  equations = list(Brain ~ Mass, Migration ~ Brain + Mass),
+  data      = bird_data,
+  structure = backbones,
+  id_col    = "Species",
+  engine    = "numpyro",
+  n.chains  = 2
+)
+```
+
+### Variance Partitioning and Sensitivity Diagnostics
+
+When evaluating models fitted across multiple structures, standard across-chain $\hat{R}$ can be misleading: chains sampling different candidate structures or backbones will naturally diverge if the underlying structures imply different parameter values.
+
+`check_multicov()` resolves this by computing:
+1. **$\hat{R}_{\text{MCMC}}$ (Within-Structure Convergence)**: Convergence within each individual structure across its replicate chains ($\max_k \hat{R}_k$). Values $< 1.05$ indicate reliable MCMC mixing within each candidate structure.
+2. **$\hat{R}_{\text{within\_group}}$ (Within-Group Sensitivity)**: Parameter sensitivity across candidate structures within the same group, hypothesis, or backbone pseudo-posterior.
+3. **$\hat{R}_{\text{between\_group}}$ (Between-Group Divergence)**: Parameter divergence between competing hypotheses or backbones using Gelman-Rubin ANOVA decomposition.
+4. **Law of Total Variance Decomposition (% Uncertainty)**: Orthogonally partitions total posterior variance $\text{Var}_{\text{total}}(\theta)$ into additive components that sum to $100\%$:
+   - `Pct_MCMC`: Data estimation / MCMC sampling uncertainty conditional on a structure.
+   - `Pct_Struct`: Branch-length / dating / local topological variation within group.
+   - `Pct_Group`: Structural conflict between competing hypotheses/backbones.
+
+```r
+# Publication-ready diagnostic report and 2-panel figure
+check_multicov(fit_bb, plot = TRUE)
+```
+
+The diagnostic report classifies each parameter into one of four states:
+- `"Invariant"`: Robust across all structures and groups ($\hat{R}_{\text{MCMC}} < 1.05$, $\hat{R}_{\text{group}} < 1.05$).
+- `"Structure-Sensitive (within group)"`: Modest sensitivity to within-group variation (e.g. tree dating noise), but robust across broad backbones.
+- `"Group-Sensitive"`: Parameter estimates diverge between competing hypotheses or backbones.
+- `"Check MCMC"`: Poor within-structure MCMC mixing requiring longer iterations.
+
+When plotted, `check_multicov()` displays a side-by-side 2-panel figure:
+- **Left Panel**: Forest plot of Gelman-Rubin $\hat{R}$ with the classical $1.05$ threshold line.
+- **Right Panel**: 100% stacked horizontal bar plot displaying the exact uncertainty variance decomposition for each parameter, aligned row-for-row with the left panel.
 
 ---
 
-# 8. Unified Model Diagnostic Dashboard (`check_model`)
+# 9. Unified Model Diagnostic Dashboard (`check_model`)
 
 To inspect all diagnostic checks simultaneously for publication or routine model criticism, call `check_model()`:
 
@@ -334,6 +414,7 @@ The unified dashboard displays:
 | **Normality** | `check_normality(fit)` / `plot_qq(fit)` | Q-Q Envelope & Skewness/Kurtosis Discrepancies | Landwehr et al. (1984); Gelman et al. (1996) |
 | **Homoscedasticity** | `check_homoscedasticity(fit)` | Binned Residual SDs & Variance Ratio CI | Gelman & Hill (2007) |
 | **Structure** | `check_residual_structure(fit)` | Posterior Distribution of $\lambda_{\text{Bayes}}$ / VPC | Hadfield (2010) |
+| **Multi-Structure Sensitivity** | `check_multicov(fit)` | 3-Tier Split $\hat{R}$ Diagnostics & Forest Plot | — |
 | **Dashboard** | `check_model(fit)` | Unified 5-Panel Visual Dashboard | — |
 
 ---

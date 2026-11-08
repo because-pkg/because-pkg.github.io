@@ -559,11 +559,14 @@ get_order_labels_hook.default <- function(structure, ...) {
     if (is.matrix(structure)) {
         return(rownames(structure))
     }
-    if (inherits(structure, "phylo") || !is.null(structure$tip.label)) {
+    if (inherits(structure, "phylo") || (!is.atomic(structure) && !is.null(structure$tip.label))) {
         return(structure$tip.label)
     }
-    if (inherits(structure, "multiPhylo") || (is.list(structure) && length(structure) > 0 && !is.null(structure[[1]]$tip.label))) {
+    if (inherits(structure, "multiPhylo") || (is.list(structure) && length(structure) > 0 && !is.atomic(structure[[1]]) && !is.null(structure[[1]]$tip.label))) {
         return(structure[[1]]$tip.label)
+    }
+    if (is.list(structure) && length(structure) > 0 && is.matrix(structure[[1]])) {
+        return(rownames(structure[[1]]))
     }
     if (is.list(structure) && !is.null(structure$Prec)) {
         if (is.matrix(structure$Prec)) {
@@ -703,6 +706,80 @@ prepare_structure_data.matrix <- function(structure, data, ...) {
     return(list(data_list = list(Prec = solve(structure), VCV = structure)))
 }
 
+#' Prepare Structure Data for Multi-Structure Collections
+#'
+#' Handles arrays of covariance/distance matrices or collections of custom structures
+#' for deterministic ensemble sampling.
+#'
+#' @keywords internal
+#' @export
+prepare_structure_data.structure_collection <- function(structure, data, ...) {
+    args <- list(...)
+    engine <- args$engine %||% "jags"
+    s_name <- args$s_name %||% "custom"
+    n_chains_val <- as.integer(max(1L, args$n.chains %||% attr(structure, "n.chains") %||% 2L))
+
+    # If it contains phylo objects, delegate to phybase if available
+    if (length(structure) > 0 && inherits(structure[[1]], "phylo")) {
+        class(structure) <- "multiPhylo"
+        return(prepare_structure_data(structure, data = data, ...))
+    }
+
+    n_structs <- length(structure)
+    first_mat <- structure[[1]]
+    N <- nrow(first_mat)
+
+    # Tip/row ordering if row_ids provided
+    target_order <- args$row_ids
+    if (!is.null(target_order) && !is.null(rownames(first_mat)) && setequal(rownames(first_mat), as.character(target_order))) {
+        target_order <- as.character(target_order)
+        if (any(duplicated(target_order))) target_order <- unique(target_order)
+    } else {
+        target_order <- NULL
+    }
+
+    vcv_multi <- array(NA_real_, dim = c(N, N, n_structs))
+    prec_multi <- array(NA_real_, dim = c(N, N, n_structs))
+    for (i in seq_len(n_structs)) {
+        m <- structure[[i]]
+        if (!is.null(target_order)) m <- m[target_order, target_order, drop = FALSE]
+        vcv_multi[,, i] <- m
+        if (engine != "numpyro") {
+            prec_multi[,, i] <- solve(m)
+        }
+    }
+
+    data_list <- list()
+    data_list[[".ensemble_ntree"]] <- as.integer(n_structs)
+    data_list[[".ensemble_n_chains"]] <- as.integer(n_chains_val)
+    data_list[[".ensemble_k_var"]] <- paste0("K_tree_", s_name)
+
+    if (engine == "numpyro") {
+        eigvals_multi <- array(NA_real_, dim = c(N, n_structs))
+        eigvecs_multi <- array(NA_real_, dim = c(N, N, n_structs))
+        for (i in seq_len(n_structs)) {
+            eig <- eigen(vcv_multi[,, i], symmetric = TRUE)
+            if (i > 1) {
+                signs <- sign(colSums(eig$vectors * eigvecs_multi[,, 1]))
+                signs[signs == 0] <- 1
+                eig$vectors <- sweep(eig$vectors, 2, signs, `*`)
+            }
+            eigvals_multi[, i] <- eig$values
+            eigvecs_multi[,, i] <- eig$vectors
+        }
+        data_list[[s_name]] <- list(eigvals = eigvals_multi, eigvecs = eigvecs_multi)
+    } else {
+        data_list[[paste0("Prec_", s_name)]] <- prec_multi
+        data_list[[paste0("VCV_", s_name)]] <- vcv_multi
+    }
+
+    attr(structure, "n") <- as.integer(N)
+    return(list(
+        structure_object = structure,
+        data_list = data_list
+    ))
+}
+
 #' @keywords internal
 #' @export
 jags_structure_definition.matrix <- function(
@@ -715,6 +792,79 @@ jags_structure_definition.matrix <- function(
         structure,
         variable_name = variable_name,
         ...
+    )
+}
+
+#' @keywords internal
+#' @export
+jags_structure_definition.structure_collection <- function(
+    structure,
+    variable_name = "err",
+    ...
+) {
+    args <- list(...)
+    s_name <- args$s_name %||% "structure_collection"
+    loop_bound <- args$loop_bound %||% "N"
+    zeros_name <- args$zeros_name %||% "zeros"
+    i_index <- args$i_index %||% "i"
+    k_var <- paste0("K_tree_", s_name)
+
+    prec_name <- paste0("Prec_", s_name)
+    err_var <- paste0("u_", variable_name, "_", s_name)
+    raw_var <- paste0("u_std_", variable_name, "_", s_name)
+
+    is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
+    if (is_unified) {
+        sig_var <- paste0("sigma_", s_name, "_", variable_name)
+    } else {
+        sig_var <- paste0("sigma_", variable_name, "_", s_name)
+    }
+
+    # Category suffix for parameter names if needed
+    k_idx <- args$category_index
+    k_suffix <- if (!is.null(k_idx)) paste0("_", k_idx) else ""
+
+    # Unique loop variable for this structure and response
+    j_idx <- paste0("g_", variable_name, "_", s_name)
+
+    prec_index <- paste0(prec_name, "[1:", loop_bound, ", 1:", loop_bound, ", ", k_var, "]")
+
+    raw_index <- if (!is.null(k_idx)) {
+        paste0(raw_var, "[1:", loop_bound, ", ", k_idx, "]")
+    } else {
+        paste0(raw_var, "[1:", loop_bound, "]")
+    }
+
+    model_lines <- c(
+        paste0("  ", raw_index, " ~ dmnorm(", zeros_name, "[1:", loop_bound, "], ", prec_index, ")"),
+        paste0("  for (", j_idx, " in 1:", loop_bound, ") {"),
+        if (!is.null(k_idx)) {
+            paste0(
+                "    ", err_var, "[", j_idx, ", ", k_idx, "] <- (",
+                raw_var, "[", j_idx, ", ", k_idx, "] - mean(", raw_var, "[1:", loop_bound, ", ", k_idx, "])) * ",
+                sig_var, k_suffix
+            )
+        } else {
+            paste0(
+                "    ", err_var, "[", j_idx, "] <- (",
+                raw_var, "[", j_idx, "] - mean(", raw_var, "[1:", loop_bound, "])) * ",
+                sig_var, k_suffix
+            )
+        },
+        "  }"
+    )
+
+    term_str <- if (!is.null(k_idx)) {
+        paste0(err_var, "[", i_index, ", ", k_idx, "]")
+    } else {
+        paste0(err_var, "[", i_index, "]")
+    }
+
+    list(
+        setup_code = character(0),
+        model_lines = model_lines,
+        term = term_str,
+        prec_index = prec_index
     )
 }
 

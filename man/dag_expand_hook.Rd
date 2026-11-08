@@ -2,12 +2,9 @@
 % Please edit documentation in R/generics.R
 \name{dag_expand_hook}
 \alias{dag_expand_hook}
-\alias{dag_expand_hook.default}
 \title{DAG Expansion Hook}
 \usage{
 dag_expand_hook(family, equations, latent, ...)
-
-\method{dag_expand_hook}{default}(family, equations, latent, ...)
 }
 \arguments{
 \item{family}{The S3 family list or family object.}

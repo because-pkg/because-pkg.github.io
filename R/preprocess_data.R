@@ -420,12 +420,14 @@ collect_and_filter_model_data <- function(
   if (!is.null(structure)) {
     ref_labels <- tryCatch(get_order_labels_hook(structure), error = function(e) NULL)
     if (is.null(ref_labels)) {
-      if (inherits(structure, "phylo") || !is.null(structure$tip.label)) {
+      if (inherits(structure, "phylo") || (!is.atomic(structure) && !is.null(structure$tip.label))) {
         ref_labels <- structure$tip.label
-      } else if (inherits(structure, "multiPhylo") || (is.list(structure) && length(structure) > 0 && !is.null(structure[[1]]$tip.label))) {
+      } else if (inherits(structure, "multiPhylo") || (is.list(structure) && length(structure) > 0 && !is.atomic(structure[[1]]) && !is.null(structure[[1]]$tip.label))) {
         ref_labels <- structure[[1]]$tip.label
       } else if (is.matrix(structure)) {
         ref_labels <- rownames(structure) %||% colnames(structure)
+      } else if (is.list(structure) && length(structure) > 0 && is.matrix(structure[[1]])) {
+        ref_labels <- rownames(structure[[1]]) %||% colnames(structure[[1]])
       }
     }
 

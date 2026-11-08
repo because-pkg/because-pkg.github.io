@@ -2,7 +2,7 @@
 % Please edit documentation in R/because_model.R
 \name{because_model}
 \alias{because_model}
-\title{Generate BUGS Model Code and Parameter Map for Bayesian SEM (Because)}
+\title{Generate BUGS Model Code and Parameter Map for Bayesian SEM}
 \usage{
 because_model(
   equations,
@@ -71,8 +71,8 @@ because_model(
 \value{
 A list with two elements:
 \itemize{
-  \item \code{model}: A character string containing the BUGS/JAGS model code.
-  \item \code{parameter_map}: A data frame mapping response variables to their predictors and parameter names.
+\item \code{model}: A character string containing the BUGS/JAGS model code.
+\item \code{parameter_map}: A data frame mapping response variables to their predictors and parameter names.
 }
 }
 \description{
@@ -81,24 +81,4 @@ into an R expression by NIMBLE) along with the canonical \code{parameter_map}
 data frame used across all engines (JAGS, NIMBLE, and NumPyro).
 Supports custom covariance structures (spatial, phylogenetic, etc.) and handles
 missing values in both response and predictor variables as stochastic nodes.
-}
-\details{
-The generated model includes:
-\itemize{
-\item Linear predictors and multivariate normal likelihoods for each response variable.
-\item Priors for intercepts (\code{alpha}), slopes (\code{beta}), and residual precisions (\code{tau}).
-\item Custom covariance modeled via provided structural objects (e.g. VCV matrices).
-\item (Optional) Observation models for variables with measurement error:
-\itemize{
-\item Type "se": \code{Var_mean ~ dnorm(Var, 1/Var_se^2)}
-\item Type "reps": \code{Var_obs[i,j] ~ dnorm(Var[i], Var_tau)}
-}
-\item (Optional) Generalized linear mixed models for non-Gaussian responses (e.g., binomial).
-\item (Optional) Element-wise likelihoods for response variables with missing data.
-}
-}
-\examples{
-eqs <- list(BR ~ BM, S ~ BR, G ~ BR, L ~ BR)
-cat(because_model(eqs, is_multi_structure = TRUE)$model)
-
 }

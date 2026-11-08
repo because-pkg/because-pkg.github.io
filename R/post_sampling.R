@@ -224,6 +224,8 @@ assemble_because_result <- function(
   result$equations      <- equations
   result$parallel       <- parallel
   result$n.cores        <- n.cores
+  result$structure      <- structure
+  result$structures     <- structures
 
   # --- Result Enrichment ---
   # If we have a structure, try to extract labels for ordering

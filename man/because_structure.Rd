@@ -48,7 +48,6 @@ matrices are passed via fallback, whereas 3D arrays require JAGS or NIMBLE.
 \dontrun{
 # Create a spatial distance-decay structure
 spatial_decay <- because_structure(
-  name = "spatial_decay",
   precision_fn = function(coords, decay_rate = 0.1) {
     dist_mat <- as.matrix(dist(coords))
     W <- exp(-decay_rate * dist_mat)

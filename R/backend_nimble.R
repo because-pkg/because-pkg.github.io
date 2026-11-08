@@ -247,6 +247,56 @@ run_nimble_pipeline <- function(
   n.chains, n.iter, n.burnin, n.thin, WAIC,
   nimble_samplers, parallel, n.cores, cl = NULL, quiet = FALSE
 ) {
+  ens_ntree <- data[[".ensemble_ntree"]]
+  ens_cpt   <- data[[".ensemble_n_chains"]] %||% n.chains %||% 2L
+  ens_k_var <- data[[".ensemble_k_var"]] %||% "K_tree_multiPhylo"
+  data[[".ensemble_ntree"]] <- NULL
+  data[[".ensemble_n_chains"]] <- NULL
+  data[[".ensemble_k_var"]] <- NULL
+
+  if (!is.null(ens_ntree) && ens_ntree > 1L) {
+    if (!is.null(extension_inits)) {
+      extension_inits[[ens_k_var]] <- NULL
+    }
+    all_chain_samples <- list()
+    last_res <- NULL
+    for (k in seq_len(ens_ntree)) {
+      if (!quiet) {
+        message(sprintf("  [MultiPhylo Ensemble: Tree %d/%d] Sampling %d NIMBLE chain(s)...", k, ens_ntree, ens_cpt))
+      }
+      data_k <- data
+      data_k[[ens_k_var]] <- as.integer(k)
+      res_k <- run_nimble_pipeline(
+        model_string = model_string,
+        data = data_k,
+        family = family,
+        extension_inits = extension_inits,
+        monitor = monitor,
+        n.chains = ens_cpt,
+        n.iter = n.iter,
+        n.burnin = n.burnin,
+        n.thin = n.thin,
+        WAIC = WAIC,
+        nimble_samplers = nimble_samplers,
+        parallel = FALSE,
+        n.cores = 1L,
+        cl = NULL,
+        quiet = quiet
+      )
+      for (c_idx in seq_len(ens_cpt)) {
+        mat_c <- as.matrix(res_k$samples[[c_idx]])
+        if (!ens_k_var %in% colnames(mat_c)) {
+          k_mat <- matrix(as.numeric(k), nrow = nrow(mat_c), ncol = 1, dimnames = list(NULL, ens_k_var))
+          mat_c <- cbind(mat_c, k_mat)
+        }
+        all_chain_samples[[length(all_chain_samples) + 1L]] <- coda::mcmc(mat_c)
+      }
+      last_res <- res_k
+    }
+    last_res$samples <- coda::mcmc.list(all_chain_samples)
+    return(last_res)
+  }
+
   if (!requireNamespace("nimble", quietly = TRUE)) {
     stop(
       "The 'nimble' package is required when engine = 'nimble'.\n",

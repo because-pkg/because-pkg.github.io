@@ -21,7 +21,7 @@ A \code{loo} object containing:
 }
 \description{
 Calculates Leave-One-Out Cross-Validation using Pareto Smoothed Importance Sampling (PSIS-LOO)
-for a fitted Because model.
+for a fitted because model.
 }
 \details{
 LOO-CV (Leave-One-Out Cross-Validation) uses Pareto Smoothed Importance Sampling to approximate

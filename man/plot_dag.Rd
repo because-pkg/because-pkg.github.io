@@ -94,7 +94,7 @@ or a fitted \code{because} model. If a fitted model is provided:
 \strong{Interaction and Deterministic Nodes:}
 Interaction terms (e.g. \code{BM:M}) and \code{I()} transformations are
 rendered as \strong{explicit intermediate nodes} (grey diamonds), following the
-Interaction DAG (IDAG) convention of Attia, Holliday & Oldmeadow (2022).
+Interaction DAG (IDAG) convention of Attia, Holliday \& Oldmeadow (2022).
 This makes the deterministic nature of these terms visually clear and is
 consistent with how \code{because_dsep} treats them for d-separation.
 
@@ -131,7 +131,7 @@ plot_dag(eq, coords = my_coords)
 }
 }
 \references{
-Attia, J., Holliday, E., & Oldmeadow, C. (2022). A proposal for capturing
+Attia, J., Holliday, E., \& Oldmeadow, C. (2022). A proposal for capturing
 interaction and effect modification using DAGs.
 \emph{International Journal of Epidemiology}, 51(4), 1047--1053.
 \doi{10.1093/ije/dyac105}

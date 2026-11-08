@@ -1,3 +1,24 @@
+# because 1.9.0 (2026-11-08)
+
+## New Features & Improvements
+* **Universal Multi-Structure Covariance Ensembles**: `structure` now natively accepts direct named lists of candidate covariance structures across any domain (e.g., phylogenetic backbones `list(Jetz = jetz_trees, McTavish = mctav_trees)`, spatial dispersal kernels, genomic relationship matrices, or animal social networks). When a named list of structures or collections is supplied, `because` automatically flattens candidate structures into a unified collection, assigns group/backbone attributes, and partitions chains across candidate structures without requiring explicit control wrappers.
+* **Universal Multi-Structure Convergence & Sensitivity Diagnostic (`check_multicov()`)**: Added `check_multicov()` to evaluate MCMC convergence and structural sensitivity for any model fitted with multiple candidate covariance structures across all engines (NumPyro, JAGS, and NIMBLE). Computes a 3-tier variance decomposition:
+  * $\hat{R}_{\text{MCMC}}$: Within-structure MCMC convergence across replicate chains ($\max_k \hat{R}_k$).
+  * $\hat{R}_{\text{within\_group}}$: Parameter sensitivity across candidate structures within the same group, hypothesis, or backbone pseudo-posterior.
+  * $\hat{R}_{\text{between\_group}}$: Sensitivity and divergence between competing groups, kernels, or backbone hypotheses using Gelman-Rubin ANOVA decomposition.
+  * **Exact Law of Total Variance Uncertainty Decomposition**: Orthogonally partitions total posterior uncertainty for each parameter into additive components that sum to exactly 100%: `% MCMC` (data sampling/estimation uncertainty conditional on a structure), `% Structure` (branch-length / dating / local topological variation within group), and `% Group` (deep structural conflict between competing hypotheses/backbones).
+  * Informative diagnosis classification: `"Invariant"` (robust across all structures and groups), `"Structure-Sensitive (within group)"`, `"Group-Sensitive"`, or `"Check MCMC"`.
+  * Visual diagnostic plots: 2-panel publication figure displaying the $\hat{R}$ convergence/sensitivity forest plot (left) alongside a 100% stacked horizontal bar plot of the uncertainty variance decomposition (right), aligned row-for-row per parameter. Trace and frequency plots are generated for discrete jump sampling (`method = "dcat"`).
+* **Structure Sensitivity Reporting in d-Separation (`Rhat_struct`)**: Both `dsep_numpyro.R` and `dsep_dispatch.R` now report structural sensitivity alongside within-structure $\hat{R}$ across auxiliary conditional independence regressions.
+* **Unified `n.chains` Parameter Across Multi-Structure Engines**: Standardized `n.chains` across all structure handlers, model compiler routines, and documentation.
+* **Preserved Structure and Group Metadata on Fitted Models**: Fitted `because` model objects in NumPyro, JAGS, and NIMBLE now consistently preserve `fit$structure`, `fit$structures`, and `fit$input$structure` with their attached metadata attributes (`"group"`, `"backbone"`, `"tree_method"`, `"n.chains"`).
+
+## Bug Fixes
+* **Exact Attribute Matching for Structure Dimensions**: Fixed a partial matching bug in `process_because_structures()` where base R `attr(structure_obj, "n")` inadvertently matched `attr(structure_obj, "n.chains")` because `exact = TRUE` was omitted, causing dimension mismatch errors when fitting multi-chain ensembles.
+* **Safe Unpacking of Multi-Array Structure Data**: In `process_because_structures()`, structure data returned as nested lists of matrices/arrays (e.g., `list(eigvals = ..., eigvecs = ...)` in NumPyro) is now unpacked when inferring structure observation dimensions $N$.
+
+---
+
 # because 1.8.3 (2026-11-03)
 
 ## New Features & Improvements

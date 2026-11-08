@@ -63,6 +63,118 @@ run_jags_pipeline <- function(
   quiet, verbose, parallel, n.cores, cl = NULL,
   DIC = FALSE, WAIC = FALSE
 ) {
+  ens_ntree <- data[[".ensemble_ntree"]]
+  ens_cpt   <- data[[".ensemble_n_chains"]] %||% n.chains %||% 2L
+  ens_k_var <- data[[".ensemble_k_var"]] %||% "K_tree_multiPhylo"
+  data[[".ensemble_ntree"]] <- NULL
+  data[[".ensemble_n_chains"]] <- NULL
+  data[[".ensemble_k_var"]] <- NULL
+
+  if (!is.null(ens_ntree) && ens_ntree > 1L) {
+    if (!is.null(extension_inits)) {
+      extension_inits[[ens_k_var]] <- NULL
+    }
+    total_ens_chains <- as.integer(ens_ntree * ens_cpt)
+    base_seed <- sample.int(1e6L, 1L)
+
+    if (parallel && n.cores > 1L && total_ens_chains > 1L) {
+      n_workers <- as.integer(min(n.cores, total_ens_chains))
+      if (!quiet) {
+        message(sprintf(
+          "  [MultiPhylo Ensemble] Running %d JAGS chains (%d trees x %d chains/tree) in parallel across %d CPU cores...",
+          total_ens_chains, ens_ntree, ens_cpt, n_workers
+        ))
+      }
+      if (is.null(cl)) {
+        cl <- parallel::makeCluster(n_workers)
+        on.exit(parallel::stopCluster(cl), add = TRUE)
+      }
+      run_ens_jags_chain <- function(idx, model_file, data, ens_k_var, ens_cpt, extension_inits, base_seed, monitor, n.burnin, n.iter, n.thin, n.adapt, quiet, model_string) {
+        loadNamespace("rjags")
+        k <- as.integer(ceiling(idx / ens_cpt))
+        data_k <- data
+        data_k[[ens_k_var]] <- k
+        inits_one <- list(c(
+          extension_inits,
+          list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = base_seed + idx)
+        ))
+        model_k <- run_jags_model(model_file, data_k, inits_one, 1L, n.adapt, TRUE, model_string)
+        if (n.burnin > 0) update(model_k, n.iter = n.burnin)
+        samples_k <- sample_jags_model(model_k, monitor, n.iter, n.burnin, n.thin)
+        mat_c <- as.matrix(samples_k[[1]])
+        if (!ens_k_var %in% colnames(mat_c)) {
+          k_mat <- matrix(as.numeric(k), nrow = nrow(mat_c), ncol = 1, dimnames = list(NULL, ens_k_var))
+          mat_c <- cbind(mat_c, k_mat)
+        }
+        list(mcmc = coda::mcmc(mat_c), model = model_k)
+      }
+      parallel::clusterExport(cl, c("run_ens_jags_chain", "run_jags_model", "sample_jags_model"), envir = environment())
+      parallel::clusterEvalQ(cl, {
+        if (requireNamespace("because", quietly = TRUE)) library(because)
+      })
+      par_res <- parallel::parLapply(
+        cl,
+        seq_len(total_ens_chains),
+        run_ens_jags_chain,
+        model_file = model_file,
+        data = data,
+        ens_k_var = ens_k_var,
+        ens_cpt = ens_cpt,
+        extension_inits = extension_inits,
+        base_seed = base_seed,
+        monitor = monitor,
+        n.burnin = n.burnin,
+        n.iter = n.iter,
+        n.thin = n.thin,
+        n.adapt = n.adapt,
+        quiet = quiet,
+        model_string = model_string
+      )
+      all_chain_samples <- lapply(par_res, `[[`, "mcmc")
+      last_model <- par_res[[length(par_res)]]$model
+    } else {
+      all_chain_samples <- list()
+      last_model <- NULL
+      for (k in seq_len(ens_ntree)) {
+        if (!quiet) {
+          message(sprintf("  [MultiPhylo Ensemble: Tree %d/%d] Sampling %d JAGS chain(s)...", k, ens_ntree, ens_cpt))
+        }
+        data_k <- data
+        data_k[[ens_k_var]] <- as.integer(k)
+        inits_k <- lapply(seq_len(ens_cpt), function(c_idx) {
+          c(
+            extension_inits,
+            list(
+              .RNG.name = "base::Wichmann-Hill",
+              .RNG.seed = base_seed + (k - 1L) * ens_cpt + c_idx
+            )
+          )
+        })
+        model_k <- run_jags_model(model_file, data_k, inits_k, ens_cpt, n.adapt, quiet, model_string)
+        if (n.burnin > 0) {
+          update(model_k, n.iter = n.burnin)
+        }
+        samples_k <- sample_jags_model(model_k, monitor, n.iter, n.burnin, n.thin)
+        for (c_idx in seq_len(ens_cpt)) {
+          mat_c <- as.matrix(samples_k[[c_idx]])
+          if (!ens_k_var %in% colnames(mat_c)) {
+            k_mat <- matrix(as.numeric(k), nrow = nrow(mat_c), ncol = 1, dimnames = list(NULL, ens_k_var))
+            mat_c <- cbind(mat_c, k_mat)
+          }
+          all_chain_samples[[length(all_chain_samples) + 1L]] <- coda::mcmc(mat_c)
+        }
+        last_model <- model_k
+      }
+    }
+
+    return(list(
+      samples = coda::mcmc.list(all_chain_samples),
+      model = last_model,
+      DIC = FALSE,
+      WAIC = WAIC
+    ))
+  }
+
   if (parallel && n.cores > 1 && n.chains > 1) {
     # Parallel execution
     message(sprintf(

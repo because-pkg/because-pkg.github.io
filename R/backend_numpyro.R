@@ -24,27 +24,92 @@
   lapply(py_levels, as.list)
 }
 
-#' Run a NumPyro model via because_py
+#' Detect Available CPU Cores (Cluster / SLURM / PBS / SGE / LSF / cgroup Safe)
 #'
-#' @param eq_strings Character vector of equations
-#' @param flat_data Flattened list of data
-#' @param family Named character vector of families
-#' @param priors Named list of priors
-#' @param py_structures Processed structural matrices/functions for NumPyro
-#' @param n_chains Number of MCMC chains
-#' @param n_iter Number of iterations
-#' @param n_warmup Number of warmup iterations
-#' @param adapt_delta Target acceptance probability
-#' @param max_treedepth Maximum tree depth
-#' @param prior_scale_fixed Scale factor for fixed effects
-#' @param quiet Logical, suppress output
-#' @param WAIC Logical, whether to calculate WAIC
-#' @return Raw result from because_py$fit
-#' @export
+#' @return Integer number of available CPU cores
+#' @keywords internal
+.detect_available_cores <- function() {
+  env_vars <- c(
+    "SLURM_CPUS_PER_TASK",
+    "SLURM_CPUS_ON_NODE",
+    "PBS_NP",
+    "NSLOTS",
+    "LSB_DJOB_NUMPROC",
+    "MC_CORES"
+  )
+  for (ev in env_vars) {
+    val <- trimws(Sys.getenv(ev, unset = ""))
+    if (nzchar(val) && grepl("^[0-9]+$", val)) {
+      n_ev <- as.integer(val)
+      if (!is.na(n_ev) && n_ev > 0L) return(n_ev)
+    }
+  }
+  # Check Linux cgroup v2 / v1 CPU quotas (containers & HPC nodes)
+  if (file.exists("/sys/fs/cgroup/cpu.max")) {
+    cg2 <- tryCatch(readLines("/sys/fs/cgroup/cpu.max", n = 1L, warn = FALSE), error = function(e) "")
+    parts <- strsplit(trimws(cg2), "\\s+")[[1]]
+    if (length(parts) == 2L && grepl("^[0-9]+$", parts[1]) && grepl("^[0-9]+$", parts[2])) {
+      quota <- as.numeric(parts[1])
+      period <- as.numeric(parts[2])
+      if (quota > 0 && period > 0) return(max(1L, as.integer(floor(quota / period))))
+    }
+  }
+  if (file.exists("/sys/fs/cgroup/cpu/cpu.cfs_quota_us") && file.exists("/sys/fs/cgroup/cpu/cpu.cfs_period_us")) {
+    q_str <- tryCatch(readLines("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", n = 1L, warn = FALSE), error = function(e) "-1")
+    p_str <- tryCatch(readLines("/sys/fs/cgroup/cpu/cpu.cfs_period_us", n = 1L, warn = FALSE), error = function(e) "100000")
+    quota <- suppressWarnings(as.numeric(trimws(q_str)))
+    period <- suppressWarnings(as.numeric(trimws(p_str)))
+    if (!is.na(quota) && !is.na(period) && quota > 0 && period > 0) {
+      return(max(1L, as.integer(floor(quota / period))))
+    }
+  }
+  detected <- suppressWarnings(parallel::detectCores(logical = TRUE))
+  if (is.na(detected) || detected < 1L) return(1L)
+  max(1L, as.integer(detected - 1L))
+}
+
+.ensure_numpyro_ensemble_support <- function(because_py = NULL) {
+  tryCatch({
+    reticulate::py_run_string("
+import os
+import sys
+import importlib.util
+import because.api as _bapi
+import because.builder.compiler as _bcomp
+
+_repo_compiler = '/Users/achazhardenberg/Library/CloudStorage/Dropbox/Repos/because_py/because/builder/compiler.py'
+if os.path.exists(_repo_compiler) and not hasattr(_bcomp, '_spectral_dcat_enabled'):
+    _spec = importlib.util.spec_from_file_location('because.builder.compiler', _repo_compiler)
+    _mod = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)
+    _mod._spectral_dcat_enabled = True
+    sys.modules['because.builder.compiler'] = _mod
+    _bapi.NumPyroBuilder = _mod.NumPyroBuilder
+
+_repo_api = '/Users/achazhardenberg/Library/CloudStorage/Dropbox/Repos/because_py/because/api.py'
+if os.path.exists(_repo_api) and not hasattr(_bapi, '_wave_ensemble_enabled'):
+    _was_init = getattr(_bapi, '_jax_initialized', False)
+    _spec_a = importlib.util.spec_from_file_location('because.api', _repo_api)
+    _mod_a = importlib.util.module_from_spec(_spec_a)
+    _mod_a.__package__ = 'because'
+    _spec_a.loader.exec_module(_mod_a)
+    if _was_init:
+        for _attr in ('_jax_initialized', 'jax', 'jnp', 'numpyro', 'dist', 'MCMC', 'NUTS', 'Predictive', 'DiscreteHMCGibbs', 'diag'):
+            setattr(_mod_a, _attr, getattr(_bapi, _attr, None))
+    _mod_a._wave_ensemble_enabled = True
+    sys.modules['because.api'] = _mod_a
+    for _k, _v in _mod_a.__dict__.items():
+        if not _k.startswith('__'):
+            setattr(_bapi, _k, _v)
+")
+  }, error = function(e) NULL)
+}
+
 run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structures,
                               induced_correlations = NULL,
                               n_chains, n_iter, n_warmup, adapt_delta, max_treedepth,
-                              prior_scale_fixed, quiet, WAIC = FALSE, levels = NULL) {
+                              prior_scale_fixed, quiet, WAIC = FALSE, levels = NULL,
+                              n_cores = 1L) {
   
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     stop("The 'reticulate' package is required to use engine = 'numpyro'")
@@ -55,6 +120,7 @@ run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structur
   }, error = function(e) {
     stop("Failed to import 'because.api'. Make sure because_py is installed and reticulate is configured.")
   })
+  .ensure_numpyro_ensemble_support(because_py)
   
   py_induced_cors <- if (!is.null(induced_correlations) && length(induced_correlations) > 0) {
     lapply(induced_correlations, as.character)
@@ -69,6 +135,7 @@ run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structur
     num_chains = as.integer(n_chains),
     num_samples = as.integer(n_iter),
     num_warmup = as.integer(n_warmup),
+    n_cores = as.integer(max(1L, n_cores)),
     cor_matrices = py_structures,
     induced_correlations = py_induced_cors,
     adapt_delta = adapt_delta,
@@ -140,7 +207,8 @@ run_numpyro_pipeline <- function(
   equations, data, family, structures, priors, random_terms,
   hierarchical_info, is_hierarchical, latent, induced_correlations = NULL, n.chains, n.iter, n.burnin,
   adapt_delta, max_treedepth, prior_scale_fixed, quiet, WAIC,
-  model_string, parameter_map, original_call, engine = "numpyro"
+  model_string, parameter_map, original_call, engine = "numpyro",
+  parallel = FALSE, n.cores = 1L
 ) {
   eq_strings <- sapply(equations, function(eq) paste(deparse(eq), collapse=" "))
   
@@ -168,10 +236,20 @@ run_numpyro_pipeline <- function(
         expected_name <- paste0(s_name, "_transform")
         func_name <- if (expected_name %in% funcs) expected_name else funcs[!funcs %in% c("numpyro", "jnp", "jax", "dist", "np", "r")][1]
         if (!is.null(func_name) && (func_name %in% names(env))) {
+          s_tree_method <- attr(s_obj, "tree_method") %||% "dcat"
+          s_n_chains <- as.integer(attr(s_obj, "n.chains") %||% 2L)
+          s_n_trees <- if (inherits(s_obj, "multiPhylo")) length(s_obj) else 1L
+          s_type <- if (inherits(s_obj, "multiPhylo") && identical(s_tree_method, "ensemble")) {
+            "multiPhylo_ensemble"
+          } else {
+            class(s_obj)[1]
+          }
           py_structures[[s_name]] <- list(
             matrix = data[[mat_name]],
             transform_func = env[[func_name]],
-            type = class(s_obj)[1]
+            type = s_type,
+            n_chains = s_n_chains,
+            n_trees = as.integer(s_n_trees)
           )
         }
       } else {
@@ -263,6 +341,8 @@ run_numpyro_pipeline <- function(
 
   py_levels <- .build_py_levels(hierarchical_info)
 
+  active_cores <- as.integer(if (isTRUE(parallel)) max(1L, n.cores) else 1L)
+
   py_result <- run_numpyro_model(
     eq_strings = eq_strings,
     flat_data = flat_data,
@@ -278,7 +358,8 @@ run_numpyro_pipeline <- function(
     prior_scale_fixed = prior_scale_fixed,
     quiet = quiet,
     WAIC = WAIC,
-    levels = py_levels
+    levels = py_levels,
+    n_cores = active_cores
   )
   mcmc_samples <- format_numpyro_samples(py_result)
   
@@ -296,7 +377,13 @@ run_numpyro_pipeline <- function(
     induced_correlations = induced_correlations,
     engine = engine,
     quiet = quiet,
-    py_result = py_result
+    py_result = py_result,
+    structures = structures,
+    structure = if (!is.null(structures) && length(structures) > 0) structures[[1]] else NULL,
+    input = list(
+      structure = if (!is.null(structures) && length(structures) > 0) structures[[1]] else NULL,
+      structures = structures
+    )
   )
   if (WAIC && !is.null(py_result$waic)) {
     waic_df <- data.frame(
@@ -318,14 +405,33 @@ run_numpyro_pipeline <- function(
   }
   # Compute summary statistics
   sum_stats <- if (!is.null(mcmc_samples)) summary(mcmc_samples) else NULL
-  if (!is.null(mcmc_samples) && n.chains > 1) {
+  if (!is.null(mcmc_samples) && length(mcmc_samples) > 1) {
     tryCatch({
       n_ch <- length(mcmc_samples)
       first_chain <- as.matrix(mcmc_samples[[1]])
       pnames <- colnames(first_chain)
       n_params <- length(pnames)
       rhat_vals <- numeric(n_params)
+      rhat_tree_vals <- numeric(n_params)
       n_iter_chain <- nrow(first_chain)
+
+      # Detect multiPhylo ensemble: each chain fixed on a tree and multiple trees represented
+      k_col <- grep("^K_tree_", pnames, value = TRUE)[1]
+      has_ens_struct <- any(vapply(py_structures, function(ps) is.list(ps) && identical(ps$type, "multiPhylo_ensemble"), logical(1)))
+      is_ensemble_run <- FALSE
+      chain_trees <- NULL
+      trees_multi <- NULL
+      if (!is.na(k_col) && has_ens_struct) {
+        chain_trees <- vapply(seq_len(n_ch), function(c) {
+          as.integer(round(as.matrix(mcmc_samples[[c]])[1, k_col]))
+        }, integer(1))
+        u_trees <- sort(unique(chain_trees))
+        trees_multi <- u_trees[vapply(u_trees, function(tk) sum(chain_trees == tk) >= 2, logical(1))]
+        if (length(trees_multi) > 0) {
+          is_ensemble_run <- TRUE
+        }
+      }
+
       for (p in 1:n_params) {
         chain_means <- numeric(n_ch)
         chain_vars <- numeric(n_ch)
@@ -334,20 +440,42 @@ run_numpyro_pipeline <- function(
           chain_means[c] <- mean(vals)
           chain_vars[c] <- var(vals)
         }
-        grand_mean <- mean(chain_means)
         B <- n_iter_chain * var(chain_means)
         W <- mean(chain_vars)
-        if (W > 0) {
+        if (!is.na(W) && W > 1e-12) {
           var_plus <- ((n_iter_chain - 1) / n_iter_chain) * W + (1 / n_iter_chain) * B
-          rhat_vals[p] <- sqrt(var_plus / W)
+          rhat_tree_vals[p] <- sqrt(var_plus / W)
         } else {
-          rhat_vals[p] <- 1.0
+          rhat_tree_vals[p] <- 1.0
+        }
+
+        if (is_ensemble_run) {
+          rw <- vapply(trees_multi, function(tk) {
+            idx <- which(chain_trees == tk)
+            W_k <- mean(chain_vars[idx])
+            B_k <- n_iter_chain * var(chain_means[idx])
+            if (is.na(W_k) || W_k <= 1e-12) return(1.0)
+            vp_k <- ((n_iter_chain - 1) / n_iter_chain) * W_k + (1 / n_iter_chain) * B_k
+            sqrt(vp_k / W_k)
+          }, numeric(1))
+          rhat_vals[p] <- max(rw, na.rm = TRUE)
+        } else {
+          rhat_vals[p] <- rhat_tree_vals[p]
         }
       }
-      sum_stats$statistics <- cbind(sum_stats$statistics, Rhat = rhat_vals)
+      if (is_ensemble_run) {
+        sum_stats$statistics <- cbind(sum_stats$statistics, Rhat = rhat_vals, Rhat_tree = rhat_tree_vals)
+      } else {
+        sum_stats$statistics <- cbind(sum_stats$statistics, Rhat = rhat_vals)
+      }
     }, error = function(e) {})
   }
   result$summary <- sum_stats
+  mp_structs <- Filter(function(ps) is.list(ps) && ps$type %in% c("multiPhylo", "multiPhylo_ensemble"), py_structures)
+  if (length(mp_structs) > 0) {
+    result$tree_method <- if (identical(mp_structs[[1]]$type, "multiPhylo_ensemble")) "ensemble" else "dcat"
+    result$n_trees_total <- mp_structs[[1]]$n_trees
+  }
 
   result$call <- original_call
   class(result) <- "because"
@@ -375,7 +503,10 @@ setup_numpyro_environment <- function(parallel = FALSE, n.cores = 1, n.chains = 
     }
   }, error = function(e) NULL)
 
+  avail_cores <- .detect_available_cores()
   target_cores <- as.integer(if (parallel) min(n.cores, n.chains) else 1L)
+  thread_limit <- as.integer(max(1L, if (parallel) n.cores else avail_cores))
+  host_devices <- as.integer(max(target_cores, n.cores, n.chains, avail_cores, 32L))
 
   .thread_vars <- list(
     OMP_NUM_THREADS            = "1",
@@ -385,8 +516,8 @@ setup_numpyro_environment <- function(parallel = FALSE, n.cores = 1, n.chains = 
     MKL_DOMAIN_NUM_THREADS     = "1",
     NUMEXPR_NUM_THREADS        = "1",
     LLVM_NUM_THREADS           = "1",
-    TF_NUM_INTEROP_THREADS     = as.character(target_cores),
-    TF_NUM_INTRAOP_THREADS     = as.character(target_cores),
+    TF_NUM_INTEROP_THREADS     = as.character(thread_limit),
+    TF_NUM_INTRAOP_THREADS     = as.character(thread_limit),
     XLA_PYTHON_CLIENT_PREALLOCATE = "false"
   )
 
@@ -397,35 +528,25 @@ setup_numpyro_environment <- function(parallel = FALSE, n.cores = 1, n.chains = 
   }
 
   .current_xla <- Sys.getenv("XLA_FLAGS")
+  if (grepl("--xla_force_host_platform_device_count=[0-9]+", .current_xla)) {
+    .current_xla <- sub(
+      "--xla_force_host_platform_device_count=[0-9]+",
+      paste0("--xla_force_host_platform_device_count=", host_devices),
+      .current_xla
+    )
+  } else {
+    .current_xla <- trimws(paste(.current_xla, paste0("--xla_force_host_platform_device_count=", host_devices)))
+  }
   .xla_additions <- character(0)
-  if (!grepl("--xla_force_host_platform_device_count", .current_xla))
-    .xla_additions <- c(.xla_additions,
-                        paste0("--xla_force_host_platform_device_count=", target_cores))
   if (!grepl("--xla_cpu_multi_thread_eigen", .current_xla))
     .xla_additions <- c(.xla_additions, "--xla_cpu_multi_thread_eigen=false")
   if (!grepl("intra_op_parallelism_threads", .current_xla))
-    .xla_additions <- c(.xla_additions, paste0("intra_op_parallelism_threads=", target_cores))
+    .xla_additions <- c(.xla_additions, paste0("intra_op_parallelism_threads=", thread_limit))
   if (!grepl("inter_op_parallelism_threads", .current_xla))
-    .xla_additions <- c(.xla_additions, paste0("inter_op_parallelism_threads=", target_cores))
-  if (length(.xla_additions) > 0)
-    Sys.setenv(XLA_FLAGS = trimws(paste(.current_xla, paste(.xla_additions, collapse = " "))))
+    .xla_additions <- c(.xla_additions, paste0("inter_op_parallelism_threads=", thread_limit))
+  Sys.setenv(XLA_FLAGS = trimws(paste(.current_xla, paste(.xla_additions, collapse = " "))))
 
-  if (reticulate::py_available(initialize = FALSE)) {
-    .py_set_code <- paste(
-      "import os",
-      paste(sapply(names(.thread_vars), function(.v) {
-        sprintf("os.environ.setdefault('%s', '%s')", .v, .thread_vars[[.v]])
-      }), collapse = "\n"),
-      sprintf("os.environ.setdefault('XLA_FLAGS', '%s')", Sys.getenv("XLA_FLAGS")),
-      sep = "\n"
-    )
-    tryCatch(
-      reticulate::py_run_string(.py_set_code),
-      error = function(e) NULL
-    )
-  }
-
-  tryCatch({
+  b_api <- tryCatch({
     reticulate::import("because.api")
   }, error = function(e) {
     current_env <- "unknown"
@@ -443,5 +564,21 @@ setup_numpyro_environment <- function(parallel = FALSE, n.cores = 1, n.chains = 
       "  install_because_numpyro()"
     ), current_env))
   })
+
+  # Ensure XLA_FLAGS and _init_jax(host_devices) run BEFORE any structure py_code imports jax
+  .py_set_code <- paste(
+    "import os, sys",
+    paste(sapply(names(.thread_vars), function(.v) {
+      sprintf("os.environ.setdefault('%s', '%s')", .v, .thread_vars[[.v]])
+    }), collapse = "\n"),
+    sprintf("if 'jax' not in sys.modules:\n    os.environ['XLA_FLAGS'] = '%s'", Sys.getenv("XLA_FLAGS")),
+    sep = "\n"
+  )
+  tryCatch({
+    reticulate::py_run_string(.py_set_code)
+    b_api$`_init_jax`(as.integer(host_devices))
+  }, error = function(e) NULL)
+
+  return(b_api)
 }
 

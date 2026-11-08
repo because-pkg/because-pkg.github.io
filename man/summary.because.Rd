@@ -31,7 +31,7 @@ Defaults to \code{FALSE}.}
 \item{rope}{Optional ROPE specification. Can be \code{NULL} (default), \code{TRUE} (uses principled
 family defaults: \code{c(-0.10, 0.10)} for Gaussian, \code{c(-0.05, 0.05)} for Poisson/NegBin,
 \code{c(-0.18, 0.18)} for Binomial/Ordinal/Multinomial), a numeric vector of length 2
-(e.g., \code{c(-0.1, 0.1)} applied globally), or a named list specifying custom intervals by family
+(e.g., \code{c(-0.1, 0.1)}), or a named list specifying custom intervals by family
 (e.g., \code{list(poisson = c(-0.05, 0.05))}), by response variable, or by parameter name.
 If provided, calculates the proportion of posterior samples falling inside the ROPE (\code{P_ROPE}).}
 
@@ -50,26 +50,14 @@ When \code{rope} is specified (or \code{rope = TRUE}), the function calculates \
 the proportion of posterior draws falling within the Region of Practical Equivalence.
 By default, principled family-specific defaults are applied:
 \itemize{
-  \item \strong{Gaussian}: \code{c(-0.10, 0.10)}, representing \eqn{\pm 0.10 \times \text{SD}}
-    for standardized continuous traits (Kruschke 2018).
-  \item \strong{Poisson & Negative Binomial}: \code{c(-0.05, 0.05)}, representing an approximate
-    \eqn{\pm 5\%} relative change in expected count (\eqn{\text{IRR} \in [0.95, 1.05]}).
-  \item \strong{Binomial, Ordinal, & Multinomial}: \code{c(-0.18, 0.18)}, representing
-    \eqn{\pm 0.10 \times (\pi / \sqrt{3})} on the latent logistic scale
-    (Odds Ratio \eqn{\text{OR} \in [0.83, 1.20]}; Gelman et al. 2008; Makowski et al. 2019).
+\item \strong{Gaussian}: \code{c(-0.10, 0.10)}, representing \eqn{\pm 0.10 \times \text{SD}}
+for standardized continuous traits (Kruschke 2018).
+\item \strong{Poisson & Negative Binomial}: \code{c(-0.05, 0.05)}, representing an approximate
+\eqn{\pm 5\%} relative change in expected count (\eqn{\text{IRR} \in [0.95, 1.05]}).
+\item \strong{Binomial, Ordinal, & Multinomial}: \code{c(-0.18, 0.18)}, representing
+\eqn{\pm 0.10 \times (\pi / \sqrt{3})} on the latent logistic scale
+(Odds Ratio \eqn{\text{OR} \in [0.83, 1.20]}; Gelman et al. 2008; Makowski et al. 2019).
 }
-}
-\references{
-Kruschke, J. K. (2018). Rejecting or accepting parameter values in Bayesian estimation.
-\emph{Advances in Methods and Practices in Psychological Science}, 1(2), 270–280. \doi{10.1177/2515245918771304}
-
-Makowski, D., Ben-Shachar, M. S., & Lüdecke, D. (2019). bayestestR: Describing effects
-and their uncertainty, existence and significance within the Bayesian framework.
-\emph{Journal of Open Source Software}, 4(40), 1541. \doi{10.21105/joss.01541}
-
-Gelman, A., Jakulin, A., Pittau, M. G., & Su, Y. S. (2008). A weakly informative
-default prior distribution for logistic and other regression models.
-\emph{The Annals of Applied Statistics}, 2(4), 1360–1383. \doi{10.1214/08-AOAS191}
 }
 \examples{
 \dontrun{
@@ -82,4 +70,16 @@ summary(fit)
 summary(fit, show_nodes = TRUE, show_random = TRUE)
 }
 
+}
+\references{
+Kruschke, J. K. (2018). Rejecting or accepting parameter values in Bayesian estimation.
+\emph{Advances in Methods and Practices in Psychological Science}, 1(2), 270–280. \doi{10.1177/2515245918771304}
+
+Makowski, D., Ben-Shachar, M. S., & Lüdecke, D. (2019). bayestestR: Describing effects
+and their uncertainty, existence and significance within the Bayesian framework.
+\emph{Journal of Open Source Software}, 4(40), 1541. \doi{10.21105/joss.01541}
+
+Gelman, A., Jakulin, A., Pittau, M. G., & Su, Y. S. (2008). A weakly informative
+default prior distribution for logistic and other regression models.
+\emph{The Annals of Applied Statistics}, 2(4), 1360–1383. \doi{10.1214/08-AOAS191}
 }

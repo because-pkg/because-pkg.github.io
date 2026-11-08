@@ -34,7 +34,7 @@ because(
   fix_latent = "loading",
   prior_scale_fixed = NULL,
   parallel = FALSE,
-  n.cores = parallel::detectCores() - 1,
+  n.cores = NULL,
   cl = NULL,
   ic_recompile = FALSE,
   random = NULL,
@@ -123,9 +123,14 @@ power. Set to \code{Inf} to disable subsampling.}
 
 \item{prior_scale_fixed}{Numeric; scale parameter for Cauchy priors on fixed effects. Defaults to \code{sqrt(2)/2}.}
 
-\item{parallel}{Logical; if \code{TRUE}, runs MCMC chains in parallel.}
+\item{parallel}{Logical; if \code{TRUE}, runs MCMC chains in parallel across CPU cores.
+Automatically set to \code{TRUE} if \code{n.cores > 1} is explicitly specified by the user.}
 
-\item{n.cores}{Number of CPU cores for parallel execution.}
+\item{n.cores}{Number of CPU cores for parallel execution. When omitted, automatically
+detects allocated cores from HPC scheduler variables (\code{SLURM_CPUS_PER_TASK}, \code{PBS_NP},
+\code{NSLOTS}, \code{LSB_DJOB_NUMPROC}, Linux cgroups) before falling back to \code{detectCores() - 1}.
+For \code{multiPhylo} ensembles in NumPyro, up to \code{n.cores} chains across multiple trees
+are executed simultaneously in parallel waves.}
 
 \item{cl}{Optional pre-existing cluster for parallel execution.}
 
@@ -160,7 +165,9 @@ link data frames across levels (e.g., \code{c(site = "SiteID")}).}
 
 \item{aggregate_crossscale}{Optional. Set to \code{"all"} to aggregate all cross-scale d-sep tests (evaluating coarse-scale conditional independencies by aggregating fine-scale data via group means), or provide a numeric vector specifying specific test indices to aggregate. By default, paths between a fine-scale and coarse-scale variable are flattened with hierarchical random effects instead.}
 
-\item{...}{Additional arguments passed to the underlying model engines.}
+\item{...}{Additional arguments passed to structure preparation methods (e.g., for \code{multiPhylo}
+phylogenetic structures in \code{because.phybase}: \code{tree_method = "ensemble"} \link{default} or \code{"dcat"},
+where \code{n.chains} sets the number of independent MCMC chains run per tree).}
 }
 \value{
 An object of class \code{"because"} containing:

@@ -2,18 +2,10 @@
 % Please edit documentation in R/residuals.R
 \name{residuals.because}
 \alias{residuals.because}
-\alias{fitted.because}
+\alias{\%||\%}
 \title{Extract Fitted Values and Residuals for because Models}
 \usage{
-\method{fitted}{because}(
-  object,
-  resp = NULL,
-  newdata = NULL,
-  ndraws = NULL,
-  re_formula = NULL,
-  summary = TRUE,
-  ...
-)
+a \%||\% b
 
 \method{residuals}{because}(
   object,
@@ -30,7 +22,10 @@
 
 \item{resp}{Character string; name of the response variable. If \code{NULL}, takes the first response.}
 
-\item{newdata}{Optional new dataset (currently evaluated within-sample).}
+\item{type}{Character; type of residual: \code{"quantile"} (default), \code{"response"}, or \code{"pearson"}.}
+
+\item{summary}{Logical; if \code{TRUE} (default), returns a summarized vector (posterior mean or median).
+If \code{FALSE}, returns the full \code{[ndraws x N_obs]} posterior matrix.}
 
 \item{ndraws}{Integer; number of posterior draws to use. Defaults to all draws (or 250 for quantile residuals).}
 
@@ -38,27 +33,29 @@
 If \code{NULL} (default), conditional on random effects.
 If \code{NA}, marginal prediction without random effects.}
 
-\item{summary}{Logical; if \code{TRUE} (default), returns a summarized vector (posterior mean or median).
-If \code{FALSE}, returns the full \code{[ndraws x N_obs]} posterior matrix.}
-
-\item{type}{Character; type of residual: \code{"quantile"} (default), \code{"response"}, or \code{"pearson"}.}
-
 \item{...}{Additional arguments.}
-}
-\value{
-A numeric vector (if \code{summary = TRUE}) or matrix of posterior draws (if \code{summary = FALSE}).
+
+\item{newdata}{Optional new dataset (currently evaluated within-sample).}
 }
 \description{
 Bayesian methods for extracting expected fitted values and residuals
 from fitted \code{because} model objects.
+
+Supports:
+\itemize{
+\item \code{"response"}: Raw posterior residuals \eqn{e^{(s)} = y - \mu^{(s)}}
+\item \code{"pearson"}: Standardized residuals \eqn{(y - \mu^{(s)}) / \sigma^{(s)}}
+\item \code{"quantile"}: Randomized quantile residuals (Dunn & Smyth 1996; Hartig 2022)
+via the Probability Integral Transform (PIT) against \eqn{y^{\text{rep}}}.
+}
 }
 \references{
 Dunn, P. K., & Smyth, G. K. (1996). Randomized quantile residuals.
-  \emph{Journal of Computational and Graphical Statistics}, 5(3), 236-244.
+\emph{Journal of Computational and Graphical Statistics}, 5(3), 236-244.
 
 Hartig, F. (2022). DHARMa: Residual Diagnostics for Hierarchical
-  (Multi-Level / Mixed) Regression Models (R package version 0.4.6). r-project.org
+(Multi-Level / Mixed) Regression Models (R package version 0.4.6). r-project.org
 
 Gelman, A., & Hill, J. (2007). \emph{Data Analysis Using Regression and Multilevel/Hierarchical Models}.
-  Cambridge University Press.
+Cambridge University Press.
 }

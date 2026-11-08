@@ -2,19 +2,11 @@
 % Please edit documentation in R/generics.R
 \name{get_tree_hook}
 \alias{get_tree_hook}
-\title{Tree Extraction Hook}
+\title{Backward-compatible alias for get_structure_hook}
 \usage{
 get_tree_hook(structure, ...)
 }
-\arguments{
-\item{structure}{The structural object.}
-
-\item{...}{Additional arguments.}
-}
-\value{
-A structure object (e.g. phylo) or NULL.
-}
 \description{
-Backward-compatible alias for \code{\link{get_structure_hook}}.
+Backward-compatible alias for get_structure_hook
 }
 \keyword{internal}

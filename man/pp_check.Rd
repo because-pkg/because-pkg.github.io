@@ -32,7 +32,7 @@ Supported: \code{"dens_overlay"}, \code{"hist"}, \code{"stat"}, \code{"stat_2d"}
 
 \item{ndraws}{Integer; number of posterior draws to use. Defaults to 50.}
 
-\item{trim}{Logical; if TRUE, zooms plot to observed data range.
+\item{trim}{Logical; if TRUE, zooms plot window to observed data range.
 Defaults to \code{FALSE} to allow inspection of predictive tail behavior.}
 
 \item{re_formula}{Formula or \code{NA}; determines which random effects to include
@@ -50,7 +50,7 @@ which wraps \code{bayesplot} functions (density overlay, histogram, test
 statistics) and supports conditional or marginal prediction via
 \code{re_formula}.
 
-A wrapper around \code{bayesplot::ppc_dens_overlay} and other PPC functions
+A wrapper around \code{bayesplot} posterior predictive check (PPC) functions
 for \code{because} model objects.
 }
 \examples{
@@ -66,6 +66,9 @@ pp_check(fit, resp = "Y", type = "hist", ndraws = 30)
 
 # Test statistic check (e.g., mean)
 pp_check(fit, type = "stat", stat = "mean")
+
+# Discrete bar plot check for count/binary models
+pp_check(fit, type = "bars")
 }
 
 }

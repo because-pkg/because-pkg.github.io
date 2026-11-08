@@ -18,10 +18,9 @@ process_because_structures <- function(
     # Independent model - no structures to process
   } else if (is.matrix(structure)) {
     structures[["custom"]] <- structure
-  } else if (is.list(structure) && !inherits(structure, "list")) {
-    # S3 object backed by a list; unnamed elements indicate a multi-structure collection
+  } else if (inherits(structure, c("multiPhylo", "structure_collection"))) {
     class_name <- class(structure)[1]
-    if (length(structure) > 1 && is.null(names(structure))) {
+    if (length(structure) > 1) {
       is_multiple <- TRUE
     }
     structures[[class_name]] <- structure
@@ -143,7 +142,7 @@ process_because_structures <- function(
     structure_multi <- list()
     for (s_name in structure_names) {
       structure_obj <- structures[[s_name]]
-      prep_res <- prepare_structure_data(structure_obj, data = data, optimize = TRUE, quiet = quiet, engine = engine, row_ids = row_ids)
+      prep_res <- prepare_structure_data(structure_obj, data = data, optimize = TRUE, quiet = quiet, engine = engine, row_ids = row_ids, s_name = s_name)
 
       if (!is.null(prep_res$data_list)) {
         for (d_name in names(prep_res$data_list)) {
@@ -151,7 +150,7 @@ process_because_structures <- function(
           prefixed_name <- if (d_name %in% c("Prec", "VCV", "multiVCV", custom_s_name)) paste0(d_name, "_", s_name) else d_name
           
           # Skip non-numeric vectors (e.g., aligned label vectors) to preserve integer index arrays
-          if (is.character(prep_res$data_list[[d_name]]) || is.factor(prep_res$data_list[[d_name]])) {
+          if ((is.character(prep_res$data_list[[d_name]]) || is.factor(prep_res$data_list[[d_name]])) && d_name != ".ensemble_k_var") {
              next
           }
           
@@ -166,25 +165,29 @@ process_because_structures <- function(
       current_N <- NULL
       is_this_one_multi <- FALSE
       for (obj in prep_res$data_list) {
-        if (is.matrix(obj) && nrow(obj) == ncol(obj)) {
-          current_N <- nrow(obj)
-          break
-        } else if (is.array(obj) && length(dim(obj)) == 3) {
-          dims <- dim(obj)
-          if (dims[1] == dims[2]) {
-             current_N <- dims[1]
-             is_this_one_multi <- TRUE
-             break
-          } else if (dims[2] == dims[3]) {
-             current_N <- dims[2]
-             is_this_one_multi <- TRUE
-             break
+        candidate_objs <- if (is.list(obj) && !is.data.frame(obj)) unname(obj) else list(obj)
+        for (c_obj in candidate_objs) {
+          if (is.matrix(c_obj) && nrow(c_obj) == ncol(c_obj)) {
+            current_N <- nrow(c_obj)
+            break
+          } else if (is.array(c_obj) && length(dim(c_obj)) == 3) {
+            dims <- dim(c_obj)
+            if (dims[1] == dims[2]) {
+               current_N <- dims[1]
+               is_this_one_multi <- TRUE
+               break
+            } else if (dims[2] == dims[3]) {
+               current_N <- dims[2]
+               is_this_one_multi <- TRUE
+               break
+            }
           }
         }
+        if (!is.null(current_N)) break
       }
 
       if (is.null(current_N)) {
-        n_attr <- attr(structure_obj, "n")
+        n_attr <- attr(structure_obj, "n", exact = TRUE)
         if (is.numeric(n_attr)) current_N <- n_attr
       }
 

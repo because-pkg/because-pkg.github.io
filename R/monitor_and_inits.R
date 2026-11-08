@@ -78,7 +78,8 @@ prepare_monitors_and_inits <- function(
       extract_names("(^|\\W)p_"),
       extract_names("(^|\\W)psi"),
       extract_names("^\\s*r_"),
-      extract_names("^\\s*cutpoint")
+      extract_names("^\\s*cutpoint"),
+      extract_names("^\\s*K_")
     ))
 
     if (!is.null(monitor_mode) && monitor_mode == "interpretable") {
@@ -229,7 +230,7 @@ prepare_monitors_and_inits <- function(
 
   # Clean up data list: Remove variables not present in the model code to avoid warnings
   vars_to_remove <- character(0)
-  keep_vars <- c("zeros")
+  keep_vars <- c("zeros", ".ensemble_ntree", ".ensemble_n_chains", ".ensemble_k_var")
 
   for (v in names(data)) {
     if (v %in% keep_vars) {
