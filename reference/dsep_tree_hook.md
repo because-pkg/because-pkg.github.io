@@ -1,7 +1,6 @@
-# D-Sep Tree Hook
+# Backward-compatible alias for dsep_structure_hook
 
-Backward-compatible alias for
-[`dsep_structure_hook`](https://because-pkg.github.io/because/reference/dsep_structure_hook.md).
+Backward-compatible alias for dsep_structure_hook
 
 ## Usage
 
@@ -30,7 +29,3 @@ dsep_tree_hook(structure, test_eq, hierarchical_info, levels, ...)
 - ...:
 
   Additional arguments.
-
-## Value
-
-The tree object or NULL.

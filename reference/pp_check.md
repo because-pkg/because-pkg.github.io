@@ -5,9 +5,8 @@ Generic function for posterior predictive checks of a fitted model. For
 functions (density overlay, histogram, test statistics) and supports
 conditional or marginal prediction via `re_formula`.
 
-A wrapper around
-[`bayesplot::ppc_dens_overlay`](https://mc-stan.org/bayesplot/reference/PPC-distributions.html)
-and other PPC functions for `because` model objects.
+A wrapper around `bayesplot` posterior predictive check (PPC) functions
+for `because` model objects.
 
 ## Usage
 
@@ -54,8 +53,8 @@ pp_check(
 
 - trim:
 
-  Logical; if TRUE, zooms plot to observed data range. Defaults to
-  `FALSE` to allow inspection of predictive tail behavior.
+  Logical; if TRUE, zooms plot window to observed data range. Defaults
+  to `FALSE` to allow inspection of predictive tail behavior.
 
 - re_formula:
 
@@ -85,5 +84,8 @@ pp_check(fit, resp = "Y", type = "hist", ndraws = 30)
 
 # Test statistic check (e.g., mean)
 pp_check(fit, type = "stat", stat = "mean")
+
+# Discrete bar plot check for count/binary models
+pp_check(fit, type = "bars")
 } # }
 ```

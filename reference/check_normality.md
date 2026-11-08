@@ -1,32 +1,31 @@
-# Bayesian Normality Check and Q-Q Envelope
+# Bayesian Normality Check & Q-Q Envelope
 
-Evaluates distributional and normality assumptions using Randomized
-Quantile Residuals (Dunn & Smyth 1996) and Posterior Predictive Credible
-Envelopes (Landwehr et al. 1984).
+Evaluates distributional and normality assumptions using **Randomized
+Quantile Residuals** (Dunn & Smyth 1996) and **Posterior Predictive
+Credible Envelopes** (Landwehr et al. 1984).
+
+Generates an empirical simulation envelope (50%, 80%, and 95% bands)
+directly from posterior predictive replications \\y^{\text{rep}}\\, and
+evaluates sample skewness and kurtosis test quantities against their
+posterior predictive distributions.
 
 ## Usage
 
 ``` r
-check_normality(object, ...)
-
 # S3 method for class 'because'
 check_normality(object, resp = NULL, ndraws = 250, ...)
 
-plot_qq(object, ...)
-
 # S3 method for class 'because'
 plot_qq(object, ...)
+
+check_normality(object, ...)
 ```
 
 ## Arguments
 
 - object:
 
-  A `because` model fit object.
-
-- ...:
-
-  Additional arguments.
+  A fitted model object.
 
 - resp:
 
@@ -38,7 +37,11 @@ plot_qq(object, ...)
   Integer; number of posterior predictive draws to simulate for the
   envelope. Defaults to 250.
 
+- ...:
+
+  Additional arguments.
+
 ## Value
 
-An object of class `"because_normality"` (for `check_normality`) or a
-`ggplot` object (for `plot_qq`).
+An object of class `"because_normality"` containing the ggplot object,
+envelope data, and skewness/kurtosis posterior tail probabilities.

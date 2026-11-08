@@ -1,7 +1,7 @@
 # Calculate LOO-CV for a Because Model
 
 Calculates Leave-One-Out Cross-Validation using Pareto Smoothed
-Importance Sampling (PSIS-LOO) for a fitted Because model.
+Importance Sampling (PSIS-LOO) for a fitted because model.
 
 ## Usage
 

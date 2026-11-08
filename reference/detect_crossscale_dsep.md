@@ -2,8 +2,8 @@
 
 A test is "cross-scale" when the focal predictor is at a coarser level
 than the response within the SAME hierarchical chain (not orthogonal
-branches). E.g., species-level Body_Mass_s predicting obs-level
-Abundance in the chain "site \> survey \> obs; species \> obs".
+branches). E.g., a site- or species-level variable predicting an
+obs-level response in "site \> survey \> obs; species \> obs".
 
 ## Usage
 

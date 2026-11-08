@@ -66,7 +66,6 @@ arrays require JAGS or NIMBLE.
 if (FALSE) { # \dontrun{
 # Create a spatial distance-decay structure
 spatial_decay <- because_structure(
-  name = "spatial_decay",
   precision_fn = function(coords, decay_rate = 0.1) {
     dist_mat <- as.matrix(dist(coords))
     W <- exp(-decay_rate * dist_mat)

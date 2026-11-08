@@ -14,7 +14,8 @@ get_family_object(family_name)
 
 - family_name:
 
-  The name of the family (e.g., "occupancy", "gaussian").
+  The name of the family (e.g., "gaussian", "binomial", or extension
+  families).
 
 ## Value
 

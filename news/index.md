@@ -1,5 +1,79 @@
 # Changelog
 
+## because 1.9.0 (2026-11-08)
+
+### New Features & Improvements
+
+- **Universal Multi-Structure Covariance Ensembles**: `structure` now
+  natively accepts direct named lists of candidate covariance structures
+  across any domain (e.g., phylogenetic backbones
+  `list(Jetz = jetz_trees, McTavish = mctav_trees)`, spatial dispersal
+  kernels, genomic relationship matrices, or animal social networks).
+  When a named list of structures or collections is supplied, `because`
+  automatically flattens candidate structures into a unified collection,
+  assigns group/backbone attributes, and partitions chains across
+  candidate structures without requiring explicit control wrappers.
+- **Universal Multi-Structure Convergence & Sensitivity Diagnostic
+  ([`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md))**:
+  Added
+  [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md)
+  to evaluate MCMC convergence and structural sensitivity for any model
+  fitted with multiple candidate covariance structures across all
+  engines (NumPyro, JAGS, and NIMBLE). Computes a 3-tier variance
+  decomposition:
+  - $`\hat{R}_{\text{MCMC}}`$: Within-structure MCMC convergence across
+    replicate chains ($`\max_k \hat{R}_k`$).
+  - $`\hat{R}_{\text{within\_group}}`$: Parameter sensitivity across
+    candidate structures within the same group, hypothesis, or backbone
+    pseudo-posterior.
+  - $`\hat{R}_{\text{between\_group}}`$: Sensitivity and divergence
+    between competing groups, kernels, or backbone hypotheses using
+    Gelman-Rubin ANOVA decomposition.
+  - **Exact Law of Total Variance Uncertainty Decomposition**:
+    Orthogonally partitions total posterior uncertainty for each
+    parameter into additive components that sum to exactly 100%:
+    `% MCMC` (data sampling/estimation uncertainty conditional on a
+    structure), `% Structure` (branch-length / dating / local
+    topological variation within group), and `% Group` (deep structural
+    conflict between competing hypotheses/backbones).
+  - Informative diagnosis classification: `"Invariant"` (robust across
+    all structures and groups), `"Structure-Sensitive (within group)"`,
+    `"Group-Sensitive"`, or `"Check MCMC"`.
+  - Visual diagnostic plots: 2-panel publication figure displaying the
+    $`\hat{R}`$ convergence/sensitivity forest plot (left) alongside a
+    100% stacked horizontal bar plot of the uncertainty variance
+    decomposition (right), aligned row-for-row per parameter. Trace and
+    frequency plots are generated for discrete jump sampling
+    (`method = "dcat"`).
+- **Structure Sensitivity Reporting in d-Separation (`Rhat_struct`)**:
+  Both `dsep_numpyro.R` and `dsep_dispatch.R` now report structural
+  sensitivity alongside within-structure $`\hat{R}`$ across auxiliary
+  conditional independence regressions.
+- **Unified `n.chains` Parameter Across Multi-Structure Engines**:
+  Standardized `n.chains` across all structure handlers, model compiler
+  routines, and documentation.
+- **Preserved Structure and Group Metadata on Fitted Models**: Fitted
+  `because` model objects in NumPyro, JAGS, and NIMBLE now consistently
+  preserve `fit$structure`, `fit$structures`, and `fit$input$structure`
+  with their attached metadata attributes (`"group"`, `"backbone"`,
+  `"tree_method"`, `"n.chains"`).
+
+### Bug Fixes
+
+- **Exact Attribute Matching for Structure Dimensions**: Fixed a partial
+  matching bug in
+  [`process_because_structures()`](https://because-pkg.github.io/because/reference/process_because_structures.md)
+  where base R `attr(structure_obj, "n")` inadvertently matched
+  `attr(structure_obj, "n.chains")` because `exact = TRUE` was omitted,
+  causing dimension mismatch errors when fitting multi-chain ensembles.
+- **Safe Unpacking of Multi-Array Structure Data**: In
+  [`process_because_structures()`](https://because-pkg.github.io/because/reference/process_because_structures.md),
+  structure data returned as nested lists of matrices/arrays (e.g.,
+  `list(eigvals = ..., eigvecs = ...)` in NumPyro) is now unpacked when
+  inferring structure observation dimensions $`N`$.
+
+------------------------------------------------------------------------
+
 ## because 1.8.3 (2026-11-03)
 
 ### New Features & Improvements
@@ -20,17 +94,18 @@
   `because_py`).
 - **Custom Dispersion and Zero-Inflation Priors**: The model compiler
   now routes Negative Binomial dispersion parameters (`r_<var>`) and
-  zero-inflation probabilities (`psi_<var>`) through `get_prior()`,
+  zero-inflation probabilities (`psi_<var>`) through
+  [`get_prior()`](https://because-pkg.github.io/because/reference/get_prior.md),
   allowing users to provide custom priors either by parameter name
   (e.g. `priors = list(r_Y = "dgamma(5, 0.5)")`,
   `psi_Y = "dbeta(2, 5)"`) or by generic parameter type
   (`r = "dgamma(5, 0.5)"`, `psi = "dbeta(1, 1)"`).
 - **Automated Prior Scale Diagnostic Check**: Added
-  `check_prior_scale()` which inspects the empirical variance of
-  continuous Gaussian variables before model compilation. If
-  unstandardized variables with large standard deviations
-  ($`\text{SD} > 20`$) are detected without user-specified custom
-  priors,
+  [`check_prior_scale()`](https://because-pkg.github.io/because/reference/check_prior_scale.md)
+  which inspects the empirical variance of continuous Gaussian variables
+  before model compilation. If unstandardized variables with large
+  standard deviations ($`\text{SD} > 20`$) are detected without
+  user-specified custom priors,
   [`because()`](https://because-pkg.github.io/because/reference/because.md)
   issues an informative warning alerting the user that default priors
   (e.g. `sigma ~ dunif(0, 100)`,
@@ -42,9 +117,11 @@
   continuous Gaussian responses (ignoring Binomial, Poisson, and other
   discrete/count families).
 - **Direct Custom Prior Overrides on Residual Standard Deviation
-  (`sigma_*_res`, `sigma_e_*`)**: `get_precision_prior()` now natively
-  recognizes custom priors specified directly on the standard deviation
-  scale for Gaussian residuals (e.g. `sigma_Y_res = "dunif(0, 500)"` or
+  (`sigma_*_res`, `sigma_e_*`)**:
+  [`get_precision_prior()`](https://because-pkg.github.io/because/reference/get_precision_prior.md)
+  now natively recognizes custom priors specified directly on the
+  standard deviation scale for Gaussian residuals
+  (e.g. `sigma_Y_res = "dunif(0, 500)"` or
   `sigma_e_Y = "dunif(0, 500)"`), automatically translating them into
   the corresponding JAGS precision statements
   (`tau_res_Y <- 1 / (sigma_Y_res * sigma_Y_res)`).
@@ -82,12 +159,13 @@
   `test-because_continue.R`.
 - **Restored Observation Precision & Conjugacy for Latent MAG Indicators
   in JAGS**:
-  - Fixed an issue in `generate_likelihoods()` where measurement
-    indicator variables with correlated residual errors (MAG approach,
-    e.g. `Brain` and `Mass` for latent `Size`) were compiled using
-    `tau_res_<var>` instead of `tau_obs_<var>`. This had caused the
-    model compiler to assign an unidentifiable non-conjugate
-    `dunif(0, 100)` prior on residual standard deviation
+  - Fixed an issue in
+    [`generate_likelihoods()`](https://because-pkg.github.io/because/reference/generate_likelihoods.md)
+    where measurement indicator variables with correlated residual
+    errors (MAG approach, e.g. `Brain` and `Mass` for latent `Size`)
+    were compiled using `tau_res_<var>` instead of `tau_obs_<var>`. This
+    had caused the model compiler to assign an unidentifiable
+    non-conjugate `dunif(0, 100)` prior on residual standard deviation
     (`sigma_<var>_res`), creating four competing variance components
     (`TAU_res_*` Wishart matrix, `sigma_<var>_res`, `sigma_obs_*`, and
     `sigma_<struct>_*`) that led to boundary collapse
@@ -100,7 +178,7 @@
     conflicting `sigma_<var>_res` prior.
   - Eliminated duplicate phantom prior declarations
     (`tau_u_<var>_<struct>` vs `tau_u_<struct>_<var>`) in
-    `generate_model_priors()`.
+    [`generate_model_priors()`](https://because-pkg.github.io/because/reference/generate_model_priors.md).
   - Corrected parameter regex filtering in
     [`summary.because()`](https://because-pkg.github.io/because/reference/summary.because.md)
     and `prepare_monitors_and_inits()` so redundant structural and
@@ -110,10 +188,11 @@
 - **Multiscale Hierarchical d-Separation & Cross-Level Indexing in
   NumPyro**: Fixed three issues in the NumPyro backend (`because` and
   `because_py`) for multiscale / hierarchical models:
-  - `run_dsep_numpyro()` now injects applicable structural random
-    effects (`+ (1 | <structure>)`) via `compile_equation_string` into
-    each d-separation sub-model and initializes structure index vectors
-    using `hierarchical_info$structure_levels`.
+  - [`run_dsep_numpyro()`](https://because-pkg.github.io/because/reference/run_dsep_numpyro.md)
+    now injects applicable structural random effects
+    (`+ (1 | <structure>)`) via `compile_equation_string` into each
+    d-separation sub-model and initializes structure index vectors using
+    `hierarchical_info$structure_levels`.
   - `because` now passes explicit level-to-variable and structure
     mappings (`levels`) to `because_py`, preventing cross-level index
     collisions (`<level>_idx_<child>`) when two orthogonal hierarchy
@@ -174,13 +253,14 @@
   marginalizing latent variables (MAG approach) were missing from
   [`summary()`](https://rdrr.io/r/base/summary.html) when using
   `engine = "numpyro"`. `because` now forwards `induced_cors` into
-  `run_numpyro_pipeline()` and `because_py` (v0.2.9), and extracts the
-  off-diagonal correlation coefficient directly from the 4D LKJ Cholesky
-  factor matrix (`L_corr_*[..., 2, 1]`) to register it as `rho_*`.
+  [`run_numpyro_pipeline()`](https://because-pkg.github.io/because/reference/run_numpyro_pipeline.md)
+  and `because_py` (v0.2.9), and extracts the off-diagonal correlation
+  coefficient directly from the 4D LKJ Cholesky factor matrix
+  (`L_corr_*[..., 2, 1]`) to register it as `rho_*`.
 - **Hierarchical Random Effects Initialization**: Fixed an uninitialized
   variable error (`object 'row_ids' not found`) in
-  `prepare_random_effects_data()` when fitting multi-level /
-  hierarchical models.
+  [`prepare_random_effects_data()`](https://because-pkg.github.io/because/reference/prepare_random_effects_data.md)
+  when fitting multi-level / hierarchical models.
 - **Plot Label Formatting**: Normalized whitespace handling in
   [`plot_dsep()`](https://because-pkg.github.io/because/reference/plot_dsep.md)
   to ensure clean formatting for tests with empty conditioning sets.
@@ -229,7 +309,7 @@
     Unified diagnostic visualizer.
   - [`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
     &
-    [`plot_qq()`](https://because-pkg.github.io/because/reference/check_normality.md):
+    [`plot_qq()`](https://because-pkg.github.io/because/reference/plot_qq.md):
     Randomized quantile residual Q-Q plots with empirical predictive
     envelopes.
   - [`check_homoscedasticity()`](https://because-pkg.github.io/because/reference/check_homoscedasticity.md):
@@ -248,10 +328,9 @@
     [`residuals.because()`](https://because-pkg.github.io/because/reference/residuals.because.md)
     supporting `"quantile"` (randomized PIT residuals; Dunn & Smyth
     1996), `"response"`, and `"pearson"` residuals.
-  - Added
-    [`fitted.because()`](https://because-pkg.github.io/because/reference/residuals.because.md)
-    to compute posterior expected values across Gaussian, Binomial,
-    Poisson, Negative Binomial, ZIP, ZINB, Gamma, and Lognormal models.
+  - Added `fitted.because()` to compute posterior expected values across
+    Gaussian, Binomial, Poisson, Negative Binomial, ZIP, ZINB, Gamma,
+    and Lognormal models.
   - Added
     [`predict.because()`](https://because-pkg.github.io/because/reference/predict.because.md)
     returning observation-level posterior predictive summaries

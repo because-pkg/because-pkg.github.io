@@ -21,7 +21,7 @@ get_latent_predictor_name(family, predictor_name, predictor_index, ...)
 
 - predictor_index:
 
-  Character; the indexed predictor string (e.g. `"Species[i]"`)
+  Character; the indexed predictor string (e.g. `"X[i]"`)
 
 - ...:
 

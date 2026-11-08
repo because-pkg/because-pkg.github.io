@@ -82,19 +82,3 @@ If `summary = TRUE`, a data frame containing:
   Upper credible limit
 
 If `summary = FALSE`, an `[ndraws x N_obs]` matrix of posterior draws.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-df <- data.frame(Y = rnorm(100), X = rnorm(100))
-fit <- because(list(Y ~ X), data = df)
-
-# Fitted summary with 95% credible intervals
-preds <- predict(fit, resp = "Y")
-head(preds)
-
-# Raw posterior draws
-draws <- predict(fit, resp = "Y", summary = FALSE)
-} # }
-```

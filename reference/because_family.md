@@ -62,7 +62,6 @@ supported for `engine = "numpyro"`.
 if (FALSE) { # \dontrun{
 # Create a Student-t family for robust regression
 student_t <- because_family(
-  name = "student_t",
   jags_likelihood = "{response}[{i}] ~ dt({mu}[{i}], {tau}, df_{response})",
   extra_priors = c("df_{response} ~ dunif(2, 100)")
 )

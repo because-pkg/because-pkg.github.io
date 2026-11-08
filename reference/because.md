@@ -38,7 +38,7 @@ because(
   fix_latent = "loading",
   prior_scale_fixed = NULL,
   parallel = FALSE,
-  n.cores = parallel::detectCores() - 1,
+  n.cores = NULL,
   cl = NULL,
   ic_recompile = FALSE,
   random = NULL,
@@ -202,11 +202,18 @@ because(
 
 - parallel:
 
-  Logical; if `TRUE`, runs MCMC chains in parallel.
+  Logical; if `TRUE`, runs MCMC chains in parallel across CPU cores.
+  Automatically set to `TRUE` if `n.cores > 1` is explicitly specified
+  by the user.
 
 - n.cores:
 
-  Number of CPU cores for parallel execution.
+  Number of CPU cores for parallel execution. When omitted,
+  automatically detects allocated cores from HPC scheduler variables
+  (`SLURM_CPUS_PER_TASK`, `PBS_NP`, `NSLOTS`, `LSB_DJOB_NUMPROC`, Linux
+  cgroups) before falling back to `detectCores() - 1`. For `multiPhylo`
+  ensembles in NumPyro, up to `n.cores` chains across multiple trees are
+  executed simultaneously in parallel waves.
 
 - cl:
 
@@ -278,7 +285,10 @@ because(
 
 - ...:
 
-  Additional arguments passed to the underlying model engines.
+  Additional arguments passed to structure preparation methods (e.g.,
+  for `multiPhylo` phylogenetic structures in `because.phybase`:
+  `tree_method = "ensemble"` default or `"dcat"`, where `n.chains` sets
+  the number of independent MCMC chains run per tree).
 
 ## Value
 

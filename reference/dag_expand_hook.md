@@ -7,9 +7,6 @@ compound groups for DAG plotting.
 
 ``` r
 dag_expand_hook(family, equations, latent, ...)
-
-# Default S3 method
-dag_expand_hook(family, equations, latent, ...)
 ```
 
 ## Arguments

@@ -147,7 +147,7 @@ functions (e.g., `+ theme_...()`, `+ ggtitle(...)`).
 **Interaction and Deterministic Nodes:** Interaction terms (e.g. `BM:M`)
 and [`I()`](https://rdrr.io/r/base/AsIs.html) transformations are
 rendered as **explicit intermediate nodes** (grey diamonds), following
-the Interaction DAG (IDAG) convention of Attia, Holliday & Oldmeadow
+the Interaction DAG (IDAG) convention of Attia, Holliday \\ Oldmeadow
 (2022). This makes the deterministic nature of these terms visually
 clear and is consistent with how `because_dsep` treats them for
 d-separation.
@@ -171,7 +171,7 @@ visualization.
 
 ## References
 
-Attia, J., Holliday, E., & Oldmeadow, C. (2022). A proposal for
+Attia, J., Holliday, E., \\ Oldmeadow, C. (2022). A proposal for
 capturing interaction and effect modification using DAGs. *International
 Journal of Epidemiology*, 51(4), 1047–1053.
 [doi:10.1093/ije/dyac105](https://doi.org/10.1093/ije/dyac105)

@@ -9,7 +9,6 @@ Models.
   : Run a Bayesian Structural Equation Model (Because)
 - [`because_model()`](https://because-pkg.github.io/because/reference/because_model.md)
   : Generate BUGS Model Code and Parameter Map for Bayesian SEM
-  (Because)
 - [`because_continue()`](https://because-pkg.github.io/because/reference/because_continue.md)
   : Continue MCMC Sampling for a Fitted Model
 - [`update(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/update.because.md)
@@ -46,19 +45,24 @@ structural interventions.
 Bayesian diagnostic suite for residual normality, homoscedasticity,
 collinearity, and residual structure.
 
+- [`bayesian_diagnostics`](https://because-pkg.github.io/because/reference/bayesian_diagnostics.md)
+  : Assumption Diagnostics for because Models
 - [`check_model()`](https://because-pkg.github.io/because/reference/check_model.md)
   : Unified Diagnostic Dashboard for because Models
-- [`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
-  [`plot_qq()`](https://because-pkg.github.io/because/reference/check_normality.md)
-  : Bayesian Normality Check and Q-Q Envelope
+- [`plot_qq(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/check_normality.md)
+  [`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
+  : Bayesian Normality Check & Q-Q Envelope
 - [`check_homoscedasticity()`](https://because-pkg.github.io/because/reference/check_homoscedasticity.md)
-  : Bayesian Homoscedasticity and Residual Dispersion Diagnostics
-- [`check_collinearity()`](https://because-pkg.github.io/because/reference/check_collinearity.md)
-  [`bvif()`](https://because-pkg.github.io/because/reference/check_collinearity.md)
-  : Bayesian Collinearity and Variance Inflation Diagnostics
+  : Bayesian Homoscedasticity & Residual Dispersion Diagnostics
+- [`bvif()`](https://because-pkg.github.io/because/reference/check_collinearity.md)
+  [`check_collinearity()`](https://because-pkg.github.io/because/reference/check_collinearity.md)
+  : Bayesian Collinearity & Variance Inflation Diagnostics
 - [`check_residual_structure()`](https://because-pkg.github.io/because/reference/check_residual_structure.md)
-  : Bayesian Residual Structure and Variance Partition Diagnostics
-- [`fitted(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/residuals.because.md)
+  : Bayesian Residual Structure & Variance Partition Diagnostics
+- [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md)
+  : Check Multi-Structure Covariance Convergence and Sensitivity
+  Diagnostics
+- [`` `%||%` ``](https://because-pkg.github.io/because/reference/residuals.because.md)
   [`residuals(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/residuals.because.md)
   : Extract Fitted Values and Residuals for because Models
 
@@ -100,6 +104,8 @@ Plotting methods for DAGs, coefficients, and posterior distributions.
   : plot_dsep
 - [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md)
   : Plot Region of Practical Equivalence (ROPE)
+- [`plot_qq()`](https://because-pkg.github.io/because/reference/plot_qq.md)
+  : Plot Bayesian Q-Q Plot with Envelopes
 
 ## Datasets & Utilities
 

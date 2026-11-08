@@ -24,13 +24,13 @@ plot_rope(object, rope = "default", parameters = NULL, ...)
 
 - rope:
 
-  Optional ROPE specification. Can be `"default"` (uses principled
-  family defaults: `c(-0.10, 0.10)` for Gaussian, `c(-0.05, 0.05)` for
-  Poisson/NegBin, `c(-0.18, 0.18)` for Binomial/Ordinal/Multinomial), a
-  numeric vector of length 2 (e.g., `c(-0.1, 0.1)` applied globally), or
-  a named list specifying custom intervals by family (e.g.,
-  `list(poisson = c(-0.05, 0.05))`), by response variable, or by
-  parameter name.
+  Optional ROPE specification. Can be `NULL` or `"default"` (uses
+  principled family defaults: `c(-0.10, 0.10)` for Gaussian,
+  `c(-0.05, 0.05)` for Poisson/NegBin, `c(-0.18, 0.18)` for
+  Binomial/Ordinal/Multinomial), a numeric vector of length 2 (e.g.,
+  `c(-0.1, 0.1)` applied globally), or a named list specifying custom
+  intervals by family (e.g., `list(poisson = c(-0.05, 0.05))`), by
+  response variable, or by parameter name.
 
 - parameters:
 

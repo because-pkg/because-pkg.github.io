@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.8.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -83,7 +83,7 @@ Defaults to <code>FALSE</code>.</p></dd>
 <dd><p>Optional ROPE specification. Can be <code>NULL</code> (default), <code>TRUE</code> (uses principled
 family defaults: <code>c(-0.10, 0.10)</code> for Gaussian, <code>c(-0.05, 0.05)</code> for Poisson/NegBin,
 <code>c(-0.18, 0.18)</code> for Binomial/Ordinal/Multinomial), a numeric vector of length 2
-(e.g., <code>c(-0.1, 0.1)</code> applied globally), or a named list specifying custom intervals by family
+(e.g., <code>c(-0.1, 0.1)</code>), or a named list specifying custom intervals by family
 (e.g., <code>list(poisson = c(-0.05, 0.05))</code>), by response variable, or by parameter name.
 If provided, calculates the proportion of posterior samples falling inside the ROPE (<code>P_ROPE</code>).</p></dd>
 
@@ -103,12 +103,12 @@ the conditional independence tests.</p>
     <p>When <code>rope</code> is specified (or <code>rope = TRUE</code>), the function calculates <code>P_ROPE</code>,
 the proportion of posterior draws falling within the Region of Practical Equivalence.
 By default, principled family-specific defaults are applied:</p><ul><li><p><strong>Gaussian</strong>: <code>c(-0.10, 0.10)</code>, representing \(\pm 0.10 \times \text{SD}\)
-    for standardized continuous traits (Kruschke 2018).</p></li>
+for standardized continuous traits (Kruschke 2018).</p></li>
 <li><p><strong>Poisson &amp; Negative Binomial</strong>: <code>c(-0.05, 0.05)</code>, representing an approximate
-    \(\pm 5\%\) relative change in expected count (\(\text{IRR} \in [0.95, 1.05]\)).</p></li>
+\(\pm 5\%\) relative change in expected count (\(\text{IRR} \in [0.95, 1.05]\)).</p></li>
 <li><p><strong>Binomial, Ordinal, &amp; Multinomial</strong>: <code>c(-0.18, 0.18)</code>, representing
-    \(\pm 0.10 \times (\pi / \sqrt{3})\) on the latent logistic scale
-    (Odds Ratio \(\text{OR} \in [0.83, 1.20]\); Gelman et al. 2008; Makowski et al. 2019).</p></li>
+\(\pm 0.10 \times (\pi / \sqrt{3})\) on the latent logistic scale
+(Odds Ratio \(\text{OR} \in [0.83, 1.20]\); Gelman et al. 2008; Makowski et al. 2019).</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
