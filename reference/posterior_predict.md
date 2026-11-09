@@ -22,6 +22,8 @@ posterior_predict(
   newdata = NULL,
   ndraws = NULL,
   re_formula = NULL,
+  conditional = "auto",
+  condition_on = NULL,
   ...
 )
 ```
@@ -54,6 +56,21 @@ posterior_predict(
   Formula or `NA`; determines which random effects to include. If `NULL`
   (default), all random effects are included (conditional prediction).
   If `NA`, no random effects are included (marginal prediction).
+
+- conditional:
+
+  Logical or `"auto"`; whether to condition predictions on correlated
+  companion variables (e.g. from latent variable blocks or induced
+  residual covariances). If `"auto"` (default), automatically conditions
+  when the response variable shares induced residual correlations with
+  other observed variables. If `FALSE`, draws purely
+  marginal/unconditional predictions from the response equation alone.
+
+- condition_on:
+
+  Optional character vector of companion variable names to explicitly
+  condition on. If `NULL` and `conditional` is active, defaults to all
+  companion variables in `object$induced_correlations`.
 
 ## Value
 

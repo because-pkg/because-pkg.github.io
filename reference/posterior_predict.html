@@ -67,6 +67,8 @@ and model validation.</p>
 <span>  newdata <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ndraws <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  re_formula <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  conditional <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  condition_on <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -100,6 +102,20 @@ If <code>NULL</code>, takes the first response variable in the model.</p></dd>
 <dd><p>Formula or <code>NA</code>; determines which random effects to include.
 If <code>NULL</code> (default), all random effects are included (conditional prediction).
 If <code>NA</code>, no random effects are included (marginal prediction).</p></dd>
+
+
+<dt id="arg-conditional">conditional<a class="anchor" aria-label="anchor" href="#arg-conditional"></a></dt>
+<dd><p>Logical or <code>"auto"</code>; whether to condition predictions on correlated
+companion variables (e.g. from latent variable blocks or induced residual covariances).
+If <code>"auto"</code> (default), automatically conditions when the response variable shares
+induced residual correlations with other observed variables. If <code>FALSE</code>, draws
+purely marginal/unconditional predictions from the response equation alone.</p></dd>
+
+
+<dt id="arg-condition-on">condition_on<a class="anchor" aria-label="anchor" href="#arg-condition-on"></a></dt>
+<dd><p>Optional character vector of companion variable names to explicitly
+condition on. If <code>NULL</code> and <code>conditional</code> is active, defaults to all companion
+variables in <code>object$induced_correlations</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

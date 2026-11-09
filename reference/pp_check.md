@@ -21,6 +21,8 @@ pp_check(
   ndraws = 50,
   trim = FALSE,
   re_formula = NULL,
+  conditional = "auto",
+  condition_on = NULL,
   ...
 )
 ```
@@ -62,6 +64,21 @@ pp_check(
   posterior predictions. See
   [`posterior_predict`](https://because-pkg.github.io/because/reference/posterior_predict.md)
   for details.
+
+- conditional:
+
+  Logical or `"auto"`; whether to condition predictions on correlated
+  companion variables (e.g. from latent variable blocks or induced
+  residual covariances). If `"auto"` (default), automatically conditions
+  when the response variable shares induced residual correlations with
+  other observed variables. If `FALSE`, draws marginal predictions from
+  the response equation alone.
+
+- condition_on:
+
+  Optional character vector of companion variable names to explicitly
+  condition on. If `NULL` and `conditional` is active, defaults to all
+  companion variables in `object$induced_correlations`.
 
 ## Value
 
