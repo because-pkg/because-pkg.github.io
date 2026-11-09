@@ -127,6 +127,7 @@ summary.because <- function(
             LowerCI = numeric(),
             UpperCI = numeric(),
             Rhat = numeric(),
+            Rhat_max = numeric(),
             n.eff = numeric(),
             Scale = character(),
             stringsAsFactors = FALSE
@@ -276,10 +277,47 @@ summary.because <- function(
 
                     # Diagnostics (locally computed for this chain list)
                     n_chains_i <- coda::nchain(sub_samples)
+                    var_names_all_i <- if (!is.null(res_i$samples)) colnames(res_i$samples[[1]]) else character(0)
+                    k_cols_i <- grep("^K_tree_", var_names_all_i, value = TRUE)
+                    is_ens_i <- FALSE
+                    p_rhat <- NA_real_
+                    p_rhat_max <- NA_real_
+                    p_neff <- NA_real_
 
-                    # Rhat
-                    p_rhat <- NA
-                    if (n_chains_i > 1) {
+                    if (length(k_cols_i) > 0 && n_chains_i > 1) {
+                        k_col_i <- k_cols_i[1]
+                        chain_k_vals <- vapply(res_i$samples, function(ch) round(mean(as.numeric(ch[, k_col_i]), na.rm = TRUE)), numeric(1))
+                        chain_k_sd <- vapply(res_i$samples, function(ch) stats::sd(as.numeric(ch[, k_col_i]), na.rm = TRUE), numeric(1))
+                        tab_k <- table(chain_k_vals)
+                        if (all(chain_k_sd == 0) && length(tab_k) > 1) {
+                            is_ens_i <- TRUE
+                            unique_trees <- sort(unique(chain_k_vals))
+                            tree_rhats <- numeric(0)
+                            p_ess_sum <- 0
+                            for (tk in unique_trees) {
+                                c_idx <- which(chain_k_vals == tk)
+                                if (length(c_idx) >= 1) {
+                                    sub_tk <- sub_samples[c_idx]
+                                    ess_tk <- tryCatch(coda::effectiveSize(sub_tk)[param_name], error = function(e) NA_real_)
+                                    if (!is.na(ess_tk) && is.finite(ess_tk)) p_ess_sum <- p_ess_sum + ess_tk
+                                }
+                                if (length(c_idx) >= 2) {
+                                    sub_tk <- sub_samples[c_idx]
+                                    gd_tk <- tryCatch(coda::gelman.diag(sub_tk, multivariate = FALSE)$psrf[param_name, 1], error = function(e) NA_real_)
+                                    if (!is.na(gd_tk) && is.finite(gd_tk)) tree_rhats <- c(tree_rhats, gd_tk)
+                                }
+                            }
+                            if (length(tree_rhats) > 0) {
+                                p_rhat <- mean(tree_rhats, na.rm = TRUE)
+                                p_rhat_max <- max(tree_rhats, na.rm = TRUE)
+                            }
+                            if (p_ess_sum > 0) {
+                                p_neff <- p_ess_sum
+                            }
+                        }
+                    }
+
+                    if (!is_ens_i && n_chains_i > 1) {
                         p_rhat <- tryCatch(
                             {
                                 coda::gelman.diag(
@@ -287,24 +325,17 @@ summary.because <- function(
                                     multivariate = FALSE
                                 )$psrf[param_name, 1]
                             },
-                            error = function(e) NA
+                            error = function(e) NA_real_
                         )
-                    }
-
-                    # Effective Size
-                    p_neff <- NA
-                    eff_size_i <- tryCatch(
-                        {
-                            coda::effectiveSize(sub_samples)
-                        },
-                        error = function(e) NULL
-                    )
-
-                    if (
-                        !is.null(eff_size_i) &&
-                            param_name %in% names(eff_size_i)
-                    ) {
-                        p_neff <- eff_size_i[param_name]
+                        eff_size_i <- tryCatch(
+                            {
+                                coda::effectiveSize(sub_samples)
+                            },
+                            error = function(e) NULL
+                        )
+                        if (!is.null(eff_size_i) && param_name %in% names(eff_size_i)) {
+                            p_neff <- eff_size_i[param_name]
+                        }
                     }
                     
                     p_rope <- NA_real_
@@ -322,6 +353,7 @@ summary.because <- function(
                         LowerCI = round(lower, 3),
                         UpperCI = round(upper, 3),
                         Rhat = round(p_rhat, 3),
+                        Rhat_max = if (!is.na(p_rhat_max)) round(p_rhat_max, 3) else NA_real_,
                         n.eff = round(p_neff, 0),
                         Scale = if (!is.null(test_scale)) test_scale else NA_character_,
                         stringsAsFactors = FALSE

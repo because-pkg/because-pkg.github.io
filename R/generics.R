@@ -287,8 +287,7 @@ dsep_structure_hook.default <- function(
     levels,
     ...
 ) {
-    # If no hierarchical info, we return NULL for safety (standard models)
-    if (is.null(hierarchical_info)) return(NULL)
+    if (is.null(structure)) return(NULL)
     
     # Filter the structure list based on the truncated levels for this d-sep test
     if (!is.null(hierarchical_info$structure_levels) && !is.null(levels)) {

@@ -320,6 +320,8 @@ run_single_dsep_test_v2 <- function(
     structure_levels = hierarchical_info$structure_levels,
     id_col = id_col,
     variability = variability,
+    tree_method = attr(sub_structure, "tree_method") %||% attr(structure, "tree_method") %||% "ensemble",
+    structure_method = attr(sub_structure, "structure_method") %||% attr(structure, "structure_method") %||% "ensemble",
     engine = engine,
     nimble_samplers = nimble_samplers
   )
