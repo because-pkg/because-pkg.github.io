@@ -377,18 +377,28 @@ mag_basis_to_formulas <- function(
             }
         }
 
-        # Favor categorical variables as predictors (RHS):
-        # Testing continuous ~ categorical + Z avoids requiring multinomial/polytomous
-        # likelihoods for categorical responses in conditional independence regressions.
-        if (!is.null(categorical_vars)) {
-            var1_is_cat <- var1 %in% names(categorical_vars)
-            var2_is_cat <- var2 %in% names(categorical_vars)
-
-            if (var1_is_cat && !var2_is_cat) {
-                temp <- var1
-                var1 <- var2
-                var2 <- temp
+        # Distributional Parsimony Rule (ANOVA / t-test priority):
+        # Testing continuous ~ discrete/categorical avoids requiring binomial/logistic,
+        # multinomial, or count likelihoods on the response variable in conditional independence tests.
+        # This converts tests into fast, linear, conjugate ANOVAs or two-sample comparisons.
+        is_discrete_var <- function(v) {
+            if (!is.null(categorical_vars) && v %in% names(categorical_vars)) return(TRUE)
+            if (!is.null(family) && v %in% names(family)) {
+                fam_v <- tolower(as.character(family[[v]])[1])
+                if (fam_v %in% c("binomial", "bernoulli", "poisson", "negbinom", "negative_binomial", "multinomial", "categorical", "ordered", "beta_binomial")) {
+                    return(TRUE)
+                }
             }
+            return(FALSE)
+        }
+
+        var1_is_discrete <- is_discrete_var(var1)
+        var2_is_discrete <- is_discrete_var(var2)
+
+        if (var1_is_discrete && !var2_is_discrete) {
+            temp <- var1
+            var1 <- var2
+            var2 <- temp
         }
 
         # Parameter hierarchy: compound node components (e.g. latent state vs observation parameters)
