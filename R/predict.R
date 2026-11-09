@@ -13,6 +13,14 @@
 #' @param re_formula Formula or \code{NA}; determines which random effects to include.
 #'   If \code{NULL} (default), all random effects are included (conditional prediction).
 #'   If \code{NA}, no random effects are included (marginal prediction).
+#' @param conditional Logical or \code{"auto"}; whether to condition predictions on correlated
+#'   companion variables (e.g. from latent variable blocks or induced residual covariances).
+#'   If \code{"auto"} (default), automatically conditions when the response variable shares
+#'   induced residual correlations with other observed variables. If \code{FALSE}, draws
+#'   purely marginal/unconditional predictions from the response equation alone.
+#' @param condition_on Optional character vector of companion variable names to explicitly
+#'   condition on. If \code{NULL} and \code{conditional} is active, defaults to all companion
+#'   variables in \code{object$induced_correlations}.
 #' @param ... Additional arguments (currently ignored).
 #'
 #' @return A matrix of dimensions \code{[ndraws x N_obs]} containing simulated response values.
@@ -30,7 +38,7 @@
 #' yrep_marg <- posterior_predict(fit, resp = "Y", ndraws = 200, re_formula = NA)
 #' }
 #' @export
-posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, re_formula = NULL, ...) {
+posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, re_formula = NULL, conditional = "auto", condition_on = NULL, ...) {
   # 1. Selection & Identification
   if (is.null(resp)) {
     resp <- as.character(all.vars(object$equations[[1]][[2]])[1])
@@ -278,12 +286,66 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
             }
           }
       }
+    } else {
+      # Fallback for marginalized/unmonitored random effects (e.g. dmnorm, spectral marginalization):
+      # Include random effect variance in simulation noise so prediction does not collapse to pure measurement error
+      for (sn in sigma_re_names) {
+        re_variances <- re_variances + samples_mat[, sn, drop=FALSE]^2
+      }
     }
   } else if (!is.null(re_formula) && is.na(re_formula)) {
       # Marginal Prediction: Collect RE variances to add to the predictive noise
       for (sn in sigma_re_names) {
           re_variances <- re_variances + samples_mat[, sn, drop=FALSE]^2
       }
+  }
+  
+  # 4b. Conditional Prediction Setup for Correlated Variables (e.g. MAG latent variable blocks)
+  search_data <- if (!is.null(newdata)) newdata else object$original_data
+  if (is.null(search_data)) search_data <- object$data
+  
+  use_conditional <- FALSE
+  companions <- character(0)
+  
+  if (isTRUE(conditional) || (identical(conditional, "auto") && !is.null(object$induced_correlations))) {
+    if (is.null(condition_on) && !is.null(object$induced_correlations)) {
+      cand_comp <- character(0)
+      for (pair in object$induced_correlations) {
+        if (resp %in% pair) {
+          cand_comp <- c(cand_comp, setdiff(pair, resp))
+        }
+      }
+      condition_on <- unique(cand_comp)
+    } else if (!is.null(condition_on)) {
+      condition_on <- unique(condition_on)
+    }
+    
+    if (!is.null(condition_on) && length(condition_on) > 0 && !is.null(search_data)) {
+      valid_comp <- condition_on[condition_on %in% names(search_data)]
+      if (length(valid_comp) > 0) {
+        use_conditional <- TRUE
+        companions <- valid_comp
+      }
+    }
+  }
+  
+  if (use_conditional) {
+    y_obs_resp <- if (resp %in% names(search_data)) search_data[[resp]] else obs_y
+    sd_resp <- if (!is.null(y_obs_resp)) stats::sd(y_obs_resp, na.rm = TRUE) else 1
+    if (is.na(sd_resp) || sd_resp <= 0) sd_resp <- 1
+    
+    mean_comp <- vapply(companions, function(v) mean(search_data[[v]], na.rm = TRUE), numeric(1))
+    sd_comp <- vapply(companions, function(v) stats::sd(search_data[[v]], na.rm = TRUE), numeric(1))
+    sd_comp[is.na(sd_comp) | sd_comp <= 0] <- 1
+    
+    Z_C <- matrix(0, nrow = n_obs, ncol = length(companions))
+    for (k in seq_along(companions)) {
+      vals_k <- search_data[[companions[k]]]
+      if (length(vals_k) == n_obs) {
+        Z_C[, k] <- (vals_k - mean_comp[k]) / sd_comp[k]
+      }
+    }
+    Z_C[is.na(Z_C)] <- 0
   }
   
   # 5. Inverse Link & Stochastic Draw
@@ -328,8 +390,62 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
     mu_s <- eta[s, ]
     
     if (fam == "gaussian") {
-      # If marginal, add the omitted RE variances to the simulation noise
-      total_sd <- sqrt(sigma_val[s]^2 + re_variances[s])
+      base_sd <- sqrt(sigma_val[s]^2 + re_variances[s])
+      
+      if (use_conditional && length(companions) > 0) {
+        K_comp <- length(companions)
+        R_1C <- matrix(0, nrow = 1, ncol = K_comp)
+        R_CC <- diag(K_comp)
+        
+        for (k in seq_len(K_comp)) {
+          comp_k <- companions[k]
+          p_name1 <- paste0("rho_", resp, "_", comp_k)
+          p_name2 <- paste0("rho_", comp_k, "_", resp)
+          if (p_name1 %in% colnames(samples_mat)) {
+            r_val <- samples_mat[s, p_name1]
+          } else if (p_name2 %in% colnames(samples_mat)) {
+            r_val <- samples_mat[s, p_name2]
+          } else if (!is.null(y_obs_resp) && comp_k %in% names(search_data)) {
+            r_val <- stats::cor(y_obs_resp, search_data[[comp_k]], use = "complete.obs")
+          } else {
+            r_val <- 0
+          }
+          R_1C[1, k] <- if (is.na(r_val)) 0 else r_val
+        }
+        
+        if (K_comp > 1) {
+          for (j in 1:(K_comp - 1)) {
+            for (k in (j + 1):K_comp) {
+              c_j <- companions[j]
+              c_k <- companions[k]
+              p_name1 <- paste0("rho_", c_j, "_", c_k)
+              p_name2 <- paste0("rho_", c_k, "_", c_j)
+              if (p_name1 %in% colnames(samples_mat)) {
+                r_jk <- samples_mat[s, p_name1]
+              } else if (p_name2 %in% colnames(samples_mat)) {
+                r_jk <- samples_mat[s, p_name2]
+              } else if (c_j %in% names(search_data) && c_k %in% names(search_data)) {
+                r_jk <- stats::cor(search_data[[c_j]], search_data[[c_k]], use = "complete.obs")
+              } else {
+                r_jk <- 0
+              }
+              R_CC[j, k] <- R_CC[k, j] <- if (is.na(r_jk)) 0 else r_jk
+            }
+          }
+        }
+        
+        R_CC_reg <- R_CC + diag(1e-5, K_comp)
+        beta_std <- as.vector(R_1C %*% solve(R_CC_reg))
+        r2 <- min(0.999, max(0, as.numeric(R_1C %*% solve(R_CC_reg) %*% t(R_1C))))
+        
+        delta_mu <- sd_resp * as.vector(Z_C %*% beta_std)
+        mu_s <- mu_s + delta_mu
+        unexpl_factor <- sqrt(max(0.01, 1 - r2))
+        total_sd <- max(base_sd, sd_resp) * unexpl_factor
+      } else {
+        total_sd <- base_sd
+      }
+      
       y_rep[s, ] <- stats::rnorm(n_obs, mean = mu_s, sd = total_sd)
     } else if (fam == "poisson") {
       clamped_mu <- pmin(20, pmax(-20, mu_s))
@@ -377,6 +493,9 @@ posterior_predict.because <- function(object, resp = NULL, newdata = NULL, ndraw
     }
   }
   
+  if (use_conditional && length(companions) > 0) {
+    attr(y_rep, "conditioned_on") <- companions
+  }
   return(y_rep)
 }
 

@@ -13,6 +13,8 @@ posterior_predict(object, ...)
   newdata = NULL,
   ndraws = NULL,
   re_formula = NULL,
+  conditional = "auto",
+  condition_on = NULL,
   ...
 )
 }
@@ -31,6 +33,16 @@ If \code{NULL}, takes the first response variable in the model.}
 \item{re_formula}{Formula or \code{NA}; determines which random effects to include.
 If \code{NULL} (default), all random effects are included (conditional prediction).
 If \code{NA}, no random effects are included (marginal prediction).}
+
+\item{conditional}{Logical or \code{"auto"}; whether to condition predictions on correlated
+companion variables (e.g. from latent variable blocks or induced residual covariances).
+If \code{"auto"} (default), automatically conditions when the response variable shares
+induced residual correlations with other observed variables. If \code{FALSE}, draws
+purely marginal/unconditional predictions from the response equation alone.}
+
+\item{condition_on}{Optional character vector of companion variable names to explicitly
+condition on. If \code{NULL} and \code{conditional} is active, defaults to all companion
+variables in \code{object$induced_correlations}.}
 }
 \value{
 A matrix of posterior predictive draws.

@@ -16,6 +16,14 @@
 #'   Defaults to \code{FALSE} to allow inspection of predictive tail behavior.
 #' @param re_formula Formula or \code{NA}; determines which random effects to include
 #'   in the posterior predictions. See \code{\link{posterior_predict}} for details.
+#' @param conditional Logical or \code{"auto"}; whether to condition predictions on correlated
+#'   companion variables (e.g. from latent variable blocks or induced residual covariances).
+#'   If \code{"auto"} (default), automatically conditions when the response variable shares
+#'   induced residual correlations with other observed variables. If \code{FALSE}, draws
+#'   marginal predictions from the response equation alone.
+#' @param condition_on Optional character vector of companion variable names to explicitly
+#'   condition on. If \code{NULL} and \code{conditional} is active, defaults to all companion
+#'   variables in \code{object$induced_correlations}.
 #' @param ... Additional arguments passed to \code{bayesplot} functions.
 #'
 #' @return A \code{ggplot} object produced by \code{bayesplot}.
@@ -41,7 +49,7 @@
 #' @importFrom bayesplot ppc_dens_overlay ppc_hist ppc_stat ppc_stat_2d ppc_bars ppc_bars_grouped ppc_intervals ppc_ecdf_overlay ppc_scatter_avg
 #' @importFrom ggplot2 ggplot
 #' @export
-pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws = 50, trim = FALSE, re_formula = NULL, ...) {
+pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws = 50, trim = FALSE, re_formula = NULL, conditional = "auto", condition_on = NULL, ...) {
   # 1. Identify Response
   if (is.null(resp)) {
     resp <- as.character(all.vars(object$equations[[1]][[2]])[1])
@@ -62,7 +70,7 @@ pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws 
   }
   
   # 3. Generate Posterior Predictions
-  yrep <- posterior_predict(object, resp = resp, ndraws = ndraws, re_formula = re_formula)
+  yrep <- posterior_predict(object, resp = resp, ndraws = ndraws, re_formula = re_formula, conditional = conditional, condition_on = condition_on)
   
   # Synchronous alignment and NA handling
   if (length(y_raw) == ncol(yrep)) {
@@ -160,10 +168,15 @@ pp_check.because <- function(object, resp = NULL, type = "dens_overlay", ndraws 
     "Value"
   )
   
+  sub_text <- paste("Type:", type, "| draws:", nrow(yrep))
+  if (!is.null(attr(yrep, "conditioned_on"))) {
+    sub_text <- paste0(sub_text, " | Conditional on: ", paste(attr(yrep, "conditioned_on"), collapse = ", "))
+  }
+
   plot_out <- plot_out + 
     ggplot2::labs(
       title = paste("Posterior Predictive Check:", resp),
-      subtitle = paste("Type:", type, "| draws:", nrow(yrep)),
+      subtitle = sub_text,
       x = resp,
       y = y_lab
     ) +
