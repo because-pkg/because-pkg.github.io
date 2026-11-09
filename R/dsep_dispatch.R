@@ -221,7 +221,7 @@ run_single_dsep_test_v2 <- function(
     }
   } else if (is.data.frame(dsep_data_to_pass)) {
     n_obs <- nrow(dsep_data_to_pass)
-    if (n_obs > dsep_max_obs) {
+    if (n_obs > dsep_max_obs && is.null(structure)) {
       dsep_data_to_pass <- dsep_data_to_pass[sample(1:n_obs, dsep_max_obs), ]
       if (!quiet) message(sprintf("  (Optimized d-sep: subsampled to %d rows)", dsep_max_obs))
     }
