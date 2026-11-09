@@ -89,6 +89,13 @@ if (getRversion() >= "2.15.1") {
       }
     }
   }
+
+  # Pre-configure XLA_FLAGS with detected CPU cores so JAX initializes with multi-device support
+  current_xla <- Sys.getenv("XLA_FLAGS", "")
+  if (!grepl("--xla_force_host_platform_device_count", current_xla)) {
+    cores <- tryCatch(.detect_available_cores(), error = function(e) 4L)
+    Sys.setenv(XLA_FLAGS = trimws(paste(current_xla, sprintf("--xla_force_host_platform_device_count=%d", cores))))
+  }
 }
 
 .onAttach <- function(libname, pkgname) {
