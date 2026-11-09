@@ -57,6 +57,45 @@
   preserve `fit$structure`, `fit$structures`, and `fit$input$structure`
   with their attached metadata attributes (`"group"`, `"backbone"`,
   `"tree_method"`, `"n.chains"`).
+- **Multi-Response Q-Q Envelope Diagnostics
+  ([`plot_qq()`](https://because-pkg.github.io/because/reference/plot_qq.md))**:
+  Calling `plot_qq(fit)` or `check_normality(fit)` on a fitted SEM now
+  automatically checks all endogenous response variables when
+  `resp = NULL`, rendering a multi-panel faceted grid with empirical 50%
+  (interquartile) and 95% credible simulation envelopes (Landwehr et
+  al. 1984). Evaluates randomized quantile residuals via the probability
+  integral transform (PIT against y^{\text{rep}}, Dunn & Smyth 1996)
+  with posterior predictive skewness and kurtosis realized discrepancies
+  (Gelman et al. 1996). Single responses (e.g. `resp = "Y1"`) or custom
+  subsets (e.g. `resp = c("Y1", "Y2")`) remain fully supported.
+- **Conditional Posterior Predictive Checks for SEM Latent Measurement
+  Blocks (`conditional = "auto"`)**: In structural equation models with
+  unmeasured latent variables or induced residual covariances (e.g.,
+  `Y1 ~ Factor`, `Y2 ~ Factor` via the MAG framework),
+  [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)
+  and
+  [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
+  now automatically condition on correlated companion traits using the
+  closed-form conditional multivariate Gaussian distribution (y_1 \mid
+  \mathbf{y}\_C^{\text{obs}}). This resolves the issue where marginal
+  root-node simulations produced an artificial single bell curve against
+  bimodal or multi-modal trait distributions. Controlled via
+  `conditional = "auto"` (default), `conditional = TRUE`, or
+  `conditional = FALSE` (pure unconditional forward causal generation),
+  with optional explicit `condition_on`.
+- **Informative Conditioning Labels in
+  [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)**:
+  When conditional predictions are active,
+  [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
+  automatically documents the conditioning traits in the plot subtitle
+  (e.g. `Type: dens_overlay | draws: 50 | Conditional on: Y2, Y3`),
+  making diagnostic displays transparent for publication and reviewer
+  evaluation.
+- **KaTeX Math Rendering in Reference Documentation**: Added
+  `math-rendering: katex` to `_pkgdown.yml`, ensuring LaTeX equations in
+  roxygen references (such as mathematical formulas for quantile
+  residuals, VIF thresholds, and variance decompositions) render cleanly
+  in online documentation.
 
 ### Bug Fixes
 
@@ -71,6 +110,23 @@
   structure data returned as nested lists of matrices/arrays (e.g.,
   `list(eigvals = ..., eigvecs = ...)` in NumPyro) is now unpacked when
   inferring structure observation dimensions N.
+- **Preserved Variance for Marginalized Random Effects in Posterior
+  Predictions**: When species-level phylogenetic or hierarchical random
+  effects are analytically marginalized during MCMC (such as `dmnorm` or
+  spectral marginalization) without storing individual species vectors
+  u_i,
+  [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)
+  now automatically incorporates their sampled variance
+  (\sigma\_{\text{phylo}}^2) into predictive simulation noise instead of
+  discarding it. This prevents
+  [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
+  and
+  [`plot_qq()`](https://because-pkg.github.io/because/reference/plot_qq.md)
+  from collapsing into artificial zero-width needles at x = 0.
+- **Roxygen Topic Association for Residuals**: Moved internal helper
+  `%||%` before the roxygen comment block in `R/residuals.R`, ensuring
+  that the reference index correctly documents `residuals.because` and
+  `fitted.because` rather than exposing the internal operator.
 
 ------------------------------------------------------------------------
 
