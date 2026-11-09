@@ -1,15 +1,18 @@
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+
 #' @title Extract Fitted Values and Residuals for because Models
 #' @name residuals.because
+#' @rdname residuals.because
 #' @description
 #' Bayesian methods for extracting expected fitted values and residuals
 #' from fitted \code{because} model objects.
 #'
 #' Supports:
 #' \itemize{
-#'   \item \code{"response"}: Raw posterior residuals \eqn{e^{(s)} = y - \mu^{(s)}}
-#'   \item \code{"pearson"}: Standardized residuals \eqn{(y - \mu^{(s)}) / \sigma^{(s)}}
+#'   \item \code{"response"}: Raw posterior residuals \eqn{e^{(s)} = y - \mu^{(s)}}{e^(s) = y - \mu^(s)}
+#'   \item \code{"pearson"}: Standardized residuals \eqn{(y - \mu^{(s)}) / \sigma^{(s)}}{(y - \mu^(s)) / \sigma^(s)}
 #'   \item \code{"quantile"}: Randomized quantile residuals (Dunn & Smyth 1996; Hartig 2022)
-#'         via the Probability Integral Transform (PIT) against \eqn{y^{\text{rep}}}.
+#'         via the Probability Integral Transform (PIT) against \eqn{y^{\text{rep}}}{y^rep}.
 #' }
 #'
 #' @param object A \code{because} model fit object.
@@ -24,6 +27,9 @@
 #' @param type Character; type of residual: \code{"quantile"} (default), \code{"response"}, or \code{"pearson"}.
 #' @param ... Additional arguments.
 #'
+#' @return A numeric vector of summarized residuals or fitted values (if \code{summary = TRUE}),
+#'   or a matrix of posterior draws (if \code{summary = FALSE}).
+#'
 #' @references
 #' Dunn, P. K., & Smyth, G. K. (1996). Randomized quantile residuals.
 #'   \emph{Journal of Computational and Graphical Statistics}, 5(3), 236-244.
@@ -35,8 +41,6 @@
 #'   Cambridge University Press.
 #'
 #' @importFrom stats qnorm runif median
-`%||%` <- function(a, b) if (!is.null(a)) a else b
-
 #' @export
 fitted.because <- function(object, resp = NULL, newdata = NULL, ndraws = NULL, re_formula = NULL, summary = TRUE, ...) {
   # 1. Identification

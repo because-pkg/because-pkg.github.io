@@ -2,6 +2,7 @@ url: https://because-pkg.github.io/because/
 template:
   bootstrap: 5
   light-switch: true
+  math-rendering: katex
   bslib:
     primary: "#0076BA"
     navbar-bg: "#0076BA"
