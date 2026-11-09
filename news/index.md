@@ -21,14 +21,14 @@
   fitted with multiple candidate covariance structures across all
   engines (NumPyro, JAGS, and NIMBLE). Computes a 3-tier variance
   decomposition:
-  - $`\hat{R}_{\text{MCMC}}`$: Within-structure MCMC convergence across
-    replicate chains ($`\max_k \hat{R}_k`$).
-  - $`\hat{R}_{\text{within\_group}}`$: Parameter sensitivity across
+  - \hat{R}\_{\text{MCMC}}: Within-structure MCMC convergence across
+    replicate chains (\max_k \hat{R}\_k).
+  - \hat{R}\_{\text{within\\group}}: Parameter sensitivity across
     candidate structures within the same group, hypothesis, or backbone
     pseudo-posterior.
-  - $`\hat{R}_{\text{between\_group}}`$: Sensitivity and divergence
-    between competing groups, kernels, or backbone hypotheses using
-    Gelman-Rubin ANOVA decomposition.
+  - \hat{R}\_{\text{between\\group}}: Sensitivity and divergence between
+    competing groups, kernels, or backbone hypotheses using Gelman-Rubin
+    ANOVA decomposition.
   - **Exact Law of Total Variance Uncertainty Decomposition**:
     Orthogonally partitions total posterior uncertainty for each
     parameter into additive components that sum to exactly 100%:
@@ -40,14 +40,14 @@
     all structures and groups), `"Structure-Sensitive (within group)"`,
     `"Group-Sensitive"`, or `"Check MCMC"`.
   - Visual diagnostic plots: 2-panel publication figure displaying the
-    $`\hat{R}`$ convergence/sensitivity forest plot (left) alongside a
-    100% stacked horizontal bar plot of the uncertainty variance
+    \hat{R} convergence/sensitivity forest plot (left) alongside a 100%
+    stacked horizontal bar plot of the uncertainty variance
     decomposition (right), aligned row-for-row per parameter. Trace and
     frequency plots are generated for discrete jump sampling
     (`method = "dcat"`).
 - **Structure Sensitivity Reporting in d-Separation (`Rhat_struct`)**:
   Both `dsep_numpyro.R` and `dsep_dispatch.R` now report structural
-  sensitivity alongside within-structure $`\hat{R}`$ across auxiliary
+  sensitivity alongside within-structure \hat{R} across auxiliary
   conditional independence regressions.
 - **Unified `n.chains` Parameter Across Multi-Structure Engines**:
   Standardized `n.chains` across all structure handlers, model compiler
@@ -70,7 +70,7 @@
   [`process_because_structures()`](https://because-pkg.github.io/because/reference/process_because_structures.md),
   structure data returned as nested lists of matrices/arrays (e.g.,
   `list(eigvals = ..., eigvecs = ...)` in NumPyro) is now unpacked when
-  inferring structure observation dimensions $`N`$.
+  inferring structure observation dimensions N.
 
 ------------------------------------------------------------------------
 
@@ -87,11 +87,10 @@
 - **Sensible Weakly Informative Prior for Negative Binomial Dispersion
   (`r`)**: Replaced the legacy BUGS default prior
   `r ~ dgamma(0.01, 0.01)` (which concentrated 96% of its prior mass
-  below 1 and had a median of $`10^{-29}`$, unintentionally placing
-  extreme weight on astronomical overdispersion) with a weakly
-  informative `dgamma(2, 0.1)` prior (mean = 20, variance = 200,
-  aligning with modern recommendations and the NumPyro specification in
-  `because_py`).
+  below 1 and had a median of 10^{-29}, unintentionally placing extreme
+  weight on astronomical overdispersion) with a weakly informative
+  `dgamma(2, 0.1)` prior (mean = 20, variance = 200, aligning with
+  modern recommendations and the NumPyro specification in `because_py`).
 - **Custom Dispersion and Zero-Inflation Priors**: The model compiler
   now routes Negative Binomial dispersion parameters (`r_<var>`) and
   zero-inflation probabilities (`psi_<var>`) through
@@ -104,18 +103,17 @@
   [`check_prior_scale()`](https://because-pkg.github.io/because/reference/check_prior_scale.md)
   which inspects the empirical variance of continuous Gaussian variables
   before model compilation. If unstandardized variables with large
-  standard deviations ($`\text{SD} > 20`$) are detected without
+  standard deviations (\text{SD} \> 20) are detected without
   user-specified custom priors,
   [`because()`](https://because-pkg.github.io/because/reference/because.md)
   issues an informative warning alerting the user that default priors
-  (e.g. `sigma ~ dunif(0, 100)`,
-  $`\alpha, \beta \sim \text{Normal}(0, 100)`$) assume standardized
-  variables ($`\text{mean} = 0, \text{SD} = 1`$), advising them to
-  standardize continuous traits or supply scale-appropriate custom
-  priors to prevent unintended prior truncation. The check is
-  non-blocking (the model runs anyway) and strictly restricted to
-  continuous Gaussian responses (ignoring Binomial, Poisson, and other
-  discrete/count families).
+  (e.g. `sigma ~ dunif(0, 100)`, \alpha, \beta \sim \text{Normal}(0,
+  100)) assume standardized variables (\text{mean} = 0, \text{SD} = 1),
+  advising them to standardize continuous traits or supply
+  scale-appropriate custom priors to prevent unintended prior
+  truncation. The check is non-blocking (the model runs anyway) and
+  strictly restricted to continuous Gaussian responses (ignoring
+  Binomial, Poisson, and other discrete/count families).
 - **Direct Custom Prior Overrides on Residual Standard Deviation
   (`sigma_*_res`, `sigma_e_*`)**:
   [`get_precision_prior()`](https://because-pkg.github.io/because/reference/get_precision_prior.md)
@@ -170,8 +168,7 @@
     (`TAU_res_*` Wishart matrix, `sigma_<var>_res`, `sigma_obs_*`, and
     `sigma_<struct>_*`) that led to boundary collapse
     (`sigma_res -> 0`), multimodal variance swapping, and severe MCMC
-    mixing / convergence issues (elevated $`\hat{R} > 2.0`$ and low
-    ESS).
+    mixing / convergence issues (elevated \hat{R} \> 2.0 and low ESS).
   - Restored conjugate observation precision
     `tau_obs_<var> ~ dgamma(1, 1)` and derived standard deviation
     `sigma_obs_<var> <- 1/sqrt(tau_obs_<var>)`, eliminating the
@@ -220,17 +217,17 @@
   group) failed JAGS compilation with
   `Unknown variable sigma_<structure>_<response>`. The structural
   variance priors (`tau_u_*`, `sigma_*`) are now declared for all
-  families, while residual variance (`tau_res_*`) and Pagel’s
-  $`\lambda`$ remain restricted to families with additive residual
-  variance. Added a regression test in `test-distributions.R`.
+  families, while residual variance (`tau_res_*`) and Pagel’s \lambda
+  remain restricted to families with additive residual variance. Added a
+  regression test in `test-distributions.R`.
 - **Latent MAG Indicators Excluded from Pagel’s Lambda and Redundant
   Variance Nodes**: Measurement indicator variables linked to
   marginalized latent variables in the Mixed Ancestral Graph (MAG)
   approach (e.g. `Brain`, `HWI`, `Mass` for latent `Size`) have induced
   residual covariance structures (`rho_*` / `TAU_res_*`), for which a
-  univariate Pagel’s $`\lambda`$ is undefined. These indicator variables
-  are now systematically excluded from Pagel’s $`\lambda`$ calculations
-  and monitoring across both `because` and `because_py` (v0.2.10). In
+  univariate Pagel’s \lambda is undefined. These indicator variables are
+  now systematically excluded from Pagel’s \lambda calculations and
+  monitoring across both `because` and `because_py` (v0.2.10). In
   addition, redundant internal variance partitioning nodes
   (`sigma_tot_*` and `sigma_*_<structure>`) for these indicators are
   excluded from model reporting, matching the clean output of the JAGS
@@ -274,7 +271,7 @@
 - **Categorical Dummy Variable Name Sanitization**: Fixed JAGS/NIMBLE
   compilation errors when categorical variables or their levels contain
   periods (`.`) by systematically sanitizing base column and level names
-  (e.g. `Sample.size` $`\rightarrow`$`Sample_size_medium`).
+  (e.g. `Sample.size` \rightarrow `Sample_size_medium`).
 - **Categorical Dummy Disambiguation in Plots**:
   [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md)
   and
@@ -321,16 +318,17 @@
     Variance Inflation Factors (VIF) for Bayesian predictor structures.
   - [`check_residual_structure()`](https://because-pkg.github.io/because/reference/check_residual_structure.md):
     Posterior Variance Partition Coefficients (VPC /
-    $`\lambda_{\text{Bayes}}`$) for phylogenetic, spatial, and custom
+    \lambda\_{\text{Bayes}}) for phylogenetic, spatial, and custom
     grouping random effects.
 - **Bayesian Residuals & Prediction Methods**:
   - Added
     [`residuals.because()`](https://because-pkg.github.io/because/reference/residuals.because.md)
     supporting `"quantile"` (randomized PIT residuals; Dunn & Smyth
     1996), `"response"`, and `"pearson"` residuals.
-  - Added `fitted.because()` to compute posterior expected values across
-    Gaussian, Binomial, Poisson, Negative Binomial, ZIP, ZINB, Gamma,
-    and Lognormal models.
+  - Added
+    [`fitted.because()`](https://because-pkg.github.io/because/reference/residuals.because.md)
+    to compute posterior expected values across Gaussian, Binomial,
+    Poisson, Negative Binomial, ZIP, ZINB, Gamma, and Lognormal models.
   - Added
     [`predict.because()`](https://because-pkg.github.io/because/reference/predict.because.md)
     returning observation-level posterior predictive summaries
@@ -381,13 +379,13 @@
   where missing values (`NA`) in observed responses were stripped
   without subsetting the corresponding columns of `yrep`.
 - **GLM Pearson Residuals**: `residuals(..., type = "pearson")` now
-  standardizes by the family variance function $`\sqrt{V(\mu)}`$ for
+  standardizes by the family variance function \sqrt{V(\mu)} for
   Poisson, Binomial, Negative Binomial, ZIP, and ZINB models instead of
   assuming Gaussian residual standard deviation.
 - **Negative Binomial Dispersion in
   [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)**:
   Fixed parameter lookup to extract `r_<resp>` from posterior samples
-  rather than defaulting to $`r = 1`$.
+  rather than defaulting to r = 1.
 - **Response-Scale Marginal Effects for Count Models**:
   [`marginal_effects()`](https://because-pkg.github.io/because/reference/marginal_effects.md)
   now applies the exponential/zero-inflated inverse link for `poisson`,

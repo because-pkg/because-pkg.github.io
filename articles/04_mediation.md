@@ -3,16 +3,15 @@
 ## Introduction
 
 Causal inference often requires investigating *how* an effect occurs.
-Does $`X`$ affect $`Y`$ directly, or does it work through a mediator
-$`M`$?
+Does X affect Y directly, or does it work through a mediator M?
 
 The `because` package provides a fully automated Bayesian mediation
 analysis tool,
 [`because_mediation()`](https://because-pkg.github.io/because/reference/because_mediation.md),
 which decomposes the Total Effect of an exposure on an outcome into: 1.
-**Direct Effect**: The effect of $`X \to Y`$ not mediated by other
-variables in the graph. 2. **Indirect Effect(s)**: The effect propagated
-through intermediate variables ($`X \to M \to Y`$).
+**Direct Effect**: The effect of X \to Y not mediated by other variables
+in the graph. 2. **Indirect Effect(s)**: The effect propagated through
+intermediate variables (X \to M \to Y).
 
 This is calculated by multiplying the posterior distributions of
 coefficients along each path, preserving full uncertainty
@@ -24,17 +23,17 @@ In this example, we investigate how **Elevation** affects **Plant
 Abundance**. We hypothesize that Elevation acts through a causal chain
 involving Temperature and Soil Moisture:
 
-1.  **Elevation** determines **Temperature** (higher elevation $`\to`$
-    lower temperature).
-2.  **Temperature** influences **Soil Moisture** (lower temperature
-    $`\to`$ lower evaporation $`\to`$ higher moisture).
+1.  **Elevation** determines **Temperature** (higher elevation \to lower
+    temperature).
+2.  **Temperature** influences **Soil Moisture** (lower temperature \to
+    lower evaporation \to higher moisture).
 3.  **Abundance** is driven by **Moisture**, **Temperature**, and
     potentially a direct effect of **Elevation** (e.g., due to UV
     radiation or partial pressure of gases).
 
 ### 1. Simulate Data
 
-We simulate $`N=200`$ plots along an elevation gradient.
+We simulate N=200 plots along an elevation gradient.
 
 ``` r
 
@@ -162,7 +161,7 @@ We expect to see three distinct paths:
 3.  **Long Indirect (Chain)**:
     `Elevation -> Temp -> Moisture -> Abundance`
     - Elevation lowers Temp (negative).
-    - Lower Temp raises Moisture (negative relationship $`\to`$ positive
+    - Lower Temp raises Moisture (negative relationship \to positive
       change in moisture).
     - Higher Moisture raises Abundance (positive).
     - The chain involves two negative links and one positive link,
@@ -175,10 +174,9 @@ credibility intervals for each specific mechanism.
 
 The function calculates the indirect effect as the product of
 coefficients along the path. For example, for the long chain:
-``` math
- \text{Indirect}_{\text{chain}} = \beta_{Elev \to Temp} \times \beta_{Temp \to Moist} \times \beta_{Moist \to Abund} 
-```
-This product-of-coefficients approach is exact for **linear (Gaussian,
+\text{Indirect}\_{\text{chain}} = \beta\_{Elev \to Temp} \times
+\beta\_{Temp \to Moist} \times \beta\_{Moist \to Abund} This
+product-of-coefficients approach is exact for **linear (Gaussian,
 identity-link) models** (MacKinnon, 2008; Pearl, 2001).
 
 > **Important warning for non-linear models**: When any equation in the

@@ -12,7 +12,7 @@ systems and quantify uncertainty in the estimates.
 
 > **Note on the logo**: The package hexagon sticker features the
 > mathematical symbol for “because”, represented as three dots in an
-> inverted triangle ($`\because`$).
+> inverted triangle (\because).
 
 ## Features
 

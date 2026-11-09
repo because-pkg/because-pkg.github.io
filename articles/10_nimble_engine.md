@@ -125,13 +125,13 @@ algorithm is perfect for every dataset. You should consider using
 
 1.  **Low Effective Sample Size (ESS)**: One or two parameters have very
     few independent samples compared to the rest of the model.
-2.  **High R-hat ($`>1.05`$)**: A parameter fails to converge even with
-    a long burn-in and many iterations.
+2.  **High R-hat (\>1.05)**: A parameter fails to converge even with a
+    long burn-in and many iterations.
 3.  **“Fuzzy” Traceplots**: The traceplot looks like a “snake” or has
     long-term trends rather than looking like a consistent
     “caterpillar.”
 
-**Pro-Tip**: If a specific regression coefficient ($`\beta`$) is mixing
+**Pro-Tip**: If a specific regression coefficient (\beta) is mixing
 poorly, swapping the default `RW` for a `slice` sampler is often the
 most effective fix.
 

@@ -1,11 +1,8 @@
 # Deterministic Nodes: Interactions, tresholds and mathematical transformations
 
 In standard Bayesian regression, variables are typically modeled as
-**Stochastic Nodes**:
-``` math
-Y_i \sim \text{Normal}(\alpha + \beta X_i, \sigma)
-```
-This means $`Y`$ is *correlated* with $`X`$, but has its own independent
+**Stochastic Nodes**: Y_i \sim \text{Normal}(\alpha + \beta X_i, \sigma)
+This means Y is *correlated* with X, but has its own independent
 “noise”.
 
 However, in many causal models, some variables are **logical
@@ -269,8 +266,8 @@ equations = list(
 
 - The DAG contains edges: `A -> Compound -> Y` and `B -> Compound -> Y`.
 - This allows you to test for **Mediation**. You can test if `Y` is
-  independent of `A` conditional on `Compound`
-  ($`Y \perp A \mid Compound`$).
+  independent of `A` conditional on `Compound` (Y \perp A \mid
+  Compound).
 
 ### Use Case: The “Blocking” Test
 

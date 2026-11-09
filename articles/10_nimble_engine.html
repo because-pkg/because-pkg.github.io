@@ -11,7 +11,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
-<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<!-- katex math --><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script><script src="../katex-auto.js"></script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
@@ -60,9 +61,9 @@
                         <h4 data-toc-skip class="author">Achaz von
 Hardenberg</h4>
             
-            <h4 data-toc-skip class="date">2026-11-08</h4>
+            <h4 data-toc-skip class="date">2026-11-09</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/v1.9.0/vignettes/10_nimble_engine.Rmd" class="external-link"><code>vignettes/10_nimble_engine.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/vignettes/10_nimble_engine.Rmd" class="external-link"><code>vignettes/10_nimble_engine.Rmd</code></a></small>
       <div class="d-none name"><code>10_nimble_engine.Rmd</code></div>
     </div>
 
@@ -195,19 +196,16 @@ algorithm is perfect for every dataset. You should consider using
 parameters have very few independent samples compared to the rest of the
 model.</li>
 <li>
-<strong>High R-hat
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>&gt;</mo><mn>1.05</mn></mrow><annotation encoding="application/x-tex">&gt;1.05</annotation></semantics></math>)</strong>:
-A parameter fails to converge even with a long burn-in and many
-iterations.</li>
+<strong>High R-hat (<span class="math inline">&gt;1.05</span>)</strong>: A parameter fails to
+converge even with a long burn-in and many iterations.</li>
 <li>
 <strong>“Fuzzy” Traceplots</strong>: The traceplot looks like a
 “snake” or has long-term trends rather than looking like a consistent
 “caterpillar.”</li>
 </ol>
-<p><strong>Pro-Tip</strong>: If a specific regression coefficient
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math>)
-is mixing poorly, swapping the default <code>RW</code> for a
-<code>slice</code> sampler is often the most effective fix.</p>
+<p><strong>Pro-Tip</strong>: If a specific regression coefficient (<span class="math inline">\beta</span>) is mixing poorly, swapping the default
+<code>RW</code> for a <code>slice</code> sampler is often the most
+effective fix.</p>
 </div>
 <div class="section level3">
 <h3 id="common-sampler-types-in-nimble">Common Sampler Types in NIMBLE<a class="anchor" aria-label="anchor" href="#common-sampler-types-in-nimble"></a>

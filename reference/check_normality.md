@@ -15,9 +15,6 @@ posterior predictive distributions.
 # S3 method for class 'because'
 check_normality(object, resp = NULL, ndraws = 250, ...)
 
-# S3 method for class 'because'
-plot_qq(object, ...)
-
 check_normality(object, ...)
 ```
 
@@ -29,8 +26,9 @@ check_normality(object, ...)
 
 - resp:
 
-  Character string; name of the response variable. If `NULL`, takes the
-  first response.
+  Character vector; name(s) of response variable(s) to evaluate. If
+  `NULL` (default), evaluates all endogenous response variables in the
+  model.
 
 - ndraws:
 

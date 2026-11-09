@@ -54,9 +54,9 @@ Let’s fit a standard model first. By default, `because` assigns **weakly
 informative** Gaussian priors (`dnorm(0, 0.01)`) to intercepts (`alpha`)
 and slopes (`beta`). This corresponds to a Standard Deviation of 10.
 These anchors are broad enough to be uninformative for scientific data
-while preventing the numerical instability and convergence failure
-($`Rhat > 1.1`$) often seen with extremely “flat” priors in complex
-hierarchical models.
+while preventing the numerical instability and convergence failure (Rhat
+\> 1.1) often seen with extremely “flat” priors in complex hierarchical
+models.
 
 For Gaussian response variables, the **residual standard deviation**
 gets a half-uniform prior: `sigma ~ dunif(0, 100)`, from which the
@@ -68,12 +68,12 @@ precision is derived as `tau <- 1 / (sigma * sigma)`.
 > standardized (mean = 0, SD = 1)** prior to fitting, ensuring that path
 > coefficients represent comparable standardized effect sizes.
 >
-> - **On standardized data** ($`\text{SD} \approx 1`$), an upper ceiling
->   of 100 on standard deviations is 100 times larger than the data
+> - **On standardized data** (\text{SD} \approx 1), an upper ceiling of
+>   100 on standard deviations is 100 times larger than the data
 >   variance, making it completely flat and non-informative.
 > - **On unstandardized data** with large variances (e.g., body mass in
->   grams, $`\text{SD} > 20`$), an upper bound of 100 could
->   inadvertently truncate the posterior.
+>   grams, \text{SD} \> 20), an upper bound of 100 could inadvertently
+>   truncate the posterior.
 >
 > To safeguard against this, `because` automatically inspects empirical
 > variances and issues an informative diagnostic warning if large
@@ -313,11 +313,11 @@ while allowing the data to dominate the posterior.
 | **Ordinal Cutpoints** | `cutpoint_*` | `dnorm(0, 0.01)` | SD = 10 |
 | **NegBinomial Size** | `r_*` | `dgamma(0.01, 0.01)` | Wide Gamma for dispersion parameter |
 
-> **Precision vs Variance**: JAGS uses precision $`\tau = 1/\sigma^2`$.
-> A prior of `dnorm(0, 0.01)` means a normal distribution with mean 0
-> and precision $`0.01`$, which corresponds to a variance of $`100`$ (SD
-> = 10). This is uninformative for most standardized biological effects
-> but remains numerically stable during adaptation.
+> **Precision vs Variance**: JAGS uses precision \tau = 1/\sigma^2. A
+> prior of `dnorm(0, 0.01)` means a normal distribution with mean 0 and
+> precision 0.01, which corresponds to a variance of 100 (SD = 10). This
+> is uninformative for most standardized biological effects but remains
+> numerically stable during adaptation.
 
 ## Parameter Names Reference
 

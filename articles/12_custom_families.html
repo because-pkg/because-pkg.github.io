@@ -11,7 +11,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
-<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<!-- katex math --><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script><script src="../katex-auto.js"></script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
@@ -60,9 +61,9 @@
                         <h4 data-toc-skip class="author">Achaz von
 Hardenberg</h4>
             
-            <h4 data-toc-skip class="date">2026-11-08</h4>
+            <h4 data-toc-skip class="date">2026-11-09</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/v1.9.0/vignettes/12_custom_families.Rmd" class="external-link"><code>vignettes/12_custom_families.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/vignettes/12_custom_families.Rmd" class="external-link"><code>vignettes/12_custom_families.Rmd</code></a></small>
       <div class="d-none name"><code>12_custom_families.Rmd</code></div>
     </div>
 
@@ -146,10 +147,9 @@ degrees of freedom or dispersion.</p>
 <div class="section level3">
 <h3 id="example-1-student-t-family-robust-regression">Example 1: Student-<em>t</em> Family (Robust Regression)<a class="anchor" aria-label="anchor" href="#example-1-student-t-family-robust-regression"></a>
 </h3>
-<p>The Student-<em>t</em> distribution with
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ν</mi><annotation encoding="application/x-tex">\nu</annotation></semantics></math>
-degrees of freedom has heavier tails than a Gaussian, making it robust
-to outliers. JAGS provides it as <code>dt(mu, tau, nu)</code>.</p>
+<p>The Student-<em>t</em> distribution with <span class="math inline">\nu</span> degrees of freedom has heavier tails than
+a Gaussian, making it robust to outliers. JAGS provides it as
+<code>dt(mu, tau, nu)</code>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://because-pkg.github.io/because">because</a></span><span class="op">)</span></span>
 <span></span>
@@ -222,17 +222,11 @@ typically have a lower WAIC than the Gaussian.</p>
 rates, dietary proportions — are bounded between 0 and 1. A Gaussian
 model can predict values outside this range; the <strong>Beta
 distribution</strong> is the natural choice.</p>
-<p>The Beta distribution is parameterised here by its mean
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>∈</mo><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mu \in (0,1)</annotation></semantics></math>
-and a precision (concentration) parameter
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϕ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\phi &gt; 0</annotation></semantics></math>:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>∼</mo><mtext mathvariant="normal">Beta</mtext><mo stretchy="false" form="prefix">(</mo><mi>μ</mi><mi>ϕ</mi><mo>,</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>μ</mi><mo stretchy="false" form="postfix">)</mo><mi>ϕ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">Y \sim \text{Beta}(\mu \phi, (1-\mu)\phi)</annotation></semantics></math></p>
-<p>With this parameterisation, the variance is
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>μ</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mi>ϕ</mi><mo>+</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mu(1-\mu)/(\phi + 1)</annotation></semantics></math>:
-larger
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ϕ</mi><annotation encoding="application/x-tex">\phi</annotation></semantics></math>
-means less variance around
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math>.</p>
+<p>The Beta distribution is parameterised here by its mean <span class="math inline">\mu \in (0,1)</span> and a precision (concentration)
+parameter <span class="math inline">\phi &gt; 0</span>:</p>
+<p><span class="math display">Y \sim \text{Beta}(\mu \phi,
+(1-\mu)\phi)</span></p>
+<p>With this parameterisation, the variance is <span class="math inline">\mu(1-\mu)/(\phi + 1)</span>: larger <span class="math inline">\phi</span> means less variance around <span class="math inline">\mu</span>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">beta_prop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/because_family.html">because_family</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"beta_prop"</span>,</span>

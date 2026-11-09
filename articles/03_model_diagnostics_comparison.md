@@ -140,17 +140,17 @@ the chains more aggressively.
 When a model is fitted with multiple candidate covariance structures
 (e.g., competing spatial decay kernels, alternative kinship matrices, or
 a collection of phylogenetic trees/backbones via `because.phybase`),
-traditional across-chain $`\hat{R}`$ can be misleading: chains sampling
+traditional across-chain \hat{R} can be misleading: chains sampling
 different structures may legitimately differ in parameter estimates if
 the structures imply differing biology.
 
 [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md)
-partitions variance across levels: - **$`\hat{R}_{\text{MCMC}}`$**:
+partitions variance across levels: - **\hat{R}\_{\text{MCMC}}**:
 Convergence within each individual structure across its replicate chains
-($`\max_k \hat{R}_k`$). - **$`\hat{R}_{\text{within\_group}}`$**:
-Sensitivity across candidate structures within the same hypothesis or
-backbone pseudo-posterior. - **$`\hat{R}_{\text{between\_group}}`$**:
-Sensitivity and divergence between competing groups or backbones.
+(\max_k \hat{R}\_k). - **\hat{R}\_{\text{within\\group}}**: Sensitivity
+across candidate structures within the same hypothesis or backbone
+pseudo-posterior. - **\hat{R}\_{\text{between\\group}}**: Sensitivity
+and divergence between competing groups or backbones.
 
 ``` r
 

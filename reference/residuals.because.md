@@ -16,7 +16,16 @@ Supports:
 ## Usage
 
 ``` r
-a %||% b
+# S3 method for class 'because'
+fitted(
+  object,
+  resp = NULL,
+  newdata = NULL,
+  ndraws = NULL,
+  re_formula = NULL,
+  summary = TRUE,
+  ...
+)
 
 # S3 method for class 'because'
 residuals(
@@ -41,16 +50,9 @@ residuals(
   Character string; name of the response variable. If `NULL`, takes the
   first response.
 
-- type:
+- newdata:
 
-  Character; type of residual: `"quantile"` (default), `"response"`, or
-  `"pearson"`.
-
-- summary:
-
-  Logical; if `TRUE` (default), returns a summarized vector (posterior
-  mean or median). If `FALSE`, returns the full `[ndraws x N_obs]`
-  posterior matrix.
+  Optional new dataset (currently evaluated within-sample).
 
 - ndraws:
 
@@ -63,13 +65,26 @@ residuals(
   included. If `NULL` (default), conditional on random effects. If `NA`,
   marginal prediction without random effects.
 
+- summary:
+
+  Logical; if `TRUE` (default), returns a summarized vector (posterior
+  mean or median). If `FALSE`, returns the full `[ndraws x N_obs]`
+  posterior matrix.
+
 - ...:
 
   Additional arguments.
 
-- newdata:
+- type:
 
-  Optional new dataset (currently evaluated within-sample).
+  Character; type of residual: `"quantile"` (default), `"response"`, or
+  `"pearson"`.
+
+## Value
+
+A numeric vector of summarized residuals or fitted values (if
+`summary = TRUE`), or a matrix of posterior draws (if
+`summary = FALSE`).
 
 ## References
 

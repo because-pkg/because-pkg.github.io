@@ -102,7 +102,7 @@ summary(fit_poisson)
 The summary output gives `alpha_Offspring` (log-scale intercept) and
 `beta_Offspring_*` (log-scale slopes). A slope of 0.5 on the log scale
 means that a one-unit increase in the predictor multiplies the expected
-count by $`e^{0.5} \approx 1.65`$.
+count by e^{0.5} \approx 1.65.
 
 #### Marginal Effects
 
@@ -177,11 +177,11 @@ print(me_bern)
 **Use case**: Count data with variance that greatly exceeds the mean
 (e.g., parasite loads, number of plant seeds, abundance data).
 
-A Poisson model assumes $`\text{Var}(Y) = E(Y)`$. Ecological count data
-often show **overdispersion** ($`\text{Var}(Y) > E(Y)`$), which can
-inflate Type I error in Poisson models. The Negative Binomial adds a
-dispersion parameter $`r`$ (estimated from the data) to accommodate this
-extra variance.
+A Poisson model assumes \text{Var}(Y) = E(Y). Ecological count data
+often show **overdispersion** (\text{Var}(Y) \> E(Y)), which can inflate
+Type I error in Poisson models. The Negative Binomial adds a dispersion
+parameter r (estimated from the data) to accommodate this extra
+variance.
 
 ``` r
 

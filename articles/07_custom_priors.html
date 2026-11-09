@@ -11,7 +11,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
-<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<!-- katex math --><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script><script src="../katex-auto.js"></script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
@@ -59,7 +60,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Custom Priors and Mechanistic Constraints</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/v1.9.0/vignettes/07_custom_priors.Rmd" class="external-link"><code>vignettes/07_custom_priors.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/vignettes/07_custom_priors.Rmd" class="external-link"><code>vignettes/07_custom_priors.Rmd</code></a></small>
       <div class="d-none name"><code>07_custom_priors.Rmd</code></div>
     </div>
 
@@ -126,9 +127,8 @@ assigns <strong>weakly informative</strong> Gaussian priors
 slopes (<code>beta</code>). This corresponds to a Standard Deviation of
 10. These anchors are broad enough to be uninformative for scientific
 data while preventing the numerical instability and convergence failure
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mi>h</mi><mi>a</mi><mi>t</mi><mo>&gt;</mo><mn>1.1</mn></mrow><annotation encoding="application/x-tex">Rhat &gt; 1.1</annotation></semantics></math>)
-often seen with extremely “flat” priors in complex hierarchical
-models.</p>
+(<span class="math inline">Rhat &gt; 1.1</span>) often seen with
+extremely “flat” priors in complex hierarchical models.</p>
 <p>For Gaussian response variables, the <strong>residual standard
 deviation</strong> gets a half-uniform prior:
 <code>sigma ~ dunif(0, 100)</code>, from which the precision is derived
@@ -142,14 +142,12 @@ standardized (mean = 0, SD = 1)</strong> prior to fitting, ensuring that
 path coefficients represent comparable standardized effect sizes.</p>
 <ul>
 <li>
-<strong>On standardized data</strong>
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">SD</mtext><mo>≈</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\text{SD} \approx 1</annotation></semantics></math>),
-an upper ceiling of 100 on standard deviations is 100 times larger than
-the data variance, making it completely flat and non-informative.</li>
+<strong>On standardized data</strong> (<span class="math inline">\text{SD} \approx 1</span>), an upper ceiling of 100
+on standard deviations is 100 times larger than the data variance,
+making it completely flat and non-informative.</li>
 <li>
 <strong>On unstandardized data</strong> with large variances (e.g.,
-body mass in grams,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">SD</mtext><mo>&gt;</mo><mn>20</mn></mrow><annotation encoding="application/x-tex">\text{SD} &gt; 20</annotation></semantics></math>),
+body mass in grams, <span class="math inline">\text{SD} &gt; 20</span>),
 an upper bound of 100 could inadvertently truncate the posterior.</li>
 </ul>
 <p>To safeguard against this, <code>because</code> automatically
@@ -446,15 +444,12 @@ standardised data. Override with <code>sigma_e_*</code> in
 </tbody>
 </table>
 <blockquote>
-<p><strong>Precision vs Variance</strong>: JAGS uses precision
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>=</mo><mn>1</mn><mi>/</mi><msup><mi>σ</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\tau = 1/\sigma^2</annotation></semantics></math>.
-A prior of <code>dnorm(0, 0.01)</code> means a normal distribution with
-mean 0 and precision
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.01</mn><annotation encoding="application/x-tex">0.01</annotation></semantics></math>,
-which corresponds to a variance of
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>100</mn><annotation encoding="application/x-tex">100</annotation></semantics></math>
-(SD = 10). This is uninformative for most standardized biological
-effects but remains numerically stable during adaptation.</p>
+<p><strong>Precision vs Variance</strong>: JAGS uses precision <span class="math inline">\tau = 1/\sigma^2</span>. A prior of
+<code>dnorm(0, 0.01)</code> means a normal distribution with mean 0 and
+precision <span class="math inline">0.01</span>, which corresponds to a
+variance of <span class="math inline">100</span> (SD = 10). This is
+uninformative for most standardized biological effects but remains
+numerically stable during adaptation.</p>
 </blockquote>
 </div>
 <div class="section level2">

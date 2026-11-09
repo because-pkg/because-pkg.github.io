@@ -11,7 +11,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
-<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<!-- katex math --><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script><script src="../katex-auto.js"></script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
@@ -60,9 +61,9 @@
                         <h4 data-toc-skip class="author">Achaz von
 Hardenberg</h4>
             
-            <h4 data-toc-skip class="date">2026-11-08</h4>
+            <h4 data-toc-skip class="date">2026-11-09</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/v1.9.0/vignettes/14_bayesian_diagnostics.Rmd" class="external-link"><code>vignettes/14_bayesian_diagnostics.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/vignettes/14_bayesian_diagnostics.Rmd" class="external-link"><code>vignettes/14_bayesian_diagnostics.Rmd</code></a></small>
       <div class="d-none name"><code>14_bayesian_diagnostics.Rmd</code></div>
     </div>
 
@@ -73,11 +74,10 @@ Hardenberg</h4>
 </h2>
 <p>In classical frequentist regression and Structural Equation Modeling
 (SEM), assumption checking is dominated by null hypothesis significance
-tests
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math>-values)
-such as Shapiro-Wilk for normality, Breusch-Pagan for homoscedasticity,
-and rule-of-thumb Variance Inflation Factors
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">VIF</mtext><mo>&gt;</mo><mn>5</mn></mrow><annotation encoding="application/x-tex">\text{VIF} &gt; 5</annotation></semantics></math>).</p>
+tests (<span class="math inline">p</span>-values) such as Shapiro-Wilk
+for normality, Breusch-Pagan for homoscedasticity, and rule-of-thumb
+Variance Inflation Factors (<span class="math inline">\text{VIF} &gt;
+5</span>).</p>
 <p>In <strong><code>because</code></strong>, diagnostics adhere strictly
 to a <strong>purely Bayesian data analysis philosophy</strong> (Gelman
 et al., 2013; McElreath, 2020). Rather than testing sharp null
@@ -85,18 +85,15 @@ hypotheses that models are “perfect,” Bayesian diagnostics focus on:</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>Posterior parameter covariance geometry</strong>: How does
-the shape of the joint posterior
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false" form="prefix">(</mo><mi>𝛉</mi><mo>∣</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">p(\boldsymbol{\theta} \mid y)</annotation></semantics></math>
-reflect shared information, collinearity, and uncertainty trade-offs?
-(Leamer, 1973, 1978).</li>
+the shape of the joint posterior <span class="math inline">p(\boldsymbol{\theta} \mid y)</span> reflect shared
+information, collinearity, and uncertainty trade-offs? (Leamer, 1973,
+1978).</li>
 <li>
 <strong>Posterior predictive checks (PPC)</strong>: Does replicated
-data generated under the posterior,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>y</mi><mtext mathvariant="normal">rep</mtext></msup><mo>∼</mo><mi>p</mi><mo stretchy="false" form="prefix">(</mo><msup><mi>y</mi><mtext mathvariant="normal">rep</mtext></msup><mo>∣</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y^{\text{rep}} \sim p(y^{\text{rep}} \mid y)</annotation></semantics></math>,
-resemble the observed data
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>
-across key features such as quantiles, skewness, and variance
-dispersion? (Gelman, Meng, &amp; Stern, 1996).</li>
+data generated under the posterior, <span class="math inline">y^{\text{rep}} \sim p(y^{\text{rep}} \mid y)</span>,
+resemble the observed data <span class="math inline">y</span> across key
+features such as quantiles, skewness, and variance dispersion? (Gelman,
+Meng, &amp; Stern, 1996).</li>
 <li>
 <strong>Randomized quantile residuals</strong>: Mapping observations
 through the model’s posterior predictive cumulative distribution to
@@ -123,8 +120,8 @@ physiological trait.</li>
 allometrically with <code>Mass</code>, but also contains residual
 variation representing <strong>relative encephalization</strong>.
 Because both scale together, <code>Mass</code> and <code>Brain</code>
-exhibit strong collinearity
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>≈</mo><mn>0.90</mn></mrow><annotation encoding="application/x-tex">r \approx 0.90</annotation></semantics></math>).</li>
+exhibit strong collinearity (<span class="math inline">r \approx
+0.90</span>).</li>
 <li>
 <strong>Precipitation (<code>Precip</code>)</strong> is an
 environmental driver.</li>
@@ -197,9 +194,8 @@ causally influenced by <code>Mass</code>, <code>Brain</code>
 <code>fitted</code>)<a class="anchor" aria-label="anchor" href="#residual-and-fitted-extraction-residuals-fitted"></a>
 </h2>
 <p>Before running diagnostics, <code>because</code> provides standard
-Bayesian S3 methods to extract expected fitted values
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>μ</mi><mrow><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo>=</mo><msup><mi>g</mi><mrow><mi>−</mi><mn>1</mn></mrow></msup><mo stretchy="false" form="prefix">(</mo><msup><mi>η</mi><mrow><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mu^{(s)} = g^{-1}(\eta^{(s)})</annotation></semantics></math>
-and residuals:</p>
+Bayesian S3 methods to extract expected fitted values <span class="math inline">\mu^{(s)} = g^{-1}(\eta^{(s)})</span> and
+residuals:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 1. Expected fitted values (posterior mean)</span></span>
 <span><span class="va">mu_migration</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Migration"</span>, summary <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -227,17 +223,16 @@ and residuals:</p>
 <code>Mass</code> are both predictors and share high correlation due to
 allometric scaling.</p>
 <p>In frequentist statistics, researchers are often taught to compute
-VIF and drop variables if
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">VIF</mtext><mo>&gt;</mo><mn>5</mn></mrow><annotation encoding="application/x-tex">\text{VIF} &gt; 5</annotation></semantics></math>.
-However, as <strong>Richard McElreath (2020)</strong> emphasizes, in a
-causal DAG, <code>Mass</code> and <code>Brain</code> share variance
-because <code>Mass</code> causally affects <code>Brain</code>.
-<strong>Dropping <code>Mass</code> to “fix” collinearity would open
-backdoor paths and introduce confounding bias!</strong></p>
+VIF and drop variables if <span class="math inline">\text{VIF} &gt;
+5</span>. However, as <strong>Richard McElreath (2020)</strong>
+emphasizes, in a causal DAG, <code>Mass</code> and <code>Brain</code>
+share variance because <code>Mass</code> causally affects
+<code>Brain</code>. <strong>Dropping <code>Mass</code> to “fix”
+collinearity would open backdoor paths and introduce confounding
+bias!</strong></p>
 <p><code><a href="../reference/check_collinearity.html">check_collinearity()</a></code> evaluates collinearity through
 <strong>Leamer’s Bayesian Variance Inflation Factor (BVIF)</strong> and
-the <strong>Posterior Parameter Correlation Matrix</strong>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">Cor</mtext><mo stretchy="false" form="prefix">(</mo><mi>𝛃</mi><mo>∣</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\text{Cor}(\boldsymbol{\beta} \mid y)</annotation></semantics></math>:</p>
+the <strong>Posterior Parameter Correlation Matrix</strong> <span class="math inline">\text{Cor}(\boldsymbol{\beta} \mid y)</span>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Check collinearity across all equations with &gt;= 2 predictors</span></span>
 <span><span class="va">collin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_collinearity.html">check_collinearity</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
@@ -274,9 +269,8 @@ tightly along a diagonal ridge. The model knows their linear combination
 with high certainty, but individual effects share uncertainty.</li>
 <li>
 <strong><code>SE_Multiplier = 2.20</code></strong>: The posterior
-standard error for <code>beta_Brain</code> is
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2.2</mn><mo>×</mo></mrow><annotation encoding="application/x-tex">2.2\times</annotation></semantics></math>
-wider than it would be in an orthogonal experiment.</li>
+standard error for <code>beta_Brain</code> is <span class="math inline">2.2\times</span> wider than it would be in an
+orthogonal experiment.</li>
 <li>
 <strong>No Variable Dropping</strong>: The DAG instructs us to keep
 both variables. To understand the total impact of body size, we simply
@@ -370,15 +364,14 @@ meets the assumption of homoscedasticity.</p>
 (<code>check_residual_structure</code>)<a class="anchor" aria-label="anchor" href="#structural-residuals-variance-partitioning-check_residual_structure"></a>
 </h2>
 <p>When fitting models with phylogenetic or spatial structure, residual
-variation is partitioned into structural variance
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>σ</mi><mtext mathvariant="normal">struct</mtext><mn>2</mn></msubsup><annotation encoding="application/x-tex">\sigma_{\text{struct}}^2</annotation></semantics></math>
-and observation noise
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>σ</mi><mtext mathvariant="normal">res</mtext><mn>2</mn></msubsup><annotation encoding="application/x-tex">\sigma_{\text{res}}^2</annotation></semantics></math>.</p>
+variation is partitioned into structural variance <span class="math inline">\sigma_{\text{struct}}^2</span> and observation
+noise <span class="math inline">\sigma_{\text{res}}^2</span>.</p>
 <p><code><a href="../reference/check_residual_structure.html">check_residual_structure()</a></code> summarizes the posterior
-distribution of the <strong>Variance Partition Coefficient (VPC /
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mtext mathvariant="normal">Bayes</mtext></msub><annotation encoding="application/x-tex">\lambda_{\text{Bayes}}</annotation></semantics></math>)</strong>
-(Hadfield, 2010):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>λ</mi><mtext mathvariant="normal">Bayes</mtext><mrow><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><mo>=</mo><mfrac><msubsup><mi>σ</mi><mtext mathvariant="normal">struct</mtext><mrow><mn>2</mn><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><mrow><msubsup><mi>σ</mi><mtext mathvariant="normal">struct</mtext><mrow><mn>2</mn><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><mo>+</mo><msubsup><mi>σ</mi><mtext mathvariant="normal">res</mtext><mrow><mn>2</mn><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow></msubsup></mrow></mfrac></mrow><annotation encoding="application/x-tex">\lambda_{\text{Bayes}}^{(s)} = \frac{\sigma_{\text{struct}}^{2(s)}}{\sigma_{\text{struct}}^{2(s)} + \sigma_{\text{res}}^{2(s)}}</annotation></semantics></math></p>
+distribution of the <strong>Variance Partition Coefficient (VPC / <span class="math inline">\lambda_{\text{Bayes}}</span>)</strong> (Hadfield,
+2010):</p>
+<p><span class="math display">\lambda_{\text{Bayes}}^{(s)} =
+\frac{\sigma_{\text{struct}}^{2(s)}}{\sigma_{\text{struct}}^{2(s)} +
+\sigma_{\text{res}}^{2(s)}}</span></p>
 <blockquote>
 <p><strong>Note on Structure Classes</strong>: - <strong>Core
 <code>because</code></strong>: Natively supports any numeric
@@ -435,11 +428,10 @@ matrices and sample over topological uncertainty.</p>
 <span></span>
 <span><span class="co"># Check posterior heritability / lambda_Bayes</span></span>
 <span><span class="fu"><a href="../reference/check_residual_structure.html">check_residual_structure</a></span><span class="op">(</span><span class="va">fit_phylo</span>, resp <span class="op">=</span> <span class="st">"Brain"</span><span class="op">)</span></span></code></pre></div>
-<p>A posterior distribution of
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mtext mathvariant="normal">Bayes</mtext></msub><annotation encoding="application/x-tex">\lambda_{\text{Bayes}}</annotation></semantics></math>
-centered near 1 indicates strong phylogenetic or spatial conservatism,
-while values near 0 indicate that the response variation is largely
-idiosyncratic observation noise.</p>
+<p>A posterior distribution of <span class="math inline">\lambda_{\text{Bayes}}</span> centered near 1
+indicates strong phylogenetic or spatial conservatism, while values near
+0 indicate that the response variation is largely idiosyncratic
+observation noise.</p>
 <hr>
 </div>
 </div>
@@ -457,10 +449,8 @@ functions (e.g. Exponential vs. Gaussian decay) or distance metrics
 surface).</li>
 <li>
 <strong>Quantitative genetics</strong>: Alternative relationship
-matrices (pedigree-based
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math>
-vs. genomic
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math>).</li>
+matrices (pedigree-based <span class="math inline">A</span> vs. genomic
+<span class="math inline">G</span>).</li>
 <li>
 <strong>Social network analysis</strong>: Competing association
 matrices (direct physical contact vs. proximity).</li>
@@ -514,31 +504,24 @@ backbones via <code>because.phybase</code>):</p>
 <h4 id="variance-partitioning-and-sensitivity-diagnostics">Variance Partitioning and Sensitivity Diagnostics<a class="anchor" aria-label="anchor" href="#variance-partitioning-and-sensitivity-diagnostics"></a>
 </h4>
 <p>When evaluating models fitted across multiple structures, standard
-across-chain
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>R</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\hat{R}</annotation></semantics></math>
-can be misleading: chains sampling different candidate structures or
-backbones will naturally diverge if the underlying structures imply
-different parameter values.</p>
+across-chain <span class="math inline">\hat{R}</span> can be misleading:
+chains sampling different candidate structures or backbones will
+naturally diverge if the underlying structures imply different parameter
+values.</p>
 <p><code><a href="../reference/check_multicov.html">check_multicov()</a></code> resolves this by computing: 1.
-<strong><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>R</mi><mo accent="true">̂</mo></mover><mtext mathvariant="normal">MCMC</mtext></msub><annotation encoding="application/x-tex">\hat{R}_{\text{MCMC}}</annotation></semantics></math>
+<strong><span class="math inline">\hat{R}_{\text{MCMC}}</span>
 (Within-Structure Convergence)</strong>: Convergence within each
-individual structure across its replicate chains
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">max</mi><mo>⁡</mo></mrow><mi>k</mi></msub><msub><mover><mi>R</mi><mo accent="true">̂</mo></mover><mi>k</mi></msub></mrow><annotation encoding="application/x-tex">\max_k \hat{R}_k</annotation></semantics></math>).
-Values
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>&lt;</mo><mn>1.05</mn></mrow><annotation encoding="application/x-tex">&lt; 1.05</annotation></semantics></math>
-indicate reliable MCMC mixing within each candidate structure. 2.
-<strong><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>R</mi><mo accent="true">̂</mo></mover><mtext mathvariant="normal">within_group</mtext></msub><annotation encoding="application/x-tex">\hat{R}_{\text{within\_group}}</annotation></semantics></math>
-(Within-Group Sensitivity)</strong>: Parameter sensitivity across
-candidate structures within the same group, hypothesis, or backbone
-pseudo-posterior. 3.
-<strong><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>R</mi><mo accent="true">̂</mo></mover><mtext mathvariant="normal">between_group</mtext></msub><annotation encoding="application/x-tex">\hat{R}_{\text{between\_group}}</annotation></semantics></math>
+individual structure across its replicate chains (<span class="math inline">\max_k \hat{R}_k</span>). Values <span class="math inline">&lt; 1.05</span> indicate reliable MCMC mixing
+within each candidate structure. 2. <strong><span class="math inline">\hat{R}_{\text{within\_group}}</span> (Within-Group
+Sensitivity)</strong>: Parameter sensitivity across candidate structures
+within the same group, hypothesis, or backbone pseudo-posterior. 3.
+<strong><span class="math inline">\hat{R}_{\text{between\_group}}</span>
 (Between-Group Divergence)</strong>: Parameter divergence between
 competing hypotheses or backbones using Gelman-Rubin ANOVA
 decomposition. 4. <strong>Law of Total Variance Decomposition (%
 Uncertainty)</strong>: Orthogonally partitions total posterior variance
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mtext mathvariant="normal">Var</mtext><mtext mathvariant="normal">total</mtext></msub><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\text{Var}_{\text{total}}(\theta)</annotation></semantics></math>
-into additive components that sum to
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>100</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">100\%</annotation></semantics></math>:
+<span class="math inline">\text{Var}_{\text{total}}(\theta)</span> into
+additive components that sum to <span class="math inline">100\%</span>:
 - <code>Pct_MCMC</code>: Data estimation / MCMC sampling uncertainty
 conditional on a structure. - <code>Pct_Struct</code>: Branch-length /
 dating / local topological variation within group. -
@@ -549,24 +532,21 @@ hypotheses/backbones.</p>
 <span><span class="fu"><a href="../reference/check_multicov.html">check_multicov</a></span><span class="op">(</span><span class="va">fit_bb</span>, plot <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>The diagnostic report classifies each parameter into one of four
 states: - <code>"Invariant"</code>: Robust across all structures and
-groups
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>R</mi><mo accent="true">̂</mo></mover><mtext mathvariant="normal">MCMC</mtext></msub><mo>&lt;</mo><mn>1.05</mn></mrow><annotation encoding="application/x-tex">\hat{R}_{\text{MCMC}} &lt; 1.05</annotation></semantics></math>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>R</mi><mo accent="true">̂</mo></mover><mtext mathvariant="normal">group</mtext></msub><mo>&lt;</mo><mn>1.05</mn></mrow><annotation encoding="application/x-tex">\hat{R}_{\text{group}} &lt; 1.05</annotation></semantics></math>).
-- <code>"Structure-Sensitive (within group)"</code>: Modest sensitivity
-to within-group variation (e.g. tree dating noise), but robust across
-broad backbones. - <code>"Group-Sensitive"</code>: Parameter estimates
-diverge between competing hypotheses or backbones. -
+groups (<span class="math inline">\hat{R}_{\text{MCMC}} &lt;
+1.05</span>, <span class="math inline">\hat{R}_{\text{group}} &lt;
+1.05</span>). - <code>"Structure-Sensitive (within group)"</code>:
+Modest sensitivity to within-group variation (e.g. tree dating noise),
+but robust across broad backbones. - <code>"Group-Sensitive"</code>:
+Parameter estimates diverge between competing hypotheses or backbones. -
 <code>"Check MCMC"</code>: Poor within-structure MCMC mixing requiring
 longer iterations.</p>
 <p>When plotted, <code><a href="../reference/check_multicov.html">check_multicov()</a></code> displays a side-by-side
 2-panel figure: - <strong>Left Panel</strong>: Forest plot of
-Gelman-Rubin
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>R</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\hat{R}</annotation></semantics></math>
-with the classical
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.05</mn><annotation encoding="application/x-tex">1.05</annotation></semantics></math>
-threshold line. - <strong>Right Panel</strong>: 100% stacked horizontal
-bar plot displaying the exact uncertainty variance decomposition for
-each parameter, aligned row-for-row with the left panel.</p>
+Gelman-Rubin <span class="math inline">\hat{R}</span> with the classical
+<span class="math inline">1.05</span> threshold line. - <strong>Right
+Panel</strong>: 100% stacked horizontal bar plot displaying the exact
+uncertainty variance decomposition for each parameter, aligned
+row-for-row with the left panel.</p>
 <hr>
 </div>
 </div>
@@ -580,12 +560,10 @@ routine model criticism, call <code><a href="../reference/check_model.html">chec
 <code class="sourceCode R"><span><span class="co"># Generates a 5-panel Bayesian diagnostic dashboard</span></span>
 <span><span class="fu"><a href="../reference/check_model.html">check_model</a></span><span class="op">(</span><span class="va">fit</span>, resp <span class="op">=</span> <span class="st">"Migration"</span>, ndraws <span class="op">=</span> <span class="fl">250</span><span class="op">)</span></span></code></pre></div>
 <p>The unified dashboard displays: 1. <strong>PPC Density
-Overlay</strong>: Observed
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>
-versus replicated
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>y</mi><mtext mathvariant="normal">rep</mtext></msup><annotation encoding="application/x-tex">y^{\text{rep}}</annotation></semantics></math>
-densities. 2. <strong>Bayesian Q-Q Plot</strong>: Quantile residuals
-against theoretical normal quantiles with credible envelopes. 3.
+Overlay</strong>: Observed <span class="math inline">y</span> versus
+replicated <span class="math inline">y^{\text{rep}}</span> densities. 2.
+<strong>Bayesian Q-Q Plot</strong>: Quantile residuals against
+theoretical normal quantiles with credible envelopes. 3.
 <strong>Residuals vs. Fitted</strong>: Pointwise residual spread. 4.
 <strong>Binned Residual SD</strong>: Variance stability across fitted
 quantile bins. 5. <strong>Bayesian Variance Inflation</strong>:
@@ -621,8 +599,7 @@ Predictor BVIF and SE multipliers.</p>
 <code>check_collinearity(fit)</code> /
 <code>bvif(fit)</code>
 </td>
-<td align="left">BVIF, SE Multipliers &amp;
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">Cor</mtext><mo stretchy="false" form="prefix">(</mo><mi>𝛃</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\text{Cor}(\boldsymbol{\beta})</annotation></semantics></math>
+<td align="left">BVIF, SE Multipliers &amp; <span class="math inline">\text{Cor}(\boldsymbol{\beta})</span>
 </td>
 <td align="left">Leamer (1978); McElreath (2020)</td>
 </tr>
@@ -644,16 +621,13 @@ Predictor BVIF and SE multipliers.</p>
 <tr class="odd">
 <td align="left"><strong>Structure</strong></td>
 <td align="left"><code>check_residual_structure(fit)</code></td>
-<td align="left">Posterior Distribution of
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mtext mathvariant="normal">Bayes</mtext></msub><annotation encoding="application/x-tex">\lambda_{\text{Bayes}}</annotation></semantics></math>
-/ VPC</td>
+<td align="left">Posterior Distribution of <span class="math inline">\lambda_{\text{Bayes}}</span> / VPC</td>
 <td align="left">Hadfield (2010)</td>
 </tr>
 <tr class="even">
 <td align="left"><strong>Multi-Structure Sensitivity</strong></td>
 <td align="left"><code>check_multicov(fit)</code></td>
-<td align="left">3-Tier Split
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>R</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\hat{R}</annotation></semantics></math>
+<td align="left">3-Tier Split <span class="math inline">\hat{R}</span>
 Diagnostics &amp; Forest Plot</td>
 <td align="left">—</td>
 </tr>

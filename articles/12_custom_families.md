@@ -56,7 +56,7 @@ freedom or dispersion.
 
 ### Example 1: Student-*t* Family (Robust Regression)
 
-The Student-*t* distribution with $`\nu`$ degrees of freedom has heavier
+The Student-*t* distribution with \nu degrees of freedom has heavier
 tails than a Gaussian, making it robust to outliers. JAGS provides it as
 `dt(mu, tau, nu)`.
 
@@ -142,16 +142,13 @@ rates, dietary proportions — are bounded between 0 and 1. A Gaussian
 model can predict values outside this range; the **Beta distribution**
 is the natural choice.
 
-The Beta distribution is parameterised here by its mean
-$`\mu \in (0,1)`$ and a precision (concentration) parameter
-$`\phi > 0`$:
+The Beta distribution is parameterised here by its mean \mu \in (0,1)
+and a precision (concentration) parameter \phi \> 0:
 
-``` math
 Y \sim \text{Beta}(\mu \phi, (1-\mu)\phi)
-```
 
-With this parameterisation, the variance is $`\mu(1-\mu)/(\phi + 1)`$:
-larger $`\phi`$ means less variance around $`\mu`$.
+With this parameterisation, the variance is \mu(1-\mu)/(\phi + 1):
+larger \phi means less variance around \mu.
 
 ``` r
 

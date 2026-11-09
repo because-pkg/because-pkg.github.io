@@ -49,8 +49,7 @@ collinearity, and residual structure.
   : Assumption Diagnostics for because Models
 - [`check_model()`](https://because-pkg.github.io/because/reference/check_model.md)
   : Unified Diagnostic Dashboard for because Models
-- [`plot_qq(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/check_normality.md)
-  [`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
+- [`check_normality()`](https://because-pkg.github.io/because/reference/check_normality.md)
   : Bayesian Normality Check & Q-Q Envelope
 - [`check_homoscedasticity()`](https://because-pkg.github.io/because/reference/check_homoscedasticity.md)
   : Bayesian Homoscedasticity & Residual Dispersion Diagnostics
@@ -62,7 +61,7 @@ collinearity, and residual structure.
 - [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md)
   : Check Multi-Structure Covariance Convergence and Sensitivity
   Diagnostics
-- [`` `%||%` ``](https://because-pkg.github.io/because/reference/residuals.because.md)
+- [`fitted(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/residuals.because.md)
   [`residuals(`*`<because>`*`)`](https://because-pkg.github.io/because/reference/residuals.because.md)
   : Extract Fitted Values and Residuals for because Models
 
@@ -105,7 +104,7 @@ Plotting methods for DAGs, coefficients, and posterior distributions.
 - [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md)
   : Plot Region of Practical Equivalence (ROPE)
 - [`plot_qq()`](https://because-pkg.github.io/because/reference/plot_qq.md)
-  : Plot Bayesian Q-Q Plot with Envelopes
+  : Plot Bayesian Residual Q-Q Plots with Credible Simulation Envelopes
 
 ## Datasets & Utilities
 

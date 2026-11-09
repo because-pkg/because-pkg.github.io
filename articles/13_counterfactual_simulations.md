@@ -7,10 +7,10 @@ questions: *What would happen to the population size if we increased the
 temperature by 2°C? What if we reduced poaching by 50%?*
 
 In Pearl’s causal framework, these questions are formalized using the
-**$`do()`$-calculus**. When you apply an intervention to a variable
-(e.g., $`do(X = x)`$), you are essentially forcing that variable to take
-a specific value, “severing” it from its natural causes. The effect of
-this intervention then ripples downstream through the causal graph.
+**do()-calculus**. When you apply an intervention to a variable (e.g.,
+do(X = x)), you are essentially forcing that variable to take a specific
+value, “severing” it from its natural causes. The effect of this
+intervention then ripples downstream through the causal graph.
 
 The `because` package natively supports Bayesian counterfactual
 simulations via the

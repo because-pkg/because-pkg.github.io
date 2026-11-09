@@ -11,7 +11,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
-<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<!-- katex math --><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script><script src="../katex-auto.js"></script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
@@ -59,7 +60,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Mediation Analysis</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/v1.9.0/vignettes/04_mediation.Rmd" class="external-link"><code>vignettes/04_mediation.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/because-pkg/because-pkg.github.io/blob/master/vignettes/04_mediation.Rmd" class="external-link"><code>vignettes/04_mediation.Rmd</code></a></small>
       <div class="d-none name"><code>04_mediation.Rmd</code></div>
     </div>
 
@@ -69,20 +70,15 @@
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
 <p>Causal inference often requires investigating <em>how</em> an effect
-occurs. Does
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math>
-affect
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math>
-directly, or does it work through a mediator
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>M</mi><annotation encoding="application/x-tex">M</annotation></semantics></math>?</p>
+occurs. Does <span class="math inline">X</span> affect <span class="math inline">Y</span> directly, or does it work through a
+mediator <span class="math inline">M</span>?</p>
 <p>The <code>because</code> package provides a fully automated Bayesian
 mediation analysis tool, <code><a href="../reference/because_mediation.html">because_mediation()</a></code>, which
 decomposes the Total Effect of an exposure on an outcome into: 1.
-<strong>Direct Effect</strong>: The effect of
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>→</mo><mi>Y</mi></mrow><annotation encoding="application/x-tex">X \to Y</annotation></semantics></math>
-not mediated by other variables in the graph. 2. <strong>Indirect
-Effect(s)</strong>: The effect propagated through intermediate variables
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>→</mo><mi>M</mi><mo>→</mo><mi>Y</mi></mrow><annotation encoding="application/x-tex">X \to M \to Y</annotation></semantics></math>).</p>
+<strong>Direct Effect</strong>: The effect of <span class="math inline">X \to Y</span> not mediated by other variables in
+the graph. 2. <strong>Indirect Effect(s)</strong>: The effect propagated
+through intermediate variables (<span class="math inline">X \to M \to
+Y</span>).</p>
 <p>This is calculated by multiplying the posterior distributions of
 coefficients along each path, preserving full uncertainty
 quantification.</p>
@@ -96,16 +92,11 @@ acts through a causal chain involving Temperature and Soil Moisture:</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>Elevation</strong> determines <strong>Temperature</strong>
-(higher elevation
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>→</mo><annotation encoding="application/x-tex">\to</annotation></semantics></math>
-lower temperature).</li>
+(higher elevation <span class="math inline">\to</span> lower
+temperature).</li>
 <li>
 <strong>Temperature</strong> influences <strong>Soil
-Moisture</strong> (lower temperature
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>→</mo><annotation encoding="application/x-tex">\to</annotation></semantics></math>
-lower evaporation
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>→</mo><annotation encoding="application/x-tex">\to</annotation></semantics></math>
-higher moisture).</li>
+Moisture</strong> (lower temperature <span class="math inline">\to</span> lower evaporation <span class="math inline">\to</span> higher moisture).</li>
 <li>
 <strong>Abundance</strong> is driven by <strong>Moisture</strong>,
 <strong>Temperature</strong>, and potentially a direct effect of
@@ -115,9 +106,8 @@ pressure of gases).</li>
 <div class="section level3">
 <h3 id="simulate-data">1. Simulate Data<a class="anchor" aria-label="anchor" href="#simulate-data"></a>
 </h3>
-<p>We simulate
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mo>=</mo><mn>200</mn></mrow><annotation encoding="application/x-tex">N=200</annotation></semantics></math>
-plots along an elevation gradient.</p>
+<p>We simulate <span class="math inline">N=200</span> plots along an
+elevation gradient.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://because-pkg.github.io/because">because</a></span><span class="op">)</span></span>
 <span></span>
@@ -240,9 +230,7 @@ Abundance (positive correlation).</li>
 <code>Elevation -&gt; Temp -&gt; Moisture -&gt; Abundance</code>
 <ul>
 <li>Elevation lowers Temp (negative).</li>
-<li>Lower Temp raises Moisture (negative relationship
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>→</mo><annotation encoding="application/x-tex">\to</annotation></semantics></math>
-positive change in moisture).</li>
+<li>Lower Temp raises Moisture (negative relationship <span class="math inline">\to</span> positive change in moisture).</li>
 <li>Higher Moisture raises Abundance (positive).</li>
 <li>The chain involves two negative links and one positive link,
 resulting in a <strong>Positive</strong> indirect effect.</li>
@@ -257,11 +245,11 @@ credibility intervals for each specific mechanism.</p>
 <h3 id="technical-note">Technical Note<a class="anchor" aria-label="anchor" href="#technical-note"></a>
 </h3>
 <p>The function calculates the indirect effect as the product of
-coefficients along the path. For example, for the long chain:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mtext mathvariant="normal">Indirect</mtext><mtext mathvariant="normal">chain</mtext></msub><mo>=</mo><msub><mi>β</mi><mrow><mi>E</mi><mi>l</mi><mi>e</mi><mi>v</mi><mo>→</mo><mi>T</mi><mi>e</mi><mi>m</mi><mi>p</mi></mrow></msub><mo>×</mo><msub><mi>β</mi><mrow><mi>T</mi><mi>e</mi><mi>m</mi><mi>p</mi><mo>→</mo><mi>M</mi><mi>o</mi><mi>i</mi><mi>s</mi><mi>t</mi></mrow></msub><mo>×</mo><msub><mi>β</mi><mrow><mi>M</mi><mi>o</mi><mi>i</mi><mi>s</mi><mi>t</mi><mo>→</mo><mi>A</mi><mi>b</mi><mi>u</mi><mi>n</mi><mi>d</mi></mrow></msub></mrow><annotation encoding="application/x-tex"> \text{Indirect}_{\text{chain}} = \beta_{Elev \to Temp} \times \beta_{Temp \to Moist} \times \beta_{Moist \to Abund} </annotation></semantics></math>
-This product-of-coefficients approach is exact for <strong>linear
-(Gaussian, identity-link) models</strong> (MacKinnon, 2008; Pearl,
-2001).</p>
+coefficients along the path. For example, for the long chain: <span class="math display"> \text{Indirect}_{\text{chain}} = \beta_{Elev \to
+Temp} \times \beta_{Temp \to Moist} \times \beta_{Moist \to Abund}
+</span> This product-of-coefficients approach is exact for
+<strong>linear (Gaussian, identity-link) models</strong> (MacKinnon,
+2008; Pearl, 2001).</p>
 <blockquote>
 <p><strong>Important warning for non-linear models</strong>: When any
 equation in the mediation path uses a non-linear link function (log for

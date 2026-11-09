@@ -4,9 +4,9 @@
 
 In classical frequentist regression and Structural Equation Modeling
 (SEM), assumption checking is dominated by null hypothesis significance
-tests ($`p`$-values) such as Shapiro-Wilk for normality, Breusch-Pagan
-for homoscedasticity, and rule-of-thumb Variance Inflation Factors
-($`\text{VIF} > 5`$).
+tests (p-values) such as Shapiro-Wilk for normality, Breusch-Pagan for
+homoscedasticity, and rule-of-thumb Variance Inflation Factors
+(\text{VIF} \> 5).
 
 In **`because`**, diagnostics adhere strictly to a **purely Bayesian
 data analysis philosophy** (Gelman et al., 2013; McElreath, 2020).
@@ -14,14 +14,14 @@ Rather than testing sharp null hypotheses that models are “perfect,”
 Bayesian diagnostics focus on:
 
 1.  **Posterior parameter covariance geometry**: How does the shape of
-    the joint posterior $`p(\boldsymbol{\theta} \mid y)`$ reflect shared
+    the joint posterior p(\boldsymbol{\theta} \mid y) reflect shared
     information, collinearity, and uncertainty trade-offs? (Leamer,
     1973, 1978).
 2.  **Posterior predictive checks (PPC)**: Does replicated data
-    generated under the posterior,
-    $`y^{\text{rep}} \sim p(y^{\text{rep}} \mid y)`$, resemble the
-    observed data $`y`$ across key features such as quantiles, skewness,
-    and variance dispersion? (Gelman, Meng, & Stern, 1996).
+    generated under the posterior, y^{\text{rep}} \sim p(y^{\text{rep}}
+    \mid y), resemble the observed data y across key features such as
+    quantiles, skewness, and variance dispersion? (Gelman, Meng, &
+    Stern, 1996).
 3.  **Randomized quantile residuals**: Mapping observations through the
     model’s posterior predictive cumulative distribution to obtain exact
     standard normal residuals regardless of whether the likelihood is
@@ -42,7 +42,7 @@ Tendency**.
 - **Brain Size (`Brain`)** scales allometrically with `Mass`, but also
   contains residual variation representing **relative encephalization**.
   Because both scale together, `Mass` and `Brain` exhibit strong
-  collinearity ($`r \approx 0.90`$).
+  collinearity (r \approx 0.90).
 - **Precipitation (`Precip`)** is an environmental driver.
 - **Migration Tendency (`Migration`)** is causally influenced by `Mass`,
   `Brain` (encephalization), and `Precip`.
@@ -113,8 +113,8 @@ summary(fit)
 ## 3. Residual and Fitted Extraction (`residuals` & `fitted`)
 
 Before running diagnostics, `because` provides standard Bayesian S3
-methods to extract expected fitted values
-$`\mu^{(s)} = g^{-1}(\eta^{(s)})`$ and residuals:
+methods to extract expected fitted values \mu^{(s)} = g^{-1}(\eta^{(s)})
+and residuals:
 
 ``` r
 
@@ -144,16 +144,15 @@ In the `Migration` equation, `Brain` and `Mass` are both predictors and
 share high correlation due to allometric scaling.
 
 In frequentist statistics, researchers are often taught to compute VIF
-and drop variables if $`\text{VIF} > 5`$. However, as **Richard
-McElreath (2020)** emphasizes, in a causal DAG, `Mass` and `Brain` share
-variance because `Mass` causally affects `Brain`. **Dropping `Mass` to
-“fix” collinearity would open backdoor paths and introduce confounding
-bias!**
+and drop variables if \text{VIF} \> 5. However, as **Richard McElreath
+(2020)** emphasizes, in a causal DAG, `Mass` and `Brain` share variance
+because `Mass` causally affects `Brain`. **Dropping `Mass` to “fix”
+collinearity would open backdoor paths and introduce confounding bias!**
 
 [`check_collinearity()`](https://because-pkg.github.io/because/reference/check_collinearity.md)
 evaluates collinearity through **Leamer’s Bayesian Variance Inflation
 Factor (BVIF)** and the **Posterior Parameter Correlation Matrix**
-$`\text{Cor}(\boldsymbol{\beta} \mid y)`$:
+\text{Cor}(\boldsymbol{\beta} \mid y):
 
 ``` r
 
@@ -194,8 +193,8 @@ plot(collin)
     knows their linear combination with high certainty, but individual
     effects share uncertainty.
 2.  **`SE_Multiplier = 2.20`**: The posterior standard error for
-    `beta_Brain` is $`2.2\times`$ wider than it would be in an
-    orthogonal experiment.
+    `beta_Brain` is 2.2\times wider than it would be in an orthogonal
+    experiment.
 3.  **No Variable Dropping**: The DAG instructs us to keep both
     variables. To understand the total impact of body size, we simply
     use
@@ -302,16 +301,15 @@ meets the assumption of homoscedasticity.
 
 When fitting models with phylogenetic or spatial structure, residual
 variation is partitioned into structural variance
-$`\sigma_{\text{struct}}^2`$ and observation noise
-$`\sigma_{\text{res}}^2`$.
+\sigma\_{\text{struct}}^2 and observation noise \sigma\_{\text{res}}^2.
 
 [`check_residual_structure()`](https://because-pkg.github.io/because/reference/check_residual_structure.md)
 summarizes the posterior distribution of the **Variance Partition
-Coefficient (VPC / $`\lambda_{\text{Bayes}}`$)** (Hadfield, 2010):
+Coefficient (VPC / \lambda\_{\text{Bayes}})** (Hadfield, 2010):
 
-``` math
-\lambda_{\text{Bayes}}^{(s)} = \frac{\sigma_{\text{struct}}^{2(s)}}{\sigma_{\text{struct}}^{2(s)} + \sigma_{\text{res}}^{2(s)}}
-```
+\lambda\_{\text{Bayes}}^{(s)} =
+\frac{\sigma\_{\text{struct}}^{2(s)}}{\sigma\_{\text{struct}}^{2(s)} +
+\sigma\_{\text{res}}^{2(s)}}
 
 > **Note on Structure Classes**: - **Core `because`**: Natively supports
 > any numeric covariance/precision `matrix` (e.g., spatial distance
@@ -368,7 +366,7 @@ fit_phylo <- because(
 check_residual_structure(fit_phylo, resp = "Brain")
 ```
 
-A posterior distribution of $`\lambda_{\text{Bayes}}`$ centered near 1
+A posterior distribution of \lambda\_{\text{Bayes}} centered near 1
 indicates strong phylogenetic or spatial conservatism, while values near
 0 indicate that the response variation is largely idiosyncratic
 observation noise.
@@ -384,7 +382,7 @@ multiple candidate covariance matrices or structures are plausible:
   (e.g. Exponential vs. Gaussian decay) or distance metrics (Euclidean
   geographic distance vs. environmental resistance surface).
 - **Quantitative genetics**: Alternative relationship matrices
-  (pedigree-based $`A`$ vs. genomic $`G`$).
+  (pedigree-based A vs. genomic G).
 - **Social network analysis**: Competing association matrices (direct
   physical contact vs. proximity).
 - **Phylogenetics**: Competing tree topologies, branch-length
@@ -440,24 +438,24 @@ fit_bb <- because(
 #### Variance Partitioning and Sensitivity Diagnostics
 
 When evaluating models fitted across multiple structures, standard
-across-chain $`\hat{R}`$ can be misleading: chains sampling different
+across-chain \hat{R} can be misleading: chains sampling different
 candidate structures or backbones will naturally diverge if the
 underlying structures imply different parameter values.
 
 [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md)
-resolves this by computing: 1. **$`\hat{R}_{\text{MCMC}}`$
+resolves this by computing: 1. **\hat{R}\_{\text{MCMC}}
 (Within-Structure Convergence)**: Convergence within each individual
-structure across its replicate chains ($`\max_k \hat{R}_k`$). Values
-$`< 1.05`$ indicate reliable MCMC mixing within each candidate
-structure. 2. **$`\hat{R}_{\text{within\_group}}`$ (Within-Group
-Sensitivity)**: Parameter sensitivity across candidate structures within
-the same group, hypothesis, or backbone pseudo-posterior. 3.
-**$`\hat{R}_{\text{between\_group}}`$ (Between-Group Divergence)**:
+structure across its replicate chains (\max_k \hat{R}\_k). Values \<
+1.05 indicate reliable MCMC mixing within each candidate structure. 2.
+**\hat{R}\_{\text{within\\group}} (Within-Group Sensitivity)**:
+Parameter sensitivity across candidate structures within the same group,
+hypothesis, or backbone pseudo-posterior. 3.
+**\hat{R}\_{\text{between\\group}} (Between-Group Divergence)**:
 Parameter divergence between competing hypotheses or backbones using
 Gelman-Rubin ANOVA decomposition. 4. **Law of Total Variance
 Decomposition (% Uncertainty)**: Orthogonally partitions total posterior
-variance $`\text{Var}_{\text{total}}(\theta)`$ into additive components
-that sum to $`100\%`$: - `Pct_MCMC`: Data estimation / MCMC sampling
+variance \text{Var}\_{\text{total}}(\theta) into additive components
+that sum to 100\\: - `Pct_MCMC`: Data estimation / MCMC sampling
 uncertainty conditional on a structure. - `Pct_Struct`: Branch-length /
 dating / local topological variation within group. - `Pct_Group`:
 Structural conflict between competing hypotheses/backbones.
@@ -470,7 +468,7 @@ check_multicov(fit_bb, plot = TRUE)
 
 The diagnostic report classifies each parameter into one of four
 states: - `"Invariant"`: Robust across all structures and groups
-($`\hat{R}_{\text{MCMC}} < 1.05`$, $`\hat{R}_{\text{group}} < 1.05`$). -
+(\hat{R}\_{\text{MCMC}} \< 1.05, \hat{R}\_{\text{group}} \< 1.05). -
 `"Structure-Sensitive (within group)"`: Modest sensitivity to
 within-group variation (e.g. tree dating noise), but robust across broad
 backbones. - `"Group-Sensitive"`: Parameter estimates diverge between
@@ -480,8 +478,8 @@ within-structure MCMC mixing requiring longer iterations.
 When plotted,
 [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md)
 displays a side-by-side 2-panel figure: - **Left Panel**: Forest plot of
-Gelman-Rubin $`\hat{R}`$ with the classical $`1.05`$ threshold line. -
-**Right Panel**: 100% stacked horizontal bar plot displaying the exact
+Gelman-Rubin \hat{R} with the classical 1.05 threshold line. - **Right
+Panel**: 100% stacked horizontal bar plot displaying the exact
 uncertainty variance decomposition for each parameter, aligned
 row-for-row with the left panel.
 
@@ -499,13 +497,12 @@ routine model criticism, call
 check_model(fit, resp = "Migration", ndraws = 250)
 ```
 
-The unified dashboard displays: 1. **PPC Density Overlay**: Observed
-$`y`$ versus replicated $`y^{\text{rep}}`$ densities. 2. **Bayesian Q-Q
-Plot**: Quantile residuals against theoretical normal quantiles with
-credible envelopes. 3. **Residuals vs. Fitted**: Pointwise residual
-spread. 4. **Binned Residual SD**: Variance stability across fitted
-quantile bins. 5. **Bayesian Variance Inflation**: Predictor BVIF and SE
-multipliers.
+The unified dashboard displays: 1. **PPC Density Overlay**: Observed y
+versus replicated y^{\text{rep}} densities. 2. **Bayesian Q-Q Plot**:
+Quantile residuals against theoretical normal quantiles with credible
+envelopes. 3. **Residuals vs. Fitted**: Pointwise residual spread. 4.
+**Binned Residual SD**: Variance stability across fitted quantile bins.
+5. **Bayesian Variance Inflation**: Predictor BVIF and SE multipliers.
 
 ------------------------------------------------------------------------
 
@@ -514,11 +511,11 @@ multipliers.
 | Diagnostic | Function | Output | Primary Reference |
 |:---|:---|:---|:---|
 | **Residuals** | `residuals(fit, type = "quantile")` | Randomized Quantile Residuals | Dunn & Smyth (1996) |
-| **Collinearity** | `check_collinearity(fit)` / `bvif(fit)` | BVIF, SE Multipliers & $`\text{Cor}(\boldsymbol{\beta})`$ | Leamer (1978); McElreath (2020) |
+| **Collinearity** | `check_collinearity(fit)` / `bvif(fit)` | BVIF, SE Multipliers & \text{Cor}(\boldsymbol{\beta}) | Leamer (1978); McElreath (2020) |
 | **Normality** | `check_normality(fit)` / `plot_qq(fit)` | Q-Q Envelope & Skewness/Kurtosis Discrepancies | Landwehr et al. (1984); Gelman et al. (1996) |
 | **Homoscedasticity** | `check_homoscedasticity(fit)` | Binned Residual SDs & Variance Ratio CI | Gelman & Hill (2007) |
-| **Structure** | `check_residual_structure(fit)` | Posterior Distribution of $`\lambda_{\text{Bayes}}`$ / VPC | Hadfield (2010) |
-| **Multi-Structure Sensitivity** | `check_multicov(fit)` | 3-Tier Split $`\hat{R}`$ Diagnostics & Forest Plot | — |
+| **Structure** | `check_residual_structure(fit)` | Posterior Distribution of \lambda\_{\text{Bayes}} / VPC | Hadfield (2010) |
+| **Multi-Structure Sensitivity** | `check_multicov(fit)` | 3-Tier Split \hat{R} Diagnostics & Forest Plot | — |
 | **Dashboard** | `check_model(fit)` | Unified 5-Panel Visual Dashboard | — |
 
 ------------------------------------------------------------------------

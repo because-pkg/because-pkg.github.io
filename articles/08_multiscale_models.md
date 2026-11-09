@@ -19,8 +19,8 @@ frames**, one per scale, the engine:
 1.  Correctly maps each variable to its natural scale.
 
 2.  Uses the **appropriate degrees of freedom** for each d-separation
-    test: year-scale tests use $`N_{years}`$, individual-scale tests use
-    $`N_{individuals}`$, and cross-scale tests are fitted at the lower
+    test: year-scale tests use N\_{years}, individual-scale tests use
+    N\_{individuals}, and cross-scale tests are fitted at the lower
     scale using whatever random effects the researcher specified in the
     structural equations.
 
