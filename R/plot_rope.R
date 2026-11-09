@@ -258,12 +258,6 @@ plot_rope.because <- function(object, rope = "default", parameters = NULL, ...) 
             y = rep(seq_along(unique_labels), 2),
             yend = rep(seq_along(unique_labels) + 0.85, 2)
         )
-        # Draw horizontal baseline bracket indicating the ROPE interval
-        h_lines_df <- data.frame(
-            x = r_mins_by_level,
-            xend = r_maxs_by_level,
-            y = seq_along(unique_labels)
-        )
         p <- p +
             ggplot2::geom_segment(
                 data = v_lines_df,
@@ -271,13 +265,6 @@ plot_rope.because <- function(object, rope = "default", parameters = NULL, ...) 
                 linetype = "dashed",
                 color = "darkgray",
                 linewidth = 0.8,
-                inherit.aes = FALSE
-            ) +
-            ggplot2::geom_segment(
-                data = h_lines_df,
-                ggplot2::aes(x = x, xend = xend, y = y, yend = y),
-                color = "#4A8F8F",
-                linewidth = 1.2,
                 inherit.aes = FALSE
             )
     }
