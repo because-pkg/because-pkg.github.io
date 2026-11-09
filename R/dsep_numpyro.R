@@ -401,9 +401,7 @@ run_dsep_numpyro <- function(
         names(new_dsep_df)[names(new_dsep_df) == "ci_2.5"] <- "LowerCI"
         names(new_dsep_df)[names(new_dsep_df) == "ci_97.5"] <- "UpperCI"
         names(new_dsep_df)[names(new_dsep_df) == "rhat"] <- "Rhat"
-        if ("rhat_tree" %in% names(new_dsep_df)) {
-          names(new_dsep_df)[names(new_dsep_df) == "rhat_tree"] <- "Rhat_tree"
-        }
+        new_dsep_df$rhat_tree <- NULL
         names(new_dsep_df)[names(new_dsep_df) == "n_eff"] <- "n.eff"
         new_dsep_df$Scale <- NA
         new_dsep_df$is_independent <- NULL
@@ -480,12 +478,7 @@ run_dsep_numpyro <- function(
         if ("LowerCI" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$LowerCI <- round(as.numeric(dsep_df_list[[i]]$LowerCI), 3)
         if ("UpperCI" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$UpperCI <- round(as.numeric(dsep_df_list[[i]]$UpperCI), 3)
         if ("Rhat" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$Rhat <- round(as.numeric(dsep_df_list[[i]]$Rhat), 3)
-        if ("Rhat_tree" %in% names(dsep_df_list[[i]])) {
-          val <- dsep_df_list[[i]]$Rhat_tree
-          if (!is.null(val) && !is.na(val)) {
-            dsep_df_list[[i]]$Rhat_tree <- round(as.numeric(val), 3)
-          }
-        }
+        dsep_df_list[[i]]$Rhat_tree <- NULL
         if ("n.eff" %in% names(dsep_df_list[[i]])) dsep_df_list[[i]]$n.eff <- round(as.numeric(dsep_df_list[[i]]$n.eff), 0)
       }
     }
