@@ -409,23 +409,38 @@ summary.because <- function(
                         sqrt(var_plus / W)
                     }
                     rhat <- stats::setNames(rep(NA_real_, length(var_names_all)), var_names_all)
+                    rhat_max <- stats::setNames(rep(NA_real_, length(var_names_all)), var_names_all)
                     rhat_tree <- stats::setNames(rep(NA_real_, length(var_names_all)), var_names_all)
+                    tree_ess_sum <- stats::setNames(rep(0, length(var_names_all)), var_names_all)
                     unique_trees <- sort(unique(chain_k_vals))
                     for (p_idx in seq_along(var_names_all)) {
                         pname <- var_names_all[p_idx]
                         if (pname %in% k_cols) next
                         tree_rhats <- numeric(0)
+                        p_ess_sum <- 0
                         for (tk in unique_trees) {
                             c_idx <- which(chain_k_vals == tk)
+                            if (length(c_idx) >= 1) {
+                                sub_tk <- object$samples[c_idx]
+                                ess_tk <- tryCatch(coda::effectiveSize(sub_tk)[pname], error = function(e) NA_real_)
+                                if (!is.na(ess_tk) && is.finite(ess_tk)) p_ess_sum <- p_ess_sum + ess_tk
+                            }
                             if (length(c_idx) >= 2) {
                                 sub_vecs <- lapply(c_idx, function(ci) as.numeric(object$samples[[ci]][, p_idx]))
                                 gd <- calc_rhat_vec(sub_vecs)
                                 if (is.finite(gd)) tree_rhats <- c(tree_rhats, gd)
                             }
                         }
-                        if (length(tree_rhats) > 0) rhat[pname] <- max(tree_rhats, na.rm = TRUE)
+                        if (length(tree_rhats) > 0) {
+                            rhat[pname] <- mean(tree_rhats, na.rm = TRUE)
+                            rhat_max[pname] <- max(tree_rhats, na.rm = TRUE)
+                        }
+                        if (p_ess_sum > 0) tree_ess_sum[pname] <- p_ess_sum
                         all_vecs <- lapply(seq_along(object$samples), function(ci) as.numeric(object$samples[[ci]][, p_idx]))
                         rhat_tree[pname] <- calc_rhat_vec(all_vecs)
+                    }
+                    if (any(tree_ess_sum > 0)) {
+                        eff_size <- tree_ess_sum
                     }
                 }
             }
@@ -536,11 +551,15 @@ summary.because <- function(
             combined <- combined[to_keep, , drop = FALSE]
         }
 
-        # Add Rhat and Rhat_tree if available
+        # Add Rhat, Rhat_max and Rhat_tree if available
         if (!is.null(rhat)) {
             # Ensure alignment
             rhat_aligned <- rhat[rownames(combined)]
             combined <- cbind(combined, Rhat = rhat_aligned)
+        }
+        if (exists("rhat_max") && !is.null(rhat_max)) {
+            rhat_max_aligned <- rhat_max[rownames(combined)]
+            combined <- cbind(combined, Rhat_max = rhat_max_aligned)
         }
         if (!is.null(rhat_tree)) {
             rhat_tree_aligned <- rhat_tree[rownames(combined)]
@@ -566,6 +585,7 @@ summary.because <- function(
                 "Time-series SE",
                 colnames(quant_table),
                 "Rhat",
+                "Rhat_max",
                 "Rhat_tree"
             )
         )
@@ -669,6 +689,9 @@ print.summary.because <- function(x, ...) {
             cat(header, "\n")
             # Print stats row without the Test and Scale columns
             cols_to_hide <- c("Test", "Scale")
+            if ("Rhat_max" %in% names(results) && all(is.na(results$Rhat_max))) {
+                cols_to_hide <- c(cols_to_hide, "Rhat_max")
+            }
             print(results[i, !(names(results) %in% cols_to_hide)], row.names = FALSE)
             cat("\n")
             cat("\n")
