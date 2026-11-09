@@ -950,9 +950,63 @@ check_normality <- function(object, ...) {
     UseMethod("check_normality")
 }
 
-#' Plot Bayesian Q-Q Plot with Envelopes
-#' @param object A fitted model object.
-#' @param ... Additional arguments.
+#' Plot Bayesian Residual Q-Q Plots with Credible Simulation Envelopes
+#'
+#' Evaluates distributional and normality assumptions for endogenous variables in a
+#' \code{because} model using **Randomized Quantile Residuals** (Dunn & Smyth 1996)
+#' and **Posterior Predictive Credible Envelopes** (Landwehr et al. 1984).
+#'
+#' @param object A fitted \code{because} model object.
+#' @param resp Character vector of response variable names to evaluate. If \code{NULL} (the default),
+#'   all endogenous response variables in the model are plotted and faceted into a multi-panel display.
+#'   Provide a single variable name (e.g. \code{resp = "Brain"}) to plot a single variable,
+#'   or a character vector to select a subset of responses.
+#' @param ndraws Integer; number of posterior predictive draws to simulate for the envelope. Defaults to 250.
+#' @param ... Additional arguments passed to methods.
+#'
+#' @details
+#' Standard Q-Q plots for non-Gaussian or structured models can be misleading because discrete or
+#' constrained responses do not follow standard normal error distributions. \code{plot_qq} resolves
+#' this by computing **Randomized Quantile Residuals** via the Probability Integral Transform (PIT)
+#' against simulated model replications (\eqn{y^{\text{rep}}}), which follow an exact standard normal
+#' distribution under the correct model (Dunn & Smyth 1996; Hartig 2022).
+#'
+#' In addition, an empirical simulation envelope is constructed by sorting replicated residuals
+#' across posterior predictive draws (Landwehr et al. 1984):
+#' \itemize{
+#'   \item The **darker blue central band** represents the 50% posterior predictive envelope (interquartile range).
+#'   \item The **lighter blue outer band** represents the 95% posterior predictive envelope.
+#' }
+#' Residual points falling systematically outside the 95% envelope indicate model misspecification,
+#' unmodeled skewness, heavy tails, or zero-inflation.
+#'
+#' When the model contains multiple equations (as in structural equation models), calling
+#' \code{plot_qq(fit)} automatically facets across all endogenous response variables.
+#'
+#' @return A \code{ggplot2} plot object.
+#'
+#' @references
+#' Dunn, P. K., & Smyth, G. K. (1996). Randomized quantile residuals.
+#'   \emph{Journal of Computational and Graphical Statistics}, 5(3), 236-244.
+#'
+#' Landwehr, J. M., Pregibon, D., & Shoemaker, A. C. (1984). Graphical methods for assessing logistic
+#'   regression models. \emph{Journal of the American Statistical Association}, 79(385), 61-71.
+#'
+#' Hartig, F. (2022). DHARMa: Residual Diagnostics for Hierarchical (Multi-Level / Mixed) Regression Models.
+#'
+#' Gelman, A., Meng, X. L., & Stern, H. (1996). Posterior predictive assessment of model fitness via
+#'   realized discrepancies. \emph{Statistica Sinica}, 733-760.
+#'
+#' @seealso \code{\link{check_normality}}, \code{\link{check_model}}, \code{\link{residuals.because}}
+#'
+#' @examples
+#' \dontrun{
+#' # Plot Q-Q envelopes for all equations in the SEM
+#' plot_qq(fit_model)
+#'
+#' # Plot a specific response variable
+#' plot_qq(fit_model, resp = "Brain")
+#' }
 #' @export
 plot_qq <- function(object, ...) {
     UseMethod("plot_qq")

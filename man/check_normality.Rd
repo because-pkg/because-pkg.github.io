@@ -2,20 +2,18 @@
 % Please edit documentation in R/bayesian_diagnostics.R, R/generics.R
 \name{check_normality.because}
 \alias{check_normality.because}
-\alias{plot_qq.because}
 \alias{check_normality}
 \title{Bayesian Normality Check & Q-Q Envelope}
 \usage{
 \method{check_normality}{because}(object, resp = NULL, ndraws = 250, ...)
-
-\method{plot_qq}{because}(object, ...)
 
 check_normality(object, ...)
 }
 \arguments{
 \item{object}{A fitted model object.}
 
-\item{resp}{Character string; name of the response variable. If \code{NULL}, takes the first response.}
+\item{resp}{Character vector; name(s) of response variable(s) to evaluate. If \code{NULL} (default),
+evaluates all endogenous response variables in the model.}
 
 \item{ndraws}{Integer; number of posterior predictive draws to simulate for the envelope. Defaults to 250.}
 

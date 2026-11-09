@@ -249,7 +249,8 @@ plot.because_collinearity <- function(x, ...) {
 #' test quantities against their posterior predictive distributions.
 #'
 #' @param object A \code{because} model fit object.
-#' @param resp Character string; name of the response variable. If \code{NULL}, takes the first response.
+#' @param resp Character vector; name(s) of response variable(s) to evaluate. If \code{NULL} (default),
+#'   evaluates all endogenous response variables in the model.
 #' @param ndraws Integer; number of posterior predictive draws to simulate for the envelope. Defaults to 250.
 #' @param ... Additional arguments.
 #'
@@ -258,92 +259,114 @@ plot.because_collinearity <- function(x, ...) {
 #'
 #' @export
 check_normality.because <- function(object, resp = NULL, ndraws = 250, ...) {
+  all_resps <- unique(vapply(object$equations, function(eq) as.character(all.vars(eq[[2]])[1]), character(1)))
   if (is.null(resp)) {
-    resp <- as.character(all.vars(object$equations[[1]][[2]])[1])
-  }
-
-  # 1. Observed Quantile Residuals (excluding NAs)
-  res_obs_all <- residuals(object, resp = resp, type = "quantile", ndraws = ndraws)
-  valid_idx <- which(!is.na(res_obs_all))
-  res_obs <- res_obs_all[valid_idx]
-  n <- length(res_obs)
-
-  # 2. Generate Posterior Predictive Replicates for Empirical Envelope
-  yrep_all <- posterior_predict(object, resp = resp, ndraws = min(ndraws, 100))
-  yrep <- if (length(valid_idx) > 0 && ncol(yrep_all) >= max(valid_idx)) {
-    yrep_all[, valid_idx, drop = FALSE]
+    resp <- all_resps
   } else {
-    yrep_all
-  }
-  n_rep <- nrow(yrep)
-
-  # Theoretical quantiles
-  theo_q <- stats::qnorm((seq_len(n) - 0.375) / (n + 0.25))
-  obs_sorted <- sort(res_obs)
-
-  # Compute sorted replicates under the model
-  rep_sorted_mat <- matrix(0, nrow = n_rep, ncol = n)
-  for (b in seq_len(n_rep)) {
-    # Generate quantile residuals for replicated data
-    u_b <- numeric(n)
-    for (i in seq_len(n)) {
-      u_b[i] <- mean(yrep[, i] < yrep[b, i], na.rm = TRUE) + stats::runif(1) * mean(yrep[, i] == yrep[b, i], na.rm = TRUE)
-      u_b[i] <- min(max(u_b[i], 1 / (2 * n_rep)), 1 - 1 / (2 * n_rep))
+    invalid <- setdiff(resp, all_resps)
+    if (length(invalid) > 0) {
+      stop(sprintf("Response variable(s) not found in model: %s. Available responses: %s",
+                   paste(invalid, collapse = ", "), paste(all_resps, collapse = ", ")))
     }
-    rep_sorted_mat[b, ] <- sort(stats::qnorm(u_b))
   }
 
-  # Empirical Envelope Quantiles
-  lower95 <- apply(rep_sorted_mat, 2, stats::quantile, probs = 0.025, na.rm = TRUE)
-  lower80 <- apply(rep_sorted_mat, 2, stats::quantile, probs = 0.10,  na.rm = TRUE)
-  median_q <- apply(rep_sorted_mat, 2, stats::median, na.rm = TRUE)
-  upper80 <- apply(rep_sorted_mat, 2, stats::quantile, probs = 0.90,  na.rm = TRUE)
-  upper95 <- apply(rep_sorted_mat, 2, stats::quantile, probs = 0.975, na.rm = TRUE)
+  envelope_list <- list()
+  disc_list <- list()
 
-  envelope_df <- data.frame(
-    Theoretical = theo_q,
-    Observed    = obs_sorted,
-    Lower95     = lower95,
-    Lower80     = lower80,
-    Median      = median_q,
-    Upper80     = upper80,
-    Upper95     = upper95
-  )
+  for (r in resp) {
+    # 1. Observed Quantile Residuals (excluding NAs)
+    res_obs_all <- residuals(object, resp = r, type = "quantile", ndraws = ndraws)
+    valid_idx <- which(!is.na(res_obs_all))
+    res_obs <- res_obs_all[valid_idx]
+    n <- length(res_obs)
 
-  # 3. Discrepancy Statistics: Skewness and Kurtosis
-  skewness_fn <- function(x) {
-    x <- x[!is.na(x)]
-    m2 <- mean((x - mean(x))^2)
-    if (is.na(m2) || m2 == 0) return(0)
-    mean((x - mean(x))^3) / (m2^(3/2))
+    # 2. Generate Posterior Predictive Replicates for Empirical Envelope
+    yrep_all <- posterior_predict(object, resp = r, ndraws = min(ndraws, 100))
+    yrep <- if (length(valid_idx) > 0 && ncol(yrep_all) >= max(valid_idx)) {
+      yrep_all[, valid_idx, drop = FALSE]
+    } else {
+      yrep_all
+    }
+    n_rep <- nrow(yrep)
+
+    # Theoretical quantiles
+    theo_q <- stats::qnorm((seq_len(n) - 0.375) / (n + 0.25))
+    obs_sorted <- sort(res_obs)
+
+    # Compute sorted replicates under the model
+    rep_sorted_mat <- matrix(0, nrow = n_rep, ncol = n)
+    for (b in seq_len(n_rep)) {
+      # Generate quantile residuals for replicated data
+      u_b <- numeric(n)
+      for (i in seq_len(n)) {
+        u_b[i] <- mean(yrep[, i] < yrep[b, i], na.rm = TRUE) + stats::runif(1) * mean(yrep[, i] == yrep[b, i], na.rm = TRUE)
+        u_b[i] <- min(max(u_b[i], 1 / (2 * n_rep)), 1 - 1 / (2 * n_rep))
+      }
+      rep_sorted_mat[b, ] <- sort(stats::qnorm(u_b))
+    }
+
+    # Empirical Envelope Quantiles
+    lower95 <- apply(rep_sorted_mat, 2, stats::quantile, probs = 0.025, na.rm = TRUE)
+    lower80 <- apply(rep_sorted_mat, 2, stats::quantile, probs = 0.10,  na.rm = TRUE)
+    median_q <- apply(rep_sorted_mat, 2, stats::median, na.rm = TRUE)
+    upper80 <- apply(rep_sorted_mat, 2, stats::quantile, probs = 0.90,  na.rm = TRUE)
+    upper95 <- apply(rep_sorted_mat, 2, stats::quantile, probs = 0.975, na.rm = TRUE)
+
+    env_df <- data.frame(
+      Response    = r,
+      Theoretical = theo_q,
+      Observed    = obs_sorted,
+      Lower95     = lower95,
+      Lower80     = lower80,
+      Median      = median_q,
+      Upper80     = upper80,
+      Upper95     = upper95,
+      stringsAsFactors = FALSE
+    )
+    envelope_list[[r]] <- env_df
+
+    # 3. Discrepancy Statistics: Skewness and Kurtosis
+    skewness_fn <- function(x) {
+      x <- x[!is.na(x)]
+      m2 <- mean((x - mean(x))^2)
+      if (is.na(m2) || m2 == 0) return(0)
+      mean((x - mean(x))^3) / (m2^(3/2))
+    }
+    kurtosis_fn <- function(x) {
+      x <- x[!is.na(x)]
+      m2 <- mean((x - mean(x))^2)
+      if (is.na(m2) || m2 == 0) return(0)
+      mean((x - mean(x))^4) / (m2^2)
+    }
+
+    t_skew_obs <- skewness_fn(res_obs)
+    t_kurt_obs <- kurtosis_fn(res_obs)
+
+    t_skew_rep <- apply(rep_sorted_mat, 1, skewness_fn)
+    t_kurt_rep <- apply(rep_sorted_mat, 1, kurtosis_fn)
+
+    tail_p_skew <- mean(t_skew_rep >= t_skew_obs)
+    tail_p_kurt <- mean(t_kurt_rep >= t_kurt_obs)
+
+    disc_df <- data.frame(
+      Response      = r,
+      Metric        = c("Skewness", "Kurtosis"),
+      Observed      = c(round(t_skew_obs, 2), round(t_kurt_obs, 2)),
+      Rep_Median    = c(round(stats::median(t_skew_rep), 2), round(stats::median(t_kurt_rep), 2)),
+      Rep_95_CI     = c(
+        paste0("[", round(stats::quantile(t_skew_rep, 0.025), 2), ", ", round(stats::quantile(t_skew_rep, 0.975), 2), "]"),
+        paste0("[", round(stats::quantile(t_kurt_rep, 0.025), 2), ", ", round(stats::quantile(t_kurt_rep, 0.975), 2), "]")
+      ),
+      Tail_Prob     = c(round(tail_p_skew, 3), round(tail_p_kurt, 3)),
+      stringsAsFactors = FALSE
+    )
+    disc_list[[r]] <- disc_df
   }
-  kurtosis_fn <- function(x) {
-    x <- x[!is.na(x)]
-    m2 <- mean((x - mean(x))^2)
-    if (is.na(m2) || m2 == 0) return(0)
-    mean((x - mean(x))^4) / (m2^2)
-  }
 
-  t_skew_obs <- skewness_fn(res_obs)
-  t_kurt_obs <- kurtosis_fn(res_obs)
-
-  t_skew_rep <- apply(rep_sorted_mat, 1, skewness_fn)
-  t_kurt_rep <- apply(rep_sorted_mat, 1, kurtosis_fn)
-
-  tail_p_skew <- mean(t_skew_rep >= t_skew_obs)
-  tail_p_kurt <- mean(t_kurt_rep >= t_kurt_obs)
-
-  discrepancies <- data.frame(
-    Metric        = c("Skewness", "Kurtosis"),
-    Observed      = c(round(t_skew_obs, 2), round(t_kurt_obs, 2)),
-    Rep_Median    = c(round(stats::median(t_skew_rep), 2), round(stats::median(t_kurt_rep), 2)),
-    Rep_95_CI     = c(
-      paste0("[", round(stats::quantile(t_skew_rep, 0.025), 2), ", ", round(stats::quantile(t_skew_rep, 0.975), 2), "]"),
-      paste0("[", round(stats::quantile(t_kurt_rep, 0.025), 2), ", ", round(stats::quantile(t_kurt_rep, 0.975), 2), "]")
-    ),
-    Tail_Prob     = c(round(tail_p_skew, 3), round(tail_p_kurt, 3)),
-    stringsAsFactors = FALSE
-  )
+  envelope_df <- do.call(rbind, envelope_list)
+  rownames(envelope_df) <- NULL
+  discrepancies <- do.call(rbind, disc_list)
+  rownames(discrepancies) <- NULL
 
   # 4. Construct Plot
   p <- ggplot2::ggplot(envelope_df, ggplot2::aes(x = Theoretical)) +
@@ -352,12 +375,16 @@ check_normality.because <- function(object, resp = NULL, ndraws = 250, ...) {
     ggplot2::geom_line(ggplot2::aes(y = Theoretical), linetype = "dashed", color = "darkgray") +
     ggplot2::geom_point(ggplot2::aes(y = Observed), color = "darkblue", size = 1.3, alpha = 0.8) +
     ggplot2::labs(
-      title    = paste("Bayesian Q-Q Plot with Credible Envelope:", resp),
+      title    = if (length(resp) == 1) paste("Bayesian Q-Q Plot with Credible Envelope:", resp) else "Bayesian Q-Q Plots with Credible Simulation Envelopes",
       subtitle = "Bands: 50% & 95% Posterior Predictive Envelopes (Landwehr et al. 1984)",
       x        = "Theoretical Normal Quantiles",
       y        = "Randomized Quantile Residuals"
     ) +
     ggplot2::theme_minimal()
+
+  if (length(resp) > 1) {
+    p <- p + ggplot2::facet_wrap(~ Response, scales = "free")
+  }
 
   out <- list(
     plot          = p,
@@ -369,19 +396,23 @@ check_normality.because <- function(object, resp = NULL, ndraws = 250, ...) {
   return(out)
 }
 
-#' @rdname check_normality
+#' @rdname plot_qq
 #' @export
-plot_qq.because <- function(object, ...) {
-  res <- check_normality(object, ...)
+plot_qq.because <- function(object, resp = NULL, ndraws = 250, ...) {
+  res <- check_normality(object, resp = resp, ndraws = ndraws, ...)
   return(res$plot)
 }
 
 #' @export
 print.because_normality <- function(x, ...) {
   cat("\n=== Bayesian Normality Check (Randomized Quantile Residuals) ===\n")
-  cat(paste("Response Variable:", x$response, "\n\n"))
+  cat(paste("Response Variable(s):", paste(x$response, collapse = ", "), "\n\n"))
   cat("Posterior Predictive Discrepancies (Gelman et al. 1996):\n")
-  print(format(x$discrepancies, justify = "left"), row.names = FALSE)
+  disp_df <- x$discrepancies
+  if (length(x$response) == 1) {
+    disp_df$Response <- NULL
+  }
+  print(format(disp_df, justify = "left"), row.names = FALSE)
   cat("\nNote: Tail_Prob = P(T(y_rep) >= T(y)). Extreme values (< 0.025 or > 0.975)\n")
   cat("indicate that observed skewness or kurtosis is atypical under model replications.\n\n")
   invisible(x)
