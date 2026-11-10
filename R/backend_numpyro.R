@@ -366,24 +366,32 @@ run_numpyro_pipeline <- function(
   
   result <- list(
     equations = equations,
+    family = family,
+    latent = latent,
+    categorical_vars = attr(data, "categorical_vars"),
     model      = NULL,        # No live model object for NumPyro
     model_code = model_string, # JAGS-equivalent string (kept for reference)
     numpyro_code = if (!is.null(py_result$model_code)) py_result$model_code else NULL,
     parameter_map = parameter_map,
     samples = mcmc_samples,
     data = data,
+    original_data = data,
     dsep = NULL,
     priors = priors,
     hierarchical_info = if (!is.null(is_hierarchical) && is_hierarchical) hierarchical_info else NULL,
     induced_correlations = induced_correlations,
     engine = engine,
+    parallel = parallel,
+    n.cores = n.cores,
     quiet = quiet,
     py_result = py_result,
     structures = structures,
     structure = if (!is.null(structures) && length(structures) > 0) structures[[1]] else NULL,
     input = list(
       structure = if (!is.null(structures) && length(structures) > 0) structures[[1]] else NULL,
-      structures = structures
+      structures = structures,
+      family = family,
+      equations = equations
     )
   )
   if (WAIC && !is.null(py_result$waic)) {

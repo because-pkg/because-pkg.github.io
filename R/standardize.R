@@ -75,6 +75,78 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
   return(res)
 }
 
+#' Helper to determine variable family with fallbacks
+#' @noRd
+.get_var_family <- function(res, resp, data = NULL) {
+  fam <- if (!is.null(res$family) && resp %in% names(res$family)) {
+    tolower(as.character(res$family[[resp]]))
+  } else if (!is.null(res$input$family) && resp %in% names(res$input$family)) {
+    tolower(as.character(res$input$family[[resp]]))
+  } else if (!is.null(res$py_result$family) && resp %in% names(res$py_result$family)) {
+    tolower(as.character(res$py_result$family[[resp]]))
+  } else {
+    NULL
+  }
+
+  if (!is.null(fam) && length(fam) > 0 && fam != "") {
+    return(fam)
+  }
+
+  # Inspect data if available (e.g. for pre-existing objects loaded from disk)
+  if (!is.null(data) && resp %in% names(data)) {
+    y <- stats::na.omit(data[[resp]])
+    if (is.factor(y) || is.logical(y)) {
+      if (is.ordered(y)) return("ordinal")
+      return("binomial")
+    }
+    if (is.numeric(y)) {
+      u_vals <- unique(y)
+      if (length(u_vals) > 0 && all(u_vals %in% c(0, 1))) {
+        return("binomial")
+      }
+    }
+  }
+
+  return("gaussian")
+}
+
+#' Helper to compute liability scale standard deviation for non-Gaussian response
+#' @noRd
+.get_liability_sd <- function(samples_ch, resp, p_names, param_map = NULL) {
+  # Theoretical disturbance variance of the standard logistic link
+  dist_var <- (pi^2) / 3
+
+  # Check if total structural SD is directly available
+  tot_name <- paste0("sigma_tot_", resp)
+  if (tot_name %in% p_names) {
+    return(sqrt(samples_ch[, tot_name]^2 + dist_var))
+  }
+
+  sig_cols <- character(0)
+  if (!is.null(param_map) && is.data.frame(param_map)) {
+    matching_pm <- param_map[param_map$response == resp & grepl("^sigma_", param_map$parameter), "parameter"]
+    sig_cols <- intersect(matching_pm, p_names)
+    sig_cols <- sig_cols[!grepl("^sigma_tot_", sig_cols)]
+  }
+
+  if (length(sig_cols) == 0) {
+    # Match structural sigmas for this response (e.g. sigma_Migrant_multiPhylo, sigma_Migrant)
+    sig_cols <- grep(paste0("^sigma_(.*_)?", resp, "(_.*)?$"), p_names, value = TRUE)
+    sig_cols <- sig_cols[!grepl("^sigma_tot_", sig_cols)]
+  }
+
+  if (length(sig_cols) > 0) {
+    struct_var <- 0
+    for (sc in sig_cols) {
+      struct_var <- struct_var + samples_ch[, sc]^2
+    }
+    return(sqrt(struct_var + dist_var))
+  }
+
+  # If no random/phylogenetic structural sigma is present, standard logistic error
+  return(rep(sqrt(dist_var), nrow(samples_ch)))
+}
+
 #' Internal helper: standardize d-separation object
 #' @noRd
 .standardize_dsep <- function(res, data, method = "error") {
@@ -90,11 +162,7 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
 
     test_formula <- tests[[i]]
     resp <- as.character(test_formula)[2]
-    fam <- if (!is.null(res$family) && resp %in% names(res$family)) {
-      tolower(as.character(res$family[[resp]]))
-    } else {
-      "gaussian"
-    }
+    fam <- .get_var_family(res, resp, data)
 
     # Iterate over chains in this test
     for (ch in seq_along(res_i$samples)) {
@@ -102,15 +170,7 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
 
       # 1. Non-Gaussian: Binomial / Bernoulli / Ordinal
       if (fam %in% c("binomial", "bernoulli", "ordinal")) {
-        sig_col <- grep(paste0("^sigma_.*", resp), p_names, value = TRUE)
-        if (length(sig_col) == 0) {
-          sig_col <- grep(paste0("^sigma_", resp), p_names, value = TRUE)
-        }
-        sig_sq <- if (length(sig_col) > 0) res_i$samples[[ch]][, sig_col[1]]^2 else 0
-
-        # Liability disturbance SD
-        pi_sq_3 <- (pi^2) / 3
-        sd_liability <- sqrt(sig_sq + pi_sq_3)
+        sd_liability <- .get_liability_sd(res_i$samples[[ch]], resp, p_names, res_i$parameter_map)
 
         beta_cols <- grep(paste0("^beta_", resp, "_"), p_names, value = TRUE)
         for (b_col in beta_cols) {
@@ -190,11 +250,7 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
       resp <- beta_rows$response[r]
       pred <- beta_rows$predictor[r]
 
-      fam <- if (!is.null(res$family) && resp %in% names(res$family)) {
-        tolower(as.character(res$family[[resp]]))
-      } else {
-        "gaussian"
-      }
+      fam <- .get_var_family(res, resp, data)
 
       # Predictor SD
       is_latent_pred <- !is.null(res$latent) && pred %in% res$latent
@@ -208,14 +264,8 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
       if (is.na(sd_x) || sd_x == 0) sd_x <- 1.0
 
       if (fam %in% c("binomial", "bernoulli", "ordinal")) {
-        sig_col <- grep(paste0("^sigma_.*", resp), p_names, value = TRUE)
-        if (length(sig_col) == 0) {
-          sig_col <- grep(paste0("^sigma_", resp), p_names, value = TRUE)
-        }
         for (ch in seq_along(res$samples)) {
-          sig_sq <- if (length(sig_col) > 0) res$samples[[ch]][, sig_col[1]]^2 else 0
-          pi_sq_3 <- (pi^2) / 3
-          sd_liability <- sqrt(sig_sq + pi_sq_3)
+          sd_liability <- .get_liability_sd(res$samples[[ch]], resp, p_names, res$parameter_map)
           res$samples[[ch]][, p_name] <- res$samples[[ch]][, p_name] * (sd_x / sd_liability)
         }
         standardized_params <- c(standardized_params, p_name)
@@ -250,23 +300,14 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
         pred <- paste(parts[-1], collapse = "_")
         pred_clean <- sub("(_\\d+|\\[\\d+\\])$", "", pred)
 
-        fam <- if (!is.null(res$family) && resp %in% names(res$family)) {
-          tolower(as.character(res$family[[resp]]))
-        } else {
-          "gaussian"
-        }
+        fam <- .get_var_family(res, resp, data)
 
         sd_x <- if (!is.null(data) && pred_clean %in% names(data)) stats::sd(as.numeric(data[[pred_clean]]), na.rm = TRUE) else 1
         if (is.na(sd_x) || sd_x == 0) sd_x <- 1
 
         if (fam %in% c("binomial", "bernoulli", "ordinal")) {
-          sig_col <- grep(paste0("^sigma_.*", resp), p_names, value = TRUE)
-          if (length(sig_col) == 0) {
-            sig_col <- grep(paste0("^sigma_", resp), p_names, value = TRUE)
-          }
           for (ch in seq_along(res$samples)) {
-            sig_sq <- if (length(sig_col) > 0) res$samples[[ch]][, sig_col[1]]^2 else 0
-            sd_liability <- sqrt(sig_sq + (pi^2)/3)
+            sd_liability <- .get_liability_sd(res$samples[[ch]], resp, p_names, NULL)
             res$samples[[ch]][, b_col] <- res$samples[[ch]][, b_col] * (sd_x / sd_liability)
           }
           standardized_params <- c(standardized_params, b_col)

@@ -219,3 +219,58 @@ test_that("plot_coef and plot_dag work with standardized objects", {
     expect_s3_class(p_dag, "ggplot")
 })
 
+test_that("standardize correctly detects binomial from 0/1 data when family attribute is omitted", {
+    set.seed(123)
+    n <- 50
+    x <- rnorm(n)
+    migrant <- rbinom(n, 1, 0.5) # binary 0/1
+
+    data_df <- data.frame(
+        Brain = x,
+        Migrant = migrant,
+        Species = paste0("sp_", 1:n)
+    )
+
+    n_iter <- 100
+    samples <- coda::mcmc.list(
+        coda::mcmc(matrix(
+            c(
+                rnorm(n_iter, -1.4, 0.05), # beta_Migrant_Brain
+                rep(3.4, n_iter)           # sigma_Migrant_multiPhylo
+            ),
+            ncol = 2,
+            dimnames = list(NULL, c("beta_Migrant_Brain", "sigma_Migrant_multiPhylo"))
+        ))
+    )
+
+    param_map <- data.frame(
+        response = c("Migrant"),
+        predictor = c("Brain"),
+        parameter = c("beta_Migrant_Brain"),
+        equation_index = c(1),
+        stringsAsFactors = FALSE
+    )
+
+    # Note: family is intentionally NULL to test fallback detection
+    fit <- list(
+        samples = samples,
+        parameter_map = param_map,
+        data = data_df,
+        family = NULL,
+        equations = list(Migrant ~ Brain)
+    )
+    class(fit) <- "because"
+
+    fit_std <- standardize(fit)
+
+    # Expected liability SD: sqrt(3.4^2 + pi^2/3) ~ sqrt(11.56 + 3.289868) ~ 3.85355
+    expected_sd_liab <- sqrt(3.4^2 + (pi^2) / 3)
+    sd_brain <- sd(data_df$Brain)
+    expected_beta <- -1.4 * (sd_brain / expected_sd_liab)
+
+    # Must be around -0.36, definitely NOT doubled (-2.8)
+    actual_beta <- mean(fit_std$samples[[1]][, "beta_Migrant_Brain"])
+    expect_equal(actual_beta, expected_beta, tolerance = 0.05)
+    expect_true(actual_beta > -0.5 && actual_beta < -0.2)
+})
+
