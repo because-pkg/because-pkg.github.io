@@ -532,10 +532,13 @@ print.check_multicov <- function(x, ...) {
       cat(sprintf("\n--- Split Parameter Diagnostics (Within-%s MCMC vs. Between-%s Sensitivity) ---\n", s_term, s_term))
     }
     p_df <- x$param_diagnostics
+    # Remove variance decomposition columns from Rhat table (presented in dedicated table below)
+    pct_cols <- grep("^Pct_", names(p_df), value = TRUE)
+    if (length(pct_cols) > 0) {
+      p_df <- p_df[, setdiff(names(p_df), pct_cols), drop = FALSE]
+    }
     if (is_phylo) {
-      p_df$Pct_Struct <- NULL
       p_df$Rhat_struct <- NULL
-      p_df$Pct_Group <- NULL
       p_df$Rhat_group <- NULL
     }
     print(p_df, row.names = FALSE)
