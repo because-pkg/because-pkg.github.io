@@ -415,8 +415,8 @@ summary.because <- function(
             rhat_max <- summ$statistics[, "Rhat_max"]
             names(rhat_max) <- rownames(summ$statistics)
         }
-        if (is.null(rhat) && n_chains > 1) {
-            # Check if this is a multiPhylo ensemble run (e.g., from JAGS/NIMBLE)
+        if ((is.null(rhat) || is.null(rhat_max)) && n_chains > 1) {
+            # Check if this is a multiPhylo ensemble run (e.g., from JAGS/NIMBLE/NumPyro)
             var_names_all <- colnames(object$samples[[1]])
             k_cols <- grep("^K_tree_", var_names_all, value = TRUE)
             is_ens_samples <- FALSE
@@ -476,7 +476,7 @@ summary.because <- function(
                     }
                 }
             }
-            if (!is_ens_samples) {
+            if (!is_ens_samples && is.null(rhat)) {
                 # Calculate standard Rhat if not stored
                 rhat <- tryCatch(
                     coda::gelman.diag(object$samples, multivariate = FALSE)$psrf[,
