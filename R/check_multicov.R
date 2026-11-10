@@ -284,8 +284,9 @@ check_multicov <- function(model, plot = TRUE, show_internal = FALSE, ...) {
   }
 
   param_diag_df <- NULL
+  rhat_per_tree <- NULL
   if (length(struct_cols) > 0 && is_balanced_ensemble) {
-    diag_rows <- lapply(struct_cols, function(p) {
+    diag_res <- lapply(struct_cols, function(p) {
       ch_vecs <- lapply(seq_len(n_chains), function(ch) as.numeric(model$samples[[ch]][, p]))
       all_draws <- unlist(ch_vecs)
 
@@ -302,6 +303,7 @@ check_multicov <- function(model, plot = TRUE, show_internal = FALSE, ...) {
 
       rhat_within_mean <- NA_real_
       rhat_within_max  <- NA_real_
+      rw_vals <- NULL
       if (length(structs_with_multi_chains) > 0) {
         rw_vals <- vapply(structs_with_multi_chains, function(sk) {
           idx <- which(chain_primary_struct == sk & chain_stats$Unique_Structures == 1)
@@ -378,7 +380,7 @@ check_multicov <- function(model, plot = TRUE, show_internal = FALSE, ...) {
         row_data[[col_struct]] <- pct_struct
         row_data[[col_group]]  <- pct_group
         row_data[["Status"]]   <- status_str
-        as.data.frame(row_data, stringsAsFactors = FALSE)
+        res_df <- as.data.frame(row_data, stringsAsFactors = FALSE)
 
       } else {
         # 2-tier partitioning
@@ -432,10 +434,17 @@ check_multicov <- function(model, plot = TRUE, show_internal = FALSE, ...) {
         row_df[[col_struct]] <- pct_struct
         row_df[[sd_col_name]]   <- round(struct_sd, 3)
         row_df[["Status"]]      <- status_str
-        row_df
+        res_df <- row_df
       }
+      list(row_df = res_df, tree_rhat = rw_vals)
     })
-    param_diag_df <- do.call(rbind, diag_rows)
+    param_diag_df <- do.call(rbind, lapply(diag_res, `[[`, "row_df"))
+    rhat_tree_list <- lapply(diag_res, `[[`, "tree_rhat")
+    if (length(rhat_tree_list) > 0 && !is.null(rhat_tree_list[[1]])) {
+      rhat_per_tree <- do.call(rbind, rhat_tree_list)
+      rownames(rhat_per_tree) <- struct_cols
+      colnames(rhat_per_tree) <- paste0(if (is_phylo) "Tree_" else "Struct_", structs_with_multi_chains)
+    }
   }
 
   if (is_balanced_ensemble) {
@@ -527,6 +536,7 @@ check_multicov <- function(model, plot = TRUE, show_internal = FALSE, ...) {
     crosstab = crosstab_mat,
     param_diagnostics = param_diag_df,
     variance_decomposition = var_decomp_df,
+    rhat_per_tree = rhat_per_tree,
     status = status,
     summary = summary_msg,
     chain_data = chain_data,
@@ -575,9 +585,9 @@ print.check_multicov <- function(x, ...) {
 
   if (!is.null(x$param_diagnostics) && nrow(x$param_diagnostics) > 0) {
     if (isTRUE(x$has_groups)) {
-      cat("\n--- Parameter Diagnostics (Convergence & Sensitivity Rhat) ---\n")
+      cat(sprintf("\n--- Parameter Sensitivity Diagnostics (%s & %s Rhat) ---\n", g_term, s_term))
     } else {
-      cat(sprintf("\n--- Split Parameter Diagnostics (Within-%s MCMC vs. Between-%s Sensitivity) ---\n", s_term, s_term))
+      cat(sprintf("\n--- Parameter Sensitivity Diagnostics (%s Rhat) ---\n", s_term))
     }
     p_df <- x$param_diagnostics
     # Remove variance decomposition columns from Rhat table (presented in dedicated table below)
@@ -585,11 +595,37 @@ print.check_multicov <- function(x, ...) {
     if (length(pct_cols) > 0) {
       p_df <- p_df[, setdiff(names(p_df), pct_cols), drop = FALSE]
     }
+    # Drop estimation and MCMC columns reported in summary(), plus Status column
+    drop_from_print <- c("Mean", "SD", "CI_2.5", "CI_97.5", "Rhat", "Rhat_max", "Status")
+    p_df <- p_df[, setdiff(names(p_df), drop_from_print), drop = FALSE]
     if (is_phylo) {
       p_df$Rhat_struct <- NULL
       p_df$Rhat_group <- NULL
     }
     print(p_df, row.names = FALSE)
+    if (is_phylo) {
+      if (isTRUE(x$has_groups)) {
+        cat("Note: Rhat_[backbone] : Gelman-Rubin diagnostic comparing chains across candidate trees within that backbone;\n")
+        cat("      Rhat_backbone   : diagnostic comparing pooled draws across the major backbone hypotheses;\n")
+        cat("      Rhat_all        : global omnibus diagnostic across all chains, trees, and backbones simultaneously.\n")
+        cat("      Values <= 1.05 indicate phylogenetic invariance (robustness to tree and backbone choice).\n")
+      } else {
+        cat("Note: Rhat_tree    : Gelman-Rubin diagnostic comparing chains across all candidate trees;\n")
+        cat("      Tree_Mean_SD : standard deviation of posterior means across candidate trees.\n")
+        cat("      Values <= 1.05 indicate phylogenetic invariance (robustness to tree choice).\n")
+      }
+    } else {
+      if (isTRUE(x$has_groups)) {
+        cat("Note: Rhat_[group]  : Gelman-Rubin diagnostic comparing chains across candidate structures within that group;\n")
+        cat("      Rhat_group    : diagnostic comparing pooled draws across the candidate group hypotheses;\n")
+        cat("      Rhat_all      : global omnibus diagnostic across all chains, structures, and groups simultaneously.\n")
+        cat("      Values <= 1.05 indicate structure invariance.\n")
+      } else {
+        cat("Note: Rhat_struct    : Gelman-Rubin diagnostic comparing chains across all candidate structures;\n")
+        cat("      Struct_Mean_SD : standard deviation of posterior means across candidate structures.\n")
+        cat("      Values <= 1.05 indicate structure invariance.\n")
+      }
+    }
   }
 
   if (!is.null(x$variance_decomposition) && nrow(x$variance_decomposition) > 0) {
@@ -602,15 +638,18 @@ print.check_multicov <- function(x, ...) {
     print(v_df, row.names = FALSE)
     if (is_phylo) {
       if (isTRUE(x$has_groups)) {
-        cat("Note: Pct_within_tree   : parameter estimation uncertainty within a single tree;\n")
+        cat("Note: SD is total posterior standard deviation; percentages partition total posterior variance (SD^2) into:\n")
+        cat("      Pct_within_tree   : estimation uncertainty within a single tree (unexplained variance / sample size);\n")
         cat("      Pct_between_trees : variation across trees within a backbone;\n")
-        cat("      Pct_backbone      : sensitivity across major backbone hypotheses.\n")
+        cat("      Pct_backbone      : variation across major backbone hypotheses.\n")
       } else {
-        cat("Note: Pct_within_tree   : parameter estimation uncertainty within a single tree;\n")
+        cat("Note: SD is total posterior standard deviation; percentages partition total posterior variance (SD^2) into:\n")
+        cat("      Pct_within_tree   : estimation uncertainty within a single tree (unexplained variance / sample size);\n")
         cat("      Pct_between_trees : variation across candidate trees.\n")
       }
     } else {
-      cat("Note: Pct_within_struct  : parameter estimation uncertainty within a single structure;\n")
+      cat("Note: SD is total posterior standard deviation; percentages partition total posterior variance (SD^2) into:\n")
+      cat("      Pct_within_struct  : estimation uncertainty within a single structure;\n")
       cat("      Pct_between_structs: variation across candidate structures.\n")
     }
   }
@@ -651,14 +690,14 @@ plot.check_multicov <- function(x, ...) {
           Tree   = param_diag_df[[pct_s_col]],
           Group  = param_diag_df[[pct_g_col]]
         )
-        v_labels <- c(paste0("Within-", s_term), paste0("Between-", s_term, "s"), paste0("Between-", g_term, "s"))
+        v_labels <- c(paste0("Within-", s_term, " Uncertainty"), paste0("Between-", s_term, "s"), paste0("Between-", g_term, "s"))
         v_cols   <- c("#009E73", "#0072B2", "#E69F00")
       } else {
         v_mat <- rbind(
           Within = param_diag_df[[pct_w_col]],
           Tree   = param_diag_df[[pct_s_col]]
         )
-        v_labels <- c(paste0("Within-", s_term), paste0("Between-", s_term, "s"))
+        v_labels <- c(paste0("Within-", s_term, " Uncertainty"), paste0("Between-", s_term, "s"))
         v_cols   <- c("#009E73", "#0072B2")
       }
       colnames(v_mat) <- param_diag_df$Parameter
@@ -676,31 +715,24 @@ plot.check_multicov <- function(x, ...) {
       par(mfrow = c(1, 1), mar = c(4.2, left_mar, 4.8, 2.5), oma = c(0, 0, 0, 0))
     }
 
-    # Panel 1: Rhat Forest Plot
+    # Panel 1: Hypothesis Sensitivity Forest Plot
     if (isTRUE(x$has_groups)) {
-      r_within <- param_diag_df$Rhat_max %||% param_diag_df$Rhat_MCMC %||% param_diag_df$Rhat
       r_grp    <- param_diag_df[[rhat_g_col]]
       grp_cols <- grep("^Rhat_", names(param_diag_df), value = TRUE)
       grp_cols <- setdiff(grp_cols, c("Rhat", "Rhat_max", "Rhat_MCMC", "Rhat_within", "Rhat_group", "Rhat_backbone", "Rhat_all"))
 
-      r_within_col <- if ("Rhat_max" %in% names(param_diag_df)) "Rhat_max" else if ("Rhat_MCMC" %in% names(param_diag_df)) "Rhat_MCMC" else "Rhat"
-      all_r_vals <- unlist(param_diag_df[, c(r_within_col, rhat_g_col, "Rhat_all", grp_cols), drop = FALSE])
+      all_r_vals <- unlist(param_diag_df[, c(rhat_g_col, "Rhat_all", grp_cols), drop = FALSE])
       x_max <- max(c(1.15, all_r_vals), na.rm = TRUE) * 1.05
 
       plot(r_grp, y_idx, xlim = c(0.98, x_max), ylim = y_lim,
            pch = 18, col = "#E69F00", cex = 1.4, yaxt = "n",
            xlab = expression(paste("Potential Scale Reduction Factor (", widehat(R), ")")),
            ylab = "", main = "", las = 1)
-      mtext(if (has_decomp) "Convergence & Sensitivity (Rhat)" else paste0("Multi-", g_term, " Convergence vs. ", s_term, " Sensitivity"),
+      mtext(if (has_decomp) paste0(g_term, " Sensitivity (Rhat)") else paste0("Multi-", g_term, " Sensitivity"),
             side = 3, line = 3.2, font = 2, cex = 1.05)
       axis(2, at = y_idx, labels = param_diag_df$Parameter, las = 1, cex.axis = 0.75)
       grid()
       abline(v = 1.05, lty = 2, col = "#D55E00", lwd = 1.5)
-
-      if (any(!is.na(r_within))) {
-        segments(r_within, y_idx, r_grp, y_idx, col = "gray75", lty = 1, lwd = 1.2)
-        points(r_within, y_idx, pch = 19, col = "#009E73", cex = 1.2)
-      }
 
       palette_cols <- c("#CC79A7", "#56B4E9", "#0072B2", "#F0E442")
       for (g_i in seq_along(grp_cols)) {
@@ -710,42 +742,37 @@ plot.check_multicov <- function(x, ...) {
       }
       points(r_grp, y_idx, pch = 18, col = "#E69F00", cex = 1.4)
 
-      leg_labels <- c(paste0("Within-", s_term, " (MCMC)"), sub("^Rhat_", "", grp_cols), paste0("Between-", g_term, "s"), "1.05 Cutoff")
-      leg_cols   <- c("#009E73", palette_cols[seq_along(grp_cols)], "#E69F00", "#D55E00")
-      leg_pchs   <- c(19, rep(17, length(grp_cols)), 18, NA)
-      leg_ltys   <- c(NA, rep(NA, length(grp_cols)), NA, 2)
-      leg_lwds   <- c(NA, rep(NA, length(grp_cols)), NA, 1.5)
+      leg_labels <- c(sub("^Rhat_", "", grp_cols), paste0("Between-", g_term, "s"), "1.05 Cutoff")
+      leg_cols   <- c(palette_cols[seq_along(grp_cols)], "#E69F00", "#D55E00")
+      leg_pchs   <- c(rep(17, length(grp_cols)), 18, NA)
+      leg_ltys   <- c(rep(NA, length(grp_cols)), NA, 2)
+      leg_lwds   <- c(rep(NA, length(grp_cols)), NA, 1.5)
 
       legend("top", inset = c(0, -0.22), xpd = TRUE,
              ncol = if (length(grp_cols) > 1) 3 else length(leg_labels),
              legend = leg_labels, col = leg_cols, pch = leg_pchs,
-             lty = leg_ltys, lwd = leg_lwds, pt.cex = 1.1, bty = "n", cex = 0.72)
+             lty = leg_ltys, lwd = leg_lwds, pt.cex = 1.1, bty = "n", cex = 0.75)
 
     } else {
-      r_within <- param_diag_df$Rhat_max %||% param_diag_df$Rhat_within %||% param_diag_df$Rhat
       r_struct <- param_diag_df[[rhat_s_col]]
-      x_max <- max(c(1.15, r_within, r_struct), na.rm = TRUE) * 1.05
+      x_max <- max(c(1.15, r_struct), na.rm = TRUE) * 1.05
 
       plot(r_struct, y_idx, xlim = c(0.98, x_max), ylim = y_lim,
            pch = 17, col = "#0072B2", cex = 1.3, yaxt = "n",
            xlab = expression(paste("Potential Scale Reduction Factor (", widehat(R), ")")),
            ylab = "", main = "", las = 1)
-      mtext(if (has_decomp) "Convergence & Sensitivity (Rhat)" else paste0("Ensemble Convergence vs. ", s_term, " Sensitivity"),
+      mtext(if (has_decomp) paste0(s_term, " Sensitivity (Rhat)") else paste0("Ensemble Sensitivity vs. ", s_term),
             side = 3, line = 3.2, font = 2, cex = 1.05)
       axis(2, at = y_idx, labels = param_diag_df$Parameter, las = 1, cex.axis = 0.75)
       grid()
       abline(v = 1.05, lty = 2, col = "#D55E00", lwd = 1.5)
-      if (any(!is.na(r_within))) {
-        segments(r_within, y_idx, r_struct, y_idx, col = "gray70", lty = 1, lwd = 1.2)
-        points(r_within, y_idx, pch = 19, col = "#009E73", cex = 1.2)
-      }
       points(r_struct, y_idx, pch = 17, col = "#0072B2", cex = 1.3)
 
       legend("top", inset = c(0, -0.18), xpd = TRUE, horiz = TRUE,
-             legend = c(paste0("Within-", s_term, " (MCMC)"), paste0("Between-", s_term, "s"), "1.05 Cutoff"),
-             col = c("#009E73", "#0072B2", "#D55E00"),
-             pch = c(19, 17, NA), lty = c(NA, NA, 2), lwd = c(NA, NA, 1.5),
-             pt.cex = 1.1, bty = "n", cex = 0.75)
+             legend = c(paste0("Between-", s_term, "s"), "1.05 Cutoff"),
+             col = c("#0072B2", "#D55E00"),
+             pch = c(17, NA), lty = c(NA, 2), lwd = c(NA, 1.5),
+             pt.cex = 1.1, bty = "n", cex = 0.78)
     }
 
     # Panel 2: Stacked Variance Decomposition Bar Plot

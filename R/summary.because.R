@@ -744,6 +744,10 @@ print.summary.because <- function(x, ...) {
         # Standard summary
         print(x$results, quote = FALSE)
 
+        if ("Rhat_max" %in% colnames(x$results)) {
+            cat("\nNote: Rhat is the mean within-tree Gelman-Rubin diagnostic; Rhat_max is the worst-case (maximum) across candidate trees.\n")
+        }
+
         if (!is.null(x$rope_info) && length(x$rope_info$lines) > 0) {
             cat("\nRegion of Practical Equivalence (ROPE):\n")
             for (line in x$rope_info$lines) {
