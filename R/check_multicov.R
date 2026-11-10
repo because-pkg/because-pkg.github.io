@@ -588,15 +588,15 @@ plot.check_multicov <- function(x, ...) {
           Tree   = param_diag_df[[pct_s_col]],
           Group  = param_diag_df[[pct_g_col]]
         )
-        v_labels <- c(paste0("Within-", s_term, " (Data)"), paste0("Between-", s_term, "s (within ", g_term, ")"), paste0("Between-", g_term, "s"))
-        v_cols   <- c("#1B9E77", "#386CB0", "#D95F02")
+        v_labels <- c(paste0("Within-", s_term), paste0("Between-", s_term, "s"), paste0("Between-", g_term, "s"))
+        v_cols   <- c("#009E73", "#0072B2", "#E69F00")
       } else {
         v_mat <- rbind(
           Within = param_diag_df[[pct_w_col]],
           Tree   = param_diag_df[[pct_s_col]]
         )
-        v_labels <- c(paste0("Within-", s_term, " (Data)"), paste0("Between-", s_term, "s"))
-        v_cols   <- c("#1B9E77", "#D95F02")
+        v_labels <- c(paste0("Within-", s_term), paste0("Between-", s_term, "s"))
+        v_cols   <- c("#009E73", "#0072B2")
       }
       colnames(v_mat) <- param_diag_df$Parameter
       bp <- as.numeric(barplot(v_mat, horiz = TRUE, plot = FALSE))
@@ -624,30 +624,30 @@ plot.check_multicov <- function(x, ...) {
       x_max <- max(c(1.15, all_r_vals), na.rm = TRUE) * 1.05
 
       plot(r_grp, y_idx, xlim = c(0.98, x_max), ylim = y_lim,
-           pch = 18, col = "#D95F02", cex = 1.4, yaxt = "n",
+           pch = 18, col = "#E69F00", cex = 1.4, yaxt = "n",
            xlab = expression(paste("Potential Scale Reduction Factor (", widehat(R), ")")),
            ylab = "", main = "", las = 1)
       mtext(if (has_decomp) "Convergence & Sensitivity (Rhat)" else paste0("Multi-", g_term, " Convergence vs. ", s_term, " Sensitivity"),
             side = 3, line = 3.2, font = 2, cex = 1.05)
       axis(2, at = y_idx, labels = param_diag_df$Parameter, las = 1, cex.axis = 0.75)
       grid()
-      abline(v = 1.05, lty = 2, col = "firebrick", lwd = 1.5)
+      abline(v = 1.05, lty = 2, col = "#D55E00", lwd = 1.5)
 
       if (any(!is.na(r_within))) {
         segments(r_within, y_idx, r_grp, y_idx, col = "gray75", lty = 1, lwd = 1.2)
-        points(r_within, y_idx, pch = 19, col = "#1B9E77", cex = 1.2)
+        points(r_within, y_idx, pch = 19, col = "#009E73", cex = 1.2)
       }
 
-      palette_cols <- c("#7570B3", "#386CB0", "#F0027F", "#BF5B17")
+      palette_cols <- c("#CC79A7", "#56B4E9", "#0072B2", "#F0E442")
       for (g_i in seq_along(grp_cols)) {
         g_name <- grp_cols[g_i]
         col_val <- palette_cols[((g_i - 1) %% length(palette_cols)) + 1]
         points(param_diag_df[[g_name]], y_idx, pch = 17, col = col_val, cex = 1.2)
       }
-      points(r_grp, y_idx, pch = 18, col = "#D95F02", cex = 1.4)
+      points(r_grp, y_idx, pch = 18, col = "#E69F00", cex = 1.4)
 
       leg_labels <- c(paste0("Within-", s_term, " (MCMC)"), sub("^Rhat_", "", grp_cols), paste0("Between-", g_term, "s"), "1.05 Cutoff")
-      leg_cols   <- c("#1B9E77", palette_cols[seq_along(grp_cols)], "#D95F02", "firebrick")
+      leg_cols   <- c("#009E73", palette_cols[seq_along(grp_cols)], "#E69F00", "#D55E00")
       leg_pchs   <- c(19, rep(17, length(grp_cols)), 18, NA)
       leg_ltys   <- c(NA, rep(NA, length(grp_cols)), NA, 2)
       leg_lwds   <- c(NA, rep(NA, length(grp_cols)), NA, 1.5)
@@ -663,23 +663,23 @@ plot.check_multicov <- function(x, ...) {
       x_max <- max(c(1.15, r_within, r_struct), na.rm = TRUE) * 1.05
 
       plot(r_struct, y_idx, xlim = c(0.98, x_max), ylim = y_lim,
-           pch = 17, col = "#D95F02", cex = 1.3, yaxt = "n",
+           pch = 17, col = "#0072B2", cex = 1.3, yaxt = "n",
            xlab = expression(paste("Potential Scale Reduction Factor (", widehat(R), ")")),
            ylab = "", main = "", las = 1)
       mtext(if (has_decomp) "Convergence & Sensitivity (Rhat)" else paste0("Ensemble Convergence vs. ", s_term, " Sensitivity"),
             side = 3, line = 3.2, font = 2, cex = 1.05)
       axis(2, at = y_idx, labels = param_diag_df$Parameter, las = 1, cex.axis = 0.75)
       grid()
-      abline(v = 1.05, lty = 2, col = "firebrick", lwd = 1.5)
+      abline(v = 1.05, lty = 2, col = "#D55E00", lwd = 1.5)
       if (any(!is.na(r_within))) {
         segments(r_within, y_idx, r_struct, y_idx, col = "gray70", lty = 1, lwd = 1.2)
-        points(r_within, y_idx, pch = 19, col = "#1B9E77", cex = 1.2)
+        points(r_within, y_idx, pch = 19, col = "#009E73", cex = 1.2)
       }
-      points(r_struct, y_idx, pch = 17, col = "#D95F02", cex = 1.3)
+      points(r_struct, y_idx, pch = 17, col = "#0072B2", cex = 1.3)
 
       legend("top", inset = c(0, -0.18), xpd = TRUE, horiz = TRUE,
              legend = c(paste0("Within-", s_term, " (MCMC)"), paste0("Between-", s_term, "s"), "1.05 Cutoff"),
-             col = c("#1B9E77", "#D95F02", "firebrick"),
+             col = c("#009E73", "#0072B2", "#D55E00"),
              pch = c(19, 17, NA), lty = c(NA, NA, 2), lwd = c(NA, NA, 1.5),
              pt.cex = 1.1, bty = "n", cex = 0.75)
     }
@@ -692,8 +692,13 @@ plot.check_multicov <- function(x, ...) {
               main = "", las = 1)
       mtext("Uncertainty Variance Decomposition (%)", side = 3, line = 3.2, font = 2, cex = 1.05)
       grid(nx = NULL, ny = NA)
-      legend("top", inset = c(0, -0.18), xpd = TRUE, horiz = TRUE,
-             legend = v_labels, fill = v_cols, bty = "n", cex = 0.78)
+      if (isTRUE(x$has_groups)) {
+        legend("top", inset = c(0, -0.22), xpd = TRUE, ncol = 2,
+               legend = v_labels, fill = v_cols, bty = "n", cex = 0.72)
+      } else {
+        legend("top", inset = c(0, -0.18), xpd = TRUE, horiz = TRUE,
+               legend = v_labels, fill = v_cols, bty = "n", cex = 0.75)
+      }
 
       banner_txt <- paste0(if (is_phylo) "multiPhylo" else "multiCov",
                            " Ensemble Diagnostics & Uncertainty Variance Decomposition")
@@ -704,7 +709,7 @@ plot.check_multicov <- function(x, ...) {
     # Categorical Jumping Diagnostic Panels
     layout(matrix(1:2, nrow = 1), widths = c(1.0, 1.0))
     par(mar = c(4.5, 4.5, 3.2, 1.2), oma = c(0, 0, 1.5, 0))
-    base_palette <- c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", "#A6761D")
+    base_palette <- c("#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00", "#F0E442")
     cols <- rep(base_palette, length.out = x$n_chains)
 
     # Panel 1: Trace plot of structure index over iterations

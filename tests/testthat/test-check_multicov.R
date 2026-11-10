@@ -32,9 +32,11 @@ testthat::test_that("check_multicov computes Rhat and Law of Total Variance deco
   diag_single <- check_multicov(fit_single, plot = FALSE)
   testthat::expect_s3_class(diag_single, "check_multicov")
   testthat::expect_true(!is.null(diag_single$variance_decomposition))
-  testthat::expect_true(all(c("Parameter", "SD", "Pct_MCMC", "Pct_Struct") %in% names(diag_single$variance_decomposition)))
+  pct_w_name <- intersect(names(diag_single$variance_decomposition), c("Pct_within_tree", "Pct_within_struct", "Pct_MCMC"))[1]
+  pct_s_name <- intersect(names(diag_single$variance_decomposition), c("Pct_between_trees", "Pct_between_structs", "Pct_Struct"))[1]
+  testthat::expect_true(all(c("Parameter", "SD", pct_w_name, pct_s_name) %in% names(diag_single$variance_decomposition)))
   
-  pct_sum_single <- diag_single$variance_decomposition$Pct_MCMC + diag_single$variance_decomposition$Pct_Struct
+  pct_sum_single <- diag_single$variance_decomposition[[pct_w_name]] + diag_single$variance_decomposition[[pct_s_name]]
   testthat::expect_true(all(abs(pct_sum_single - 100.0) <= 0.2))
 
   # 2. Nested multi-group collection
@@ -63,11 +65,14 @@ testthat::test_that("check_multicov computes Rhat and Law of Total Variance deco
   diag_grouped <- check_multicov(fit_grouped, plot = FALSE)
   testthat::expect_s3_class(diag_grouped, "check_multicov")
   testthat::expect_true(!is.null(diag_grouped$variance_decomposition))
-  testthat::expect_true(all(c("Parameter", "SD", "Pct_MCMC", "Pct_Struct", "Pct_Group") %in% names(diag_grouped$variance_decomposition)))
+  pct_gw_name <- intersect(names(diag_grouped$variance_decomposition), c("Pct_within_tree", "Pct_within_struct", "Pct_MCMC"))[1]
+  pct_gs_name <- intersect(names(diag_grouped$variance_decomposition), c("Pct_between_trees", "Pct_between_structs", "Pct_Struct"))[1]
+  pct_gg_name <- intersect(names(diag_grouped$variance_decomposition), c("Pct_backbone", "Pct_group", "Pct_Group"))[1]
+  testthat::expect_true(all(c("Parameter", "SD", pct_gw_name, pct_gs_name, pct_gg_name) %in% names(diag_grouped$variance_decomposition)))
   
-  pct_sum_grouped <- diag_grouped$variance_decomposition$Pct_MCMC + 
-                     diag_grouped$variance_decomposition$Pct_Struct + 
-                     diag_grouped$variance_decomposition$Pct_Group
+  pct_sum_grouped <- diag_grouped$variance_decomposition[[pct_gw_name]] + 
+                     diag_grouped$variance_decomposition[[pct_gs_name]] + 
+                     diag_grouped$variance_decomposition[[pct_gg_name]]
   testthat::expect_true(all(abs(pct_sum_grouped - 100.0) <= 0.2))
 
   # Test plot method does not fail
