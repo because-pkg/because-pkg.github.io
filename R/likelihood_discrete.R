@@ -118,6 +118,23 @@ jags_likelihood_binomial <- function(ctx, response, suffix, loop_bound) {
       paste0("    ", err, "[i] <- ", if (nchar(total_u) > 0) sub("^ \\+ ", "", total_u) else "0"),
       "  }"
     )
+
+    if (length(ctx$structures) > 0) {
+      for (s_idx in seq_along(ctx$structures)) {
+        s_name <- names(ctx$structures)[s_idx]
+        if (is.null(s_name) || s_name == "") s_name <- paste0("Struct", s_idx)
+        if (grepl("phylo", tolower(s_name))) {
+          is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
+          sig_param <- if (is_unified) paste0("sigma_", s_name, "_", response) else paste0("sigma_", response, "_", s_name)
+          lambda_param <- paste0("lambda_", response, "_", s_name)
+          lambda_line <- paste0("  ", lambda_param, " <- (", sig_param, " * ", sig_param, ") / ((", sig_param, " * ", sig_param, ") + 3.28986813369645)")
+          ctx$model_lines <- safe_add_lines(ctx$model_lines, lambda_line, ctx$declared_nodes)
+          ctx$param_map[[length(ctx$param_map) + 1]] <- list(
+            response = response, predictor = s_name, parameter = lambda_param, equation_index = NA, type = "structure"
+          )
+        }
+      }
+    }
   }
 
   invisible(ctx)
