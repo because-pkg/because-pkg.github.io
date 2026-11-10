@@ -538,9 +538,26 @@ summary.because <- function(
             }
 
             if (length(mag_vars) > 0) {
-                for (mv in mag_vars) {
+                # Only drop variance components for mag_vars that are pure indicators (no substantive predictors)
+                pure_mag_vars <- mag_vars
+                if (!is.null(object$equations)) {
+                    pure_mag_vars <- vapply(mag_vars, function(v) {
+                        matching_eqs <- vapply(object$equations, function(eq) {
+                            resp <- as.character(eq[[2]])[1]
+                            if (resp != v) return(FALSE)
+                            rhs_vars <- all.vars(eq[[3]])
+                            length(setdiff(rhs_vars, c("1", object$latent))) == 0
+                        }, logical(1))
+                        any(matching_eqs)
+                    }, logical(1))
+                    pure_mag_vars <- mag_vars[pure_mag_vars]
+                }
+
+                for (mv in pure_mag_vars) {
                     drop_pats <- c(
+                        paste0("^sigma_", mv, "$"),
                         paste0("^sigma_tot_", mv, "$"),
+                        paste0("^sigma_shared_", mv, "$"),
                         paste0("^sigma_", mv, "_(?!res$)[a-zA-Z0-9]+$"),
                         paste0("^sigma_(?!obs_|res_)[a-zA-Z0-9]+_", mv, "$"),
                         paste0("^sigma_", mv, "_res$"),

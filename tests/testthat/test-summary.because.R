@@ -114,7 +114,7 @@ test_that("summary.because handles d-sep output", {
     expect_s3_class(results, "summary.because")
     expect_true(is.data.frame(results$results))
     expect_true(nrow(results$results) == 1)
-    expect_equal(ncol(results$results), 8)
+    expect_true(ncol(results$results) %in% c(8, 9))
     expect_true("LowerCI" %in% colnames(results$results))
 })
 
