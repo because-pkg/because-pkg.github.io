@@ -41,9 +41,14 @@ get_family_default_rope <- function(fam) {
 #' @param resp Response variable name
 #' @param fam Family name
 #' @param rope_spec User-supplied ROPE specification (NULL, TRUE, vector, or list)
+#' @param standardized Logical. If TRUE, forces Gaussian standard deviation benchmark c(-0.10, 0.10).
 #' @return Numeric vector of length 2
 #' @keywords internal
-resolve_rope_for_param <- function(pname, resp = NULL, fam = NULL, rope_spec = NULL) {
+resolve_rope_for_param <- function(pname, resp = NULL, fam = NULL, rope_spec = NULL, standardized = FALSE) {
+    if (isTRUE(standardized)) {
+        fam <- "gaussian"
+    }
+
     # If rope_spec is a single numeric vector of length 2, use globally
     if (is.numeric(rope_spec) && length(rope_spec) == 2) {
         return(as.numeric(rope_spec))

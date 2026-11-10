@@ -4,7 +4,13 @@
 \alias{resolve_rope_for_param}
 \title{Resolve ROPE interval for a specific parameter}
 \usage{
-resolve_rope_for_param(pname, resp = NULL, fam = NULL, rope_spec = NULL)
+resolve_rope_for_param(
+  pname,
+  resp = NULL,
+  fam = NULL,
+  rope_spec = NULL,
+  standardized = FALSE
+)
 }
 \arguments{
 \item{pname}{Parameter name}
@@ -14,6 +20,8 @@ resolve_rope_for_param(pname, resp = NULL, fam = NULL, rope_spec = NULL)
 \item{fam}{Family name}
 
 \item{rope_spec}{User-supplied ROPE specification (NULL, TRUE, vector, or list)}
+
+\item{standardized}{Logical. If TRUE, forces Gaussian standard deviation benchmark c(-0.10, 0.10).}
 }
 \value{
 Numeric vector of length 2

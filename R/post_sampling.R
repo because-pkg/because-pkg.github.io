@@ -12,6 +12,20 @@ compute_mcmc_summary <- function(samples, n.chains) {
 
   sum_stats <- summary(samples)
 
+  if (!is.matrix(sum_stats$statistics)) {
+    pname <- colnames(samples[[1]])[1]
+    sum_stats$statistics <- matrix(
+      sum_stats$statistics,
+      nrow = 1,
+      dimnames = list(pname, names(sum_stats$statistics))
+    )
+    sum_stats$quantiles <- matrix(
+      sum_stats$quantiles,
+      nrow = 1,
+      dimnames = list(pname, names(sum_stats$quantiles))
+    )
+  }
+
   # Explicitly calculate R-hat if multiple chains
   if (n.chains > 1) {
     tryCatch(

@@ -81,6 +81,8 @@ summary.because <- function(
     lower_name <- format_pct(lower_prob)
     med_name <- format_pct(0.5)
     upper_name <- format_pct(upper_prob)
+    is_std <- isTRUE(attr(object, "standardized")) || inherits(object, "because_standardized")
+
     # If this was a d-sep run, we want to format the output specifically
     if (!is.null(object$dsep) && (isTRUE(object$dsep) || is.list(object$dsep))) {
         # Check if dsep results were pre-computed by a backend engine (e.g., numpyro)
@@ -97,7 +99,7 @@ summary.because <- function(
                         if (!is.null(dr)) {
                             samps <- as.matrix(dr$samples)
                             if (param_name %in% colnames(samps)) {
-                                r_interval <- resolve_rope_for_param(param_name, resp = resp_name, fam = fam_i, rope_spec = rope)
+                                r_interval <- resolve_rope_for_param(param_name, resp = resp_name, fam = fam_i, rope_spec = rope, standardized = is_std)
                                 sub_s <- samps[, param_name]
                                 p_rope_vals[i] <- mean(sub_s > r_interval[1] & sub_s < r_interval[2])
                                 break
@@ -109,7 +111,8 @@ summary.because <- function(
             }
             out <- list(
                 type = "dsep",
-                results = res_df
+                results = res_df,
+                standardized = is_std
             )
             class(out) <- "summary.because"
             return(out)
@@ -341,7 +344,7 @@ summary.because <- function(
                     p_rope <- NA_real_
                     if (!is.null(rope)) {
                         fam_i <- if (!is.null(object$family) && !is.null(response) && response %in% names(object$family)) object$family[[response]] else "gaussian"
-                        r_interval <- resolve_rope_for_param(param_name, resp = response, fam = fam_i, rope_spec = rope)
+                        r_interval <- resolve_rope_for_param(param_name, resp = response, fam = fam_i, rope_spec = rope, standardized = is_std)
                         sub_samples_mat <- as.matrix(sub_samples)
                         p_rope <- mean(sub_samples_mat > r_interval[1] & sub_samples_mat < r_interval[2])
                     }
@@ -381,7 +384,8 @@ summary.because <- function(
         # Store components in list instead of printing
         out <- list(
             type = "dsep",
-            results = results
+            results = results,
+            standardized = is_std
         )
         class(out) <- "summary.because"
         return(out)
@@ -664,7 +668,7 @@ summary.because <- function(
                         fam_i <- object$family[[resp_i]]
                     }
 
-                    r_interval <- resolve_rope_for_param(param_name, resp = resp_i, fam = fam_i, rope_spec = rope)
+                    r_interval <- resolve_rope_for_param(param_name, resp = resp_i, fam = fam_i, rope_spec = rope, standardized = is_std)
                     s_col <- all_samps[, param_name]
                     p_rope_vals[i] <- mean(s_col > r_interval[1] & s_col < r_interval[2])
 
@@ -694,6 +698,7 @@ summary.because <- function(
         # Store components in list instead of printing
         out <- list(
             type = "standard",
+            standardized = is_std,
             results = combined,
             DIC = object$DIC,
             WAIC = object$WAIC,
@@ -740,9 +745,16 @@ print.summary.because <- function(x, ...) {
             cat("\n")
             cat("\n")
         }
+        if (isTRUE(x$standardized)) {
+            cat("Note: d-separation tests are evaluated on the standardized scale (latent liability for non-Gaussian links).\n\n")
+        }
     } else {
         # Standard summary
         print(x$results, quote = FALSE)
+
+        if (isTRUE(x$standardized)) {
+            cat("\nNote: Model is standardized. All path coefficients are evaluated on a common standard deviation scale (latent liability scale for non-Gaussian links).\n")
+        }
 
         if ("Rhat_max" %in% colnames(x$results)) {
             cat("\nNote: Rhat is the mean within-tree Gelman-Rubin diagnostic; Rhat_max is the worst-case (maximum) across candidate trees.\n")

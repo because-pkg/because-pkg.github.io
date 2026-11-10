@@ -72,6 +72,7 @@ plot_rope.because <- function(object, rope = "default", parameters = NULL, ...) 
     }
 
     is_dsep <- !is.null(object$dsep) && (isTRUE(object$dsep) || is.list(object$dsep))
+    is_std  <- isTRUE(attr(object, "standardized")) || inherits(object, "because_standardized")
     
     plot_data <- data.frame()
     
@@ -127,7 +128,7 @@ plot_rope.because <- function(object, rope = "default", parameters = NULL, ...) 
                         # Infer response and family
                         resp_name <- sub("\\s*_\\|\\|_.*", "", test_label)
                         fam_i <- if (!is.null(object$family) && resp_name %in% names(object$family)) object$family[[resp_name]] else "gaussian"
-                        r_int <- resolve_rope_for_param(param_name, resp = resp_name, fam = fam_i, rope_spec = rope)
+                        r_int <- resolve_rope_for_param(param_name, resp = resp_name, fam = fam_i, rope_spec = rope, standardized = is_std)
 
                         vals <- samps[, param_name]
                         tmp <- data.frame(
@@ -195,7 +196,7 @@ plot_rope.because <- function(object, rope = "default", parameters = NULL, ...) 
                     fam_i <- object$family[[resp]]
                 }
 
-                r_int <- resolve_rope_for_param(p, resp = resp, fam = fam_i, rope_spec = rope)
+                r_int <- resolve_rope_for_param(p, resp = resp, fam = fam_i, rope_spec = rope, standardized = is_std)
 
                 tmp <- data.frame(
                     Label = label,
