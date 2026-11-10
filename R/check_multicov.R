@@ -30,7 +30,7 @@
 #' fit <- because(list(y ~ x), data = my_data, structure = my_cov_list, engine = "numpyro")
 #' check_multicov(fit)
 #' }
-check_multicov <- function(model, plot = TRUE, ...) {
+check_multicov <- function(model, plot = TRUE, show_internal = FALSE, ...) {
   if (!inherits(model, "because") && !is.list(model$samples)) {
     stop("Argument 'model' must be a 'because' model object containing '$samples'.")
   }
@@ -224,6 +224,65 @@ check_multicov <- function(model, plot = TRUE, ...) {
       !grepl("^beta_.*(_det_|_1_times_)", all_cols)
   ]
 
+  if (!show_internal) {
+    # Filter redundant variance components for latent indicator variables (MAG approach)
+    mag_cors <- model$induced_correlations %||% model$input$induced_correlations %||% model$induced_cors
+    mag_vars <- character(0)
+    if (!is.null(mag_cors) && length(mag_cors) > 0) {
+      mag_vars <- unique(unlist(mag_cors))
+    } else {
+      rho_params <- grep("^rho_", all_cols, value = TRUE)
+      if (length(rho_params) > 0) {
+        resp_vars <- if (!is.null(model$equations)) {
+          unique(vapply(model$equations, function(eq) as.character(all.vars(eq[[2]])[1]), character(1)))
+        } else character(0)
+        for (rp in rho_params) {
+          clean_rp <- sub("^rho_", "", rp)
+          if (length(resp_vars) > 0) {
+            matched <- resp_vars[vapply(resp_vars, function(v) grepl(paste0("(^|_)", v, "(_|$)"), clean_rp), logical(1))]
+            mag_vars <- unique(c(mag_vars, matched))
+          } else {
+            parts <- strsplit(clean_rp, "_")[[1]]
+            mag_vars <- unique(c(mag_vars, parts))
+          }
+        }
+      }
+    }
+
+    # Identify which mag_vars are intercept-only / pure indicator variables
+    pure_mag_vars <- mag_vars
+    if (!is.null(model$equations)) {
+      pure_mag_vars <- vapply(mag_vars, function(v) {
+        matching_eqs <- vapply(model$equations, function(eq) {
+          resp <- as.character(eq[[2]])[1]
+          if (resp != v) return(FALSE)
+          rhs_vars <- all.vars(eq[[3]])
+          length(setdiff(rhs_vars, c("1", model$latent))) == 0
+        }, logical(1))
+        any(matching_eqs)
+      }, logical(1))
+      pure_mag_vars <- mag_vars[pure_mag_vars]
+    }
+
+    if (length(pure_mag_vars) > 0) {
+      drop_pats <- unlist(lapply(pure_mag_vars, function(mv) {
+        c(
+          paste0("^sigma_", mv, "$"),
+          paste0("^sigma_shared_", mv, "$"),
+          paste0("^sigma_tot_", mv, "$"),
+          paste0("^sigma_", mv, "_(?!res$)[a-zA-Z0-9]+$"),
+          paste0("^sigma_(?!obs_|res_)[a-zA-Z0-9]+_", mv, "$"),
+          paste0("^sigma_", mv, "_res$"),
+          paste0("^lambda_", mv, "(_|$)")
+        )
+      }))
+      drop_mask <- vapply(struct_cols, function(p) {
+        any(vapply(drop_pats, function(dp) grepl(dp, p, perl = TRUE), logical(1)))
+      }, logical(1))
+      struct_cols <- struct_cols[!drop_mask]
+    }
+  }
+
   param_diag_df <- NULL
   if (length(struct_cols) > 0 && is_balanced_ensemble) {
     diag_rows <- lapply(struct_cols, function(p) {
@@ -241,14 +300,16 @@ check_multicov <- function(model, plot = TRUE, ...) {
       draw_struct_mean <- struct_means[as.character(draw_struct)]
       ss_mcmc <- sum((all_draws - draw_struct_mean)^2, na.rm = TRUE)
 
-      rhat_within <- NA_real_
+      rhat_within_mean <- NA_real_
+      rhat_within_max  <- NA_real_
       if (length(structs_with_multi_chains) > 0) {
         rw_vals <- vapply(structs_with_multi_chains, function(sk) {
           idx <- which(chain_primary_struct == sk & chain_stats$Unique_Structures == 1)
           calc_rhat(ch_vecs[idx])
         }, numeric(1))
         if (any(!is.na(rw_vals))) {
-          rhat_within <- max(rw_vals, na.rm = TRUE)
+          rhat_within_mean <- mean(rw_vals, na.rm = TRUE)
+          rhat_within_max  <- max(rw_vals, na.rm = TRUE)
         }
       }
 
@@ -283,7 +344,7 @@ check_multicov <- function(model, plot = TRUE, ...) {
         status_g_sens  <- paste0(g_term, "-Sensitive")
         status_sg_sens <- paste0(s_term, "-Sensitive (within ", g_term, ")")
 
-        status_str <- if (!is.na(rhat_within) && rhat_within > 1.05) {
+        status_str <- if (!is.na(rhat_within_max) && rhat_within_max > 1.05) {
           "Check MCMC"
         } else if (!is.na(rhat_group) && rhat_group > 1.05) {
           status_g_sens
@@ -301,7 +362,8 @@ check_multicov <- function(model, plot = TRUE, ...) {
           SD = round(stats::sd(all_draws, na.rm = TRUE), 3),
           CI_2.5 = round(unname(stats::quantile(all_draws, 0.025, na.rm = TRUE)), 3),
           CI_97.5 = round(unname(stats::quantile(all_draws, 0.975, na.rm = TRUE)), 3),
-          Rhat_MCMC = round(rhat_within, 3)
+          Rhat = round(rhat_within_mean, 3),
+          Rhat_max = round(rhat_within_max, 3)
         )
         for (g in unique_groups) {
           col_name <- paste0("Rhat_", gsub("[^A-Za-z0-9_]", "_", g))
@@ -337,8 +399,8 @@ check_multicov <- function(model, plot = TRUE, ...) {
         struct_sd <- if (sum(!is.na(struct_means_val)) > 1) stats::sd(struct_means_val, na.rm = TRUE) else 0.0
 
         status_sens <- paste0(s_term, "-Sensitive")
-        status_str <- if (!is.na(rhat_within)) {
-          if (rhat_within > 1.05) {
+        status_str <- if (!is.na(rhat_within_max)) {
+          if (rhat_within_max > 1.05) {
             "Check MCMC"
           } else if (!is.na(rhat_struct) && rhat_struct > 1.05) {
             status_sens
@@ -359,7 +421,8 @@ check_multicov <- function(model, plot = TRUE, ...) {
           SD = round(stats::sd(all_draws, na.rm = TRUE), 3),
           CI_2.5 = round(unname(stats::quantile(all_draws, 0.025, na.rm = TRUE)), 3),
           CI_97.5 = round(unname(stats::quantile(all_draws, 0.975, na.rm = TRUE)), 3),
-          Rhat_within = round(rhat_within, 3),
+          Rhat = round(rhat_within_mean, 3),
+          Rhat_max = round(rhat_within_max, 3),
           stringsAsFactors = FALSE
         )
         row_df[[rhat_col_name]] <- round(rhat_struct, 3)
@@ -615,12 +678,13 @@ plot.check_multicov <- function(x, ...) {
 
     # Panel 1: Rhat Forest Plot
     if (isTRUE(x$has_groups)) {
-      r_within <- param_diag_df$Rhat_MCMC
+      r_within <- param_diag_df$Rhat_max %||% param_diag_df$Rhat_MCMC %||% param_diag_df$Rhat
       r_grp    <- param_diag_df[[rhat_g_col]]
       grp_cols <- grep("^Rhat_", names(param_diag_df), value = TRUE)
-      grp_cols <- setdiff(grp_cols, c("Rhat_MCMC", "Rhat_group", "Rhat_backbone", "Rhat_all"))
+      grp_cols <- setdiff(grp_cols, c("Rhat", "Rhat_max", "Rhat_MCMC", "Rhat_within", "Rhat_group", "Rhat_backbone", "Rhat_all"))
 
-      all_r_vals <- unlist(param_diag_df[, c("Rhat_MCMC", rhat_g_col, "Rhat_all", grp_cols), drop = FALSE])
+      r_within_col <- if ("Rhat_max" %in% names(param_diag_df)) "Rhat_max" else if ("Rhat_MCMC" %in% names(param_diag_df)) "Rhat_MCMC" else "Rhat"
+      all_r_vals <- unlist(param_diag_df[, c(r_within_col, rhat_g_col, "Rhat_all", grp_cols), drop = FALSE])
       x_max <- max(c(1.15, all_r_vals), na.rm = TRUE) * 1.05
 
       plot(r_grp, y_idx, xlim = c(0.98, x_max), ylim = y_lim,
@@ -658,7 +722,7 @@ plot.check_multicov <- function(x, ...) {
              lty = leg_ltys, lwd = leg_lwds, pt.cex = 1.1, bty = "n", cex = 0.72)
 
     } else {
-      r_within <- param_diag_df$Rhat_within
+      r_within <- param_diag_df$Rhat_max %||% param_diag_df$Rhat_within %||% param_diag_df$Rhat
       r_struct <- param_diag_df[[rhat_s_col]]
       x_max <- max(c(1.15, r_within, r_struct), na.rm = TRUE) * 1.05
 
