@@ -381,29 +381,14 @@ check_multicov <- function(model, plot = TRUE, ...) {
       paste0(
         sprintf("Mode: Nested Multi-%s %s Ensemble (BMA across %d %ss: %s).\n",
                 g_term, s_term, length(unique_groups), g_term_l, paste(unique_groups, collapse = ", ")),
-        sprintf("%s Coverage: %d candidate %ss across %d %ss equally weighted (%.1f%% posterior draws per %s).\n",
-                s_term, total_unique, s_term_l, length(unique_groups), g_term_l, 100 / total_unique, s_term_l),
-        if (!is.null(param_diag_df) && any(!is.na(param_diag_df$Rhat_MCMC))) {
-          sprintf("Max Within-%s Rhat (MCMC): %.3f | Max Between-%s Rhat: %.3f | Max Total Rhat: %.3f",
-                  s_term, max(param_diag_df$Rhat_MCMC, na.rm = TRUE),
-                  g_term, max(param_diag_df[[if (is_phylo) "Rhat_backbone" else "Rhat_group"]], na.rm = TRUE),
-                  max(param_diag_df$Rhat_all, na.rm = TRUE))
-        } else {
-          sprintf("Tip: Use n.chains >= 2 to compute within-%s MCMC convergence alongside %s sensitivity.", s_term_l, g_term_l)
-        }
+        sprintf("%s Coverage: %d candidate %ss across %d %ss equally weighted (%.1f%% posterior draws per %s).",
+                s_term, total_unique, s_term_l, length(unique_groups), g_term_l, 100 / total_unique, s_term_l)
       )
     } else {
       paste0(
         sprintf("Mode: Deterministic %s Ensemble (Bayesian Model Averaging).\n", s_term),
-        sprintf("%s Coverage: %d %ss equally weighted (%.1f%% posterior draws per %s).\n",
-                s_term, total_unique, s_term_l, 100 / total_unique, s_term_l),
-        if (!is.null(param_diag_df) && any(!is.na(param_diag_df$Rhat_within))) {
-          sprintf("Max Within-%s Rhat (MCMC convergence): %.3f | Max Between-%s Rhat (Sensitivity): %.3f",
-                  s_term, max(param_diag_df$Rhat_within, na.rm = TRUE),
-                  s_term, max(param_diag_df[[if (is_phylo) "Rhat_tree" else "Rhat_struct"]], na.rm = TRUE))
-        } else {
-          sprintf("Tip: Use n.chains >= 2 to compute within-%s Rhat alongside between-%s Rhat.", s_term_l, s_term_l)
-        }
+        sprintf("%s Coverage: %d %ss equally weighted (%.1f%% posterior draws per %s).",
+                s_term, total_unique, s_term_l, 100 / total_unique, s_term_l)
       )
     }
   } else if (total_jumps == 0) {
