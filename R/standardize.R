@@ -98,8 +98,7 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
 
     # Iterate over chains in this test
     for (ch in seq_along(res_i$samples)) {
-      c_mat <- as.matrix(res_i$samples[[ch]])
-      p_names <- colnames(c_mat)
+      p_names <- colnames(res_i$samples[[ch]])
 
       # 1. Non-Gaussian: Binomial / Bernoulli / Ordinal
       if (fam %in% c("binomial", "bernoulli", "ordinal")) {
@@ -107,7 +106,7 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
         if (length(sig_col) == 0) {
           sig_col <- grep(paste0("^sigma_", resp), p_names, value = TRUE)
         }
-        sig_sq <- if (length(sig_col) > 0) c_mat[, sig_col[1]]^2 else 0
+        sig_sq <- if (length(sig_col) > 0) res_i$samples[[ch]][, sig_col[1]]^2 else 0
 
         # Liability disturbance SD
         pi_sq_3 <- (pi^2) / 3
@@ -123,7 +122,7 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
             1
           }
           if (is.na(sd_x) || sd_x == 0) sd_x <- 1
-          c_mat[, b_col] <- c_mat[, b_col] * (sd_x / sd_liability)
+          res_i$samples[[ch]][, b_col] <- res_i$samples[[ch]][, b_col] * (sd_x / sd_liability)
         }
       } else if (fam == "gaussian") {
         # Continuous response
@@ -146,12 +145,10 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
           if (is.na(sd_x) || sd_x == 0) sd_x <- 1
 
           if (sd_x != sd_y) {
-            c_mat[, b_col] <- c_mat[, b_col] * (sd_x / sd_y)
+            res_i$samples[[ch]][, b_col] <- res_i$samples[[ch]][, b_col] * (sd_x / sd_y)
           }
         }
       }
-
-      res_i$samples[[ch]] <- coda::mcmc(c_mat, start = stats::start(res_i$samples[[ch]]), thin = coda::thin(res_i$samples[[ch]]))
     }
     res$dsep_results[[i]] <- res_i
   }
@@ -159,17 +156,15 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
   # Synchronize global res$samples across all d-sep tests
   if (!is.null(res$samples)) {
     for (ch in seq_along(res$samples)) {
-      c_mat <- as.matrix(res$samples[[ch]])
-      p_names <- colnames(c_mat)
+      p_names <- colnames(res$samples[[ch]])
       for (i in seq_along(res$dsep_results)) {
         if (is.null(res$dsep_results[[i]]) || is.null(res$dsep_results[[i]]$samples)) next
-        res_samps <- as.matrix(res$dsep_results[[i]]$samples[[ch]])
+        res_samps <- res$dsep_results[[i]]$samples[[ch]]
         common_betas <- grep("^beta_", intersect(p_names, colnames(res_samps)), value = TRUE)
         if (length(common_betas) > 0) {
-          c_mat[, common_betas] <- res_samps[, common_betas]
+          res$samples[[ch]][, common_betas] <- res_samps[, common_betas]
         }
       }
-      res$samples[[ch]] <- coda::mcmc(c_mat, start = stats::start(res$samples[[ch]]), thin = coda::thin(res$samples[[ch]]))
     }
   }
 
@@ -182,20 +177,78 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
   if (is.null(res$samples)) return(res)
 
   param_map <- res$parameter_map
+  p_names <- colnames(res$samples[[1]])
+  standardized_params <- character(0)
 
-  for (ch in seq_along(res$samples)) {
-    c_mat <- as.matrix(res$samples[[ch]])
-    p_names <- colnames(c_mat)
+  # Determine parameters to standardize
+  if (!is.null(param_map) && is.data.frame(param_map)) {
+    beta_rows <- param_map[grepl("^beta_", param_map$parameter), ]
+    for (r in seq_len(nrow(beta_rows))) {
+      p_name <- beta_rows$parameter[r]
+      if (!p_name %in% p_names) next
 
-    # Determine paths from parameter_map if available
-    if (!is.null(param_map) && is.data.frame(param_map)) {
-      beta_rows <- param_map[grepl("^beta_", param_map$parameter), ]
-      for (r in seq_len(nrow(beta_rows))) {
-        p_name <- beta_rows$parameter[r]
-        if (!p_name %in% p_names) next
+      resp <- beta_rows$response[r]
+      pred <- beta_rows$predictor[r]
 
-        resp <- beta_rows$response[r]
-        pred <- beta_rows$predictor[r]
+      fam <- if (!is.null(res$family) && resp %in% names(res$family)) {
+        tolower(as.character(res$family[[resp]]))
+      } else {
+        "gaussian"
+      }
+
+      # Predictor SD
+      is_latent_pred <- !is.null(res$latent) && pred %in% res$latent
+      sd_x <- if (is_latent_pred) {
+        1.0
+      } else if (!is.null(data) && pred %in% names(data)) {
+        stats::sd(as.numeric(data[[pred]]), na.rm = TRUE)
+      } else {
+        1.0
+      }
+      if (is.na(sd_x) || sd_x == 0) sd_x <- 1.0
+
+      if (fam %in% c("binomial", "bernoulli", "ordinal")) {
+        sig_col <- grep(paste0("^sigma_.*", resp), p_names, value = TRUE)
+        if (length(sig_col) == 0) {
+          sig_col <- grep(paste0("^sigma_", resp), p_names, value = TRUE)
+        }
+        for (ch in seq_along(res$samples)) {
+          sig_sq <- if (length(sig_col) > 0) res$samples[[ch]][, sig_col[1]]^2 else 0
+          pi_sq_3 <- (pi^2) / 3
+          sd_liability <- sqrt(sig_sq + pi_sq_3)
+          res$samples[[ch]][, p_name] <- res$samples[[ch]][, p_name] * (sd_x / sd_liability)
+        }
+        standardized_params <- c(standardized_params, p_name)
+      } else if (fam == "gaussian") {
+        is_latent_resp <- !is.null(res$latent) && resp %in% res$latent
+        sd_y <- if (is_latent_resp) {
+          1.0
+        } else if (!is.null(data) && resp %in% names(data)) {
+          stats::sd(as.numeric(data[[resp]]), na.rm = TRUE)
+        } else {
+          1.0
+        }
+        if (is.na(sd_y) || sd_y == 0) sd_y <- 1.0
+
+        if (sd_x != sd_y) {
+          scale_fac <- sd_x / sd_y
+          for (ch in seq_along(res$samples)) {
+            res$samples[[ch]][, p_name] <- res$samples[[ch]][, p_name] * scale_fac
+          }
+          standardized_params <- c(standardized_params, p_name)
+        }
+      }
+    }
+  } else {
+    # Fallback when parameter_map is not present: parse parameter names ^beta_Resp_Pred
+    beta_cols <- grep("^beta_", p_names, value = TRUE)
+    for (b_col in beta_cols) {
+      clean_b <- sub("^beta_", "", b_col)
+      parts <- strsplit(clean_b, "_")[[1]]
+      if (length(parts) >= 2) {
+        resp <- parts[1]
+        pred <- paste(parts[-1], collapse = "_")
+        pred_clean <- sub("(_\\d+|\\[\\d+\\])$", "", pred)
 
         fam <- if (!is.null(res$family) && resp %in% names(res$family)) {
           tolower(as.character(res$family[[resp]]))
@@ -203,84 +256,71 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
           "gaussian"
         }
 
-        # Predictor SD
-        is_latent_pred <- !is.null(res$latent) && pred %in% res$latent
-        sd_x <- if (is_latent_pred) {
-          1.0
-        } else if (!is.null(data) && pred %in% names(data)) {
-          stats::sd(as.numeric(data[[pred]]), na.rm = TRUE)
-        } else {
-          1.0
-        }
-        if (is.na(sd_x) || sd_x == 0) sd_x <- 1.0
+        sd_x <- if (!is.null(data) && pred_clean %in% names(data)) stats::sd(as.numeric(data[[pred_clean]]), na.rm = TRUE) else 1
+        if (is.na(sd_x) || sd_x == 0) sd_x <- 1
 
         if (fam %in% c("binomial", "bernoulli", "ordinal")) {
           sig_col <- grep(paste0("^sigma_.*", resp), p_names, value = TRUE)
           if (length(sig_col) == 0) {
             sig_col <- grep(paste0("^sigma_", resp), p_names, value = TRUE)
           }
-          sig_sq <- if (length(sig_col) > 0) c_mat[, sig_col[1]]^2 else 0
-
-          pi_sq_3 <- (pi^2) / 3
-          sd_liability <- sqrt(sig_sq + pi_sq_3)
-          c_mat[, p_name] <- c_mat[, p_name] * (sd_x / sd_liability)
-        } else if (fam == "gaussian") {
-          is_latent_resp <- !is.null(res$latent) && resp %in% res$latent
-          sd_y <- if (is_latent_resp) {
-            1.0
-          } else if (!is.null(data) && resp %in% names(data)) {
-            stats::sd(as.numeric(data[[resp]]), na.rm = TRUE)
-          } else {
-            1.0
-          }
-          if (is.na(sd_y) || sd_y == 0) sd_y <- 1.0
-
-          if (sd_x != sd_y) {
-            c_mat[, p_name] <- c_mat[, p_name] * (sd_x / sd_y)
-          }
-        }
-      }
-    } else {
-      # Fallback when parameter_map is not present: parse parameter names ^beta_Resp_Pred
-      beta_cols <- grep("^beta_", p_names, value = TRUE)
-      for (b_col in beta_cols) {
-        clean_b <- sub("^beta_", "", b_col)
-        parts <- strsplit(clean_b, "_")[[1]]
-        if (length(parts) >= 2) {
-          resp <- parts[1]
-          pred <- paste(parts[-1], collapse = "_")
-          pred_clean <- sub("(_\\d+|\\[\\d+\\])$", "", pred)
-
-          fam <- if (!is.null(res$family) && resp %in% names(res$family)) {
-            tolower(as.character(res$family[[resp]]))
-          } else {
-            "gaussian"
-          }
-
-          sd_x <- if (!is.null(data) && pred_clean %in% names(data)) stats::sd(as.numeric(data[[pred_clean]]), na.rm = TRUE) else 1
-          if (is.na(sd_x) || sd_x == 0) sd_x <- 1
-
-          if (fam %in% c("binomial", "bernoulli", "ordinal")) {
-            sig_col <- grep(paste0("^sigma_.*", resp), p_names, value = TRUE)
-            sig_sq <- if (length(sig_col) > 0) c_mat[, sig_col[1]]^2 else 0
+          for (ch in seq_along(res$samples)) {
+            sig_sq <- if (length(sig_col) > 0) res$samples[[ch]][, sig_col[1]]^2 else 0
             sd_liability <- sqrt(sig_sq + (pi^2)/3)
-            c_mat[, b_col] <- c_mat[, b_col] * (sd_x / sd_liability)
-          } else if (fam == "gaussian") {
-            sd_y <- if (!is.null(data) && resp %in% names(data)) stats::sd(as.numeric(data[[resp]]), na.rm = TRUE) else 1
-            if (is.na(sd_y) || sd_y == 0) sd_y <- 1
-            if (sd_x != sd_y) {
-              c_mat[, b_col] <- c_mat[, b_col] * (sd_x / sd_y)
+            res$samples[[ch]][, b_col] <- res$samples[[ch]][, b_col] * (sd_x / sd_liability)
+          }
+          standardized_params <- c(standardized_params, b_col)
+        } else if (fam == "gaussian") {
+          sd_y <- if (!is.null(data) && resp %in% names(data)) stats::sd(as.numeric(data[[resp]]), na.rm = TRUE) else 1
+          if (is.na(sd_y) || sd_y == 0) sd_y <- 1
+          if (sd_x != sd_y) {
+            scale_fac <- sd_x / sd_y
+            for (ch in seq_along(res$samples)) {
+              res$samples[[ch]][, b_col] <- res$samples[[ch]][, b_col] * scale_fac
             }
+            standardized_params <- c(standardized_params, b_col)
           }
         }
       }
     }
-
-    res$samples[[ch]] <- coda::mcmc(c_mat, start = stats::start(res$samples[[ch]]), thin = coda::thin(res$samples[[ch]]))
   }
 
-  # Recompute summary with updated standardized samples
-  res$summary <- compute_mcmc_summary(res$samples, length(res$samples))
+  standardized_params <- unique(standardized_params)
+
+  # High-efficiency summary update:
+  # If summary is already present, update ONLY the rows for standardized parameters,
+  # keeping all other parameters and precomputed convergence diagnostics (Rhat, Rhat_max, ESS) intact!
+  if (!is.null(res$summary) && !is.null(res$summary$statistics) && length(standardized_params) > 0) {
+    for (p_name in standardized_params) {
+      if (p_name %in% rownames(res$summary$statistics)) {
+        sub_samps <- res$samples[, p_name, drop = FALSE]
+        sub_summ <- summary(sub_samps)
+        stats_sub <- if (is.matrix(sub_summ$statistics)) sub_summ$statistics else matrix(sub_summ$statistics, nrow = 1, dimnames = list(p_name, names(sub_summ$statistics)))
+        q_sub <- if (is.matrix(sub_summ$quantiles)) sub_summ$quantiles else matrix(sub_summ$quantiles, nrow = 1, dimnames = list(p_name, names(sub_summ$quantiles)))
+
+        for (col in c("Mean", "SD", "Naive SE", "Time-series SE")) {
+          if (col %in% colnames(stats_sub) && col %in% colnames(res$summary$statistics)) {
+            res$summary$statistics[p_name, col] <- stats_sub[p_name, col]
+          }
+        }
+        for (col in colnames(q_sub)) {
+          if (col %in% colnames(res$summary$quantiles)) {
+            res$summary$quantiles[p_name, col] <- q_sub[p_name, col]
+          }
+        }
+      }
+    }
+  } else if (is.null(res$summary)) {
+    # If no summary was present, only summarize structural parameters to keep it fast
+    target_vars <- if (length(p_names) > 100) {
+      p_names[grepl("^(alpha|beta|sigma|tau|lambda|rho|psi|r_|cutpoint)", p_names)]
+    } else {
+      p_names
+    }
+    if (length(target_vars) > 0) {
+      res$summary <- compute_mcmc_summary(res$samples[, target_vars, drop = FALSE], length(res$samples))
+    }
+  }
 
   return(res)
 }

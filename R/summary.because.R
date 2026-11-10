@@ -401,16 +401,22 @@ summary.because <- function(
         # Calculate convergence diagnostics
         n_chains <- coda::nchain(object$samples)
 
-        # Effective sample size
-        eff_size <- tryCatch(
-            coda::effectiveSize(object$samples),
-            error = function(e) return(NULL)
-        )
+        # Determine target parameters for diagnostics:
+        # If show_nodes is FALSE, only structural parameters need diagnostics!
+        var_names_all <- colnames(object$samples[[1]])
+        k_cols <- grep("^K_tree_", var_names_all, value = TRUE)
+        target_vars <- if (!show_nodes) {
+            var_names_all[grepl("^(alpha|beta|sigma|tau|lambda|rho|psi|r_|cutpoint)", var_names_all)]
+        } else {
+            var_names_all
+        }
+        target_vars <- setdiff(target_vars, k_cols)
 
         # Gelman-Rubin diagnostic (Rhat and Rhat_max)
-        # Use stored Rhat / Rhat_max if available (calculated in because)
         rhat <- NULL
         rhat_max <- NULL
+        eff_size <- NULL
+
         if ("Rhat" %in% colnames(summ$statistics)) {
             rhat <- summ$statistics[, "Rhat"]
             names(rhat) <- rownames(summ$statistics)
@@ -419,10 +425,13 @@ summary.because <- function(
             rhat_max <- summ$statistics[, "Rhat_max"]
             names(rhat_max) <- rownames(summ$statistics)
         }
-        if ((is.null(rhat) || is.null(rhat_max)) && n_chains > 1) {
+        if ("n.eff" %in% colnames(summ$statistics)) {
+            eff_size <- summ$statistics[, "n.eff"]
+            names(eff_size) <- rownames(summ$statistics)
+        }
+
+        if ((is.null(rhat) || is.null(rhat_max) || is.null(eff_size)) && n_chains > 1) {
             # Check if this is a multiPhylo ensemble run (e.g., from JAGS/NIMBLE/NumPyro)
-            var_names_all <- colnames(object$samples[[1]])
-            k_cols <- grep("^K_tree_", var_names_all, value = TRUE)
             is_ens_samples <- FALSE
             if (length(k_cols) > 0) {
                 k_col <- k_cols[1]
@@ -449,18 +458,30 @@ summary.because <- function(
                     rhat_tree <- stats::setNames(rep(NA_real_, length(var_names_all)), var_names_all)
                     tree_ess_sum <- stats::setNames(rep(0, length(var_names_all)), var_names_all)
                     unique_trees <- sort(unique(chain_k_vals))
-                    for (p_idx in seq_along(var_names_all)) {
-                        pname <- var_names_all[p_idx]
-                        if (pname %in% k_cols) next
-                        tree_rhats <- numeric(0)
-                        p_ess_sum <- 0
-                        for (tk in unique_trees) {
-                            c_idx <- which(chain_k_vals == tk)
-                            if (length(c_idx) >= 1) {
-                                sub_tk <- object$samples[c_idx]
-                                ess_tk <- tryCatch(coda::effectiveSize(sub_tk)[pname], error = function(e) NA_real_)
-                                if (!is.na(ess_tk) && is.finite(ess_tk)) p_ess_sum <- p_ess_sum + ess_tk
+
+                    # Precompute effectiveSize ONCE per tree for target_vars (fast vectorized call)
+                    tree_ess_mat <- matrix(0, nrow = length(unique_trees), ncol = length(target_vars),
+                                           dimnames = list(as.character(unique_trees), target_vars))
+                    for (tk_idx in seq_along(unique_trees)) {
+                        tk <- unique_trees[tk_idx]
+                        c_idx <- which(chain_k_vals == tk)
+                        if (length(c_idx) >= 1) {
+                            sub_tk <- object$samples[c_idx]
+                            sub_target <- sub_tk[, intersect(target_vars, colnames(sub_tk[[1]])), drop = FALSE]
+                            ess_tk <- tryCatch(coda::effectiveSize(sub_target), error = function(e) NULL)
+                            if (!is.null(ess_tk)) {
+                                tree_ess_mat[tk_idx, names(ess_tk)] <- ess_tk
                             }
+                        }
+                    }
+
+                    # Compute Rhat, Rhat_max and sum ESS only across target_vars
+                    for (pname in target_vars) {
+                        p_idx <- match(pname, var_names_all)
+                        tree_rhats <- numeric(0)
+                        for (tk_idx in seq_along(unique_trees)) {
+                            tk <- unique_trees[tk_idx]
+                            c_idx <- which(chain_k_vals == tk)
                             if (length(c_idx) >= 2) {
                                 sub_vecs <- lapply(c_idx, function(ci) as.numeric(object$samples[[ci]][, p_idx]))
                                 gd <- calc_rhat_vec(sub_vecs)
@@ -471,23 +492,26 @@ summary.because <- function(
                             rhat[pname] <- mean(tree_rhats, na.rm = TRUE)
                             rhat_max[pname] <- max(tree_rhats, na.rm = TRUE)
                         }
+                        p_ess_sum <- sum(tree_ess_mat[, pname], na.rm = TRUE)
                         if (p_ess_sum > 0) tree_ess_sum[pname] <- p_ess_sum
                         all_vecs <- lapply(seq_along(object$samples), function(ci) as.numeric(object$samples[[ci]][, p_idx]))
                         rhat_tree[pname] <- calc_rhat_vec(all_vecs)
                     }
-                    if (any(tree_ess_sum > 0)) {
-                        eff_size <- tree_ess_sum
-                    }
+                    eff_size <- tree_ess_sum
                 }
             }
-            if (!is_ens_samples && is.null(rhat)) {
-                # Calculate standard Rhat if not stored
-                rhat <- tryCatch(
-                    coda::gelman.diag(object$samples, multivariate = FALSE)$psrf[,
-                        1
-                    ],
-                    error = function(e) return(NULL)
-                )
+            if (!is_ens_samples) {
+                # Target variables for standard model
+                sub_target <- object$samples[, intersect(target_vars, var_names_all), drop = FALSE]
+                if (is.null(eff_size)) {
+                    eff_size <- tryCatch(coda::effectiveSize(sub_target), error = function(e) NULL)
+                }
+                if (is.null(rhat)) {
+                    rhat <- tryCatch(
+                        coda::gelman.diag(sub_target, multivariate = FALSE)$psrf[, 1],
+                        error = function(e) return(NULL)
+                    )
+                }
             }
         }
 
