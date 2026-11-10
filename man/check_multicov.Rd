@@ -4,37 +4,52 @@
 \alias{check_multicov}
 \title{Check Multi-Structure Covariance Convergence and Sensitivity Diagnostics}
 \usage{
-check_multicov(model, plot = TRUE, ...)
+check_multicov(model, plot = TRUE, show_internal = FALSE, ...)
 }
 \arguments{
 \item{model}{A \code{because} model object fitted with multiple candidate covariance structures.}
 
 \item{plot}{Logical. If \code{TRUE} (default), displays a publication-ready 2-panel diagnostic
-figure featuring convergence/sensitivity forest plot (left) and 100\% stacked uncertainty
+figure featuring hypothesis sensitivity forest plot (left) and 100\% stacked uncertainty
 variance decomposition (right).}
+
+\item{show_internal}{Logical. If \code{FALSE} (default), suppresses internal additive simulation
+noise parameters (e.g. \code{sigma_Brain}, \verb{sigma_shared_*}) for pure latent indicator
+variables in marginalized latent (MAG) models.}
 
 \item{...}{Additional arguments passed to plotting functions or metadata overrides
 (e.g., \code{group = c(...)} to override group/backbone labels).}
 }
 \value{
-An invisible object of class \code{check_multicov} containing per-chain
-structure statistics, structure frequencies, parameter-level split
-\code{Rhat_MCMC} vs. \code{Rhat_group} diagnostics, and the exact uncertainty
-\code{variance_decomposition} table.
+An invisible object of class \code{check_multicov} containing:
+\item{param_diagnostics}{Data frame of parameter sensitivity \eqn{\widehat{R}} across
+candidate structures/trees, groups/backbones, and overall ensemble omnibus \eqn{\widehat{R}_{\text{all}}}.}
+\item{variance_decomposition}{Exact Law of Total Variance table decomposing total parameter
+posterior variance (\eqn{\text{SD}^2}) into within-structure estimation uncertainty,
+between-structure variation, and between-group hypothesis variation.}
+\item{rhat_per_tree}{Matrix of within-structure MCMC \eqn{\widehat{R}} values for each parameter
+on each candidate tree/structure. Kept unprinted by default to avoid console clutter, but
+directly indexable on demand.}
+\item{structure_weights_pct}{Posterior weights per candidate structure/tree.}
 }
 \description{
-Evaluates structure sampling, within-structure MCMC convergence (\code{Rhat_MCMC}),
-within-group structure sensitivity, and between-group divergence (\code{Rhat_group}),
+Evaluates structure sampling, within-structure MCMC convergence,
+within-group structure sensitivity, and between-group divergence (\code{Rhat_group} / \code{Rhat_backbone}),
 alongside an exact Law of Total Variance decomposition partitioning posterior
-uncertainty into MCMC estimation variance, within-group structure variation, and
-between-group conflict for any \code{because} model fitted with a collection or ensemble
+parameter uncertainty (total \eqn{\text{SD}^2}) into within-tree estimation uncertainty
+(unexplained biological variance / sample size), within-group structure variation, and
+between-group hypothesis variation for any \code{because} model fitted with a collection or ensemble
 of covariance structures (e.g., phylogenetic trees/backbones, spatial distance kernels,
 genomic relationship matrices, or network graphs).
 }
 \examples{
 \dontrun{
-# Fit with multiple candidate covariance structures
+# Fit with multiple candidate covariance structures (e.g. multiPhylo ensemble)
 fit <- because(list(y ~ x), data = my_data, structure = my_cov_list, engine = "numpyro")
-check_multicov(fit)
+chk <- check_multicov(fit)
+
+# Inspect within-tree MCMC convergence for specific parameters or trees on demand:
+chk$rhat_per_tree["beta_y_x", ]   # Within-tree Rhat across all candidate trees for beta_y_x
+chk$rhat_per_tree[, "Tree_1"]     # Within-tree Rhat for all parameters on Tree 1
 }
 }
