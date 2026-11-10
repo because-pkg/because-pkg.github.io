@@ -403,17 +403,17 @@ summary.because <- function(
             error = function(e) return(NULL)
         )
 
-        # Gelman-Rubin diagnostic (Rhat) and Ensemble Tree Sensitivity (Rhat_tree)
-        # Use stored Rhat / Rhat_tree if available (calculated in because)
+        # Gelman-Rubin diagnostic (Rhat and Rhat_max)
+        # Use stored Rhat / Rhat_max if available (calculated in because)
         rhat <- NULL
-        rhat_tree <- NULL
+        rhat_max <- NULL
         if ("Rhat" %in% colnames(summ$statistics)) {
             rhat <- summ$statistics[, "Rhat"]
             names(rhat) <- rownames(summ$statistics)
         }
-        if ("Rhat_tree" %in% colnames(summ$statistics)) {
-            rhat_tree <- summ$statistics[, "Rhat_tree"]
-            names(rhat_tree) <- rownames(summ$statistics)
+        if ("Rhat_max" %in% colnames(summ$statistics)) {
+            rhat_max <- summ$statistics[, "Rhat_max"]
+            names(rhat_max) <- rownames(summ$statistics)
         }
         if (is.null(rhat) && n_chains > 1) {
             # Check if this is a multiPhylo ensemble run (e.g., from JAGS/NIMBLE)
@@ -583,7 +583,7 @@ summary.because <- function(
             combined <- combined[to_keep, , drop = FALSE]
         }
 
-        # Add Rhat, Rhat_max and Rhat_tree if available
+        # Add Rhat and Rhat_max if available
         if (!is.null(rhat)) {
             # Ensure alignment
             rhat_aligned <- rhat[rownames(combined)]
@@ -592,10 +592,6 @@ summary.because <- function(
         if (exists("rhat_max") && !is.null(rhat_max)) {
             rhat_max_aligned <- rhat_max[rownames(combined)]
             combined <- cbind(combined, Rhat_max = rhat_max_aligned)
-        }
-        if (!is.null(rhat_tree)) {
-            rhat_tree_aligned <- rhat_tree[rownames(combined)]
-            combined <- cbind(combined, Rhat_tree = rhat_tree_aligned)
         }
 
         # Add n.eff if available
@@ -606,7 +602,7 @@ summary.because <- function(
 
         # Round output for cleaner display
         # Mean, SD, SE, quantiles: 3 decimal places
-        # Rhat, Rhat_tree: 3 decimal places
+        # Rhat, Rhat_max: 3 decimal places
         # n.eff: 0 decimal places (integer)
         cols_to_round_3 <- intersect(
             colnames(combined),
@@ -617,8 +613,7 @@ summary.because <- function(
                 "Time-series SE",
                 colnames(quant_table),
                 "Rhat",
-                "Rhat_max",
-                "Rhat_tree"
+                "Rhat_max"
             )
         )
         for (col in cols_to_round_3) {

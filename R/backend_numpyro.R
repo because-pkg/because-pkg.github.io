@@ -413,6 +413,7 @@ run_numpyro_pipeline <- function(
       pnames <- colnames(first_chain)
       n_params <- length(pnames)
       rhat_vals <- numeric(n_params)
+      rhat_max_vals <- numeric(n_params)
       rhat_tree_vals <- numeric(n_params)
       n_iter_chain <- nrow(first_chain)
 
@@ -459,13 +460,14 @@ run_numpyro_pipeline <- function(
             vp_k <- ((n_iter_chain - 1) / n_iter_chain) * W_k + (1 / n_iter_chain) * B_k
             sqrt(vp_k / W_k)
           }, numeric(1))
-          rhat_vals[p] <- max(rw, na.rm = TRUE)
+          rhat_vals[p] <- mean(rw, na.rm = TRUE)
+          rhat_max_vals[p] <- max(rw, na.rm = TRUE)
         } else {
           rhat_vals[p] <- rhat_tree_vals[p]
         }
       }
       if (is_ensemble_run) {
-        sum_stats$statistics <- cbind(sum_stats$statistics, Rhat = rhat_vals, Rhat_tree = rhat_tree_vals)
+        sum_stats$statistics <- cbind(sum_stats$statistics, Rhat = rhat_vals, Rhat_max = rhat_max_vals)
       } else {
         sum_stats$statistics <- cbind(sum_stats$statistics, Rhat = rhat_vals)
       }
