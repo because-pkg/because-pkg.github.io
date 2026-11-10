@@ -309,9 +309,12 @@ check_multicov <- function(model, plot = TRUE, ...) {
         }
         row_data[[if (is_phylo) "Rhat_backbone" else "Rhat_group"]] <- round(rhat_group, 3)
         row_data[["Rhat_all"]] <- round(rhat_all, 3)
-        row_data[["Pct_MCMC"]] <- pct_mcmc
-        row_data[[paste0("Pct_", s_term)]] <- pct_struct
-        row_data[[paste0("Pct_", g_term)]] <- pct_group
+        col_within <- if (is_phylo) "Pct_within_tree" else "Pct_within_struct"
+        col_struct <- if (is_phylo) "Pct_between_trees" else "Pct_between_structs"
+        col_group  <- if (is_phylo) "Pct_backbone" else "Pct_group"
+        row_data[[col_within]] <- pct_mcmc
+        row_data[[col_struct]] <- pct_struct
+        row_data[[col_group]]  <- pct_group
         row_data[["Status"]]   <- status_str
         as.data.frame(row_data, stringsAsFactors = FALSE)
 
@@ -360,8 +363,10 @@ check_multicov <- function(model, plot = TRUE, ...) {
           stringsAsFactors = FALSE
         )
         row_df[[rhat_col_name]] <- round(rhat_struct, 3)
-        row_df[["Pct_MCMC"]]    <- pct_mcmc
-        row_df[[pct_col_name]]  <- pct_struct
+        col_within <- if (is_phylo) "Pct_within_tree" else "Pct_within_struct"
+        col_struct <- if (is_phylo) "Pct_between_trees" else "Pct_between_structs"
+        row_df[[col_within]] <- pct_mcmc
+        row_df[[col_struct]] <- pct_struct
         row_df[[sd_col_name]]   <- round(struct_sd, 3)
         row_df[["Status"]]      <- status_str
         row_df
@@ -427,24 +432,35 @@ check_multicov <- function(model, plot = TRUE, ...) {
   }
 
   var_decomp_df <- NULL
-  if (!is.null(param_diag_df) && "Pct_MCMC" %in% names(param_diag_df)) {
-    var_cols <- if (has_groups) {
-      c("Parameter", "SD", "Pct_MCMC", paste0("Pct_", s_term), paste0("Pct_", g_term))
-    } else {
-      c("Parameter", "SD", "Pct_MCMC", paste0("Pct_", s_term))
+  if (!is.null(param_diag_df)) {
+    col_within <- if (is_phylo) "Pct_within_tree" else "Pct_within_struct"
+    col_struct <- if (is_phylo) "Pct_between_trees" else "Pct_between_structs"
+    col_group  <- if (is_phylo) "Pct_backbone" else "Pct_group"
+
+    # Backward compatibility with older models
+    if (!col_within %in% names(param_diag_df) && "Pct_MCMC" %in% names(param_diag_df)) {
+      param_diag_df[[col_within]] <- param_diag_df$Pct_MCMC
     }
-    var_decomp_df <- param_diag_df[, var_cols, drop = FALSE]
-    if (is_phylo) {
-      var_decomp_df$Pct_Struct <- var_decomp_df[[paste0("Pct_", s_term)]]
-      if (has_groups) var_decomp_df$Pct_Group <- var_decomp_df[[paste0("Pct_", g_term)]]
+    if (!col_struct %in% names(param_diag_df) && paste0("Pct_", s_term) %in% names(param_diag_df)) {
+      param_diag_df[[col_struct]] <- param_diag_df[[paste0("Pct_", s_term)]]
+    }
+    if (has_groups && !col_group %in% names(param_diag_df) && paste0("Pct_", g_term) %in% names(param_diag_df)) {
+      param_diag_df[[col_group]] <- param_diag_df[[paste0("Pct_", g_term)]]
+    }
+
+    if (col_within %in% names(param_diag_df)) {
+      var_cols <- if (has_groups) {
+        c("Parameter", "SD", col_within, col_struct, col_group)
+      } else {
+        c("Parameter", "SD", col_within, col_struct)
+      }
+      var_decomp_df <- param_diag_df[, intersect(var_cols, names(param_diag_df)), drop = FALSE]
     }
   }
 
   if (!is.null(param_diag_df) && is_phylo) {
-    param_diag_df$Pct_Struct <- param_diag_df$Pct_Tree
     param_diag_df$Rhat_struct <- param_diag_df$Rhat_tree
     if (has_groups) {
-      param_diag_df$Pct_Group <- param_diag_df$Pct_Backbone
       param_diag_df$Rhat_group <- param_diag_df$Rhat_backbone
     }
   }
@@ -533,8 +549,19 @@ print.check_multicov <- function(x, ...) {
       v_df$Pct_Group <- NULL
     }
     print(v_df, row.names = FALSE)
-    cat(sprintf("Note: Pct_MCMC is within-%s posterior variance (data-driven estimation uncertainty);\n", tolower(s_term)))
-    cat(sprintf("      Pct_%s and Pct_%s reflect excess variance from phylogenetic uncertainty.\n", s_term, g_term))
+    if (is_phylo) {
+      if (isTRUE(x$has_groups)) {
+        cat("Note: Pct_within_tree   : within-tree estimation uncertainty (sample size / data variation);\n")
+        cat("      Pct_between_trees : tree-to-tree variation within each backbone (topology & branch lengths);\n")
+        cat("      Pct_backbone      : sensitivity across major backbone hypotheses (e.g. McTavish vs Hackett vs Ericson).\n")
+      } else {
+        cat("Note: Pct_within_tree   : within-tree estimation uncertainty (sample size / data variation);\n")
+        cat("      Pct_between_trees : tree-to-tree variation across candidate trees.\n")
+      }
+    } else {
+      cat(sprintf("Note: Pct_within_struct  : within-structure estimation uncertainty (sample size / data variation);\n"))
+      cat(sprintf("      Pct_between_structs: variation across candidate structures.\n"))
+    }
   }
 
   cat("\n--- Diagnostic Assessment ---\n")
@@ -554,8 +581,9 @@ plot.check_multicov <- function(x, ...) {
   is_phylo  <- isTRUE(x$is_phylo)
   s_term    <- x$s_term %||% (if (is_phylo) "Tree" else "Structure")
   g_term    <- x$g_term %||% (if (is_phylo) "Backbone" else "Group")
-  pct_s_col <- if ("Pct_Tree" %in% names(x$param_diagnostics)) "Pct_Tree" else "Pct_Struct"
-  pct_g_col <- if ("Pct_Backbone" %in% names(x$param_diagnostics)) "Pct_Backbone" else "Pct_Group"
+  pct_w_col <- if ("Pct_within_tree" %in% names(x$param_diagnostics)) "Pct_within_tree" else if ("Pct_within_struct" %in% names(x$param_diagnostics)) "Pct_within_struct" else "Pct_MCMC"
+  pct_s_col <- if ("Pct_between_trees" %in% names(x$param_diagnostics)) "Pct_between_trees" else if ("Pct_between_structs" %in% names(x$param_diagnostics)) "Pct_between_structs" else if ("Pct_Tree" %in% names(x$param_diagnostics)) "Pct_Tree" else "Pct_Struct"
+  pct_g_col <- if ("Pct_backbone" %in% names(x$param_diagnostics)) "Pct_backbone" else if ("Pct_Backbone" %in% names(x$param_diagnostics)) "Pct_Backbone" else if ("Pct_group" %in% names(x$param_diagnostics)) "Pct_group" else "Pct_Group"
   rhat_s_col <- if ("Rhat_tree" %in% names(x$param_diagnostics)) "Rhat_tree" else "Rhat_struct"
   rhat_g_col <- if ("Rhat_backbone" %in% names(x$param_diagnostics)) "Rhat_backbone" else "Rhat_group"
 
@@ -564,20 +592,20 @@ plot.check_multicov <- function(x, ...) {
     max_p_len <- max(nchar(param_diag_df$Parameter))
     left_mar <- max(5.5, min(9.0, max_p_len * 0.35 + 1.0))
 
-    has_decomp <- all(c("Pct_MCMC", pct_s_col) %in% names(param_diag_df))
+    has_decomp <- all(c(pct_w_col, pct_s_col) %in% names(param_diag_df))
     if (has_decomp) {
       if (isTRUE(x$has_groups) && pct_g_col %in% names(param_diag_df)) {
         v_mat <- rbind(
-          MCMC   = param_diag_df$Pct_MCMC,
-          Struct = param_diag_df[[pct_s_col]],
+          Within = param_diag_df[[pct_w_col]],
+          Tree   = param_diag_df[[pct_s_col]],
           Group  = param_diag_df[[pct_g_col]]
         )
         v_labels <- c(paste0("Within-", s_term, " (Data)"), paste0("Between-", s_term, "s (within ", g_term, ")"), paste0("Between-", g_term, "s"))
         v_cols   <- c("#1B9E77", "#386CB0", "#D95F02")
       } else {
         v_mat <- rbind(
-          MCMC   = param_diag_df$Pct_MCMC,
-          Struct = param_diag_df[[pct_s_col]]
+          Within = param_diag_df[[pct_w_col]],
+          Tree   = param_diag_df[[pct_s_col]]
         )
         v_labels <- c(paste0("Within-", s_term, " (Data)"), paste0("Between-", s_term, "s"))
         v_cols   <- c("#1B9E77", "#D95F02")
