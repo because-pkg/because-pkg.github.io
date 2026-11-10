@@ -23,6 +23,10 @@
 #' @param method Character; liability variance calculation method: `"error"` (default; disturbance +
 #'   structural variance \eqn{\sigma_{\text{phylo}}^2 + \pi^2/3}) or `"total"` (full McKelvey-Zavoina
 #'   incorporating the empirical variance of the fixed linear predictor).
+#' @param binary_predictors Character; scaling for binary/dummy predictors: `"raw"` (default;
+#'   semi-standardization, keeping binary predictors on the 0-to-1 step so that the standardized slope
+#'   represents Cohen's \eqn{d} on the standardized outcome scale; Gelman 2008, Bollen 1989, Grace & Bollen 2005)
+#'   or `"sd"` (full standardization, scaling by \eqn{s_X = \sqrt{p(1-p)}}; Menard 2004).
 #' @param ... Additional arguments passed to methods.
 #'
 #' @return An updated object of class \code{c("because_standardized", "because")} with transformed
@@ -36,6 +40,12 @@
 #' Menard, S. (2004). Six approaches to calculating standardized logistic regression coefficients.
 #' \emph{The American Statistician}, 58(3), 218–223.
 #'
+#' Gelman, A. (2008). Scaling regression inputs by dividing by two standard deviations.
+#' \emph{Statistics in Medicine}, 27(15), 2865–2873.
+#'
+#' Grace, J. B., & Bollen, K. A. (2005). Interpreting the results from multiple regression and structural equation models.
+#' \emph{Ecology}, 86(11), 283–295.
+#'
 #' Nakagawa, S., Johnson, P. C. D., & Schielzeth, H. (2017). The coefficient of determination \eqn{R^2}
 #' and intra-class correlation coefficient from generalized linear mixed-effects models revisited and expanded.
 #' \emph{Journal of the Royal Society Interface}, 14(134), 20170213.
@@ -47,8 +57,9 @@ standardize <- function(object, ...) {
 
 #' @rdname standardize
 #' @export
-standardize.because <- function(object, method = c("error", "total"), ...) {
+standardize.because <- function(object, method = c("error", "total"), binary_predictors = c("raw", "sd"), ...) {
   method <- match.arg(method)
+  binary_predictors <- match.arg(binary_predictors)
 
   # Check if already standardized
   if (isTRUE(attr(object, "standardized")) || inherits(object, "because_standardized")) {
@@ -65,14 +76,30 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
   is_dsep <- !is.null(res$dsep) && (isTRUE(res$dsep) || is.list(res$dsep))
 
   if (is_dsep) {
-    res <- .standardize_dsep(res, data = data, method = method)
+    res <- .standardize_dsep(res, data = data, method = method, binary_predictors = binary_predictors)
   } else {
-    res <- .standardize_fitted(res, data = data, method = method)
+    res <- .standardize_fitted(res, data = data, method = method, binary_predictors = binary_predictors)
   }
 
   attr(res, "standardized") <- TRUE
+  attr(res, "binary_predictors") <- binary_predictors
   class(res) <- unique(c("because_standardized", class(res)))
   return(res)
+}
+
+#' Helper to check if a variable is binary (0/1 or 2-level factor)
+#' @noRd
+.is_binary_var <- function(var_name, data) {
+  if (is.null(data) || !var_name %in% names(data)) return(FALSE)
+  x <- stats::na.omit(data[[var_name]])
+  if (is.factor(x) || is.logical(x)) {
+    return(length(unique(x)) <= 2)
+  }
+  if (is.numeric(x)) {
+    u_vals <- unique(x)
+    return(length(u_vals) <= 2 && all(u_vals %in% c(0, 1)))
+  }
+  FALSE
 }
 
 #' Helper to determine variable family with fallbacks
@@ -149,7 +176,7 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
 
 #' Internal helper: standardize d-separation object
 #' @noRd
-.standardize_dsep <- function(res, data, method = "error") {
+.standardize_dsep <- function(res, data, method = "error", binary_predictors = "raw") {
   if (is.null(res$dsep_results) || length(res$dsep_results) == 0) {
     return(res)
   }
@@ -176,12 +203,15 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
         for (b_col in beta_cols) {
           pred <- sub(paste0("^beta_", resp, "_"), "", b_col)
           pred_clean <- sub("(_\\d+|\\[\\d+\\])$", "", pred)
-          sd_x <- if (!is.null(data) && pred_clean %in% names(data)) {
+          is_binary_pred <- .is_binary_var(pred_clean, data)
+          sd_x <- if (is_binary_pred && binary_predictors == "raw") {
+            1.0
+          } else if (!is.null(data) && pred_clean %in% names(data)) {
             stats::sd(as.numeric(data[[pred_clean]]), na.rm = TRUE)
           } else {
-            1
+            1.0
           }
-          if (is.na(sd_x) || sd_x == 0) sd_x <- 1
+          if (is.na(sd_x) || sd_x == 0) sd_x <- 1.0
           res_i$samples[[ch]][, b_col] <- res_i$samples[[ch]][, b_col] * (sd_x / sd_liability)
         }
       } else if (fam == "gaussian") {
@@ -189,20 +219,23 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
         sd_y <- if (!is.null(data) && resp %in% names(data)) {
           stats::sd(as.numeric(data[[resp]]), na.rm = TRUE)
         } else {
-          1
+          1.0
         }
-        if (is.na(sd_y) || sd_y == 0) sd_y <- 1
+        if (is.na(sd_y) || sd_y == 0) sd_y <- 1.0
 
         beta_cols <- grep(paste0("^beta_", resp, "_"), p_names, value = TRUE)
         for (b_col in beta_cols) {
           pred <- sub(paste0("^beta_", resp, "_"), "", b_col)
           pred_clean <- sub("(_\\d+|\\[\\d+\\])$", "", pred)
-          sd_x <- if (!is.null(data) && pred_clean %in% names(data)) {
+          is_binary_pred <- .is_binary_var(pred_clean, data)
+          sd_x <- if (is_binary_pred && binary_predictors == "raw") {
+            1.0
+          } else if (!is.null(data) && pred_clean %in% names(data)) {
             stats::sd(as.numeric(data[[pred_clean]]), na.rm = TRUE)
           } else {
-            1
+            1.0
           }
-          if (is.na(sd_x) || sd_x == 0) sd_x <- 1
+          if (is.na(sd_x) || sd_x == 0) sd_x <- 1.0
 
           if (sd_x != sd_y) {
             res_i$samples[[ch]][, b_col] <- res_i$samples[[ch]][, b_col] * (sd_x / sd_y)
@@ -233,7 +266,7 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
 
 #' Internal helper: standardize standard fitted because model
 #' @noRd
-.standardize_fitted <- function(res, data, method = "error") {
+.standardize_fitted <- function(res, data, method = "error", binary_predictors = "raw") {
   if (is.null(res$samples)) return(res)
 
   param_map <- res$parameter_map
@@ -254,8 +287,11 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
 
       # Predictor SD
       is_latent_pred <- !is.null(res$latent) && pred %in% res$latent
+      is_binary_pred <- .is_binary_var(pred, data)
       sd_x <- if (is_latent_pred) {
         1.0
+      } else if (is_binary_pred && binary_predictors == "raw") {
+        1.0 # Keep on 0-to-1 step for Cohen's d (Gelman 2008, Grace & Bollen 2005)
       } else if (!is.null(data) && pred %in% names(data)) {
         stats::sd(as.numeric(data[[pred]]), na.rm = TRUE)
       } else {
@@ -302,8 +338,15 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
 
         fam <- .get_var_family(res, resp, data)
 
-        sd_x <- if (!is.null(data) && pred_clean %in% names(data)) stats::sd(as.numeric(data[[pred_clean]]), na.rm = TRUE) else 1
-        if (is.na(sd_x) || sd_x == 0) sd_x <- 1
+        is_binary_pred <- .is_binary_var(pred_clean, data)
+        sd_x <- if (is_binary_pred && binary_predictors == "raw") {
+          1.0 # Keep on 0-to-1 step for Cohen's d
+        } else if (!is.null(data) && pred_clean %in% names(data)) {
+          stats::sd(as.numeric(data[[pred_clean]]), na.rm = TRUE)
+        } else {
+          1.0
+        }
+        if (is.na(sd_x) || sd_x == 0) sd_x <- 1.0
 
         if (fam %in% c("binomial", "bernoulli", "ordinal")) {
           for (ch in seq_along(res$samples)) {
@@ -312,8 +355,8 @@ standardize.because <- function(object, method = c("error", "total"), ...) {
           }
           standardized_params <- c(standardized_params, b_col)
         } else if (fam == "gaussian") {
-          sd_y <- if (!is.null(data) && resp %in% names(data)) stats::sd(as.numeric(data[[resp]]), na.rm = TRUE) else 1
-          if (is.na(sd_y) || sd_y == 0) sd_y <- 1
+          sd_y <- if (!is.null(data) && resp %in% names(data)) stats::sd(as.numeric(data[[resp]]), na.rm = TRUE) else 1.0
+          if (is.na(sd_y) || sd_y == 0) sd_y <- 1.0
           if (sd_x != sd_y) {
             scale_fac <- sd_x / sd_y
             for (ch in seq_along(res$samples)) {

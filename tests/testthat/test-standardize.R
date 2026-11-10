@@ -74,10 +74,15 @@ test_that("standardize works on fitted because models with Gaussian and Binomial
     expected_beta_Y_X <- mean(samples[[1]][, "beta_Y_X"]) * (sd_x / sd_y)
     expect_equal(mean(fit_std$samples[[1]][, "beta_Y_X"]), expected_beta_Y_X, tolerance = 1e-4)
 
-    # Verify binary predictor into Gaussian: beta_Y_Migrant was multiplied by sd(Migrant)/sd(Y)
+    # Verify binary predictor into Gaussian with default binary_predictors = "raw" (Cohen's d)
+    expected_beta_Y_Mig_raw <- mean(samples[[1]][, "beta_Y_Migrant"]) * (1.0 / sd_y)
+    expect_equal(mean(fit_std$samples[[1]][, "beta_Y_Migrant"]), expected_beta_Y_Mig_raw, tolerance = 1e-4)
+
+    # Verify binary predictor with binary_predictors = "sd" (classical full standardization)
+    fit_std_sd <- standardize(fit, binary_predictors = "sd")
     sd_mig <- sd(data_df$Migrant)
-    expected_beta_Y_Mig <- mean(samples[[1]][, "beta_Y_Migrant"]) * (sd_mig / sd_y)
-    expect_equal(mean(fit_std$samples[[1]][, "beta_Y_Migrant"]), expected_beta_Y_Mig, tolerance = 1e-4)
+    expected_beta_Y_Mig_sd <- mean(samples[[1]][, "beta_Y_Migrant"]) * (sd_mig / sd_y)
+    expect_equal(mean(fit_std_sd$samples[[1]][, "beta_Y_Migrant"]), expected_beta_Y_Mig_sd, tolerance = 1e-4)
 
     # Verify Binomial latent liability rescaling: beta_Migrant_X was divided by sqrt(sigma_phylo^2 + pi^2/3)
     sig_phylo <- samples[[1]][, "sigma_Migrant_phylo"]
@@ -152,10 +157,10 @@ test_that("standardize works on d-separation objects and harmonizes ROPE", {
     expect_s3_class(dsep_std, "because_standardized")
     expect_true(isTRUE(attr(dsep_std, "standardized")))
 
-    # In test 1: beta_Y_Migrant is scaled by sd(Migrant)/sd(Y)
+    # In test 1: beta_Y_Migrant with default binary_predictors = "raw" (Cohen's d)
     sd_m <- sd(data_df$Migrant)
     sd_y <- sd(data_df$Y)
-    expected_b1 <- mean(samples1[[1]][, "beta_Y_Migrant"]) * (sd_m / sd_y)
+    expected_b1 <- mean(samples1[[1]][, "beta_Y_Migrant"]) * (1.0 / sd_y)
     expect_equal(mean(dsep_std$dsep_results[[1]]$samples[[1]][, "beta_Y_Migrant"]), expected_b1, tolerance = 1e-4)
 
     # In test 2: beta_Migrant_X is scaled by sd(X) / (pi / sqrt(3))
