@@ -554,16 +554,16 @@ print.check_multicov <- function(x, ...) {
     print(v_df, row.names = FALSE)
     if (is_phylo) {
       if (isTRUE(x$has_groups)) {
-        cat("Note: Pct_within_tree   : within-tree estimation uncertainty (sample size / data variation);\n")
-        cat("      Pct_between_trees : tree-to-tree variation within each backbone (topology & branch lengths);\n")
+        cat("Note: Pct_within_tree   : parameter estimation uncertainty within a single tree;\n")
+        cat("      Pct_between_trees : variation across trees within a backbone;\n")
         cat("      Pct_backbone      : sensitivity across major backbone hypotheses.\n")
       } else {
-        cat("Note: Pct_within_tree   : within-tree estimation uncertainty (sample size / data variation);\n")
-        cat("      Pct_between_trees : tree-to-tree variation across candidate trees.\n")
+        cat("Note: Pct_within_tree   : parameter estimation uncertainty within a single tree;\n")
+        cat("      Pct_between_trees : variation across candidate trees.\n")
       }
     } else {
-      cat(sprintf("Note: Pct_within_struct  : within-structure estimation uncertainty (sample size / data variation);\n"))
-      cat(sprintf("      Pct_between_structs: variation across candidate structures.\n"))
+      cat("Note: Pct_within_struct  : parameter estimation uncertainty within a single structure;\n")
+      cat("      Pct_between_structs: variation across candidate structures.\n")
     }
   }
 
