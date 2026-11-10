@@ -533,6 +533,8 @@ print.check_multicov <- function(x, ...) {
       v_df$Pct_Group <- NULL
     }
     print(v_df, row.names = FALSE)
+    cat(sprintf("Note: Pct_MCMC is within-%s posterior variance (data-driven estimation uncertainty);\n", tolower(s_term)))
+    cat(sprintf("      Pct_%s and Pct_%s reflect excess variance from phylogenetic uncertainty.\n", s_term, g_term))
   }
 
   cat("\n--- Diagnostic Assessment ---\n")
