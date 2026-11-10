@@ -556,7 +556,7 @@ print.check_multicov <- function(x, ...) {
       if (isTRUE(x$has_groups)) {
         cat("Note: Pct_within_tree   : within-tree estimation uncertainty (sample size / data variation);\n")
         cat("      Pct_between_trees : tree-to-tree variation within each backbone (topology & branch lengths);\n")
-        cat("      Pct_backbone      : sensitivity across major backbone hypotheses (e.g. McTavish vs Hackett vs Ericson).\n")
+        cat("      Pct_backbone      : sensitivity across major backbone hypotheses.\n")
       } else {
         cat("Note: Pct_within_tree   : within-tree estimation uncertainty (sample size / data variation);\n")
         cat("      Pct_between_trees : tree-to-tree variation across candidate trees.\n")
