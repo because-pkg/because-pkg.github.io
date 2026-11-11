@@ -34,10 +34,61 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="1.9.0" id="because-190-2026-11-08">because 1.9.0 (2026-11-08)<a class="anchor" aria-label="anchor" href="#because-190-2026-11-08"></a></h2>
+<h2 class="pkg-version" data-toc-text="1.9.0" id="because-190-2026-11-11">because 1.9.0 (2026-11-11)<a class="anchor" aria-label="anchor" href="#because-190-2026-11-11"></a></h2>
 <div class="section level3">
 <h3 id="new-features--improvements-1-9-0">New Features &amp; Improvements<a class="anchor" aria-label="anchor" href="#new-features--improvements-1-9-0"></a></h3>
 <ul><li>
+<strong>Standardization on Latent Liability and Common SD Scale (<code><a href="../reference/standardize.html">standardize()</a></code>)</strong>:
+<ul><li>Added S3 generic and method <code><a href="../reference/standardize.html">standardize()</a></code> to rescale path coefficients from fitted models and d-separation test objects onto a common, dimensionless standard deviation metric.</li>
+<li>
+<strong>Continuous Gaussian Traits</strong>: Scaled by the ratio of standard deviations <span class="math inline">\beta^* = \beta \times (\text{SD}(X) / \text{SD}(Y))</span> (preserving scale if variables were standardized prior to fitting).</li>
+<li>
+<strong>Binary / Categorical Responses (Binomial/Bernoulli/Ordinal Logit)</strong>: Raw log-odds coefficients are transformed <em>a posteriori</em> onto the continuous latent liability scale following McKelvey &amp; Zavoina (1975), Menard (2004), and Nakagawa et al. (2017 <em>J. R. Soc. Interface</em>): <span class="math display">\beta^* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sum \sigma_{\text{random}}^2 + \pi^2/3}}</span> where <span class="math inline">\pi^2/3 \approx 3.289868</span> is the theoretical disturbance variance of the standard logistic link. Full posterior uncertainty of random effects is propagated draw-by-draw into <span class="math inline">\beta^*</span>.</li>
+<li>
+<strong>Count Responses (Poisson / Negative Binomial)</strong>: Added full standardization support for count responses on the log rate scale (<span class="math inline">\ln \mu</span>) across three methods:
+<ul><li>
+<code>method = "error"</code> (default): <span class="math inline">\beta^* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sum \sigma_{\text{random}}^2 + \ln(1 + 1/\bar{Y})}}</span> following the GLMM latent distribution variance framework of Nakagawa et al. (2017).</li>
+<li>
+<code>method = "total"</code>: Full total variance incorporating the empirical variance of the fixed linear predictor <span class="math inline">\text{Var}(\hat{\eta}_{\text{fixed}})</span> alongside random effects and disturbance variance.</li>
+<li>
+<code>method = "mplus"</code>: Standardizes by the standard deviation of the linear predictions <span class="math inline">s_{xb} = \sqrt{\text{Var}(\hat{\eta}_{\text{fixed}}) + \sum \sigma_{\text{random}}^2}</span>, exactly reproducing Mplus <code>StdYX</code> for Poisson regression (UCLA OARC FAQ).</li>
+</ul></li>
+<li>
+<strong>Semi-Standardization for Binary Predictors (<code>binary_predictors = "raw"</code>, default)</strong>: Following Gelman (2008), Bollen (1989), and Grace &amp; Bollen (2005), binary dummy predictors (<span class="math inline">X \in \{0, 1\}</span>) are kept on their natural <span class="math inline">0 \to 1</span> step while standardizing the outcome, so that <span class="math inline">\beta^*</span> directly represents <strong>Cohen’s <span class="math inline">d</span></strong> (group difference in standard deviations of the outcome). Optional <code>binary_predictors = "sd"</code> supports classical full standardization (<span class="math inline">s_X = \sqrt{p(1-p)}</span>; Menard 2004).</li>
+<li>
+<strong>Automated Binary Detection Fallback</strong>: Automatically infers binomial links from <span class="math inline">\{0, 1\}</span> data even if the <code>family</code> attribute was omitted from the fitted object.</li>
+<li>
+<strong>High-Efficiency In-Place Updates</strong>: Selectively updates only standardized parameter rows in <code>summary$statistics</code> and <code>summary$quantiles</code>, preserving precomputed MCMC convergence diagnostics (<code>Rhat</code>, <code>Rhat_max</code>, <code>n.eff</code>) and avoiding memory duplication of large ensemble posterior arrays.</li>
+</ul></li>
+<li>
+<strong>ROPE and Ridge Visualization Harmonization (<code><a href="../reference/plot_rope.html">plot_rope()</a></code>, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>)</strong>:
+<ul><li>When evaluating standardized models (<code>standardized = TRUE</code>), <code><a href="../reference/resolve_rope_for_param.html">resolve_rope_for_param()</a></code> automatically applies the uniform standard deviation benchmark <code>c(-0.10, 0.10)</code> across all paths and d-separation tests.</li>
+<li>
+<code><a href="../reference/plot_rope.html">plot_rope()</a></code> plots standardized regression slopes (<span class="math inline">\beta^*</span>) and correlation coefficients (<span class="math inline">\rho \in [-1, 1]</span>) together on a unified scale against the <span class="math inline">\pm 0.10</span> ROPE band.</li>
+<li>
+<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> appends an informative footnote documenting standardized and latent liability evaluation.</li>
+</ul></li>
+<li>
+<strong>Vectorized Diagnostics &amp; Fast Ensemble Summaries</strong>:
+<ul><li>Vectorized <code><a href="https://rdrr.io/pkg/coda/man/effectiveSize.html" class="external-link">coda::effectiveSize()</a></code> and <code><a href="https://rdrr.io/pkg/coda/man/gelman.diag.html" class="external-link">coda::gelman.diag()</a></code> across candidate trees in <code><a href="../reference/summary.because.html">summary.because()</a></code>, restricting recalculation strictly to structural parameters (<code>alpha</code>, <code>beta</code>, <code>sigma</code>, <code>rho</code>, <code>lambda</code>).</li>
+<li>Summaries of large multiPhylo ensembles (30+ trees, 60+ chains) now execute in under 0.1 seconds rather than minutes.</li>
+<li>Primary summary tables now present within-tree <span class="math inline">\hat{R}</span> and worst-case tree <span class="math inline">\hat{R}_{\text{max}}</span>, leaving between-tree sensitivity (<span class="math inline">\hat{R}_{\text{tree}}</span>) to <code><a href="../reference/check_multicov.html">check_multicov()</a></code>.</li>
+</ul></li>
+<li>
+<strong>Memory-Safe WAIC &amp; <em>A Posteriori</em> Evaluation (<code><a href="../reference/because_waic.html">because_waic()</a></code>)</strong>:
+<ul><li>
+<code><a href="../reference/because_waic.html">because_waic()</a></code> now returns precomputed <code>model$WAIC</code> directly when available, and supports manual <em>a posteriori</em> evaluation on fitted NumPyro ensemble models without requiring MCMC refitting.</li>
+<li>Wrapped WAIC formatting in exception handling in <code><a href="../reference/run_numpyro_pipeline.html">run_numpyro_pipeline()</a></code> to ensure formatting or memory issues issue a warning rather than discarding completed MCMC samples.</li>
+</ul></li>
+<li>
+<strong>Distributional Parsimony Rule for d-Separation</strong>:
+<ul><li>When testing auxiliary conditional independences between continuous and discrete/categorical variables, the continuous variable is prioritized as the regression response. This routes the test to fast ANOVA / linear mixed models, bypassing slow discrete links while preserving exact d-separation topology.</li>
+</ul></li>
+<li>
+<strong>Liability-Scale Pagel’s Lambda for Binary Traits</strong>:
+<ul><li>In JAGS models with phylogenetic structures and binomial traits, Pagel’s <span class="math inline">\lambda</span> is now evaluated on the continuous latent liability scale using the theoretical <span class="math inline">\pi^2/3</span> disturbance variance.</li>
+</ul></li>
+<li>
 <strong>Universal Multi-Structure Covariance Ensembles</strong>: <code>structure</code> now natively accepts direct named lists of candidate covariance structures across any domain (e.g., phylogenetic backbones <code>list(Jetz = jetz_trees, McTavish = mctav_trees)</code>, spatial dispersal kernels, genomic relationship matrices, or animal social networks). When a named list of structures or collections is supplied, <code>because</code> automatically flattens candidate structures into a unified collection, assigns group/backbone attributes, and partitions chains across candidate structures without requiring explicit control wrappers.</li>
 <li>
 <strong>Universal Multi-Structure Convergence &amp; Sensitivity Diagnostic (<code><a href="../reference/check_multicov.html">check_multicov()</a></code>)</strong>: Added <code><a href="../reference/check_multicov.html">check_multicov()</a></code> to evaluate MCMC convergence and structural sensitivity for any model fitted with multiple candidate covariance structures across all engines (NumPyro, JAGS, and NIMBLE). Computes a 3-tier variance decomposition:

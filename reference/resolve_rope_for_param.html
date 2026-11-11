@@ -58,7 +58,13 @@ Principled family default (get_family_default_rope)
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">resolve_rope_for_param</span><span class="op">(</span><span class="va">pname</span>, resp <span class="op">=</span> <span class="cn">NULL</span>, fam <span class="op">=</span> <span class="cn">NULL</span>, rope_spec <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">resolve_rope_for_param</span><span class="op">(</span></span>
+<span>  <span class="va">pname</span>,</span>
+<span>  resp <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  fam <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  rope_spec <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  standardized <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -79,6 +85,10 @@ Principled family default (get_family_default_rope)
 
 <dt id="arg-rope-spec">rope_spec<a class="anchor" aria-label="anchor" href="#arg-rope-spec"></a></dt>
 <dd><p>User-supplied ROPE specification (NULL, TRUE, vector, or list)</p></dd>
+
+
+<dt id="arg-standardized">standardized<a class="anchor" aria-label="anchor" href="#arg-standardized"></a></dt>
+<dd><p>Logical. If TRUE, forces Gaussian standard deviation benchmark c(-0.10, 0.10).</p></dd>
 
 </dl></div>
     <div class="section level2">

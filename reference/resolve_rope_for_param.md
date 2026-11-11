@@ -15,7 +15,13 @@ Resolves in priority:
 ## Usage
 
 ``` r
-resolve_rope_for_param(pname, resp = NULL, fam = NULL, rope_spec = NULL)
+resolve_rope_for_param(
+  pname,
+  resp = NULL,
+  fam = NULL,
+  rope_spec = NULL,
+  standardized = FALSE
+)
 ```
 
 ## Arguments
@@ -35,6 +41,11 @@ resolve_rope_for_param(pname, resp = NULL, fam = NULL, rope_spec = NULL)
 - rope_spec:
 
   User-supplied ROPE specification (NULL, TRUE, vector, or list)
+
+- standardized:
+
+  Logical. If TRUE, forces Gaussian standard deviation benchmark
+  c(-0.10, 0.10).
 
 ## Value
 

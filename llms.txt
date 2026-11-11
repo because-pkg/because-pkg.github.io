@@ -218,11 +218,14 @@ independencies.
 
 ## Causal Effects & Interventions
 
-Functions for estimating marginal effects, causal mediation, and
-structural interventions.
+Functions for estimating marginal effects, causal mediation,
+standardization, and structural interventions.
 
 - [`marginal_effects()`](https://because-pkg.github.io/because/reference/marginal_effects.md)
   : Calculate Marginal Effects for Because Fit
+- [`standardize()`](https://because-pkg.github.io/because/reference/standardize.md)
+  : Standardize Path Coefficients onto Latent Liability and Common SD
+  Scale
 - [`because_mediation()`](https://because-pkg.github.io/because/reference/because_mediation.md)
   : Automated Mediation Analysis
 - [`do()`](https://because-pkg.github.io/because/reference/do.md)
