@@ -74,7 +74,43 @@ because_waic <- function(model) {
         stop("Input must be a 'because' model object.")
     }
 
-    # Extract log_lik using helper (auto-refits if needed)
+    # 1. If WAIC is already computed and stored on the model object, return it directly!
+    if (!is.null(model$WAIC)) {
+        return(model$WAIC)
+    }
+
+    # 2. If NumPyro ensemble model and active Python state is present, calculate a posteriori
+    if (identical(model$engine, "numpyro")) {
+        py_res <- model$py_result
+        if (!is.null(py_res) && !is.null(py_res$tree_samples_list)) {
+            message("Calculating WAIC from stored NumPyro ensemble samples...")
+            because_py <- reticulate::import("because.api")
+            waic_py <- tryCatch({
+                because_py$diagnostics$calculate_waic_ensemble(
+                    py_res$ens_model_func,
+                    py_res$tree_samples_list,
+                    py_res$jax_data
+                )
+            }, error = function(e) {
+                warning(paste0("Could not compute WAIC: ", e$message))
+                NULL
+            })
+            if (!is.null(waic_py)) {
+                waic_df <- data.frame(
+                    Estimate = c(waic_py$elpd_waic$Estimate, waic_py$p_waic$Estimate, waic_py$waic$Estimate),
+                    SE = c(waic_py$elpd_waic$SE, waic_py$p_waic$SE, waic_py$waic$SE),
+                    row.names = c("elpd_waic", "p_waic", "waic")
+                )
+                attr(waic_df, "dims") <- c(n_obs = waic_py$n_obs, n_samples = waic_py$n_samples)
+                class(waic_df) <- c("because_waic", "data.frame")
+                return(waic_df)
+            }
+        } else {
+            stop("Model was fitted with engine = 'numpyro' without WAIC = TRUE, and active Python session state is no longer available (e.g. loaded from disk). To compute WAIC for NumPyro ensembles, specify WAIC = TRUE when calling because().")
+        }
+    }
+
+    # Extract log_lik using helper (auto-refits if needed for JAGS)
     log_lik <- ensure_log_lik(model)
 
     # Number of observations and samples
