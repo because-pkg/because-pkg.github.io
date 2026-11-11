@@ -1,6 +1,30 @@
-# because 1.9.0 (2026-11-08)
+# because 1.9.0 (2026-11-11)
 
 ## New Features & Improvements
+* **Standardization on Latent Liability and Common SD Scale (`standardize()`)**:
+  * Added S3 generic and method `standardize()` to rescale path coefficients from fitted models and d-separation test objects onto a common, dimensionless standard deviation metric.
+  * **Continuous Gaussian Traits**: Scaled by the ratio of standard deviations $\beta^* = \beta \times (\text{SD}(X) / \text{SD}(Y))$ (preserving scale if variables were standardized prior to fitting).
+  * **Binary / Categorical Responses (Binomial/Bernoulli/Ordinal Logit)**: Raw log-odds coefficients are transformed *a posteriori* onto the continuous latent liability scale following McKelvey & Zavoina (1975), Menard (2004), and Nakagawa et al. (2017 *J. R. Soc. Interface*):
+    $$\beta^* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sigma_{\text{phylo}}^2 + \pi^2/3}}$$
+    where $\pi^2/3 \approx 3.289868$ is the theoretical disturbance variance of the standard logistic link. Full posterior uncertainty of $\sigma_{\text{phylo}}$ is propagated draw-by-draw into $\beta^*$.
+  * **Semi-Standardization for Binary Predictors (`binary_predictors = "raw"`, default)**: Following Gelman (2008), Bollen (1989), and Grace & Bollen (2005), binary dummy predictors ($X \in \{0, 1\}$) are kept on their natural $0 \to 1$ step while standardizing the outcome, so that $\beta^*$ directly represents **Cohen's $d$** (group difference in standard deviations of the outcome). Optional `binary_predictors = "sd"` supports classical full standardization ($s_X = \sqrt{p(1-p)}$; Menard 2004).
+  * **Automated Binary Detection Fallback**: Automatically infers binomial links from $\{0, 1\}$ data even if the `family` attribute was omitted from the fitted object.
+  * **High-Efficiency In-Place Updates**: Selectively updates only standardized parameter rows in `summary$statistics` and `summary$quantiles`, preserving precomputed MCMC convergence diagnostics (`Rhat`, `Rhat_max`, `n.eff`) and avoiding memory duplication of large ensemble posterior arrays.
+* **ROPE and Ridge Visualization Harmonization (`plot_rope()`, `summary()`)**:
+  * When evaluating standardized models (`standardized = TRUE`), `resolve_rope_for_param()` automatically applies the uniform standard deviation benchmark `c(-0.10, 0.10)` across all paths and d-separation tests.
+  * `plot_rope()` plots standardized regression slopes ($\beta^*$) and correlation coefficients ($\rho \in [-1, 1]$) together on a unified scale against the $\pm 0.10$ ROPE band.
+  * `summary()` appends an informative footnote documenting standardized and latent liability evaluation.
+* **Vectorized Diagnostics & Fast Ensemble Summaries**:
+  * Vectorized `coda::effectiveSize()` and `coda::gelman.diag()` across candidate trees in `summary.because()`, restricting recalculation strictly to structural parameters (`alpha`, `beta`, `sigma`, `rho`, `lambda`).
+  * Summaries of large multiPhylo ensembles (30+ trees, 60+ chains) now execute in under 0.1 seconds rather than minutes.
+  * Primary summary tables now present within-tree $\hat{R}$ and worst-case tree $\hat{R}_{\text{max}}$, leaving between-tree sensitivity ($\hat{R}_{\text{tree}}$) to `check_multicov()`.
+* **Memory-Safe WAIC & *A Posteriori* Evaluation (`because_waic()`)**:
+  * `because_waic()` now returns precomputed `model$WAIC` directly when available, and supports manual *a posteriori* evaluation on fitted NumPyro ensemble models without requiring MCMC refitting.
+  * Wrapped WAIC formatting in exception handling in `run_numpyro_pipeline()` to ensure formatting or memory issues issue a warning rather than discarding completed MCMC samples.
+* **Distributional Parsimony Rule for d-Separation**:
+  * When testing auxiliary conditional independences between continuous and discrete/categorical variables, the continuous variable is prioritized as the regression response. This routes the test to fast ANOVA / linear mixed models, bypassing slow discrete links while preserving exact d-separation topology.
+* **Liability-Scale Pagel's Lambda for Binary Traits**:
+  * In JAGS models with phylogenetic structures and binomial traits, Pagel's $\lambda$ is now evaluated on the continuous latent liability scale using the theoretical $\pi^2/3$ disturbance variance.
 * **Universal Multi-Structure Covariance Ensembles**: `structure` now natively accepts direct named lists of candidate covariance structures across any domain (e.g., phylogenetic backbones `list(Jetz = jetz_trees, McTavish = mctav_trees)`, spatial dispersal kernels, genomic relationship matrices, or animal social networks). When a named list of structures or collections is supplied, `because` automatically flattens candidate structures into a unified collection, assigns group/backbone attributes, and partitions chains across candidate structures without requiring explicit control wrappers.
 * **Universal Multi-Structure Convergence & Sensitivity Diagnostic (`check_multicov()`)**: Added `check_multicov()` to evaluate MCMC convergence and structural sensitivity for any model fitted with multiple candidate covariance structures across all engines (NumPyro, JAGS, and NIMBLE). Computes a 3-tier variance decomposition:
   * $\hat{R}_{\text{MCMC}}$: Within-structure MCMC convergence across replicate chains ($\max_k \hat{R}_k$).
