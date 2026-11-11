@@ -56,9 +56,10 @@ reference:
       - plot_dsep
       - plot_rope
   - title: "Causal Effects & Interventions"
-    desc: "Functions for estimating marginal effects, causal mediation, and structural interventions."
+    desc: "Functions for estimating marginal effects, causal mediation, standardization, and structural interventions."
     contents:
       - marginal_effects
+      - standardize
       - because_mediation
       - because_do
       - do
