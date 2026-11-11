@@ -84,6 +84,13 @@ standardize.because <- function(object, method = c("error", "total", "mplus"), b
   method <- match.arg(method)
   binary_predictors <- match.arg(binary_predictors)
 
+  # Remove vector memory ceiling if constrained
+  tryCatch({
+    if (is.finite(mem.maxVSize())) {
+      mem.maxVSize(Inf)
+    }
+  }, error = function(e) NULL)
+
   # Check if already standardized
   if (isTRUE(attr(object, "standardized")) || inherits(object, "because_standardized")) {
     message("Model is already standardized.")
@@ -91,6 +98,21 @@ standardize.because <- function(object, method = c("error", "total", "mplus"), b
   }
 
   res <- object
+
+  # If samples contain heavy observation-level latent vectors (e.g. > 100 columns from unmarginalized species effects),
+  # slim them down immediately to structural causal parameters to drastically reduce memory usage
+  if (!is.null(res$samples)) {
+    p_all <- colnames(res$samples[[1]])
+    if (length(p_all) > 100) {
+      keep_p <- grep("^(alpha|beta|sigma|tau|lambda|rho|psi|r_|cutpoint|K_tree)", p_all, value = TRUE)
+      if (length(keep_p) > 0) {
+        res$samples <- res$samples[, keep_p, drop = FALSE]
+      }
+    }
+  }
+  if (!is.null(res$py_result) && !is.null(res$py_result$samples)) {
+    res$py_result$samples <- NULL # Free duplicated raw python array memory
+  }
   data <- res$data
   if (is.null(data) && !is.null(res$original_data)) {
     data <- res$original_data
@@ -286,13 +308,26 @@ standardize.because <- function(object, method = c("error", "total", "mplus"), b
     resp <- as.character(test_formula)[2]
     fam <- .get_var_family(res, resp, data)
 
+    samps_is_mcmc_list <- inherits(res_i$samples, "mcmc.list")
+    samps_chains <- if (samps_is_mcmc_list) {
+      res_i$samples
+    } else if (is.matrix(res_i$samples) || inherits(res_i$samples, "mcmc")) {
+      list(res_i$samples)
+    } else if (is.list(res_i$samples)) {
+      res_i$samples
+    } else {
+      NULL
+    }
+    if (is.null(samps_chains)) next
+
     # Iterate over chains in this test
-    for (ch in seq_along(res_i$samples)) {
-      p_names <- colnames(res_i$samples[[ch]])
+    for (ch in seq_along(samps_chains)) {
+      p_names <- colnames(samps_chains[[ch]])
+      if (is.null(p_names)) next
 
       # 1. Non-Gaussian: Binomial / Bernoulli / Ordinal / Poisson / NegBinomial
       if (fam %in% c("binomial", "bernoulli", "ordinal", "poisson", "negbinomial")) {
-        sd_liability <- .get_liability_sd(res_i$samples[[ch]], resp, p_names, res_i$parameter_map,
+        sd_liability <- .get_liability_sd(samps_chains[[ch]], resp, p_names, res_i$parameter_map,
                                           family = fam, data = data, method = method)
 
         beta_cols <- grep(paste0("^beta_", resp, "_"), p_names, value = TRUE)
@@ -308,7 +343,7 @@ standardize.because <- function(object, method = c("error", "total", "mplus"), b
             1.0
           }
           if (is.na(sd_x) || sd_x == 0) sd_x <- 1.0
-          res_i$samples[[ch]][, b_col] <- res_i$samples[[ch]][, b_col] * (sd_x / sd_liability)
+          samps_chains[[ch]][, b_col] <- samps_chains[[ch]][, b_col] * (sd_x / sd_liability)
         }
       } else if (fam == "gaussian") {
         # Continuous response
@@ -334,10 +369,17 @@ standardize.because <- function(object, method = c("error", "total", "mplus"), b
           if (is.na(sd_x) || sd_x == 0) sd_x <- 1.0
 
           if (sd_x != sd_y) {
-            res_i$samples[[ch]][, b_col] <- res_i$samples[[ch]][, b_col] * (sd_x / sd_y)
+            samps_chains[[ch]][, b_col] <- samps_chains[[ch]][, b_col] * (sd_x / sd_y)
           }
         }
       }
+    }
+    if (samps_is_mcmc_list) {
+      res_i$samples <- samps_chains
+    } else if (is.matrix(res_i$samples) || inherits(res_i$samples, "mcmc")) {
+      res_i$samples <- samps_chains[[1]]
+    } else {
+      res_i$samples <- samps_chains
     }
     res$dsep_results[[i]] <- res_i
   }
@@ -348,10 +390,20 @@ standardize.because <- function(object, method = c("error", "total", "mplus"), b
       p_names <- colnames(res$samples[[ch]])
       for (i in seq_along(res$dsep_results)) {
         if (is.null(res$dsep_results[[i]]) || is.null(res$dsep_results[[i]]$samples)) next
-        res_samps <- res$dsep_results[[i]]$samples[[ch]]
-        common_betas <- grep("^beta_", intersect(p_names, colnames(res_samps)), value = TRUE)
+        res_samps <- res$dsep_results[[i]]$samples
+        ch_samps <- if (inherits(res_samps, "mcmc.list")) {
+          res_samps[[ch]]
+        } else if (is.list(res_samps) && length(res_samps) >= ch) {
+          res_samps[[ch]]
+        } else if (is.matrix(res_samps)) {
+          res_samps
+        } else {
+          NULL
+        }
+        if (is.null(ch_samps)) next
+        common_betas <- grep("^beta_", intersect(p_names, colnames(ch_samps)), value = TRUE)
         if (length(common_betas) > 0) {
-          res$samples[[ch]][, common_betas] <- res_samps[, common_betas]
+          res$samples[[ch]][, common_betas] <- ch_samps[, common_betas]
         }
       }
     }

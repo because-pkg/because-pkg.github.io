@@ -128,6 +128,13 @@ run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structur
     NULL
   }
   
+  # Ensure vector memory limit is not constraining the R process
+  tryCatch({
+    if (is.finite(mem.maxVSize())) {
+      mem.maxVSize(Inf)
+    }
+  }, error = function(e) NULL)
+
   py_result <- because_py$fit(
     equations = eq_strings,
     data = flat_data,
@@ -181,9 +188,13 @@ format_numpyro_samples <- function(py_result) {
       } else if (p_ndim == 3) {
         # Vector parameter: shape (chains, iters, length)
         param_len <- p_dims[3]
-        cols <- matrix(param_data[ch, , ], ncol = param_len)
-        colnames(cols) <- paste0(param_name, "[", 1:param_len, "]")
-        col_list[[length(col_list) + 1L]] <- cols
+        # Only retain small vector parameters like cutpoints (<= 20)
+        # Avoid expanding 668-length latent species vectors into hundreds of thousands of columns
+        if (param_len <= 20) {
+          cols <- matrix(param_data[ch, , ], ncol = param_len)
+          colnames(cols) <- paste0(param_name, "[", 1:param_len, "]")
+          col_list[[length(col_list) + 1L]] <- cols
+        }
       } else if (p_ndim == 4) {
         # Matrix parameter: shape (chains, iters, rows, cols)
         # Specifically extract 2x2 LKJ Cholesky factor L_corr_* -> rho_* if not already present
@@ -367,6 +378,11 @@ run_numpyro_pipeline <- function(
   )
   mcmc_samples <- format_numpyro_samples(py_result)
   
+  # Emergency auto-save checkpoint to disk: guarantees MCMC draws are preserved even if subsequent code fails!
+  tryCatch({
+    saveRDS(mcmc_samples, file = "because_checkpoint_samples.rds")
+  }, error = function(e) NULL)
+
   result <- list(
     equations = equations,
     family = family,
@@ -387,7 +403,12 @@ run_numpyro_pipeline <- function(
     parallel = parallel,
     n.cores = n.cores,
     quiet = quiet,
-    py_result = py_result,
+    py_result = list(
+      waic = py_result$waic,
+      model_code = py_result$model_code,
+      model_string = py_result$model_string,
+      dsep_results = py_result$dsep_results
+    ),
     structures = structures,
     structure = if (!is.null(structures) && length(structures) > 0) structures[[1]] else NULL,
     input = list(

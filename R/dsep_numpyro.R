@@ -36,6 +36,13 @@ run_dsep_numpyro <- function(
   structure = NULL,
   because_py = NULL
 ) {
+  # Ensure vector memory limit is not constraining the R process
+  tryCatch({
+    if (is.finite(mem.maxVSize())) {
+      mem.maxVSize(Inf)
+    }
+  }, error = function(e) NULL)
+
   if (is.null(because_py)) {
     because_py <- tryCatch({
       reticulate::import("because.api", delay_load = FALSE)
