@@ -10,19 +10,39 @@
 #'   \item \strong{Binary / Categorical (Binomial/Bernoulli/Ordinal Logit)}: Raw coefficients sit on
 #'     the log-odds scale. They are standardized \emph{a posteriori} onto the continuous latent
 #'     liability scale following McKelvey & Zavoina (1975), Menard (2004), and Nakagawa et al. (2017):
-#'     \deqn{\beta^* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sigma_{\text{phylo}}^2 + \pi^2/3}}}
+#'     \deqn{\beta^* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sum \sigma_{\text{random}}^2 + \pi^2/3}}}
 #'     where \eqn{\pi^2/3 \approx 3.289868} is the theoretical disturbance variance of the standard logistic link.
+#'   \item \strong{Count (Poisson / Negative Binomial)}: Raw coefficients sit on the log-rate scale
+#'     (\eqn{\ln \lambda}). Standardized onto the latent log / rate scale via:
+#'     \itemize{
+#'       \item \code{"error"} (default): \eqn{\beta^* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sum \sigma_{\text{random}}^2 + \ln(1 + 1/\bar{Y})}}}
+#'         following the GLMM latent distribution variance formulation of Nakagawa et al. (2017).
+#'       \item \code{"total"}: Incorporates the empirical variance of the fixed linear predictor
+#'         \eqn{\text{Var}(\hat{\eta}_{\text{fixed}})} alongside random effects and disturbance variance.
+#'       \item \code{"mplus"}: Standardizes by the standard deviation of the linear predictions
+#'         \eqn{s_{xb} = \sqrt{\text{Var}(\hat{\eta}_{\text{fixed}}) + \sum \sigma_{\text{random}}^2}},
+#'         matching Mplus \code{StdYX} for Poisson regression (UCLA OARC FAQ).
+#'     }
 #'   \item \strong{Binary Predictors}: Slopes pointing from a binary indicator (e.g. \code{Migrant} \eqn{\in \{0, 1\}})
-#'     to a continuous response are multiplied by the predictor's standard deviation
-#'     \eqn{s_X = \sqrt{p(1 - p)}}, placing the binary jump on the standard deviation scale (analogous to Cohen's \eqn{d}).
+#'     to a response are kept on their natural 0-to-1 step when \code{binary_predictors = "raw"} (default),
+#'     placing the effect on the standardized outcome scale (directly analogous to Cohen's \eqn{d}; Gelman 2008,
+#'     Grace & Bollen 2005). When \code{binary_predictors = "sd"}, slopes are multiplied by \eqn{s_X = \sqrt{p(1 - p)}} (Menard 2004).
 #'   \item \strong{d-separation Objects}: Evaluates and rescales each auxiliary independence claim
 #'     across all d-sep sub-models, enabling a uniform \code{rope = c(-0.10, 0.10)} benchmark across all tests.
 #' }
 #'
 #' @param object A fitted `because` model object or a `because` d-separation test object.
-#' @param method Character; liability variance calculation method: `"error"` (default; disturbance +
-#'   structural variance \eqn{\sigma_{\text{phylo}}^2 + \pi^2/3}) or `"total"` (full McKelvey-Zavoina
-#'   incorporating the empirical variance of the fixed linear predictor).
+#' @param method Character; liability/outcome variance calculation method:
+#'   \itemize{
+#'     \item \code{"error"} (default): Disturbance error + structural/random effects variance
+#'       (\eqn{\sum \sigma_{\text{random}}^2 + \pi^2/3} for binomial;
+#'        \eqn{\sum \sigma_{\text{random}}^2 + \ln(1 + 1/\bar{Y})} for Poisson; Nakagawa et al. 2017).
+#'     \item \code{"total"}: Full McKelvey-Zavoina / Nakagawa total variance incorporating the empirical variance
+#'       of the fixed linear predictor \eqn{\text{Var}(\hat{\eta}_{\text{fixed}})}.
+#'     \item \code{"mplus"}: Standardizes by the standard deviation of the linear predictions
+#'       \eqn{s_{xb} = \sqrt{\text{Var}(\hat{\eta}_{\text{fixed}}) + \sum \sigma_{\text{random}}^2}},
+#'       matching Mplus \code{StdYX} for Poisson regression (UCLA OARC FAQ).
+#'   }
 #' @param binary_predictors Character; scaling for binary/dummy predictors: `"raw"` (default;
 #'   semi-standardization, keeping binary predictors on the 0-to-1 step so that the standardized slope
 #'   represents Cohen's \eqn{d} on the standardized outcome scale; Gelman 2008, Bollen 1989, Grace & Bollen 2005)
@@ -50,6 +70,9 @@
 #' and intra-class correlation coefficient from generalized linear mixed-effects models revisited and expanded.
 #' \emph{Journal of the Royal Society Interface}, 14(134), 20170213.
 #'
+#' UCLA: Statistical Consulting Group. How does Mplus calculate the standardized coefficients based on a Poisson model?
+#' \url{https://stats.oarc.ucla.edu/mplus/faq/how-does-mplus-calculate-the-standardized-coefficients-based-on-a-poisson-model/}
+#'
 #' @export
 standardize <- function(object, ...) {
   UseMethod("standardize")
@@ -57,7 +80,7 @@ standardize <- function(object, ...) {
 
 #' @rdname standardize
 #' @export
-standardize.because <- function(object, method = c("error", "total"), binary_predictors = c("raw", "sd"), ...) {
+standardize.because <- function(object, method = c("error", "total", "mplus"), binary_predictors = c("raw", "sd"), ...) {
   method <- match.arg(method)
   binary_predictors <- match.arg(binary_predictors)
 
@@ -131,24 +154,90 @@ standardize.because <- function(object, method = c("error", "total"), binary_pre
       if (length(u_vals) > 0 && all(u_vals %in% c(0, 1))) {
         return("binomial")
       }
+      if (length(y) > 0 && all(y >= 0, na.rm = TRUE) && all(y == round(y), na.rm = TRUE) && length(u_vals) > 2) {
+        return("poisson")
+      }
     }
   }
 
   return("gaussian")
 }
 
-#' Helper to compute liability scale standard deviation for non-Gaussian response
+#' Helper to calculate variance of fixed linear predictor (Var(X * beta))
 #' @noRd
-.get_liability_sd <- function(samples_ch, resp, p_names, param_map = NULL) {
-  # Theoretical disturbance variance of the standard logistic link
-  dist_var <- (pi^2) / 3
+.get_fixed_variance <- function(samples_ch, resp, p_names, param_map = NULL, data = NULL) {
+  if (is.null(data)) return(0)
 
-  # Check if total structural SD is directly available
-  tot_name <- paste0("sigma_tot_", resp)
-  if (tot_name %in% p_names) {
-    return(sqrt(samples_ch[, tot_name]^2 + dist_var))
+  pred_names <- character(0)
+  beta_cols <- character(0)
+  if (!is.null(param_map) && is.data.frame(param_map)) {
+    matching_pm <- param_map[param_map$response == resp & grepl("^beta_", param_map$parameter), ]
+    if (nrow(matching_pm) > 0) {
+      for (r in seq_len(nrow(matching_pm))) {
+        p_col <- matching_pm$parameter[r]
+        pred_var <- matching_pm$predictor[r]
+        if (p_col %in% p_names && pred_var %in% names(data)) {
+          pred_names <- c(pred_names, pred_var)
+          beta_cols <- c(beta_cols, p_col)
+        }
+      }
+    }
   }
 
+  if (length(beta_cols) == 0) {
+    b_cand <- grep(paste0("^beta_", resp, "_"), p_names, value = TRUE)
+    for (bc in b_cand) {
+      pred_cand <- sub(paste0("^beta_", resp, "_"), "", bc)
+      pred_clean <- sub("(_\\d+|\\[\\d+\\])$", "", pred_cand)
+      if (pred_clean %in% names(data)) {
+        pred_names <- c(pred_names, pred_clean)
+        beta_cols <- c(beta_cols, bc)
+      }
+    }
+  }
+
+  if (length(beta_cols) == 0) return(0)
+
+  u_idx <- !duplicated(beta_cols)
+  beta_cols <- beta_cols[u_idx]
+  pred_names <- pred_names[u_idx]
+
+  x_mat <- as.matrix(data[, pred_names, drop = FALSE])
+  mode(x_mat) <- "numeric"
+  cov_x <- stats::cov(x_mat, use = "pairwise.complete.obs")
+  cov_x[is.na(cov_x)] <- 0
+
+  beta_mat <- as.matrix(samples_ch[, beta_cols, drop = FALSE])
+  var_fixed <- rowSums((beta_mat %*% cov_x) * beta_mat)
+  var_fixed[is.na(var_fixed) | var_fixed < 0] <- 0
+  return(var_fixed)
+}
+
+#' Helper to compute liability scale standard deviation for non-Gaussian response
+#' @noRd
+.get_liability_sd <- function(samples_ch, resp, p_names, param_map = NULL,
+                              family = "binomial", data = NULL, method = "error") {
+  fam <- tolower(as.character(family))
+
+  # Distribution disturbance variance on the latent/link scale
+  if (fam %in% c("poisson", "negbinomial")) {
+    if (method == "mplus") {
+      dist_var <- 0 # Pure Mplus StdYX on linear predictor without distribution noise
+    } else {
+      mean_y <- if (!is.null(data) && resp %in% names(data)) {
+        mean(as.numeric(data[[resp]]), na.rm = TRUE)
+      } else {
+        1.0
+      }
+      if (is.na(mean_y) || mean_y <= 0) mean_y <- 1.0
+      dist_var <- log(1 + 1 / mean_y)
+    }
+  } else {
+    # Binomial / Bernoulli / Ordinal (logistic theoretical disturbance pi^2/3)
+    dist_var <- (pi^2) / 3
+  }
+
+  # Structural / Random effects variance
   sig_cols <- character(0)
   if (!is.null(param_map) && is.data.frame(param_map)) {
     matching_pm <- param_map[param_map$response == resp & grepl("^sigma_", param_map$parameter), "parameter"]
@@ -162,16 +251,22 @@ standardize.because <- function(object, method = c("error", "total"), binary_pre
     sig_cols <- sig_cols[!grepl("^sigma_tot_", sig_cols)]
   }
 
+  struct_var <- 0
   if (length(sig_cols) > 0) {
-    struct_var <- 0
     for (sc in sig_cols) {
       struct_var <- struct_var + samples_ch[, sc]^2
     }
-    return(sqrt(struct_var + dist_var))
   }
 
-  # If no random/phylogenetic structural sigma is present, standard logistic error
-  return(rep(sqrt(dist_var), nrow(samples_ch)))
+  # Fixed predictor variance (for method = "total" or "mplus")
+  fixed_var <- 0
+  if (method %in% c("total", "mplus")) {
+    fixed_var <- .get_fixed_variance(samples_ch, resp, p_names, param_map, data)
+  }
+
+  tot_var <- fixed_var + struct_var + dist_var
+  tot_var <- pmax(tot_var, 1e-8)
+  return(sqrt(tot_var))
 }
 
 #' Internal helper: standardize d-separation object
@@ -195,9 +290,10 @@ standardize.because <- function(object, method = c("error", "total"), binary_pre
     for (ch in seq_along(res_i$samples)) {
       p_names <- colnames(res_i$samples[[ch]])
 
-      # 1. Non-Gaussian: Binomial / Bernoulli / Ordinal
-      if (fam %in% c("binomial", "bernoulli", "ordinal")) {
-        sd_liability <- .get_liability_sd(res_i$samples[[ch]], resp, p_names, res_i$parameter_map)
+      # 1. Non-Gaussian: Binomial / Bernoulli / Ordinal / Poisson / NegBinomial
+      if (fam %in% c("binomial", "bernoulli", "ordinal", "poisson", "negbinomial")) {
+        sd_liability <- .get_liability_sd(res_i$samples[[ch]], resp, p_names, res_i$parameter_map,
+                                          family = fam, data = data, method = method)
 
         beta_cols <- grep(paste0("^beta_", resp, "_"), p_names, value = TRUE)
         for (b_col in beta_cols) {
@@ -269,9 +365,14 @@ standardize.because <- function(object, method = c("error", "total"), binary_pre
 .standardize_fitted <- function(res, data, method = "error", binary_predictors = "raw") {
   if (is.null(res$samples)) return(res)
 
+  # Keep an unstandardized copy of samples so liability SD calculations are not corrupted by in-place updates
+  orig_samples <- res$samples
   param_map <- res$parameter_map
   p_names <- colnames(res$samples[[1]])
   standardized_params <- character(0)
+
+  # Precompute liability SD per response and chain to ensure efficiency and consistency across predictors
+  liability_sd_cache <- list()
 
   # Determine parameters to standardize
   if (!is.null(param_map) && is.data.frame(param_map)) {
@@ -299,10 +400,17 @@ standardize.because <- function(object, method = c("error", "total"), binary_pre
       }
       if (is.na(sd_x) || sd_x == 0) sd_x <- 1.0
 
-      if (fam %in% c("binomial", "bernoulli", "ordinal")) {
+      if (fam %in% c("binomial", "bernoulli", "ordinal", "poisson", "negbinomial")) {
         for (ch in seq_along(res$samples)) {
-          sd_liability <- .get_liability_sd(res$samples[[ch]], resp, p_names, res$parameter_map)
-          res$samples[[ch]][, p_name] <- res$samples[[ch]][, p_name] * (sd_x / sd_liability)
+          cache_key <- paste0(resp, "_ch", ch)
+          if (is.null(liability_sd_cache[[cache_key]])) {
+            liability_sd_cache[[cache_key]] <- .get_liability_sd(
+              orig_samples[[ch]], resp, p_names, res$parameter_map,
+              family = fam, data = data, method = method
+            )
+          }
+          sd_liability <- liability_sd_cache[[cache_key]]
+          res$samples[[ch]][, p_name] <- orig_samples[[ch]][, p_name] * (sd_x / sd_liability)
         }
         standardized_params <- c(standardized_params, p_name)
       } else if (fam == "gaussian") {
@@ -348,10 +456,17 @@ standardize.because <- function(object, method = c("error", "total"), binary_pre
         }
         if (is.na(sd_x) || sd_x == 0) sd_x <- 1.0
 
-        if (fam %in% c("binomial", "bernoulli", "ordinal")) {
+        if (fam %in% c("binomial", "bernoulli", "ordinal", "poisson", "negbinomial")) {
           for (ch in seq_along(res$samples)) {
-            sd_liability <- .get_liability_sd(res$samples[[ch]], resp, p_names, NULL)
-            res$samples[[ch]][, b_col] <- res$samples[[ch]][, b_col] * (sd_x / sd_liability)
+            cache_key <- paste0(resp, "_ch", ch)
+            if (is.null(liability_sd_cache[[cache_key]])) {
+              liability_sd_cache[[cache_key]] <- .get_liability_sd(
+                orig_samples[[ch]], resp, p_names, NULL,
+                family = fam, data = data, method = method
+              )
+            }
+            sd_liability <- liability_sd_cache[[cache_key]]
+            res$samples[[ch]][, b_col] <- orig_samples[[ch]][, b_col] * (sd_x / sd_liability)
           }
           standardized_params <- c(standardized_params, b_col)
         } else if (fam == "gaussian") {

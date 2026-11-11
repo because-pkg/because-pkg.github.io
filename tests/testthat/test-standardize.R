@@ -279,3 +279,94 @@ test_that("standardize correctly detects binomial from 0/1 data when family attr
     expect_true(actual_beta > -0.5 && actual_beta < -0.2)
 })
 
+test_that("standardize supports Poisson responses across error, total, and mplus methods", {
+    set.seed(42)
+    n <- 120
+    x <- rnorm(n, mean = 2, sd = 1.5)
+    migrant <- rbinom(n, 1, 0.4)
+    # Poisson count outcome with mean around 4.0
+    eggs <- rpois(n, lambda = exp(0.5 + 0.3 * (x - 2) + 0.4 * migrant))
+
+    data_df <- data.frame(
+        Mass = x,
+        Migrant = migrant,
+        Eggs = eggs,
+        Species = paste0("sp_", 1:n)
+    )
+
+    n_iter <- 100
+    b_mass_val <- 0.35
+    b_mig_val <- 0.45
+    sig_phylo_val <- 0.60
+
+    samples <- coda::mcmc.list(
+        coda::mcmc(matrix(
+            c(
+                rep(b_mass_val, n_iter),
+                rep(b_mig_val, n_iter),
+                rep(sig_phylo_val, n_iter)
+            ),
+            ncol = 3,
+            dimnames = list(NULL, c("beta_Eggs_Mass", "beta_Eggs_Migrant", "sigma_Eggs_phylo"))
+        ))
+    )
+
+    param_map <- data.frame(
+        response = c("Eggs", "Eggs"),
+        predictor = c("Mass", "Migrant"),
+        parameter = c("beta_Eggs_Mass", "beta_Eggs_Migrant"),
+        equation_index = c(1, 1),
+        stringsAsFactors = FALSE
+    )
+
+    fit <- list(
+        samples = samples,
+        parameter_map = param_map,
+        data = data_df,
+        family = c(Eggs = "poisson"),
+        equations = list(Eggs ~ Mass + Migrant)
+    )
+    class(fit) <- "because"
+
+    # 1. Default method = "error" (Nakagawa et al. 2017 link-scale latent disturbance)
+    fit_err <- standardize(fit, method = "error", binary_predictors = "raw")
+    mean_y <- mean(data_df$Eggs)
+    dist_var <- log(1 + 1 / mean_y)
+    expected_sd_err <- sqrt(sig_phylo_val^2 + dist_var)
+    sd_mass <- sd(data_df$Mass)
+
+    # Continuous predictor scaled by sd(X) / sd_err
+    expected_beta_mass_err <- b_mass_val * (sd_mass / expected_sd_err)
+    expect_equal(mean(fit_err$samples[[1]][, "beta_Eggs_Mass"]), expected_beta_mass_err, tolerance = 1e-4)
+
+    # Binary predictor kept on 0-to-1 step (Cohen's d on latent scale)
+    expected_beta_mig_raw <- b_mig_val * (1.0 / expected_sd_err)
+    expect_equal(mean(fit_err$samples[[1]][, "beta_Eggs_Migrant"]), expected_beta_mig_raw, tolerance = 1e-4)
+
+    # Full standardization with binary_predictors = "sd"
+    fit_err_sd <- standardize(fit, method = "error", binary_predictors = "sd")
+    sd_mig <- sd(data_df$Migrant)
+    expected_beta_mig_sd <- b_mig_val * (sd_mig / expected_sd_err)
+    expect_equal(mean(fit_err_sd$samples[[1]][, "beta_Eggs_Migrant"]), expected_beta_mig_sd, tolerance = 1e-4)
+
+    # 2. method = "mplus" (Exact Mplus StdYX on linear predictions s_xb)
+    fit_mplus <- standardize(fit, method = "mplus", binary_predictors = "raw")
+    cov_x <- cov(data_df[, c("Mass", "Migrant")])
+    b_vec <- c(b_mass_val, b_mig_val)
+    var_fixed <- as.numeric(t(b_vec) %*% cov_x %*% b_vec)
+    s_xb <- sqrt(var_fixed + sig_phylo_val^2)
+
+    expected_beta_mass_mplus <- b_mass_val * (sd_mass / s_xb)
+    expect_equal(mean(fit_mplus$samples[[1]][, "beta_Eggs_Mass"]), expected_beta_mass_mplus, tolerance = 1e-4)
+
+    expected_beta_mig_mplus <- b_mig_val * (1.0 / s_xb)
+    expect_equal(mean(fit_mplus$samples[[1]][, "beta_Eggs_Migrant"]), expected_beta_mig_mplus, tolerance = 1e-4)
+
+    # 3. method = "total" (Fixed predictor variance + random effect variance + disturbance variance)
+    fit_tot <- standardize(fit, method = "total", binary_predictors = "raw")
+    expected_sd_tot <- sqrt(var_fixed + sig_phylo_val^2 + dist_var)
+    expected_beta_mass_tot <- b_mass_val * (sd_mass / expected_sd_tot)
+    expect_equal(mean(fit_tot$samples[[1]][, "beta_Eggs_Mass"]), expected_beta_mass_tot, tolerance = 1e-4)
+})
+
+

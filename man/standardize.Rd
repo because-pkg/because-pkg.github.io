@@ -7,16 +7,34 @@
 \usage{
 standardize(object, ...)
 
-\method{standardize}{because}(object, method = c("error", "total"), ...)
+\method{standardize}{because}(
+  object,
+  method = c("error", "total", "mplus"),
+  binary_predictors = c("raw", "sd"),
+  ...
+)
 }
 \arguments{
 \item{object}{A fitted \code{because} model object or a \code{because} d-separation test object.}
 
 \item{...}{Additional arguments passed to methods.}
 
-\item{method}{Character; liability variance calculation method: \code{"error"} (default; disturbance +
-structural variance \eqn{\sigma_{\text{phylo}}^2 + \pi^2/3}) or \code{"total"} (full McKelvey-Zavoina
-incorporating the empirical variance of the fixed linear predictor).}
+\item{method}{Character; liability/outcome variance calculation method:
+\itemize{
+\item \code{"error"} (default): Disturbance error + structural/random effects variance
+(\eqn{\sum \sigma_{\text{random}}^2 + \pi^2/3} for binomial;
+\eqn{\sum \sigma_{\text{random}}^2 + \ln(1 + 1/\bar{Y})} for Poisson; Nakagawa et al. 2017).
+\item \code{"total"}: Full McKelvey-Zavoina / Nakagawa total variance incorporating the empirical variance
+of the fixed linear predictor \eqn{\text{Var}(\hat{\eta}_{\text{fixed}})}.
+\item \code{"mplus"}: Standardizes by the standard deviation of the linear predictions
+\eqn{s_{xb} = \sqrt{\text{Var}(\hat{\eta}_{\text{fixed}}) + \sum \sigma_{\text{random}}^2}},
+matching Mplus \code{StdYX} for Poisson regression (UCLA OARC FAQ).
+}}
+
+\item{binary_predictors}{Character; scaling for binary/dummy predictors: \code{"raw"} (default;
+semi-standardization, keeping binary predictors on the 0-to-1 step so that the standardized slope
+represents Cohen's \eqn{d} on the standardized outcome scale; Gelman 2008, Bollen 1989, Grace & Bollen 2005)
+or \code{"sd"} (full standardization, scaling by \eqn{s_X = \sqrt{p(1-p)}}; Menard 2004).}
 }
 \value{
 An updated object of class \code{c("because_standardized", "because")} with transformed
@@ -35,11 +53,23 @@ were already standardized prior to model fitting, their scale is preserved.
 \item \strong{Binary / Categorical (Binomial/Bernoulli/Ordinal Logit)}: Raw coefficients sit on
 the log-odds scale. They are standardized \emph{a posteriori} onto the continuous latent
 liability scale following McKelvey & Zavoina (1975), Menard (2004), and Nakagawa et al. (2017):
-\deqn{\beta^* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sigma_{\text{phylo}}^2 + \pi^2/3}}}
+\deqn{\beta^* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sum \sigma_{\text{random}}^2 + \pi^2/3}}}
 where \eqn{\pi^2/3 \approx 3.289868} is the theoretical disturbance variance of the standard logistic link.
+\item \strong{Count (Poisson / Negative Binomial)}: Raw coefficients sit on the log-rate scale
+(\eqn{\ln \lambda}). Standardized onto the latent log / rate scale via:
+\itemize{
+\item \code{"error"} (default): \eqn{\beta^* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sum \sigma_{\text{random}}^2 + \ln(1 + 1/\bar{Y})}}}
+following the GLMM latent distribution variance formulation of Nakagawa et al. (2017).
+\item \code{"total"}: Incorporates the empirical variance of the fixed linear predictor
+\eqn{\text{Var}(\hat{\eta}_{\text{fixed}})} alongside random effects and disturbance variance.
+\item \code{"mplus"}: Standardizes by the standard deviation of the linear predictions
+\eqn{s_{xb} = \sqrt{\text{Var}(\hat{\eta}_{\text{fixed}}) + \sum \sigma_{\text{random}}^2}},
+matching Mplus \code{StdYX} for Poisson regression (UCLA OARC FAQ).
+}
 \item \strong{Binary Predictors}: Slopes pointing from a binary indicator (e.g. \code{Migrant} \eqn{\in \{0, 1\}})
-to a continuous response are multiplied by the predictor's standard deviation
-\eqn{s_X = \sqrt{p(1 - p)}}, placing the binary jump on the standard deviation scale (analogous to Cohen's \eqn{d}).
+to a response are kept on their natural 0-to-1 step when \code{binary_predictors = "raw"} (default),
+placing the effect on the standardized outcome scale (directly analogous to Cohen's \eqn{d}; Gelman 2008,
+Grace & Bollen 2005). When \code{binary_predictors = "sd"}, slopes are multiplied by \eqn{s_X = \sqrt{p(1 - p)}} (Menard 2004).
 \item \strong{d-separation Objects}: Evaluates and rescales each auxiliary independence claim
 across all d-sep sub-models, enabling a uniform \code{rope = c(-0.10, 0.10)} benchmark across all tests.
 }
@@ -51,7 +81,16 @@ McKelvey, R. D., & Zavoina, W. (1975). A statistical model for the analysis of o
 Menard, S. (2004). Six approaches to calculating standardized logistic regression coefficients.
 \emph{The American Statistician}, 58(3), 218–223.
 
+Gelman, A. (2008). Scaling regression inputs by dividing by two standard deviations.
+\emph{Statistics in Medicine}, 27(15), 2865–2873.
+
+Grace, J. B., & Bollen, K. A. (2005). Interpreting the results from multiple regression and structural equation models.
+\emph{Ecology}, 86(11), 283–295.
+
 Nakagawa, S., Johnson, P. C. D., & Schielzeth, H. (2017). The coefficient of determination \eqn{R^2}
 and intra-class correlation coefficient from generalized linear mixed-effects models revisited and expanded.
 \emph{Journal of the Royal Society Interface}, 14(134), 20170213.
+
+UCLA: Statistical Consulting Group. How does Mplus calculate the standardized coefficients based on a Poisson model?
+\url{https://stats.oarc.ucla.edu/mplus/faq/how-does-mplus-calculate-the-standardized-coefficients-based-on-a-poisson-model/}
 }
