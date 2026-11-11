@@ -165,36 +165,39 @@ format_numpyro_samples <- function(py_result) {
   num_chains <- dim(first_param)[1]
   num_iters <- dim(first_param)[2]
   
-  chain_list <- list()
+  chain_list <- vector("list", num_chains)
   for (ch in 1:num_chains) {
-    chain_mat <- NULL
+    col_list <- list()
     for (param_name in names(raw_samples)) {
       param_data <- raw_samples[[param_name]]
+      p_dims <- dim(param_data)
+      p_ndim <- length(p_dims)
       
-      if (length(dim(param_data)) == 2) {
+      if (p_ndim == 2) {
         # Scalar parameter: shape (chains, iters)
         col <- matrix(param_data[ch, ], ncol = 1)
         colnames(col) <- param_name
-        chain_mat <- if (is.null(chain_mat)) col else cbind(chain_mat, col)
-      } else if (length(dim(param_data)) == 3) {
+        col_list[[length(col_list) + 1L]] <- col
+      } else if (p_ndim == 3) {
         # Vector parameter: shape (chains, iters, length)
-        param_len <- dim(param_data)[3]
+        param_len <- p_dims[3]
         cols <- matrix(param_data[ch, , ], ncol = param_len)
         colnames(cols) <- paste0(param_name, "[", 1:param_len, "]")
-        chain_mat <- if (is.null(chain_mat)) cols else cbind(chain_mat, cols)
-      } else if (length(dim(param_data)) == 4) {
+        col_list[[length(col_list) + 1L]] <- cols
+      } else if (p_ndim == 4) {
         # Matrix parameter: shape (chains, iters, rows, cols)
         # Specifically extract 2x2 LKJ Cholesky factor L_corr_* -> rho_* if not already present
-        if (grepl("^L_corr_", param_name) && dim(param_data)[3] == 2 && dim(param_data)[4] == 2) {
+        if (grepl("^L_corr_", param_name) && p_dims[3] == 2 && p_dims[4] == 2) {
           rho_name <- sub("^L_corr_", "rho_", param_name)
-          if (!rho_name %in% names(raw_samples) && (is.null(chain_mat) || !rho_name %in% colnames(chain_mat))) {
+          if (!rho_name %in% names(raw_samples)) {
             col <- matrix(param_data[ch, , 2, 1], ncol = 1)
             colnames(col) <- rho_name
-            chain_mat <- if (is.null(chain_mat)) col else cbind(chain_mat, col)
+            col_list[[length(col_list) + 1L]] <- col
           }
         }
       }
     }
+    chain_mat <- do.call(cbind, col_list)
     chain_list[[ch]] <- coda::mcmc(chain_mat)
   }
   
@@ -416,18 +419,27 @@ run_numpyro_pipeline <- function(
       warning(paste0("Could not construct WAIC table: ", e$message))
     })
   }
-  # Compute summary statistics
-  sum_stats <- if (!is.null(mcmc_samples)) summary(mcmc_samples) else NULL
-  if (!is.null(mcmc_samples) && length(mcmc_samples) > 1) {
+  # Compute summary statistics on structural parameters to avoid memory explosion on species-level latent vectors
+  pnames_all <- if (!is.null(mcmc_samples)) colnames(mcmc_samples[[1]]) else character(0)
+  target_vars <- pnames_all[grepl("^(alpha|beta|sigma|tau|lambda|rho|psi|r_|cutpoint|K_tree)", pnames_all)]
+  if (length(target_vars) == 0 && length(pnames_all) > 0) {
+    target_vars <- if (length(pnames_all) > 100) head(pnames_all, 100) else pnames_all
+  }
+
+  sub_mcmc <- if (length(target_vars) > 0) mcmc_samples[, target_vars, drop = FALSE] else mcmc_samples
+  sum_stats <- if (!is.null(sub_mcmc)) summary(sub_mcmc) else NULL
+
+  if (!is.null(sub_mcmc) && length(sub_mcmc) > 1) {
     tryCatch({
-      n_ch <- length(mcmc_samples)
-      first_chain <- as.matrix(mcmc_samples[[1]])
-      pnames <- colnames(first_chain)
+      n_ch <- length(sub_mcmc)
+      # Convert sub_mcmc chains to numeric matrices ONCE outside loops
+      chain_mats <- lapply(sub_mcmc, as.matrix)
+      pnames <- colnames(chain_mats[[1]])
       n_params <- length(pnames)
       rhat_vals <- numeric(n_params)
       rhat_max_vals <- numeric(n_params)
       rhat_tree_vals <- numeric(n_params)
-      n_iter_chain <- nrow(first_chain)
+      n_iter_chain <- nrow(chain_mats[[1]])
 
       # Detect multiPhylo ensemble: each chain fixed on a tree and multiple trees represented
       k_col <- grep("^K_tree_", pnames, value = TRUE)[1]
@@ -437,7 +449,7 @@ run_numpyro_pipeline <- function(
       trees_multi <- NULL
       if (!is.na(k_col) && has_ens_struct) {
         chain_trees <- vapply(seq_len(n_ch), function(c) {
-          as.integer(round(as.matrix(mcmc_samples[[c]])[1, k_col]))
+          as.integer(round(chain_mats[[c]][1, k_col]))
         }, integer(1))
         u_trees <- sort(unique(chain_trees))
         trees_multi <- u_trees[vapply(u_trees, function(tk) sum(chain_trees == tk) >= 2, logical(1))]
@@ -446,16 +458,15 @@ run_numpyro_pipeline <- function(
         }
       }
 
+      # Precompute chain means and chain variances vectorized across all parameters
+      chain_means_mat <- do.call(rbind, lapply(chain_mats, colMeans))
+      chain_vars_mat <- do.call(rbind, lapply(chain_mats, function(m) apply(m, 2, stats::var)))
+
       for (p in 1:n_params) {
-        chain_means <- numeric(n_ch)
-        chain_vars <- numeric(n_ch)
-        for (c in 1:n_ch) {
-          vals <- as.matrix(mcmc_samples[[c]])[, p]
-          chain_means[c] <- mean(vals)
-          chain_vars[c] <- var(vals)
-        }
-        B <- n_iter_chain * var(chain_means)
-        W <- mean(chain_vars)
+        c_means <- chain_means_mat[, p]
+        c_vars <- chain_vars_mat[, p]
+        B <- n_iter_chain * stats::var(c_means)
+        W <- mean(c_vars)
         if (!is.na(W) && W > 1e-12) {
           var_plus <- ((n_iter_chain - 1) / n_iter_chain) * W + (1 / n_iter_chain) * B
           rhat_tree_vals[p] <- sqrt(var_plus / W)
@@ -466,8 +477,8 @@ run_numpyro_pipeline <- function(
         if (is_ensemble_run) {
           rw <- vapply(trees_multi, function(tk) {
             idx <- which(chain_trees == tk)
-            W_k <- mean(chain_vars[idx])
-            B_k <- n_iter_chain * var(chain_means[idx])
+            W_k <- mean(c_vars[idx])
+            B_k <- n_iter_chain * stats::var(c_means[idx])
             if (is.na(W_k) || W_k <= 1e-12) return(1.0)
             vp_k <- ((n_iter_chain - 1) / n_iter_chain) * W_k + (1 / n_iter_chain) * B_k
             sqrt(vp_k / W_k)

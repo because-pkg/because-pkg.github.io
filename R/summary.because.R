@@ -390,19 +390,8 @@ summary.because <- function(
         class(out) <- "summary.because"
         return(out)
     } else {
-        # Standard summary
-        # Use stored summary if available and defaults are used, otherwise calculate it
-        if (!is.null(object$summary) && prob == 0.95) {
-            summ <- object$summary
-        } else {
-            summ <- summary(object$samples, quantiles = quantiles_req, ...)
-        }
-
-        # Calculate convergence diagnostics
-        n_chains <- coda::nchain(object$samples)
-
-        # Determine target parameters for diagnostics:
-        # If show_nodes is FALSE, only structural parameters need diagnostics!
+        # Determine target parameters for diagnostics / summary:
+        # If show_nodes is FALSE, only structural parameters are summarized to avoid memory explosion
         var_names_all <- colnames(object$samples[[1]])
         k_cols <- grep("^K_tree_", var_names_all, value = TRUE)
         target_vars <- if (!show_nodes) {
@@ -411,6 +400,19 @@ summary.because <- function(
             var_names_all
         }
         target_vars <- setdiff(target_vars, k_cols)
+        if (length(target_vars) == 0) target_vars <- var_names_all
+
+        # Standard summary
+        # Use stored summary if available and defaults are used, otherwise calculate it
+        if (!is.null(object$summary) && prob == 0.95) {
+            summ <- object$summary
+        } else {
+            sub_samps <- if (!show_nodes && length(var_names_all) > 100) object$samples[, target_vars, drop = FALSE] else object$samples
+            summ <- summary(sub_samps, quantiles = quantiles_req, ...)
+        }
+
+        # Calculate convergence diagnostics
+        n_chains <- coda::nchain(object$samples)
 
         # Gelman-Rubin diagnostic (Rhat and Rhat_max)
         rhat <- NULL
