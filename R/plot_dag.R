@@ -168,6 +168,13 @@ plot_dag <- function(
         }
     }
 
+    if (!is.null(combined_dag_data)) {
+        combined_dag_data$model_label <- factor(
+            combined_dag_data$model_label,
+            levels = unique(combined_dag_data$model_label)
+        )
+    }
+
     # --- Compound bounding boxes (imperfect detection / state-space groups) ---
     compound_boxes <- NULL
     if (
