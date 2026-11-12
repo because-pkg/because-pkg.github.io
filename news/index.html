@@ -35,6 +35,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.9.0" id="because-190-2026-11-11">because 1.9.0 (2026-11-11)<a class="anchor" aria-label="anchor" href="#because-190-2026-11-11"></a></h2>
+<blockquote>
+<p>All notable changes to <code>because</code> are documented in this file. The format is based on <a href="https://keepachangelog.com/en/2.0.0/" class="external-link">Keep a Changelog</a>, and this project adheres to <a href="https://semver.org/spec/v2.0.0.html" class="external-link">Semantic Versioning</a>.</p>
+</blockquote>
 <div class="section level3">
 <h3 id="new-features--improvements-1-9-0">New Features &amp; Improvements<a class="anchor" aria-label="anchor" href="#new-features--improvements-1-9-0"></a></h3>
 <ul><li>
@@ -54,7 +57,7 @@
 <code>method = "mplus"</code>: Standardizes by the standard deviation of the linear predictions <span class="math inline">s_{xb} = \sqrt{\text{Var}(\hat{\eta}_{\text{fixed}}) + \sum \sigma_{\text{random}}^2}</span>, exactly reproducing Mplus <code>StdYX</code> for Poisson regression (<a href="https://stats.oarc.ucla.edu/mplus/faq/how-does-mplus-calculate-the-standardized-coefficients-based-on-a-poisson-model/" class="external-link">UCLA OARC FAQ</a>).</li>
 </ul></li>
 <li>
-<strong>Semi-Standardization for Binary Predictors (<code>binary_predictors = "raw"</code>, default)</strong>: Following <a href="https://doi.org/10.1002/sim.3107" class="external-link">Gelman (2008)</a>, <a href="https://doi.org/10.1002/9781118619179" class="external-link">Bollen (1989)</a>, and <a href="https://doi.org/10.1890/04-0659" class="external-link">Grace &amp; Bollen (2005)</a>, binary dummy predictors (<span class="math inline">X \in \{0, 1\}</span>) are kept on their natural <span class="math inline">0 \to 1</span> step while standardizing the outcome, so that <span class="math inline">\beta^*</span> directly represents <strong>Cohen’s <span class="math inline">d</span></strong> (group difference in standard deviations of the outcome). Optional <code>binary_predictors = "sd"</code> supports classical full standardization (<span class="math inline">s_X = \sqrt{p(1-p)}</span>; <a href="https://doi.org/10.1198/000313004X946" class="external-link">Menard 2004</a>).</li>
+<strong>Semi-Standardization for Binary Predictors (<code>binary_predictors = "raw"</code>, default)</strong>: Following <a href="https://doi.org/10.1002/sim.3107" class="external-link">Gelman (2008)</a>, <a href="https://doi.org/10.1002/9781118619179" class="external-link">Bollen (1989)</a>, and <a href="https://www.jstor.org/stable/3868261" class="external-link">Grace &amp; Bollen (2005)</a>, binary dummy predictors (<span class="math inline">X \in \{0, 1\}</span>) are kept on their natural <span class="math inline">0 \to 1</span> step while standardizing the outcome, so that <span class="math inline">\beta^*</span> directly represents <strong>Cohen’s <span class="math inline">d</span></strong> (group difference in standard deviations of the outcome). Optional <code>binary_predictors = "sd"</code> supports classical full standardization (<span class="math inline">s_X = \sqrt{p(1-p)}</span>; <a href="https://doi.org/10.1198/000313004X946" class="external-link">Menard 2004</a>).</li>
 <li>
 <strong>Automated Binary Detection Fallback</strong>: Automatically infers binomial links from <span class="math inline">\{0, 1\}</span> data even if the <code>family</code> attribute was omitted from the fitted object.</li>
 <li>
@@ -116,11 +119,15 @@
 <li>
 <strong>Informative Conditioning Labels in <code><a href="../reference/pp_check.html">pp_check()</a></code></strong>: When conditional predictions are active, <code><a href="../reference/pp_check.html">pp_check()</a></code> automatically documents the conditioning traits in the plot subtitle (e.g. <code>Type: dens_overlay | draws: 50 | Conditional on: Y2, Y3</code>), making diagnostic displays transparent for publication and reviewer evaluation.</li>
 <li>
+<strong>Custom Edge Curvatures in <code><a href="../reference/plot_dag.html">plot_dag()</a></code> (<code>curvatures</code>)</strong>: Added <code>curvatures</code> argument to <code><a href="../reference/plot_dag.html">plot_dag()</a></code> and <code><a href="../reference/build_dag_data.html">build_dag_data()</a></code>, allowing users to specify custom numeric edge curvatures for individual directed paths (e.g., <code>curvatures = c("X -&gt; Y" = 0.35)</code>).</li>
+<li>
 <strong>KaTeX Math Rendering in Reference Documentation</strong>: Added <code>math-rendering: katex</code> to <code>_pkgdown.yml</code>, ensuring LaTeX equations in roxygen references (such as mathematical formulas for quantile residuals, VIF thresholds, and variance decompositions) render cleanly in online documentation.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-1-9-0">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-1-9-0"></a></h3>
 <ul><li>
+<strong>Multi-Model Facet Node Rendering in <code><a href="../reference/plot_dag.html">plot_dag()</a></code></strong>: Fixed an issue in <code><a href="../reference/plot_dag.html">plot_dag()</a></code> where <code>dplyr::distinct(name)</code> dropped node shapes and labels on all panels after the first when plotting multiple models simultaneously via <code>facet_wrap(~model_label)</code>. Node deduplication is now grouped by <code>distinct(model_label, name)</code>.</li>
+<li>
 <strong>Full Parameter Axis Label Rendering in <code>plot.check_multicov()</code></strong>: Fixed an issue where base R’s <code><a href="https://rdrr.io/r/graphics/axis.html" class="external-link">axis()</a></code> dropped alternating parameter labels on the vertical axis when plotting models with many parameters (&gt; 15). Added <code>gap.axis = -1</code> to disable automatic label suppression, along with dynamic font scaling (<code>cex.axis</code>) and dynamic left margin expansion based on parameter name length, ensuring every parameter label renders legibly across all engines (NumPyro, JAGS, NIMBLE).</li>
 <li>
 <strong>NumPyro Memory Optimization &amp; Latent Vector Filtering</strong>: Filtered high-dimensional observation-level random effect vectors (<code>u_*</code>, <code>z_*</code>, <code>err_res_*</code>) in <code><a href="../reference/format_numpyro_samples.html">format_numpyro_samples()</a></code>, reducing returned MCMC object size from <span class="math inline">&gt; 20\text{ GB}</span> to <span class="math inline">&lt; 10\text{ MB}</span> (~2,000x reduction) for models with non-Gaussian links and structured covariance matrices. Automatically unlimits vector memory via <code>mem.maxVSize(Inf)</code> on macOS and saves an emergency checkpoint (<code>because_checkpoint_samples.rds</code>) prior to R object conversion to prevent data loss.</li>

@@ -126,8 +126,9 @@ Gelman, A. (2008). Scaling regression inputs by dividing by two standard
 deviations. *Statistics in Medicine*, 27(15), 2865–2873.
 
 Grace, J. B., & Bollen, K. A. (2005). Interpreting the results from
-multiple regression and structural equation models. *Ecology*, 86(11),
-283–295.
+multiple regression and structural equation models. *Bulletin of the
+Ecological Society of America*, 86(4), 283–295.
+<https://www.jstor.org/stable/3868261>
 
 Nakagawa, S., Johnson, P. C. D., & Schielzeth, H. (2017). The
 coefficient of determination \\R^2\\ and intra-class correlation

@@ -2,6 +2,11 @@
 
 ## because 1.9.0 (2026-11-11)
 
+> All notable changes to `because` are documented in this file. The
+> format is based on [Keep a
+> Changelog](https://keepachangelog.com/en/2.0.0/), and this project
+> adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ### New Features & Improvements
 
 - **Standardization on Latent Liability and Common SD Scale
@@ -46,11 +51,11 @@
     (`binary_predictors = "raw"`, default)**: Following [Gelman
     (2008)](https://doi.org/10.1002/sim.3107), [Bollen
     (1989)](https://doi.org/10.1002/9781118619179), and [Grace & Bollen
-    (2005)](https://doi.org/10.1890/04-0659), binary dummy predictors (X
-    \in \\0, 1\\) are kept on their natural 0 \to 1 step while
-    standardizing the outcome, so that \beta^\* directly represents
-    **Cohen’s d** (group difference in standard deviations of the
-    outcome). Optional `binary_predictors = "sd"` supports classical
+    (2005)](https://www.jstor.org/stable/3868261), binary dummy
+    predictors (X \in \\0, 1\\) are kept on their natural 0 \to 1 step
+    while standardizing the outcome, so that \beta^\* directly
+    represents **Cohen’s d** (group difference in standard deviations of
+    the outcome). Optional `binary_predictors = "sd"` supports classical
     full standardization (s_X = \sqrt{p(1-p)}; [Menard
     2004](https://doi.org/10.1198/000313004X946)).
   - **Automated Binary Detection Fallback**: Automatically infers
@@ -201,6 +206,14 @@
   (e.g. `Type: dens_overlay | draws: 50 | Conditional on: Y2, Y3`),
   making diagnostic displays transparent for publication and reviewer
   evaluation.
+- **Custom Edge Curvatures in
+  [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
+  (`curvatures`)**: Added `curvatures` argument to
+  [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
+  and
+  [`build_dag_data()`](https://because-pkg.github.io/because/reference/build_dag_data.md),
+  allowing users to specify custom numeric edge curvatures for
+  individual directed paths (e.g., `curvatures = c("X -> Y" = 0.35)`).
 - **KaTeX Math Rendering in Reference Documentation**: Added
   `math-rendering: katex` to `_pkgdown.yml`, ensuring LaTeX equations in
   roxygen references (such as mathematical formulas for quantile
@@ -209,6 +222,14 @@
 
 ### Bug Fixes
 
+- **Multi-Model Facet Node Rendering in
+  [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)**:
+  Fixed an issue in
+  [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
+  where `dplyr::distinct(name)` dropped node shapes and labels on all
+  panels after the first when plotting multiple models simultaneously
+  via `facet_wrap(~model_label)`. Node deduplication is now grouped by
+  `distinct(model_label, name)`.
 - **Full Parameter Axis Label Rendering in `plot.check_multicov()`**:
   Fixed an issue where base R’s
   [`axis()`](https://rdrr.io/r/graphics/axis.html) dropped alternating

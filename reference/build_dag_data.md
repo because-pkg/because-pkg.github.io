@@ -12,6 +12,7 @@ build_dag_data(
   family = NULL,
   layout = "kk",
   coords = NULL,
+  curvatures = NULL,
   node_size = 12,
   text_size = 3.5,
   edge_label_size = 3,
