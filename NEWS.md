@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # because 1.9.0 (2026-11-11)
 
+> All notable changes to `because` are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## New Features & Improvements
 * **Standardization on Latent Liability and Common SD Scale (`standardize()`)**:
   * Added S3 generic and method `standardize()` to rescale path coefficients from fitted models and d-separation test objects onto a common, dimensionless standard deviation metric.
@@ -20,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * `method = "error"` (default): $\beta^* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sum \sigma_{\text{random}}^2 + \ln(1 + 1/\bar{Y})}}$ following the GLMM latent distribution variance framework of [Nakagawa et al. (2017)](https://doi.org/10.1098/rsif.2017.0213).
     * `method = "total"`: Full total variance incorporating the empirical variance of the fixed linear predictor $\text{Var}(\hat{\eta}_{\text{fixed}})$ alongside random effects and disturbance variance.
     * `method = "mplus"`: Standardizes by the standard deviation of the linear predictions $s_{xb} = \sqrt{\text{Var}(\hat{\eta}_{\text{fixed}}) + \sum \sigma_{\text{random}}^2}$, exactly reproducing Mplus `StdYX` for Poisson regression ([UCLA OARC FAQ](https://stats.oarc.ucla.edu/mplus/faq/how-does-mplus-calculate-the-standardized-coefficients-based-on-a-poisson-model/)).
-  * **Semi-Standardization for Binary Predictors (`binary_predictors = "raw"`, default)**: Following [Gelman (2008)](https://doi.org/10.1002/sim.3107), [Bollen (1989)](https://doi.org/10.1002/9781118619179), and [Grace & Bollen (2005)](https://doi.org/10.1890/04-0659), binary dummy predictors ($X \in \{0, 1\}$) are kept on their natural $0 \to 1$ step while standardizing the outcome, so that $\beta^*$ directly represents **Cohen's $d$** (group difference in standard deviations of the outcome). Optional `binary_predictors = "sd"` supports classical full standardization ($s_X = \sqrt{p(1-p)}$; [Menard 2004](https://doi.org/10.1198/000313004X946)).
+  * **Semi-Standardization for Binary Predictors (`binary_predictors = "raw"`, default)**: Following [Gelman (2008)](https://doi.org/10.1002/sim.3107), [Bollen (1989)](https://doi.org/10.1002/9781118619179), and [Grace & Bollen (2005)](https://www.jstor.org/stable/3868261), binary dummy predictors ($X \in \{0, 1\}$) are kept on their natural $0 \to 1$ step while standardizing the outcome, so that $\beta^*$ directly represents **Cohen's $d$** (group difference in standard deviations of the outcome). Optional `binary_predictors = "sd"` supports classical full standardization ($s_X = \sqrt{p(1-p)}$; [Menard 2004](https://doi.org/10.1198/000313004X946)).
   * **Automated Binary Detection Fallback**: Automatically infers binomial links from $\{0, 1\}$ data even if the `family` attribute was omitted from the fitted object.
   * **High-Efficiency In-Place Updates**: Selectively updates only standardized parameter rows in `summary$statistics` and `summary$quantiles`, preserving precomputed MCMC convergence diagnostics (`Rhat`, `Rhat_max`, `n.eff`) and avoiding memory duplication of large ensemble posterior arrays.
 * **ROPE and Ridge Visualization Harmonization (`plot_rope()`, `summary()`)**:

@@ -64,7 +64,7 @@
 #' \emph{Statistics in Medicine}, 27(15), 2865–2873.
 #'
 #' Grace, J. B., & Bollen, K. A. (2005). Interpreting the results from multiple regression and structural equation models.
-#' \emph{Ecology}, 86(11), 283–295.
+#' \emph{Bulletin of the Ecological Society of America}, 86(4), 283–295. \url{https://www.jstor.org/stable/3868261}
 #'
 #' Nakagawa, S., Johnson, P. C. D., & Schielzeth, H. (2017). The coefficient of determination \eqn{R^2}
 #' and intra-class correlation coefficient from generalized linear mixed-effects models revisited and expanded.
