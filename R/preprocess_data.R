@@ -461,7 +461,22 @@ collect_and_filter_model_data <- function(
     structure_id_vars,
     link_vars,
     if (!is.null(family)) names(family),
-    if (!is.null(variability) && !is.character(variability)) names(variability),
+    if (!is.null(variability)) {
+      if (is.character(variability)) {
+        variability
+      } else {
+        names(variability)
+      }
+    },
+    if (!is.null(variability) && is.list(variability)) {
+      unlist(lapply(variability, function(v) {
+        if (is.list(v)) c(v$se_col, v$obs_col, v$mean_col) else NULL
+      }))
+    },
+    paste0(all_eq_vars, "_se"),
+    paste0(all_eq_vars, "_sd"),
+    paste0(all_eq_vars, "_obs"),
+    paste0(all_eq_vars, "_mean"),
     "N"
   ))
 

@@ -372,7 +372,11 @@ process_missing_and_variability <- function(
   # Handle variability data
   variability_list <- list()
   if (!is.null(variability)) {
+    all_eq_vars <- unique(unlist(lapply(equations, all.vars)))
     for (var_name in names(variability)) {
+      if (!var_name %in% all_eq_vars) {
+        next
+      }
       var_spec <- variability[[var_name]]
 
       if (is.list(var_spec)) {
@@ -525,11 +529,14 @@ process_missing_and_variability <- function(
   }
 
   # Auto-detect latent variables: variables in equations but not in data
+  # Variables handled by variability (measurement error / reps) have observation
+  # likelihoods and are NOT unobserved latent confounders for MAG marginalization.
   if (is.null(latent)) {
     vars_in_equations <- unique(unlist(lapply(equations, all.vars)))
     vars_in_data <- names(data)
 
-    potential_latents <- setdiff(vars_in_equations, vars_in_data)
+    known_vars <- c(vars_in_data, names(variability_list))
+    potential_latents <- setdiff(vars_in_equations, known_vars)
 
     potential_latents <- dsep_potential_latent_hook(
       family_obj,
