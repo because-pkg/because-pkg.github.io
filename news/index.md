@@ -15,9 +15,11 @@
     (preserving scale if variables were standardized prior to fitting).
   - **Binary / Categorical Responses (Binomial/Bernoulli/Ordinal
     Logit)**: Raw log-odds coefficients are transformed *a posteriori*
-    onto the continuous latent liability scale following McKelvey &
-    Zavoina (1975), Menard (2004), and Nakagawa et al. (2017 *J. R. Soc.
-    Interface*): \beta^\* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sum
+    onto the continuous latent liability scale following [McKelvey &
+    Zavoina (1975)](https://doi.org/10.1080/0022250X.1975.9989847),
+    [Menard (2004)](https://doi.org/10.1198/000313004X946), and
+    [Nakagawa et al. (2017)](https://doi.org/10.1098/rsif.2017.0213):
+    \beta^\* = \frac{\beta \times \text{SD}(X)}{\sqrt{\sum
     \sigma\_{\text{random}}^2 + \pi^2/3}} where \pi^2/3 \approx 3.289868
     is the theoretical disturbance variance of the standard logistic
     link. Full posterior uncertainty of random effects is propagated
@@ -28,7 +30,8 @@
     - `method = "error"` (default): \beta^\* = \frac{\beta \times
       \text{SD}(X)}{\sqrt{\sum \sigma\_{\text{random}}^2 + \ln(1 +
       1/\bar{Y})}} following the GLMM latent distribution variance
-      framework of Nakagawa et al. (2017).
+      framework of [Nakagawa et
+      al. (2017)](https://doi.org/10.1098/rsif.2017.0213).
     - `method = "total"`: Full total variance incorporating the
       empirical variance of the fixed linear predictor
       \text{Var}(\hat{\eta}\_{\text{fixed}}) alongside random effects
@@ -37,15 +40,19 @@
       linear predictions s\_{xb} =
       \sqrt{\text{Var}(\hat{\eta}\_{\text{fixed}}) + \sum
       \sigma\_{\text{random}}^2}, exactly reproducing Mplus `StdYX` for
-      Poisson regression (UCLA OARC FAQ).
+      Poisson regression ([UCLA OARC
+      FAQ](https://stats.oarc.ucla.edu/mplus/faq/how-does-mplus-calculate-the-standardized-coefficients-based-on-a-poisson-model/)).
   - **Semi-Standardization for Binary Predictors
-    (`binary_predictors = "raw"`, default)**: Following Gelman (2008),
-    Bollen (1989), and Grace & Bollen (2005), binary dummy predictors (X
+    (`binary_predictors = "raw"`, default)**: Following [Gelman
+    (2008)](https://doi.org/10.1002/sim.3107), [Bollen
+    (1989)](https://doi.org/10.1002/9781118619179), and [Grace & Bollen
+    (2005)](https://doi.org/10.1890/04-0659), binary dummy predictors (X
     \in \\0, 1\\) are kept on their natural 0 \to 1 step while
     standardizing the outcome, so that \beta^\* directly represents
     **Cohen’s d** (group difference in standard deviations of the
     outcome). Optional `binary_predictors = "sd"` supports classical
-    full standardization (s_X = \sqrt{p(1-p)}; Menard 2004).
+    full standardization (s_X = \sqrt{p(1-p)}; [Menard
+    2004](https://doi.org/10.1198/000313004X946)).
   - **Automated Binary Detection Fallback**: Automatically infers
     binomial links from \\0, 1\\ data even if the `family` attribute was
     omitted from the fitted object.
@@ -118,8 +125,9 @@
   [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md)
   to evaluate MCMC convergence and structural sensitivity for any model
   fitted with multiple candidate covariance structures across all
-  engines (NumPyro, JAGS, and NIMBLE). Computes a 3-tier variance
-  decomposition:
+  engines (NumPyro, JAGS, and NIMBLE; in `because.phybase`,
+  `check_multiphylo()` serves as a phylogenetic convenience alias).
+  Computes a 3-tier variance decomposition:
   - \hat{R}\_{\text{MCMC}}: Within-structure MCMC convergence across
     replicate chains (\max_k \hat{R}\_k).
   - \hat{R}\_{\text{within\\group}}: Parameter sensitivity across
@@ -161,12 +169,15 @@
   Calling `plot_qq(fit)` or `check_normality(fit)` on a fitted SEM now
   automatically checks all endogenous response variables when
   `resp = NULL`, rendering a multi-panel faceted grid with empirical 50%
-  (interquartile) and 95% credible simulation envelopes (Landwehr et
-  al. 1984). Evaluates randomized quantile residuals via the probability
-  integral transform (PIT against y^{\text{rep}}, Dunn & Smyth 1996)
-  with posterior predictive skewness and kurtosis realized discrepancies
-  (Gelman et al. 1996). Single responses (e.g. `resp = "Y1"`) or custom
-  subsets (e.g. `resp = c("Y1", "Y2")`) remain fully supported.
+  (interquartile) and 95% credible simulation envelopes ([Landwehr et
+  al. 1984](https://doi.org/10.1080/01621459.1984.10478048)). Evaluates
+  randomized quantile residuals via the probability integral transform
+  (PIT against y^{\text{rep}}, [Dunn & Smyth
+  1996](https://doi.org/10.1080/10618600.1996.10474708)) with posterior
+  predictive skewness and kurtosis realized discrepancies ([Gelman et
+  al. 1996](https://www.jstor.org/stable/24306036)). Single responses
+  (e.g. `resp = "Y1"`) or custom subsets (e.g. `resp = c("Y1", "Y2")`)
+  remain fully supported.
 - **Conditional Posterior Predictive Checks for SEM Latent Measurement
   Blocks (`conditional = "auto"`)**: In structural equation models with
   unmeasured latent variables or induced residual covariances (e.g.,
@@ -198,6 +209,32 @@
 
 ### Bug Fixes
 
+- **Full Parameter Axis Label Rendering in `plot.check_multicov()`**:
+  Fixed an issue where base R’s
+  [`axis()`](https://rdrr.io/r/graphics/axis.html) dropped alternating
+  parameter labels on the vertical axis when plotting models with many
+  parameters (\> 15). Added `gap.axis = -1` to disable automatic label
+  suppression, along with dynamic font scaling (`cex.axis`) and dynamic
+  left margin expansion based on parameter name length, ensuring every
+  parameter label renders legibly across all engines (NumPyro, JAGS,
+  NIMBLE).
+- **NumPyro Memory Optimization & Latent Vector Filtering**: Filtered
+  high-dimensional observation-level random effect vectors (`u_*`,
+  `z_*`, `err_res_*`) in
+  [`format_numpyro_samples()`](https://because-pkg.github.io/because/reference/format_numpyro_samples.md),
+  reducing returned MCMC object size from \> 20\text{ GB} to \< 10\text{
+  MB} (~2,000x reduction) for models with non-Gaussian links and
+  structured covariance matrices. Automatically unlimits vector memory
+  via `mem.maxVSize(Inf)` on macOS and saves an emergency checkpoint
+  (`because_checkpoint_samples.rds`) prior to R object conversion to
+  prevent data loss.
+- **Robust Standardization for Large Ensemble Draws
+  ([`standardize()`](https://because-pkg.github.io/because/reference/standardize.md))**:
+  Enhanced
+  [`standardize()`](https://because-pkg.github.io/because/reference/standardize.md)
+  to dynamically trim legacy unmarginalized observation vectors
+  on-the-fly (`ncol > 100`) and corrected matrix/`mcmc.list` dimension
+  handling during d-separation standardization across all engines.
 - **Exact Attribute Matching for Structure Dimensions**: Fixed a partial
   matching bug in
   [`process_because_structures()`](https://because-pkg.github.io/because/reference/process_because_structures.md)
@@ -478,8 +515,9 @@
 - **Bayesian Residuals & Prediction Methods**:
   - Added
     [`residuals.because()`](https://because-pkg.github.io/because/reference/residuals.because.md)
-    supporting `"quantile"` (randomized PIT residuals; Dunn & Smyth
-    1996), `"response"`, and `"pearson"` residuals.
+    supporting `"quantile"` (randomized PIT residuals; [Dunn & Smyth
+    1996](https://doi.org/10.1080/10618600.1996.10474708)),
+    `"response"`, and `"pearson"` residuals.
   - Added
     [`fitted.because()`](https://because-pkg.github.io/because/reference/residuals.because.md)
     to compute posterior expected values across Gaussian, Binomial,
