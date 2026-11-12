@@ -41,6 +41,9 @@
 #' nodes not included in \code{coords} will be positioned according to the automatic \code{layout}.
 #' For deterministic nodes (interactions and powers), you can use the original formula string
 #' as the key (e.g., \code{"I(age^2)" = c(x, y)} or \code{"X:Y" = c(x, y)}).
+#' @param curvatures Optional named vector or list of numeric curvature values for specific edges,
+#' e.g. \code{c("A -> B" = 0.35, "C -> D" = -0.35)}. Useful for curving long-range arrows around
+#' the outside of the DAG to prevent edge crossings and overlaps.
 #' @param family Optional named character vector of families for response variables.
 #' @param type Character; either "raw" (default) or "marginal" effects.
 #' @param multinomial_probabilities Logical; if TRUE, expands multinomial categories.
@@ -110,6 +113,7 @@ plot_dag <- function(
     edge_color_scheme = c("directional", "binary", "monochrome"),
     show_coefficients = TRUE,
     coords = NULL,
+    curvatures = NULL,
     family = NULL,
     type = c("raw", "marginal"),
     multinomial_probabilities = TRUE
@@ -147,6 +151,7 @@ plot_dag <- function(
             family                   = family,
             layout                   = layout,
             coords                   = coords,
+            curvatures               = curvatures,
             node_size                = node_size,
             text_size                = text_size,
             edge_label_size          = edge_label_size,
@@ -238,7 +243,7 @@ plot_dag <- function(
     # Node background layer (drawn BEFORE edges so arrowheads show on top)
     node_data <- combined_dag_data |>
         dplyr::filter(!is.na(x) & !is.na(y)) |>
-        dplyr::distinct(name, .keep_all = TRUE)
+        dplyr::distinct(model_label, name, .keep_all = TRUE)
 
     p <- p +
         ggplot2::geom_point(

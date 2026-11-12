@@ -18,6 +18,7 @@ plot_dag(
   edge_color_scheme = c("directional", "binary", "monochrome"),
   show_coefficients = TRUE,
   coords = NULL,
+  curvatures = NULL,
   family = NULL,
   type = c("raw", "marginal"),
   multinomial_probabilities = TRUE
@@ -70,6 +71,10 @@ If provided, these will override the \code{layout} algorithm. \strong{Partial co
 nodes not included in \code{coords} will be positioned according to the automatic \code{layout}.
 For deterministic nodes (interactions and powers), you can use the original formula string
 as the key (e.g., \code{"I(age^2)" = c(x, y)} or \code{"X:Y" = c(x, y)}).}
+
+\item{curvatures}{Optional named vector or list of numeric curvature values for specific edges,
+e.g. \code{c("A -> B" = 0.35, "C -> D" = -0.35)}. Useful for curving long-range arrows around
+the outside of the DAG to prevent edge crossings and overlaps.}
 
 \item{family}{Optional named character vector of families for response variables.}
 

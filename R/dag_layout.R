@@ -32,7 +32,7 @@
 build_dag_data <- function(
     obj, label,
     latent = NULL, family = NULL,
-    layout = "kk", coords = NULL,
+    layout = "kk", coords = NULL, curvatures = NULL,
     node_size = 12, text_size = 3.5,
     edge_label_size = 3,
     edge_color_scheme = "directional",
@@ -236,6 +236,25 @@ build_dag_data <- function(
     dag_data$edge_label  <- NA_character_
     dag_data$significant <- NA
     dag_data$curvature   <- 0
+
+    # 9b. Custom edge curvatures
+    if (!is.null(curvatures)) {
+        if (!is.numeric(curvatures) && !is.list(curvatures)) {
+            stop("curvatures must be a named vector or list of numeric curvature values, e.g. c('A -> B' = 0.3).")
+        }
+        for (edge_spec in names(curvatures)) {
+            curv_val <- as.numeric(curvatures[[edge_spec]])
+            pts <- trimws(strsplit(edge_spec, "\\s*(->|~)\\s*")[[1]])
+            if (length(pts) == 2) {
+                from_nm <- pts[1]
+                to_nm   <- pts[2]
+                match_idx <- which(dag_data$name == from_nm & dag_data$to == to_nm)
+                if (length(match_idx) > 0) {
+                    dag_data$curvature[match_idx] <- curv_val
+                }
+            }
+        }
+    }
 
     # 10. Node type assignment (Observed / Latent / Interaction)
     dag_data$type <- "Observed"
