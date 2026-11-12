@@ -676,6 +676,7 @@ print.check_multicov <- function(x, ...) {
 
 #' @export
 plot.check_multicov <- function(x, ...) {
+  dots <- list(...)
   old_par <- par(no.readonly = TRUE)
   on.exit({
     layout(1)
@@ -693,8 +694,19 @@ plot.check_multicov <- function(x, ...) {
 
   if (identical(x$status, "ENSEMBLE_BMA") && !is.null(x$param_diagnostics) && nrow(x$param_diagnostics) > 0) {
     param_diag_df <- x$param_diagnostics
+    n_p <- nrow(param_diag_df)
+
+    # Dynamic scaling for parameter label font size and margins based on parameter count
+    cex_axis <- if (!is.null(dots$cex.axis)) {
+      dots$cex.axis
+    } else if (!is.null(dots$cex_axis)) {
+      dots$cex_axis
+    } else {
+      max(0.48, min(0.75, 14.0 / n_p))
+    }
+
     max_p_len <- max(nchar(param_diag_df$Parameter))
-    left_mar <- max(5.5, min(9.0, max_p_len * 0.35 + 1.0))
+    left_mar <- max(5.5, min(12.0, max_p_len * cex_axis * 0.55 + 1.8))
 
     has_decomp <- all(c(pct_w_col, pct_s_col) %in% names(param_diag_df))
     if (has_decomp) {
@@ -720,13 +732,13 @@ plot.check_multicov <- function(x, ...) {
       y_lim <- c(0, max(bp) + 0.8)
 
       # Proportional 2-panel layout so left panel has room for parameter labels
-      layout(matrix(1:2, nrow = 1), widths = c(1.2, 1.0))
-      par(mar = c(4.2, left_mar, 4.8, 1.5), oma = c(0, 0, 2.0, 0))
+      layout(matrix(1:2, nrow = 1), widths = c(1.25, 1.0))
+      par(mar = c(4.2, left_mar, 5.5, 1.5), oma = c(0, 0, 2.5, 0))
     } else {
       v_mat <- NULL
       y_idx <- seq_len(nrow(param_diag_df))
       y_lim <- c(0.5, nrow(param_diag_df) + 0.5)
-      par(mfrow = c(1, 1), mar = c(4.2, left_mar, 4.8, 2.5), oma = c(0, 0, 0, 0))
+      par(mfrow = c(1, 1), mar = c(4.2, left_mar, 5.5, 2.5), oma = c(0, 0, 2.0, 0))
     }
 
     # Panel 1: Hypothesis Sensitivity Forest Plot
@@ -739,12 +751,19 @@ plot.check_multicov <- function(x, ...) {
       x_max <- max(c(1.15, all_r_vals), na.rm = TRUE) * 1.05
 
       plot(r_grp, y_idx, xlim = c(0.98, x_max), ylim = y_lim,
-           pch = 18, col = "#E69F00", cex = 1.4, yaxt = "n",
+           pch = 18, col = "#E69F00", cex = 1.3, yaxt = "n",
            xlab = expression(paste("Potential Scale Reduction Factor (", widehat(R), ")")),
            ylab = "", main = "", las = 1)
       mtext(if (has_decomp) paste0(g_term, " Sensitivity (Rhat)") else paste0("Multi-", g_term, " Sensitivity"),
-            side = 3, line = 3.2, font = 2, cex = 1.05)
-      axis(2, at = y_idx, labels = param_diag_df$Parameter, las = 1, cex.axis = 0.75)
+            side = 3, line = 0.8, font = 2, cex = 1.0)
+
+      # Draw left-axis ticks and labels: ensure gap.axis = -1 so no labels are omitted
+      axis_call <- list(side = 2, at = y_idx, labels = param_diag_df$Parameter, las = 1, cex.axis = cex_axis)
+      if ("gap.axis" %in% names(formals(axis))) {
+        axis_call$gap.axis <- -1
+      }
+      do.call(axis, axis_call)
+
       grid()
       abline(v = 1.05, lty = 2, col = "#D55E00", lwd = 1.5)
 
@@ -752,9 +771,9 @@ plot.check_multicov <- function(x, ...) {
       for (g_i in seq_along(grp_cols)) {
         g_name <- grp_cols[g_i]
         col_val <- palette_cols[((g_i - 1) %% length(palette_cols)) + 1]
-        points(param_diag_df[[g_name]], y_idx, pch = 17, col = col_val, cex = 1.2)
+        points(param_diag_df[[g_name]], y_idx, pch = 17, col = col_val, cex = 1.1)
       }
-      points(r_grp, y_idx, pch = 18, col = "#E69F00", cex = 1.4)
+      points(r_grp, y_idx, pch = 18, col = "#E69F00", cex = 1.3)
 
       leg_labels <- c(sub("^Rhat_", "", grp_cols), paste0("Between-", g_term, "s"), "1.05 Cutoff")
       leg_cols   <- c(palette_cols[seq_along(grp_cols)], "#E69F00", "#D55E00")
@@ -762,10 +781,10 @@ plot.check_multicov <- function(x, ...) {
       leg_ltys   <- c(rep(NA, length(grp_cols)), NA, 2)
       leg_lwds   <- c(rep(NA, length(grp_cols)), NA, 1.5)
 
-      legend("top", inset = c(0, -0.22), xpd = TRUE,
-             ncol = if (length(grp_cols) > 1) 3 else length(leg_labels),
+      legend("top", inset = c(0, -0.25), xpd = TRUE,
+             ncol = if (length(grp_cols) > 1) min(4, length(leg_labels)) else length(leg_labels),
              legend = leg_labels, col = leg_cols, pch = leg_pchs,
-             lty = leg_ltys, lwd = leg_lwds, pt.cex = 1.1, bty = "n", cex = 0.75)
+             lty = leg_ltys, lwd = leg_lwds, pt.cex = 1.0, bty = "n", cex = 0.72)
 
     } else {
       r_struct <- param_diag_df[[rhat_s_col]]
@@ -776,38 +795,44 @@ plot.check_multicov <- function(x, ...) {
            xlab = expression(paste("Potential Scale Reduction Factor (", widehat(R), ")")),
            ylab = "", main = "", las = 1)
       mtext(if (has_decomp) paste0(s_term, " Sensitivity (Rhat)") else paste0("Ensemble Sensitivity vs. ", s_term),
-            side = 3, line = 3.2, font = 2, cex = 1.05)
-      axis(2, at = y_idx, labels = param_diag_df$Parameter, las = 1, cex.axis = 0.75)
+            side = 3, line = 0.8, font = 2, cex = 1.0)
+
+      axis_call <- list(side = 2, at = y_idx, labels = param_diag_df$Parameter, las = 1, cex.axis = cex_axis)
+      if ("gap.axis" %in% names(formals(axis))) {
+        axis_call$gap.axis <- -1
+      }
+      do.call(axis, axis_call)
+
       grid()
       abline(v = 1.05, lty = 2, col = "#D55E00", lwd = 1.5)
       points(r_struct, y_idx, pch = 17, col = "#0072B2", cex = 1.3)
 
-      legend("top", inset = c(0, -0.18), xpd = TRUE, horiz = TRUE,
+      legend("top", inset = c(0, -0.25), xpd = TRUE, horiz = TRUE,
              legend = c(paste0("Between-", s_term, "s"), "1.05 Cutoff"),
              col = c("#0072B2", "#D55E00"),
              pch = c(17, NA), lty = c(NA, 2), lwd = c(NA, 1.5),
-             pt.cex = 1.1, bty = "n", cex = 0.78)
+             pt.cex = 1.0, bty = "n", cex = 0.75)
     }
 
     # Panel 2: Stacked Variance Decomposition Bar Plot
     if (has_decomp && !is.null(v_mat)) {
-      par(mar = c(4.2, 1.5, 4.8, 2.0))
+      par(mar = c(4.2, 1.5, 5.5, 2.0))
       barplot(v_mat, horiz = TRUE, ylim = y_lim, col = v_cols,
               xlab = "Total Posterior Uncertainty (%)", xlim = c(0, 100), yaxt = "n",
               main = "", las = 1)
-      mtext("Uncertainty Variance Decomposition (%)", side = 3, line = 3.2, font = 2, cex = 1.05)
+      mtext("Uncertainty Variance Decomposition (%)", side = 3, line = 0.8, font = 2, cex = 1.0)
       grid(nx = NULL, ny = NA)
       if (isTRUE(x$has_groups)) {
-        legend("top", inset = c(0, -0.22), xpd = TRUE, ncol = 2,
-               legend = v_labels, fill = v_cols, bty = "n", cex = 0.72)
+        legend("top", inset = c(0, -0.25), xpd = TRUE, ncol = 2,
+               legend = v_labels, fill = v_cols, bty = "n", cex = 0.70)
       } else {
-        legend("top", inset = c(0, -0.18), xpd = TRUE, horiz = TRUE,
-               legend = v_labels, fill = v_cols, bty = "n", cex = 0.75)
+        legend("top", inset = c(0, -0.25), xpd = TRUE, horiz = TRUE,
+               legend = v_labels, fill = v_cols, bty = "n", cex = 0.72)
       }
 
       banner_txt <- paste0(if (is_phylo) "multiPhylo" else "multiCov",
                            " Ensemble Diagnostics & Uncertainty Variance Decomposition")
-      mtext(banner_txt, outer = TRUE, font = 2, cex = 1.1)
+      mtext(banner_txt, outer = TRUE, font = 2, cex = 1.05, line = 0.8)
     }
 
   } else {
