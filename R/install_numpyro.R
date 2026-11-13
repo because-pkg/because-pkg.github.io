@@ -39,16 +39,36 @@ install_because_numpyro <- function(envname = NULL,
   message("Preparing to install Python dependencies for the 'because' numpyro engine...")
   message("Target environment: ", envname)
   
-  # The required packages: jax, numpyro, and the because_py github repo
-  pkgs <- c("numpyro", "jax", "jaxlib", "networkx", "funsor", because_py_url)
+  # Install core dependencies first without disabling pip's cache so large binaries
+  # like jaxlib are not re-downloaded unnecessarily on upgrades.
+  core_pkgs <- c("numpyro", "jax", "jaxlib", "networkx", "funsor")
   
   tryCatch({
     reticulate::py_install(
-      packages = pkgs,
+      packages = core_pkgs,
       envname = envname,
       method = method,
       pip = TRUE,
       ...
+    )
+    
+    # Force-reinstall because_py bypassing pip's wheel/HTTP cache so GitHub
+    # archive URLs always fetch the latest commit rather than reusing a stale build.
+    dots <- list(...)
+    because_opts <- unique(c(dots$pip_options, "--upgrade", "--force-reinstall", "--no-cache-dir"))
+    dots$pip_options <- NULL
+    do.call(
+      reticulate::py_install,
+      c(
+        list(
+          packages = because_py_url,
+          envname = envname,
+          method = method,
+          pip = TRUE,
+          pip_options = because_opts
+        ),
+        dots
+      )
     )
     
     # Write the receipt so the startup message goes away!
@@ -58,7 +78,10 @@ install_because_numpyro <- function(envname = NULL,
     
     message("\nInstallation successful!")
     message("------------------------")
-    message("You can now use the NumPyro engine in your models:")
+    message("IMPORTANT: Please RESTART your R session now (Session -> Restart R in RStudio)")
+    message("so that the updated Python modules are loaded into memory.")
+    message("------------------------")
+    message("After restarting R, you can use the NumPyro engine in your models:")
     message('fit <- because(equations, data, engine = "numpyro")')
     message("\nNote: If you encounter issues finding the environment in a fresh R session, you may need to explicitly load it before calling because():")
     message(sprintf('reticulate::use_virtualenv("%s", required = TRUE)', envname))

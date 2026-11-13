@@ -99,10 +99,59 @@ if os.path.exists(_repo_api) and not hasattr(_bapi, '_wave_ensemble_enabled'):
     _mod_a._wave_ensemble_enabled = True
     sys.modules['because.api'] = _mod_a
     for _k, _v in _mod_a.__dict__.items():
-        if not _k.startswith('__'):
+        if not _k.startswith('__') or _k == '__version__':
             setattr(_bapi, _k, _v)
 ")
   }, error = function(e) NULL)
+}
+
+#' Import and validate the because.api Python backend
+#' @keywords internal
+.import_because_py <- function() {
+  because_py <- tryCatch({
+    reticulate::import("because.api")
+  }, error = function(e) {
+    current_env <- tryCatch(reticulate::py_config()$python, error = function(err) "unknown")
+    stop(sprintf(paste0(
+      "Failed to import python module 'because.api'.\n",
+      "Python is currently running from: %s\n\n",
+      "This usually means Python was initialized to a different environment\n",
+      "before 'library(because)' was called (e.g. by RStudio or another package).\n\n",
+      "Quick fix --- add this line BEFORE library(because) in your script:\n",
+      "  reticulate::use_virtualenv('because_env', required = TRUE)\n\n",
+      "If because_env does not exist yet, install it first with:\n",
+      "  install_because_numpyro()"
+    ), current_env), call. = FALSE)
+  })
+  .ensure_numpyro_ensemble_support(because_py)
+
+  req_ver <- if (exists(".target_numpyro_version", inherits = TRUE)) .target_numpyro_version else "1.0.0"
+  installed_ver <- tryCatch(
+    reticulate::py_get_attr(because_py, "__version__", silent = TRUE),
+    error = function(e) NULL
+  )
+  ver_str <- if (is.null(installed_ver)) "0.0.0" else as.character(installed_ver)
+  fit_fn <- tryCatch(reticulate::py_get_attr(because_py, "fit", silent = TRUE), error = function(e) NULL)
+  fit_args <- if (!is.null(fit_fn)) tryCatch(names(formals(fit_fn)), error = function(e) character(0)) else character(0)
+  has_levels <- "levels" %in% fit_args
+
+  if (utils::compareVersion(ver_str, req_ver) < 0 || !has_levels) {
+    stop(
+      sprintf(
+        "Installed 'because_py' Python backend is outdated (found %s, require >= %s for because v%s).\n",
+        if (is.null(installed_ver)) "pre-1.0.0" else paste0("v", ver_str),
+        req_ver,
+        as.character(utils::packageVersion("because"))
+      ),
+      "Please update in a fresh R session:\n",
+      "  1. Restart R (Session -> Restart R)\n",
+      "  2. Run: install_because_numpyro()\n",
+      "  3. Restart R again before running your model.",
+      call. = FALSE
+    )
+  }
+
+  because_py
 }
 
 run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structures,
@@ -115,12 +164,7 @@ run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structur
     stop("The 'reticulate' package is required to use engine = 'numpyro'")
   }
   
-  because_py <- tryCatch({
-    reticulate::import("because.api")
-  }, error = function(e) {
-    stop("Failed to import 'because.api'. Make sure because_py is installed and reticulate is configured.")
-  })
-  .ensure_numpyro_ensemble_support(because_py)
+  because_py <- .import_because_py()
   
   py_induced_cors <- if (!is.null(induced_correlations) && length(induced_correlations) > 0) {
     lapply(induced_correlations, as.character)
@@ -593,24 +637,7 @@ setup_numpyro_environment <- function(parallel = FALSE, n.cores = 1, n.chains = 
     .xla_additions <- c(.xla_additions, paste0("inter_op_parallelism_threads=", thread_limit))
   Sys.setenv(XLA_FLAGS = trimws(paste(.current_xla, paste(.xla_additions, collapse = " "))))
 
-  b_api <- tryCatch({
-    reticulate::import("because.api")
-  }, error = function(e) {
-    current_env <- "unknown"
-    tryCatch({
-      current_env <- reticulate::py_config()$python
-    }, error = function(e) {})
-    stop(sprintf(paste0(
-      "Failed to import python module 'because.api'.\n",
-      "Python is currently running from: %s\n\n",
-      "This usually means Python was initialized to a different environment\n",
-      "before 'library(because)' was called (e.g. by RStudio or another package).\n\n",
-      "Quick fix --- add this line BEFORE library(because) in your script:\n",
-      "  reticulate::use_virtualenv('because_env', required = TRUE)\n\n",
-      "If because_env does not exist yet, install it first with:\n",
-      "  install_because_numpyro()"
-    ), current_env))
-  })
+  b_api <- .import_because_py()
 
   # Ensure XLA_FLAGS and _init_jax(host_devices) run BEFORE any structure py_code imports jax
   .py_set_code <- paste(
