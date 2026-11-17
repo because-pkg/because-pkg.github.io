@@ -51,3 +51,22 @@ test_that("because_dsep handles latent variables", {
     expect_true(length(result$correlations) > 0)
     expect_equal(sort(result$correlations[[1]]), c("X", "Y"))
 })
+
+test_that("because_dsep retains isolated ~ 1 nodes in basis set", {
+    equations <- list(
+        B ~ A,
+        Z ~ 1
+    )
+
+    result <- because_dsep(equations, quiet = TRUE)
+    pairs <- vapply(result, function(f) {
+        paste(sort(c(as.character(f[[2]]), attr(f, "test_var"))), collapse = "-")
+    }, character(1))
+
+    expect_true("A-Z" %in% pairs)
+    expect_true("B-Z" %in% pairs)
+
+    # Disconnected latent Z ~ 1 must not raise or produce spurious pairs
+    res_mag <- because_dsep(equations, latent = "Z", quiet = TRUE)
+    expect_length(res_mag$tests, 0)
+})

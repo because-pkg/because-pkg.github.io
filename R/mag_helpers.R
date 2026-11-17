@@ -175,17 +175,18 @@ equations_to_dag <- function(
 #' @keywords internal
 dag_matrix_to_dagitty <- function(dag, latents = NULL) {
     all_vars <- rownames(dag)
-    edges <- character(0)
-    
+    # Preserve isolated degree-0 vertices (e.g., Z ~ 1 with no outgoing paths)
+    statements <- all_vars[rowSums(dag) == 0 & colSums(dag) == 0]
+
     for (i in seq_along(all_vars)) {
         for (j in seq_along(all_vars)) {
             if (dag[i, j] == 1) {
-                edges <- c(edges, paste0(all_vars[i], " -> ", all_vars[j]))
+                statements <- c(statements, paste0(all_vars[i], " -> ", all_vars[j]))
             }
         }
     }
-    
-    dag_str <- paste0("dag { ", paste(edges, collapse = "; "), " }")
+
+    dag_str <- paste0("dag { ", paste(statements, collapse = "; "), " }")
     return(dag_str)
 }
 
