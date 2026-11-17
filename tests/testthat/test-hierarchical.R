@@ -50,3 +50,59 @@ test_that("because() handles complex hierarchical/multi-level data across scales
     expect_true("beta_Response_Climate" %in% fit$monitor)
     expect_true("beta_Response_Trait" %in% fit$monitor)
 })
+
+test_that("because() preserves distinct multiscale structures rather than flattening to an ensemble", {
+    testthat::skip_if_not_installed("rjags")
+    testthat::skip_if_not_installed("ape")
+    testthat::skip_if_not_installed("because.phybase")
+
+    library(because.phybase)
+    set.seed(123)
+    n_sp <- 8
+    n_site <- 8
+
+    tree <- ape::rtree(n_sp)
+    tree$tip.label <- paste0("Sp_", seq_len(n_sp))
+    tree$edge.length <- tree$edge.length / max(ape::node.depth.edgelength(tree))
+
+    coords <- cbind(runif(n_site), runif(n_site))
+    rownames(coords) <- paste0("Site_", seq_len(n_site))
+    v_spatial <- exp(-as.matrix(dist(coords)))
+
+    d_sp <- data.frame(
+        Species = tree$tip.label,
+        Trait = rnorm(n_sp)
+    )
+    d_site <- data.frame(
+        Site = rownames(coords),
+        Env = rnorm(n_site)
+    )
+    d_obs <- expand.grid(Species = d_sp$Species, Site = d_site$Site, stringsAsFactors = FALSE)
+    d_obs$obs_id <- seq_len(nrow(d_obs))
+    d_obs$Y <- rnorm(nrow(d_obs))
+
+    data_list <- list(species = d_sp, site = d_site, obs = d_obs)
+    fit <- because(
+        equations = list(Y ~ Trait + Env),
+        data = data_list,
+        levels = list(
+            species = c("Trait", "Species"),
+            site = c("Env", "Site"),
+            obs = c("Y")
+        ),
+        hierarchy = "site > obs; species > obs",
+        link_vars = list(site = "Site", species = "Species"),
+        id_col = "Species",
+        structure = list(phylo = tree, spatial = v_spatial),
+        engine = "jags",
+        n.chains = 2,
+        n.iter = 100,
+        n.burnin = 20,
+        quiet = TRUE
+    )
+
+    expect_s3_class(fit, "because")
+    expect_equal(names(fit$structures), c("phylo", "spatial"))
+    expect_s3_class(fit$structures$phylo, "phylo")
+    expect_true(is.matrix(fit$structures$spatial))
+})

@@ -201,7 +201,12 @@ because <- function(
   #   structure = list(Jetz = jetz_trees, McTavish = mctav_trees)
   # or flat lists of candidate matrices:
   #   structure = list(mat1, mat2, mat3)
-  if (!is.null(structure) && is.list(structure) && !is.matrix(structure)) {
+  if (
+    !is.null(structure) &&
+      is.list(structure) &&
+      !is.matrix(structure) &&
+      !inherits(structure, c("phylo", "multiPhylo", "structure_collection", "because_structure"))
+  ) {
     .is_single_structure <- function(x) {
       is.matrix(x) || inherits(x, "phylo") || inherits(x, "because_structure")
     }
@@ -210,9 +215,81 @@ because <- function(
         (is.array(x) && length(dim(x)) == 3 && dim(x)[1] == dim(x)[2]) ||
         (is.list(x) && length(x) > 0 && all(vapply(x, .is_single_structure, logical(1))))
     }
+    .extract_single_meta <- function(x) {
+      if (inherits(x, "phylo")) {
+        lbls <- if (!is.null(x$tip.label)) as.character(x$tip.label) else NULL
+        return(list(kind = "phylo", n = length(lbls), labels = lbls))
+      }
+      if (is.matrix(x)) {
+        lbls <- rownames(x) %||% colnames(x)
+        return(list(kind = "matrix", n = nrow(x), labels = lbls))
+      }
+      if (inherits(x, "because_structure")) {
+        n_val <- attr(x, "n", exact = TRUE)
+        if (is.null(n_val) && is.list(x)) n_val <- x$n
+        lbls <- tryCatch(get_order_labels_hook(x), error = function(e) NULL)
+        return(list(kind = class(x)[1], n = n_val, labels = lbls))
+      }
+      NULL
+    }
+    .extract_item_meta <- function(item) {
+      if (.is_single_structure(item)) {
+        return(.extract_single_meta(item))
+      }
+      if (is.array(item) && length(dim(item)) == 3 && dim(item)[1] == dim(item)[2]) {
+        dn <- dimnames(item)
+        lbls <- if (!is.null(dn)) dn[[1]] %||% dn[[2]] else NULL
+        return(list(kind = "matrix", n = dim(item)[1], labels = lbls))
+      }
+      sub_items <- if (inherits(item, "multiPhylo")) unclass(item) else if (is.list(item)) item else NULL
+      if (is.null(sub_items) || length(sub_items) == 0) return(NULL)
+      sub_metas <- lapply(sub_items, .extract_single_meta)
+      if (any(vapply(sub_metas, is.null, logical(1)))) return(NULL)
+      sub_kinds <- unique(vapply(sub_metas, function(m) m$kind, character(1)))
+      if (length(sub_kinds) != 1L) return(NULL)
+      sub_ns <- unique(unlist(lapply(sub_metas, function(m) m$n)))
+      if (length(sub_ns) > 1L) return(NULL)
+      list(kind = sub_kinds[1], n = sub_metas[[1]]$n, labels = sub_metas[[1]]$labels)
+    }
+    .is_compatible_ensemble_list <- function(struct_list) {
+      # Explicit multi-level mapping indicates independent structures per hierarchical scale
+      if (!is.null(structure_levels) && length(unique(unlist(structure_levels))) > 1L) {
+        return(FALSE)
+      }
+      s_names <- names(struct_list)
+      if (!is.null(s_names)) {
+        df_names <- if (is.list(data) && !is.data.frame(data)) {
+          names(data)[vapply(data, is.data.frame, logical(1))]
+        } else {
+          character(0)
+        }
+        lvl_names <- if (!is.null(levels) && is.list(levels)) names(levels) else character(0)
+        known_levels <- unique(c(df_names, lvl_names))
+        if (length(known_levels) > 1L && sum(s_names %in% known_levels) > 1L) {
+          return(FALSE)
+        }
+      }
+      metas <- lapply(struct_list, .extract_item_meta)
+      if (any(vapply(metas, is.null, logical(1)))) return(FALSE)
+      # Candidates within a single ensemble must share the same structure class/type
+      kinds <- unique(vapply(metas, function(m) m$kind, character(1)))
+      if (length(kinds) != 1L) return(FALSE)
+      # Candidates within a single ensemble must describe the same unit dimension and entity set
+      dims <- unique(unlist(lapply(metas, function(m) m$n)))
+      if (length(dims) > 1L) return(FALSE)
+      lbl_list <- Filter(function(l) !is.null(l) && length(l) > 0, lapply(metas, function(m) m$labels))
+      if (length(lbl_list) >= 2L) {
+        ref_lbls <- lbl_list[[1]]
+        same_entities <- all(vapply(lbl_list[-1], function(l) {
+          length(l) == length(ref_lbls) && setequal(l, ref_lbls)
+        }, logical(1)))
+        if (!same_entities) return(FALSE)
+      }
+      TRUE
+    }
 
     # Case A: Grouped list of structure collections
-    if (length(structure) > 1 && all(vapply(structure, .is_structure_collection, logical(1)))) {
+    if (length(structure) > 1 && all(vapply(structure, .is_structure_collection, logical(1))) && .is_compatible_ensemble_list(structure)) {
       grp_names <- names(structure)
       if (is.null(grp_names) || any(grp_names == "")) {
         grp_names <- paste0("Group_", seq_along(structure))
@@ -242,7 +319,7 @@ because <- function(
       structure <- flat_structs
 
     # Case B: Flat list of candidate matrices/structures for a single covariance effect
-    } else if (length(structure) > 1 && all(vapply(structure, .is_single_structure, logical(1)))) {
+    } else if (length(structure) > 1 && all(vapply(structure, .is_single_structure, logical(1))) && .is_compatible_ensemble_list(structure)) {
       all_phylo <- all(vapply(structure, function(x) inherits(x, "phylo"), logical(1)))
       class(structure) <- if (all_phylo) "multiPhylo" else c("structure_collection", "list")
       attr(structure, "structure_method") <- args$structure_method %||% args$tree_method %||% "ensemble"

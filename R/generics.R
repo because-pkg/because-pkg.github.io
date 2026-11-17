@@ -718,8 +718,8 @@ prepare_structure_data.structure_collection <- function(structure, data, ...) {
     s_name <- args$s_name %||% "custom"
     n_chains_val <- as.integer(max(1L, args$n.chains %||% attr(structure, "n.chains") %||% 2L))
 
-    # If it contains phylo objects, delegate to phybase if available
-    if (length(structure) > 0 && inherits(structure[[1]], "phylo")) {
+    # If it contains only phylo objects, delegate to phybase if available
+    if (length(structure) > 0 && all(vapply(structure, function(x) inherits(x, "phylo"), logical(1)))) {
         class(structure) <- "multiPhylo"
         return(prepare_structure_data(structure, data = data, ...))
     }
