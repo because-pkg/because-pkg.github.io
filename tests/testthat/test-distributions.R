@@ -107,3 +107,75 @@ test_that("Poisson distribution with structure generates structural precision an
     # Should NOT declare residual variance tau_res for Poisson
     expect_false(grepl("tau_res_Abundance", model_output$model))
 })
+
+test_that("Binomial distribution with any structure emits latent-scale lambda VPC", {
+    equations <- list(Presence ~ X)
+    distribution <- c(Presence = "binomial")
+    dummy_spatial <- diag(5)
+    dummy_custom <- diag(5)
+
+    # Non-phylo structure (spatial) generates lambda_Presence_spatial on logit liability scale
+    out_spatial <- because_model(
+        equations,
+        family = distribution,
+        structures = list(spatial = dummy_spatial)
+    )
+    expect_match(
+        out_spatial$model,
+        "lambda_Presence_spatial <- \\(sigma_spatial_Presence \\* sigma_spatial_Presence\\) / \\(\\(sigma_spatial_Presence \\* sigma_spatial_Presence\\) \\+ 3\\.28986813369645\\)"
+    )
+
+    # Custom matrix structure generates lambda_Presence_social
+    out_custom <- because_model(
+        equations,
+        family = distribution,
+        structures = list(social = dummy_custom)
+    )
+    expect_match(
+        out_custom$model,
+        "lambda_Presence_social <- \\(sigma_Presence_social \\* sigma_Presence_social\\) / \\(\\(sigma_Presence_social \\* sigma_Presence_social\\) \\+ 3\\.28986813369645\\)"
+    )
+
+    # Multiple structures sum all structural variances in denominator
+    out_multi <- because_model(
+        equations,
+        family = distribution,
+        structures = list(phylo = diag(5), spatial = dummy_spatial)
+    )
+    expect_match(
+        out_multi$model,
+        "lambda_Presence_phylo <- \\(sigma_phylo_Presence \\* sigma_phylo_Presence\\) / \\(\\(sigma_phylo_Presence \\* sigma_phylo_Presence\\) \\+ \\(sigma_spatial_Presence \\* sigma_spatial_Presence\\) \\+ 3\\.28986813369645\\)"
+    )
+    expect_match(
+        out_multi$model,
+        "lambda_Presence_spatial <- \\(sigma_spatial_Presence \\* sigma_spatial_Presence\\) / \\(\\(sigma_phylo_Presence \\* sigma_phylo_Presence\\) \\+ \\(sigma_spatial_Presence \\* sigma_spatial_Presence\\) \\+ 3\\.28986813369645\\)"
+    )
+})
+
+test_that("check_residual_structure uses logistic pi^2/3 residual variance for binomial models", {
+    set.seed(123)
+    sig_val <- sqrt(pi^2 / 3)
+    samples <- coda::mcmc.list(
+        coda::mcmc(matrix(
+            rep(sig_val, 40),
+            ncol = 1,
+            dimnames = list(NULL, "sigma_spatial_Presence")
+        ))
+    )
+    fit <- list(
+        samples = samples,
+        equations = list(Presence ~ X),
+        family = c(Presence = "binomial"),
+        parameter_map = data.frame(
+            response = "Presence",
+            predictor = "spatial",
+            parameter = "sigma_spatial_Presence",
+            type = "structure",
+            stringsAsFactors = FALSE
+        )
+    )
+    class(fit) <- "because"
+
+    res <- check_residual_structure(fit, resp = "Presence")
+    expect_equal(res$summary$Median[1], 0.5, tolerance = 1e-3)
+})

@@ -120,17 +120,39 @@ jags_likelihood_binomial <- function(ctx, response, suffix, loop_bound) {
     )
 
     if (length(ctx$structures) > 0) {
+      resp_lvl <- get_var_level(response, ctx$hierarchical_info, equations = ctx$equations, latent = ctx$latent, categorical_vars = ctx$categorical_vars)
+      valid_structs <- list()
       for (s_idx in seq_along(ctx$structures)) {
         s_name <- names(ctx$structures)[s_idx]
         if (is.null(s_name) || s_name == "") s_name <- paste0("Struct", s_idx)
-        if (grepl("phylo", tolower(s_name))) {
-          is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
-          sig_param <- if (is_unified) paste0("sigma_", s_name, "_", response) else paste0("sigma_", response, "_", s_name)
-          lambda_param <- paste0("lambda_", response, "_", s_name)
-          lambda_line <- paste0("  ", lambda_param, " <- (", sig_param, " * ", sig_param, ") / ((", sig_param, " * ", sig_param, ") + 3.28986813369645)")
+        if (!is_valid_structure_mapping(get_struct_lvl(s_name, ctx$hierarchical_info), resp_lvl, ctx$hierarchical_info, allow_identity = TRUE)) {
+          next
+        }
+        is_unified <- any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(s_name)), logical(1)))
+        sig_param <- if (is_unified) paste0("sigma_", s_name, "_", response) else paste0("sigma_", response, "_", s_name)
+        valid_structs[[length(valid_structs) + 1L]] <- list(s_name = s_name, sig_param = sig_param)
+      }
+
+      if (length(valid_structs) > 0) {
+        var_terms <- vapply(valid_structs, function(vs) paste0("(", vs$sig_param, " * ", vs$sig_param, ")"), character(1))
+        for (r_name in ctx$random_structure_names) {
+          is_requested <- any(vapply(ctx$random_terms, function(rt) identical(rt$response, response) && identical(rt$group, r_name), logical(1)))
+          if (!is_requested) next
+          if (!is_valid_random_level(response, r_name, ctx$hierarchical_info, family = ctx$family, equations = ctx$equations, latent = ctx$latent, categorical_vars = ctx$categorical_vars, quiet = ctx$quiet)) next
+          if (r_name %in% names(ctx$structures) || any(vapply(names(ctx$structures), function(s) grepl(s, r_name), logical(1)))) {
+            if (any(vapply(c("phylo", "spatial", "group"), function(u) grepl(tolower(u), tolower(r_name)), logical(1)))) next
+          }
+          r_sig <- paste0("sigma_", response, suffix, "_", r_name)
+          var_terms <- c(var_terms, paste0("(", r_sig, " * ", r_sig, ")"))
+        }
+
+        denom_expr <- paste(c(var_terms, "3.28986813369645"), collapse = " + ")
+        for (vs in valid_structs) {
+          lambda_param <- paste0("lambda_", response, "_", vs$s_name)
+          lambda_line <- paste0("  ", lambda_param, " <- (", vs$sig_param, " * ", vs$sig_param, ") / (", denom_expr, ")")
           ctx$model_lines <- safe_add_lines(ctx$model_lines, lambda_line, ctx$declared_nodes)
           ctx$param_map[[length(ctx$param_map) + 1]] <- list(
-            response = response, predictor = s_name, parameter = lambda_param, equation_index = NA, type = "structure"
+            response = response, predictor = vs$s_name, parameter = lambda_param, equation_index = NA, type = "structure"
           )
         }
       }

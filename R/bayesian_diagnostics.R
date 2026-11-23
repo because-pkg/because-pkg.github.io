@@ -602,23 +602,33 @@ check_residual_structure.because <- function(object, resp = NULL, ...) {
     return(invisible(NULL))
   }
 
-  # Residual variance
+  # Residual variance (uses latent logistic disturbance pi^2/3 for logit-link families)
   res_col <- paste0("sigma_", resp, "_res")
   if (!res_col %in% colnames(samples_mat)) {
     tau_col <- paste0("tau_res_", resp)
     if (tau_col %in% colnames(samples_mat)) {
       sigma_res <- 1 / sqrt(samples_mat[, tau_col])
     } else {
-      sigma_res <- rep(1, nrow(samples_mat))
+      resp_fam <- if (!is.null(object$family) && resp %in% names(object$family)) {
+        tolower(as.character(object$family[[resp]]))
+      } else {
+        NULL
+      }
+      if (!is.null(resp_fam) && resp_fam %in% c("binomial", "bernoulli", "ordinal")) {
+        sigma_res <- rep(pi / sqrt(3), nrow(samples_mat))
+      } else {
+        sigma_res <- rep(1, nrow(samples_mat))
+      }
     }
   } else {
     sigma_res <- samples_mat[, res_col]
   }
 
+  total_struct_var <- rowSums(samples_mat[, struct_cols, drop = FALSE]^2)
   vpc_list <- list()
   for (sc in struct_cols) {
     sigma_struct <- samples_mat[, sc]
-    vpc_samples <- (sigma_struct^2) / (sigma_struct^2 + sigma_res^2)
+    vpc_samples <- (sigma_struct^2) / (total_struct_var + sigma_res^2)
     struct_name <- gsub(paste0("^sigma_u_", resp, "_|^sigma_", resp, "_|^sigma_|_", resp, "$"), "", sc)
 
     vpc_list[[struct_name]] <- data.frame(
