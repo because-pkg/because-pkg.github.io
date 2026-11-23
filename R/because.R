@@ -851,7 +851,8 @@ because <- function(
       original_call = original_call,
       engine = engine,
       parallel = parallel,
-      n.cores = n.cores
+      n.cores = n.cores,
+      monitor = monitor
     ))
   }
 

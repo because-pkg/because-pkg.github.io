@@ -200,22 +200,97 @@ run_numpyro_model <- function(eq_strings, flat_data, family, priors, py_structur
   return(py_result)
 }
 
+#' Parse monitor specification for NumPyro sample filtering
+#'
+#' Mirrors prepare_monitors_and_inits() semantics for "interpretable", "all",
+#' and explicit custom parameter lists.
+#' @keywords internal
+.parse_numpyro_monitor <- function(monitor = "interpretable") {
+  if (is.null(monitor) || length(monitor) == 0 || identical(monitor, "")) {
+    return(list(mode = "interpretable", custom_bases = character(0)))
+  }
+  mon_chr <- as.character(monitor)
+  if ("all" %in% mon_chr) {
+    return(list(mode = "all", custom_bases = unique(sub("\\[.*$", "", setdiff(mon_chr, "all")))))
+  }
+  if ("interpretable" %in% mon_chr) {
+    return(list(mode = "interpretable", custom_bases = unique(sub("\\[.*$", "", setdiff(mon_chr, "interpretable")))))
+  }
+  list(mode = "custom", custom_bases = unique(sub("\\[.*$", "", mon_chr)))
+}
+
+#' Determine whether a NumPyro 3D vector parameter should be retained in coda samples
+#' @keywords internal
+.should_retain_numpyro_vector <- function(param_name, param_len, num_chains, num_iters, mon_spec) {
+  is_requested <- identical(mon_spec$mode, "all") || (param_name %in% mon_spec$custom_bases)
+  if (is_requested) {
+    return(list(keep = TRUE, omit_reason = NULL))
+  }
+  if (identical(mon_spec$mode, "custom")) {
+    return(list(keep = FALSE, omit_reason = "custom_excluded"))
+  }
+
+  # monitor = "interpretable": keep all structural parameter vectors regardless of length
+  if (grepl("^(alpha|beta|sigma|tau|lambda|rho|psi|r_|cutpoint|K_)", param_name)) {
+    return(list(keep = TRUE, omit_reason = NULL))
+  }
+
+  # Internal compiler/observation nuisance arrays (matches JAGS/NIMBLE interpretable mode)
+  if (grepl("^(u_std_|err_|mu_|z_|log_lik|lik_|phi_|is_zero_|p_)", param_name)) {
+    return(list(keep = FALSE, omit_reason = "nuisance"))
+  }
+
+  # Random-effect vectors (u_*): keep grouped random factors unless memory-prohibitive
+  total_elems <- as.numeric(num_chains) * as.numeric(num_iters) * as.numeric(param_len)
+  if (grepl("^u_", param_name)) {
+    if (param_len <= 500L && total_elems <= 5e6) {
+      return(list(keep = TRUE, omit_reason = NULL))
+    }
+    return(list(keep = FALSE, omit_reason = "high_dim_random"))
+  }
+
+  # Any other 1D vector (e.g., imputed data vectors): keep small ones, notify on omitted ones
+  if (param_len <= 20L && total_elems <= 5e6) {
+    return(list(keep = TRUE, omit_reason = NULL))
+  }
+  list(keep = FALSE, omit_reason = "high_dim_vector")
+}
+
 #' Convert NumPyro output into coda mcmc.list
 #'
+#' Filters sampled NumPyro arrays into a \code{coda::mcmc.list} according to
+#' \code{monitor} ("interpretable", "all", or explicit parameter names), retaining
+#' all structural vectors regardless of length and informing the user when large
+#' random-effect or latent vectors are omitted for memory safety.
+#'
 #' @param py_result Result list from fit_numpyro_model
+#' @param monitor Monitoring mode ("interpretable", "all", or character vector of parameter names)
+#' @param quiet Logical; if FALSE, emits an informational message when large vector parameters
+#'   (e.g. high-dimensional \code{u_*} or imputed node vectors) are omitted under \code{monitor = "interpretable"}.
 #' @return coda::mcmc.list
 #' @keywords internal
 #' @export
-format_numpyro_samples <- function(py_result) {
+format_numpyro_samples <- function(py_result, monitor = "interpretable", quiet = FALSE) {
   raw_samples <- py_result$samples
-  
+
   if (length(raw_samples) == 0) return(NULL)
-  
-  # Determine chains and iterations from the first parameter's dimensions
-  first_param <- raw_samples[[1]]
-  num_chains <- dim(first_param)[1]
-  num_iters <- dim(first_param)[2]
-  
+
+  # Determine chains and iterations from the first array with >= 2 dimensions
+  num_chains <- NULL
+  num_iters <- NULL
+  for (p_obj in raw_samples) {
+    d <- dim(p_obj)
+    if (!is.null(d) && length(d) >= 2L) {
+      num_chains <- d[1]
+      num_iters <- d[2]
+      break
+    }
+  }
+  if (is.null(num_chains) || is.null(num_iters)) return(NULL)
+
+  mon_spec <- .parse_numpyro_monitor(monitor)
+  omitted_vectors <- character(0)
+
   chain_list <- vector("list", num_chains)
   for (ch in 1:num_chains) {
     col_list <- list()
@@ -223,39 +298,59 @@ format_numpyro_samples <- function(py_result) {
       param_data <- raw_samples[[param_name]]
       p_dims <- dim(param_data)
       p_ndim <- length(p_dims)
-      
-      if (p_ndim == 2) {
-        # Scalar parameter: shape (chains, iters)
-        col <- matrix(param_data[ch, ], ncol = 1)
-        colnames(col) <- param_name
-        col_list[[length(col_list) + 1L]] <- col
-      } else if (p_ndim == 3) {
+
+      if (p_ndim == 2L) {
+        keep_scalar <- mon_spec$mode %in% c("interpretable", "all") || (param_name %in% mon_spec$custom_bases)
+        if (keep_scalar) {
+          col <- matrix(as.numeric(param_data[ch, ]), nrow = num_iters, ncol = 1L)
+          colnames(col) <- param_name
+          col_list[[length(col_list) + 1L]] <- col
+        }
+      } else if (p_ndim == 3L) {
         # Vector parameter: shape (chains, iters, length)
         param_len <- p_dims[3]
-        # Only retain small vector parameters like cutpoints (<= 20)
-        # Avoid expanding 668-length latent species vectors into hundreds of thousands of columns
-        if (param_len <= 20) {
-          cols <- matrix(param_data[ch, , ], ncol = param_len)
-          colnames(cols) <- paste0(param_name, "[", 1:param_len, "]")
+        decision <- .should_retain_numpyro_vector(param_name, param_len, num_chains, num_iters, mon_spec)
+        if (isTRUE(decision$keep)) {
+          sub_slice <- param_data[ch, , , drop = FALSE]
+          dim(sub_slice) <- c(num_iters, param_len)
+          cols <- matrix(as.numeric(sub_slice), nrow = num_iters, ncol = param_len)
+          colnames(cols) <- paste0(param_name, "[", seq_len(param_len), "]")
           col_list[[length(col_list) + 1L]] <- cols
+        } else if (ch == 1L && decision$omit_reason %in% c("high_dim_random", "high_dim_vector")) {
+          omitted_vectors <- c(omitted_vectors, sprintf("%s (length %d)", param_name, param_len))
         }
-      } else if (p_ndim == 4) {
+      } else if (p_ndim == 4L) {
         # Matrix parameter: shape (chains, iters, rows, cols)
         # Specifically extract 2x2 LKJ Cholesky factor L_corr_* -> rho_* if not already present
-        if (grepl("^L_corr_", param_name) && p_dims[3] == 2 && p_dims[4] == 2) {
+        if (grepl("^L_corr_", param_name) && p_dims[3] == 2L && p_dims[4] == 2L) {
           rho_name <- sub("^L_corr_", "rho_", param_name)
-          if (!rho_name %in% names(raw_samples)) {
-            col <- matrix(param_data[ch, , 2, 1], ncol = 1)
+          keep_rho <- mon_spec$mode %in% c("interpretable", "all") ||
+            any(c(rho_name, param_name) %in% mon_spec$custom_bases)
+          if (keep_rho && !rho_name %in% names(raw_samples)) {
+            col <- matrix(as.numeric(param_data[ch, , 2, 1]), nrow = num_iters, ncol = 1L)
             colnames(col) <- rho_name
             col_list[[length(col_list) + 1L]] <- col
           }
         }
       }
     }
+    if (length(col_list) == 0L) {
+      return(NULL)
+    }
     chain_mat <- do.call(cbind, col_list)
     chain_list[[ch]] <- coda::mcmc(chain_mat)
   }
-  
+
+  if (length(omitted_vectors) > 0L && !isTRUE(quiet)) {
+    message(
+      "Note: Omitted ", length(omitted_vectors),
+      " high-dimensional vector parameter(s) from fit$samples under monitor = 'interpretable': ",
+      paste(omitted_vectors, collapse = ", "),
+      ".\n  Random effects were still fitted in the NumPyro model; ",
+      "pass monitor = 'all' or monitor = c('interpretable', '<param>') to retain their posterior draws."
+    )
+  }
+
   return(coda::mcmc.list(chain_list))
 }
 
@@ -267,7 +362,7 @@ run_numpyro_pipeline <- function(
   hierarchical_info, is_hierarchical, latent, induced_correlations = NULL, n.chains, n.iter, n.burnin,
   adapt_delta, max_treedepth, prior_scale_fixed, quiet, WAIC,
   model_string, parameter_map, original_call, engine = "numpyro",
-  parallel = FALSE, n.cores = 1L
+  parallel = FALSE, n.cores = 1L, monitor = "interpretable"
 ) {
   eq_strings <- sapply(equations, function(eq) paste(deparse(eq), collapse=" "))
   
@@ -420,7 +515,7 @@ run_numpyro_pipeline <- function(
     levels = py_levels,
     n_cores = active_cores
   )
-  mcmc_samples <- format_numpyro_samples(py_result)
+  mcmc_samples <- format_numpyro_samples(py_result, monitor = monitor, quiet = quiet)
   
   # Emergency auto-save checkpoint to disk: guarantees MCMC draws are preserved even if subsequent code fails!
   tryCatch({
@@ -437,6 +532,7 @@ run_numpyro_pipeline <- function(
     numpyro_code = if (!is.null(py_result$model_code)) py_result$model_code else NULL,
     parameter_map = parameter_map,
     samples = mcmc_samples,
+    monitor = monitor,
     data = data,
     original_data = data,
     dsep = NULL,

@@ -197,3 +197,106 @@ test_that("summary.because filters redundant MAG indicator variance components",
     expect_false("sigma_Brain_res" %in% rows)
     expect_false("sigma_Mass_res" %in% rows)
 })
+
+test_that("format_numpyro_samples retains >20 structural and grouped u_ vectors and notifies on omitted large vectors", {
+    set.seed(42)
+    py_res <- list(
+        samples = list(
+            alpha_Y = array(rnorm(2 * 10), dim = c(2, 10)),
+            beta_Y_cat = array(rnorm(2 * 10 * 25), dim = c(2, 10, 25)),
+            u_Y_Site = array(rnorm(2 * 10 * 35), dim = c(2, 10, 35)),
+            u_std_Y_Site = array(rnorm(2 * 10 * 35), dim = c(2, 10, 35)),
+            err_res_Y = array(rnorm(2 * 10 * 600), dim = c(2, 10, 600)),
+            u_Y_phylo = array(rnorm(2 * 10 * 600), dim = c(2, 10, 600))
+        )
+    )
+
+    # Under monitor = "interpretable", >20 structural and 35-group u_Y_Site are kept,
+    # nuisance vectors are dropped, and omitting 600-species u_Y_phylo emits a clear message
+    expect_message(
+        mcmc_interp <- format_numpyro_samples(py_res, monitor = "interpretable", quiet = FALSE),
+        "u_Y_phylo \\(length 600\\)"
+    )
+    cols_interp <- colnames(mcmc_interp[[1]])
+    expect_true("alpha_Y" %in% cols_interp)
+    expect_true("beta_Y_cat[25]" %in% cols_interp)
+    expect_true("u_Y_Site[35]" %in% cols_interp)
+    expect_false(any(grepl("^u_std_Y_Site\\[", cols_interp)))
+    expect_false(any(grepl("^err_res_Y\\[", cols_interp)))
+    expect_false(any(grepl("^u_Y_phylo\\[", cols_interp)))
+
+    # Explicit monitor retains u_Y_phylo regardless of length without omission message
+    expect_no_message(
+        mcmc_custom <- format_numpyro_samples(py_res, monitor = c("interpretable", "u_Y_phylo"), quiet = FALSE)
+    )
+    expect_true("u_Y_phylo[600]" %in% colnames(mcmc_custom[[1]]))
+
+    # monitor = "all" keeps everything including nuisance and high-dimensional vectors
+    mcmc_all <- format_numpyro_samples(py_res, monitor = "all", quiet = FALSE)
+    cols_all <- colnames(mcmc_all[[1]])
+    expect_true("u_Y_phylo[600]" %in% cols_all)
+    expect_true("u_std_Y_Site[35]" %in% cols_all)
+    expect_true("err_res_Y[600]" %in% cols_all)
+})
+
+test_that("format_numpyro_samples handles 1-iteration and 1-element vector shapes safely", {
+    py_edge <- list(
+        samples = list(
+            alpha_Y = array(1.5, dim = c(2, 1)),
+            cutpoint_Y = array(0.25, dim = c(2, 1, 1)),
+            u_Y_Site = array(c(0.1, -0.1, 0.2, -0.2), dim = c(2, 1, 2))
+        )
+    )
+    mcmc_edge <- format_numpyro_samples(py_edge, monitor = "interpretable", quiet = TRUE)
+    expect_s3_class(mcmc_edge, "mcmc.list")
+    expect_equal(nrow(mcmc_edge[[1]]), 1)
+    expect_true(all(c("alpha_Y", "cutpoint_Y[1]", "u_Y_Site[1]", "u_Y_Site[2]") %in% colnames(mcmc_edge[[1]])))
+})
+
+test_that("summary.because respects show_random = TRUE even with cached structural summary and warns when missing", {
+    set.seed(123)
+    mat <- cbind(
+        alpha_Y = rnorm(40),
+        beta_Y_X = rnorm(40, 0.5, 0.1),
+        sigma_Y_Site = abs(rnorm(40, 0.4, 0.05)),
+        `u_Y_Site[1]` = rnorm(40, -0.2, 0.1),
+        `u_Y_Site[2]` = rnorm(40, 0.2, 0.1),
+        `u_std_Y_Site[1]` = rnorm(40),
+        `u_std_Y_Site[2]` = rnorm(40)
+    )
+    samples <- coda::mcmc.list(coda::mcmc(mat[1:20, ]), coda::mcmc(mat[21:40, ]))
+
+    # Cached summary contains only structural parameters (simulating run_numpyro_pipeline)
+    cached_sub <- samples[, c("alpha_Y", "beta_Y_X", "sigma_Y_Site")]
+    cached_summ <- summary(cached_sub)
+    cached_summ$statistics <- cbind(cached_summ$statistics, Rhat = c(1.0, 1.0, 1.0))
+
+    fit <- list(
+        samples = samples,
+        summary = cached_summ,
+        dsep = FALSE
+    )
+    class(fit) <- "because"
+
+    # Default show_random = FALSE uses cached structural summary (no u_*)
+    summ_def <- summary(fit)
+    expect_false(any(grepl("^u_", rownames(summ_def$results))))
+
+    # show_random = TRUE recomputes summary to expose u_Y_Site[*] while hiding auxiliary u_std_*
+    summ_rand <- summary(fit, show_random = TRUE)
+    expect_true("u_Y_Site[1]" %in% rownames(summ_rand$results))
+    expect_true("u_Y_Site[2]" %in% rownames(summ_rand$results))
+    expect_false("u_std_Y_Site[1]" %in% rownames(summ_rand$results))
+
+    # Warning emitted when show_random = TRUE is requested on samples lacking u_*
+    fit_no_u <- list(
+        samples = cached_sub,
+        summary = cached_summ,
+        dsep = FALSE
+    )
+    class(fit_no_u) <- "because"
+    expect_warning(
+        summary(fit_no_u, show_random = TRUE),
+        "No random effect estimates \\(u_\\*\\) were found"
+    )
+})

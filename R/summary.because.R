@@ -391,11 +391,31 @@ summary.because <- function(
         return(out)
     } else {
         # Determine target parameters for diagnostics / summary:
-        # If show_nodes is FALSE, only structural parameters are summarized to avoid memory explosion
+        # If show_nodes is FALSE, restrict to structural (and optionally random u_*) parameters
         var_names_all <- colnames(object$samples[[1]])
         k_cols <- grep("^K_tree_", var_names_all, value = TRUE)
+        if (show_random && !any(grepl("^u_", var_names_all))) {
+            warning(
+                "No random effect estimates (u_*) were found in model samples. ",
+                "If this model includes random effects, refit with monitor = 'all' ",
+                "(or include the specific 'u_*' parameter names in monitor) to inspect them."
+            )
+        }
         target_vars <- if (!show_nodes) {
-            var_names_all[grepl("^(alpha|beta|sigma|tau|lambda|rho|psi|r_|cutpoint)", var_names_all)]
+            pat <- if (show_random) {
+                "^(alpha|beta|sigma|tau|lambda|rho|psi|r_|cutpoint|u_)"
+            } else {
+                "^(alpha|beta|sigma|tau|lambda|rho|psi|r_|cutpoint)"
+            }
+            matched <- var_names_all[grepl(pat, var_names_all)]
+            if (show_random) {
+                # Prefer scaled random effects (u_*) over auxiliary standard-normal u_std_* draws
+                u_nonstd <- matched[grepl("^u_", matched) & !grepl("^u_std_", matched)]
+                if (length(u_nonstd) > 0) {
+                    matched <- matched[!grepl("^u_std_", matched)]
+                }
+            }
+            matched
         } else {
             var_names_all
         }
@@ -403,12 +423,36 @@ summary.because <- function(
         if (length(target_vars) == 0) target_vars <- var_names_all
 
         # Standard summary
-        # Use stored summary if available and defaults are used, otherwise calculate it
-        if (!is.null(object$summary) && prob == 0.95) {
+        # Reuse stored summary only when it covers all requested target_vars
+        cached_ok <- !is.null(object$summary) && prob == 0.95
+        if (cached_ok && (show_nodes || show_random)) {
+            cached_rows <- if (is.matrix(object$summary$statistics)) {
+                rownames(object$summary$statistics)
+            } else {
+                character(0)
+            }
+            if (length(setdiff(target_vars, cached_rows)) > 0) {
+                cached_ok <- FALSE
+            }
+        }
+        if (cached_ok) {
             summ <- object$summary
         } else {
-            sub_samps <- if (!show_nodes && length(var_names_all) > 100) object$samples[, target_vars, drop = FALSE] else object$samples
+            sub_samps <- if (!show_nodes) object$samples[, target_vars, drop = FALSE] else object$samples
             summ <- summary(sub_samps, quantiles = quantiles_req, ...)
+            if (!is.matrix(summ$statistics)) {
+                single_nm <- colnames(sub_samps[[1]])[1]
+                summ$statistics <- matrix(
+                    summ$statistics,
+                    nrow = 1,
+                    dimnames = list(single_nm, names(summ$statistics))
+                )
+                summ$quantiles <- matrix(
+                    summ$quantiles,
+                    nrow = 1,
+                    dimnames = list(single_nm, names(summ$quantiles))
+                )
+            }
         }
 
         # Calculate convergence diagnostics

@@ -28,7 +28,8 @@ run_numpyro_pipeline(
   original_call,
   engine = "numpyro",
   parallel = FALSE,
-  n.cores = 1L
+  n.cores = 1L,
+  monitor = "interpretable"
 )
 }
 \description{
