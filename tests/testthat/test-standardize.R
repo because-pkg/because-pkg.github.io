@@ -369,4 +369,113 @@ test_that("standardize supports Poisson responses across error, total, and mplus
     expect_equal(mean(fit_tot$samples[[1]][, "beta_Eggs_Mass"]), expected_beta_mass_tot, tolerance = 1e-4)
 })
 
+test_that("standardize updates NumPyro precomputed d-sep results and formats standardized ROPE explanations", {
+    set.seed(101)
+    n <- 120
+    x <- rnorm(n, mean = 0, sd = 2.0)
+    y <- rnorm(n, mean = 0, sd = 3.0) # Intentionally unstandardized SD != 1
+    eggs <- rpois(n, lambda = exp(0.8))
+
+    data_df <- data.frame(
+        X = x,
+        Y = y,
+        Eggs = eggs,
+        stringsAsFactors = FALSE
+    )
+
+    n_iter <- 200
+    b_yx_raw <- rnorm(n_iter, 0.30, 0.02)
+    b_ex_raw <- rnorm(n_iter, 0.25, 0.02)
+
+    mat1 <- matrix(b_yx_raw, ncol = 1, dimnames = list(NULL, "beta_Y_X"))
+    mat2 <- matrix(b_ex_raw, ncol = 1, dimnames = list(NULL, "beta_Eggs_X"))
+
+    # NumPyro-style d-sep object storing precomputed unstandardized dsep$results
+    res_df <- data.frame(
+        Test = c("Y _||_ X | {} ", "Eggs _||_ X | {} "),
+        Parameter = c("beta_Y_X", "beta_Eggs_X"),
+        Estimate = round(c(mean(b_yx_raw), mean(b_ex_raw)), 3),
+        LowerCI = round(c(quantile(b_yx_raw, 0.025), quantile(b_ex_raw, 0.025)), 3),
+        UpperCI = round(c(quantile(b_yx_raw, 0.975), quantile(b_ex_raw, 0.975)), 3),
+        Rhat = c(1.0, 1.0),
+        n.eff = c(200, 200),
+        Scale = c(NA_character_, NA_character_),
+        stringsAsFactors = FALSE
+    )
+
+    np_dsep <- list(
+        dsep = list(results = res_df),
+        dsep_tests = list(
+            structure(Y ~ X, test_var = "X"),
+            structure(Eggs ~ X, test_var = "X")
+        ),
+        dsep_results = list(list(samples = mat1), list(samples = mat2)),
+        data = data_df,
+        family = c(Y = "gaussian", Eggs = "poisson")
+    )
+    class(np_dsep) <- "because"
+
+    np_std <- standardize(np_dsep)
+
+    # Expected standardized means
+    expected_yx <- mean(b_yx_raw) * (sd(x) / sd(y))
+    expected_ex <- mean(b_ex_raw) * (sd(x) / sqrt(log(1 + 1 / mean(eggs))))
+
+    s_std <- summary(np_std, rope = TRUE)
+    expect_equal(s_std$results$Estimate[1], round(expected_yx, 3), tolerance = 1e-3)
+    expect_equal(s_std$results$Estimate[2], round(expected_ex, 3), tolerance = 1e-3)
+    expect_equal(
+        s_std$results$LowerCI[2],
+        round(unname(quantile(np_std$dsep_results[[2]]$samples[, "beta_Eggs_X"], 0.025)), 3)
+    )
+    expect_equal(
+        s_std$results$UpperCI[2],
+        round(unname(quantile(np_std$dsep_results[[2]]$samples[, "beta_Eggs_X"], 0.975)), 3)
+    )
+    # P_ROPE matches standardized draws inside [-0.10, 0.10]
+    p_rope_expected <- sprintf("%.2f%%", 100 * mean(abs(np_std$dsep_results[[2]]$samples[, "beta_Eggs_X"]) < 0.10))
+    expect_equal(s_std$results$P_ROPE[2], p_rope_expected)
+
+    # Custom prob updates LowerCI/UpperCI cleanly on NumPyro d-sep summaries
+    s_std_80 <- summary(np_std, prob = 0.80, rope = TRUE)
+    expect_equal(
+        s_std_80$results$LowerCI[1],
+        round(unname(quantile(np_std$dsep_results[[1]]$samples[, "beta_Y_X"], 0.10)), 3)
+    )
+
+    # Standardized ROPE explanation uses standardized SD / latent liability labels, not raw link warnings
+    skip_if_not_installed("ggridges")
+    p_rope <- plot_rope(np_std)
+    expect_true(grepl("Standardized", p_rope$labels$subtitle))
+    expect_true(grepl("latent liability SD", p_rope$labels$subtitle))
+    expect_false(grepl("Rate Ratio", p_rope$labels$subtitle))
+    expect_null(p_rope$labels$caption)
+
+    # Same clean ROPE explanation in standard (non-dsep) summary(rope = TRUE)
+    joint_samps <- coda::mcmc.list(coda::mcmc(cbind(mat1, mat2)))
+    joint_pmap <- data.frame(
+        response = c("Y", "Eggs"),
+        predictor = c("X", "X"),
+        parameter = c("beta_Y_X", "beta_Eggs_X"),
+        equation_index = c(1, 2),
+        stringsAsFactors = FALSE
+    )
+    joint_fit <- list(
+        samples = joint_samps,
+        parameter_map = joint_pmap,
+        data = data_df,
+        family = c(Y = "gaussian", Eggs = "poisson"),
+        dsep = FALSE,
+        equations = list(Y ~ X, Eggs ~ X)
+    )
+    class(joint_fit) <- "because"
+    joint_std <- standardize(joint_fit)
+    s_joint <- summary(joint_std, rope = TRUE)
+    expect_true(any(grepl("Standardized", s_joint$rope_info$lines)))
+    expect_true(any(grepl("latent liability SD", s_joint$rope_info$lines)))
+    expect_false(any(grepl("Rate Ratio", s_joint$rope_info$lines)))
+    expect_null(s_joint$rope_info$note)
+})
+
+
 

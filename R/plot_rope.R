@@ -271,7 +271,7 @@ plot_rope.because <- function(object, rope = "default", parameters = NULL, ...) 
     }
 
     # Format human-readable explanation of active ROPE specifications
-    rope_info <- explain_rope_spec(unique(plot_data[, c("Response", "Family", "r_min", "r_max")]), data = object$data %||% object$original_data)
+    rope_info <- explain_rope_spec(unique(plot_data[, c("Response", "Family", "r_min", "r_max")]), data = object$data %||% object$original_data, standardized = is_std)
     
     # Wrap each explanation line cleanly so text never overflows the plot margin
     wrapped_lines <- unlist(lapply(rope_info$lines, function(l) paste(strwrap(l, width = 80), collapse = "\n")))

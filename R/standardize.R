@@ -409,6 +409,22 @@ standardize.because <- function(object, method = c("error", "total", "mplus"), b
     }
   }
 
+  # Recompute precomputed backend d-sep summary table (e.g., NumPyro res$dsep$results)
+  # from the standardized per-test draws so estimates and CIs match standardized P_ROPE.
+  if (is.list(res$dsep) && !is.null(res$dsep$results) && is.data.frame(res$dsep$results)) {
+    res_df <- res$dsep$results
+    for (r in seq_len(nrow(res_df))) {
+      param_name <- res_df$Parameter[r]
+      vec <- .find_dsep_param_draws(res$dsep_results, param_name, idx_hint = r)
+      if (!is.null(vec)) {
+        res_df$Estimate[r] <- round(mean(vec, na.rm = TRUE), 3)
+        res_df$LowerCI[r]  <- round(unname(stats::quantile(vec, 0.025, na.rm = TRUE)), 3)
+        res_df$UpperCI[r]  <- round(unname(stats::quantile(vec, 0.975, na.rm = TRUE)), 3)
+      }
+    }
+    res$dsep$results <- res_df
+  }
+
   return(res)
 }
 

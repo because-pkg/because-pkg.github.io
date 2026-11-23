@@ -88,26 +88,28 @@ summary.because <- function(
         # Check if dsep results were pre-computed by a backend engine (e.g., numpyro)
         if (is.list(object$dsep) && !is.null(object$dsep$results)) {
             res_df <- object$dsep$results
-            if (!is.null(rope) && !is.null(object$dsep_results)) {
+            if (!is.null(object$dsep_results) && (!is.null(rope) || prob != 0.95)) {
                 p_rope_vals <- rep(NA_real_, nrow(res_df))
                 for (i in seq_len(nrow(res_df))) {
                     param_name <- res_df$Parameter[i]
                     test_label <- res_df$Test[i]
                     resp_name <- sub("\\s*_\\|\\|_.*", "", test_label)
                     fam_i <- if (!is.null(object$family) && resp_name %in% names(object$family)) object$family[[resp_name]] else "gaussian"
-                    for (dr in object$dsep_results) {
-                        if (!is.null(dr)) {
-                            samps <- as.matrix(dr$samples)
-                            if (param_name %in% colnames(samps)) {
-                                r_interval <- resolve_rope_for_param(param_name, resp = resp_name, fam = fam_i, rope_spec = rope, standardized = is_std)
-                                sub_s <- samps[, param_name]
-                                p_rope_vals[i] <- mean(sub_s > r_interval[1] & sub_s < r_interval[2])
-                                break
-                            }
+                    sub_s <- .find_dsep_param_draws(object$dsep_results, param_name, idx_hint = i)
+                    if (!is.null(sub_s)) {
+                        if (prob != 0.95) {
+                            res_df$LowerCI[i] <- round(unname(stats::quantile(sub_s, lower_prob, na.rm = TRUE)), 3)
+                            res_df$UpperCI[i] <- round(unname(stats::quantile(sub_s, upper_prob, na.rm = TRUE)), 3)
+                        }
+                        if (!is.null(rope)) {
+                            r_interval <- resolve_rope_for_param(param_name, resp = resp_name, fam = fam_i, rope_spec = rope, standardized = is_std)
+                            p_rope_vals[i] <- mean(sub_s > r_interval[1] & sub_s < r_interval[2])
                         }
                     }
                 }
-                res_df$P_ROPE <- paste0(format(round(100 * p_rope_vals, 2), nsmall = 2, trim = TRUE), "%")
+                if (!is.null(rope)) {
+                    res_df$P_ROPE <- paste0(format(round(100 * p_rope_vals, 2), nsmall = 2, trim = TRUE), "%")
+                }
             }
             out <- list(
                 type = "dsep",
@@ -761,7 +763,7 @@ summary.because <- function(
 
             if (length(rope_resolved_list) > 0) {
                 res_df <- do.call(rbind, rope_resolved_list)
-                rope_info <- explain_rope_spec(res_df, data = object$data %||% object$original_data)
+                rope_info <- explain_rope_spec(res_df, data = object$data %||% object$original_data, standardized = is_std)
             }
         }
 
