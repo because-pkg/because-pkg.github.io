@@ -63,20 +63,25 @@ safe_add_lines <- function(current_lines, new_lines, declared_nodes = NULL) {
 #' @return Formatted BUGS prior statement
 #' @keywords internal
 get_prior <- function(param_name, type = "beta", default = NULL, priors = NULL) {
-  if (!is.null(priors) && param_name %in% names(priors)) {
-    return(paste0(param_name, " ~ ", priors[[param_name]]))
+  if (!is.null(priors)) {
+    if (param_name %in% names(priors)) {
+      return(paste0(param_name, " ~ ", priors[[param_name]]))
+    }
+    base_param <- sub("\\[.*\\]$", "", param_name)
+    if (base_param != param_name && base_param %in% names(priors)) {
+      return(paste0(param_name, " ~ ", priors[[base_param]]))
+    }
+    if (type %in% names(priors)) {
+      return(paste0(param_name, " ~ ", priors[[type]]))
+    }
   }
-  
-  if (!is.null(priors) && type %in% names(priors)) {
-    return(paste0(param_name, " ~ ", priors[[type]]))
-  }
-  
+
   default_prior <- default %||% "dnorm(0, 0.01)"
-  
+
   if (grepl("^[0-9.]+$", trimws(default_prior))) {
     return(paste0(param_name, " <- ", default_prior))
   }
-  
+
   return(paste0(param_name, " ~ ", default_prior))
 }
 
@@ -92,6 +97,10 @@ get_precision_prior <- function(param_name, var_name, priors = NULL, family = NU
   if (!is.null(priors)) {
     if (param_name %in% names(priors)) {
       return(paste0(param_name, " ~ ", priors[[param_name]]))
+    }
+    base_param <- sub("\\[.*\\]$", "", param_name)
+    if (base_param != param_name && base_param %in% names(priors)) {
+      return(paste0(param_name, " ~ ", priors[[base_param]]))
     }
 
     # Support overriding Gaussian residual SD directly via sigma_*_res, sigma_*, or sigma_e_*

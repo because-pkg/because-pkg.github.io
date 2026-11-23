@@ -217,7 +217,7 @@ generate_model_priors <- function(ctx) {
         paste0("  # Priors for ", response, " (Multinomial)"),
         paste0("  alpha_", response, "[1] <- 0"),
         paste0("  for (k in 2:", K_var, ") {"),
-        paste0("    alpha_", response, "[k] ~ dnorm(0, 0.01)"),
+        paste0("    ", get_prior(paste0("alpha_", response, "[k]"), type = "alpha", default = "dnorm(0, 1)", priors = ctx$priors)),
         "  }"
       )
 
@@ -238,7 +238,7 @@ generate_model_priors <- function(ctx) {
             ctx$model_lines <- c(
               ctx$model_lines,
               paste0("  for (k in 2:", K_var, ") {"),
-              paste0("    ", tau_u, "[k] ~ dgamma(0.001, 0.001)"),
+              paste0("    ", get_precision_prior(paste0(tau_u, "[k]"), response, priors = ctx$priors, family = ctx$family)),
               paste0("    ", sigma_name, "[k] <- 1/sqrt(", tau_u, "[k])"),
               "  }"
             )
@@ -263,7 +263,7 @@ generate_model_priors <- function(ctx) {
           ctx$model_lines <- c(
             ctx$model_lines,
             paste0("  for (k in 2:", K_var, ") {"),
-            paste0("    ", tau_u, "[k] ~ dgamma(0.001, 0.001)"),
+            paste0("    ", get_precision_prior(paste0(tau_u, "[k]"), response, priors = ctx$priors, family = ctx$family)),
             paste0("    ", sigma_name, "[k] <- 1/sqrt(", tau_u, "[k])"),
             "  }"
           )
@@ -278,7 +278,7 @@ generate_model_priors <- function(ctx) {
               ctx$model_lines,
               paste0("  ", beta_name, "[1] <- 0"),
               paste0("  for (k in 2:", K_var, ") {"),
-              paste0("    ", get_prior(paste0(beta_name, "[k]"), type = "beta", priors = ctx$priors)),
+              paste0("    ", get_prior(paste0(beta_name, "[k]"), type = "beta", default = "dnorm(0, 1)", priors = ctx$priors)),
               "  }"
             )
           }
@@ -299,10 +299,10 @@ generate_model_priors <- function(ctx) {
         ctx$model_lines <- c(
           ctx$model_lines,
           paste0("  # Priors for ", response, suffix, " (Ordinal)"),
-          paste0("  cutpoint_raw_", response, suffix, "[1] ~ dnorm(0, 0.1)"),
+          paste0("  ", get_prior(paste0("cutpoint_raw_", response, suffix, "[1]"), type = "cutpoint", default = "dnorm(0, 0.1)", priors = ctx$priors)),
           paste0("  cutpoint_", response, suffix, "[1] <- cutpoint_raw_", response, suffix, "[1]"),
           paste0("  for (k in 2:(", K_var, "-1)) {"),
-          paste0("    cutpoint_raw_", response, suffix, "[k] ~ dnorm(0, 0.1)"),
+          paste0("    ", get_prior(paste0("cutpoint_raw_", response, suffix, "[k]"), type = "cutpoint", default = "dnorm(0, 0.1)", priors = ctx$priors)),
           paste0("    cutpoint_", response, suffix, "[k] <- cutpoint_", response, suffix, "[k-1] + exp(cutpoint_raw_", response, suffix, "[k])"),
           "  }"
         )
@@ -323,7 +323,7 @@ generate_model_priors <- function(ctx) {
 
               ctx$model_lines <- c(
                 ctx$model_lines,
-                paste0("  ", tau_u, " ~ dgamma(0.001, 0.001)"),
+                paste0("  ", get_precision_prior(tau_u, response, priors = ctx$priors, family = ctx$family)),
                 paste0("  ", sigma_name, " <- 1/sqrt(", tau_u, ")")
               )
             }
@@ -346,7 +346,7 @@ generate_model_priors <- function(ctx) {
 
             ctx$model_lines <- c(
               ctx$model_lines,
-              paste0("  ", tau_u, " ~ dgamma(0.001, 0.001)"),
+              paste0("  ", get_precision_prior(tau_u, response, priors = ctx$priors, family = ctx$family)),
               paste0("  ", sigma_name, " <- 1/sqrt(", tau_u, ")")
             )
           }
@@ -359,7 +359,7 @@ generate_model_priors <- function(ctx) {
             beta_name <- paste0("beta_", response, "_", pred)
             ctx$model_lines <- c(
               ctx$model_lines,
-              paste0("  ", get_prior(beta_name, type = "beta", priors = ctx$priors))
+              paste0("  ", get_prior(beta_name, type = "beta", default = "dnorm(0, 1)", priors = ctx$priors))
             )
           }
         }

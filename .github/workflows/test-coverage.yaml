@@ -26,7 +26,21 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y jags pkg-config
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential gfortran libblas-dev liblapack-dev pkg-config
+          curl --retry 5 --retry-delay 5 --retry-all-errors -fSL \
+            "https://sourceforge.net/projects/mcmc-jags/files/JAGS/5.x/Source/JAGS-5.0.2.tar.gz/download" -o JAGS-5.0.2.tar.gz
+          tar -xzf JAGS-5.0.2.tar.gz
+          cd JAGS-5.0.2
+          ./configure --prefix=/usr/local --libdir=/usr/local/lib
+          make -j"$(nproc)"
+          sudo make install
+          cd ..
+          rm -rf JAGS-5.0.2 JAGS-5.0.2.tar.gz
+          echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/jags.conf > /dev/null
+          sudo ldconfig
+          echo "JAGS_HOME=/usr/local" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> $GITHUB_ENV
 
       - uses: r-lib/actions/setup-r@v2
         with:

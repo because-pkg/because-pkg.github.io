@@ -51,10 +51,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Added `curvatures` argument to `plot_dag()` and `build_dag_data()` to specify custom numeric edge curvatures for individual directed paths (e.g., `curvatures = c("X -> Y" = 0.35)`).
 * **Automatic JAX Core Configuration & `because_py` Version Enforcement**:
   * Auto-configures `XLA_FLAGS` on load so JAX detects available CPU cores for parallel chains, and updated `.target_numpyro_version` to `1.0.0`.
+* **JAGS 5 Support & Updated Installation Recommendations**:
+  * `because` now recommends **JAGS 5.x** (matching current CRAN `rjags` `5-5`, which uses native chain multithreading and `bugs::EllipticalSlice` sampling for correlated random effects), while documenting the archived `rjags 4-18` option in `README.md` for systems staying on JAGS 4.3.2.
 * **KaTeX Math Rendering in Reference Documentation**:
   * Added `math-rendering: katex` to `_pkgdown.yml` and added `standardize()` to the pkgdown reference index.
 
 ## Bug Fixes
+* **Regularized Multinomial & Ordinal Default Priors for JAGS 5 Initialization**: Replaced legacy `dgamma(0.001, 0.001)` precision priors on multinomial/ordinal structural and random effects (whose random draws under JAGS 5 underflowed near zero and caused `sigma` blowups) and `dnorm(0, 0.01)` multinomial intercepts/slopes with link-appropriate `dgamma(10, 10)` and `dnorm(0, 1)` priors routed through `get_prior()` and `get_precision_prior()` (supporting array-base custom prior overrides).
 * **Preserved Distinct Multiscale Structures**: Only flatten compatible structure collections into ensembles, keeping distinct hierarchical scale structures separate (`process_because_structures()` / `because()`), and require all members of a `structure_collection` to be `phylo` objects before delegating phylogenetic prep.
 * **Preserved Isolated Nodes in DAG Conversion**: Retained degree-zero observed vertices in `dagitty` conversion so d-separation preserves isolated observed nodes while excluding latent nodes from test pairs.
 * **Measurement Error Variables Excluded from MAG Latents**: Prevented variables with `variability` observation models (`_se`, `_sd`, `_obs`, `_mean`) from being misclassified as MAG latent indicators, retained variability columns during preprocessing, and skipped irrelevant variability sub-models during d-separation.

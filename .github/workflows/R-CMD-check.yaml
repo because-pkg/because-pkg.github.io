@@ -41,22 +41,34 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y jags pkg-config libnlopt-dev libglpk-dev libxml2-dev \
-          libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev libfontconfig1-dev \
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential gfortran libblas-dev liblapack-dev pkg-config \
+          libnlopt-dev libglpk-dev libxml2-dev libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev libfontconfig1-dev \
           libarchive-dev libgit2-dev libssh2-1-dev libssl-dev libfreetype6-dev
-          echo "JAGS_HOME=/usr" >> $GITHUB_ENV
+          curl --retry 5 --retry-delay 5 --retry-all-errors -fSL \
+            "https://sourceforge.net/projects/mcmc-jags/files/JAGS/5.x/Source/JAGS-5.0.2.tar.gz/download" -o JAGS-5.0.2.tar.gz
+          tar -xzf JAGS-5.0.2.tar.gz
+          cd JAGS-5.0.2
+          ./configure --prefix=/usr/local --libdir=/usr/local/lib
+          make -j"$(nproc)"
+          sudo make install
+          cd ..
+          rm -rf JAGS-5.0.2 JAGS-5.0.2.tar.gz
+          echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/jags.conf > /dev/null
+          sudo ldconfig
+          echo "JAGS_HOME=/usr/local" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> $GITHUB_ENV
 
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          curl --retry 3 --fail-with-body -sSLO https://github.com/autobrew/bundler/releases/download/jags-4.3.2/JAGS-4.3.2.pkg
-          sudo installer -pkg JAGS-4.3.2.pkg -target /
-          rm -f JAGS-4.3.2.pkg
-          if [ -d "/opt/R/arm64/lib/pkgconfig" ]; then
-            sudo cp -f /usr/local/lib/pkgconfig/jags.pc /opt/R/arm64/lib/pkgconfig/ || true
-          fi
-          echo "JAGS_HOME=/usr/local" >> $GITHUB_ENV
-          echo "/usr/local/bin" >> $GITHUB_PATH
+          curl --retry 5 --retry-delay 5 --retry-all-errors -fSL \
+            "https://sourceforge.net/projects/mcmc-jags/files/JAGS/5.x/macOS/JAGS-5.0.2-universal.pkg/download" -o JAGS-5.0.2-universal.pkg
+          sudo installer -pkg JAGS-5.0.2-universal.pkg -target /
+          rm -f JAGS-5.0.2-universal.pkg
+          echo "JAGS_HOME=/opt/jags/versions/jags/current-5" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/opt/jags/lib/pkgconfig-5${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> $GITHUB_ENV
+          echo "/opt/jags/bin" >> $GITHUB_PATH
 
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
@@ -64,12 +76,12 @@ jobs:
           if ("${{ runner.arch }}" -eq "ARM64") {
             $url = "https://github.com/r-universe-org/actions/releases/download/JAGS-4.3.2/JAGS-4.3.2-aarch64.exe"
           } else {
-            $url = "https://github.com/r-universe-org/actions/releases/download/JAGS-4.3.1/JAGS-4.3.1.exe"
+            $url = "https://sourceforge.net/projects/mcmc-jags/files/JAGS/5.x/Windows/Rtools45/JAGS-5.0.2.exe/download"
           }
           $jags = Join-Path $env:RUNNER_TEMP 'JAGS.exe'
-          curl.exe -sSL -o $jags $url
+          curl.exe --retry 5 --retry-delay 5 -fSL -o $jags $url
           Start-Process $jags -ArgumentList '/S','/AllUsers' -Wait
-          $dir = Get-ChildItem 'C:\Program Files\JAGS\JAGS-*' | Select-Object -First 1
+          $dir = Get-ChildItem 'C:\Program Files\JAGS\JAGS-*' | Sort-Object Name -Descending | Select-Object -First 1
           if (-not $dir) { throw 'JAGS did not install' }
           $short = (New-Object -ComObject Scripting.FileSystemObject).GetFolder($dir.FullName).ShortPath
           Write-Host "Setting JAGS_ROOT=$short"
