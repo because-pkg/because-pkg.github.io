@@ -139,8 +139,13 @@
 </ul>
 <blockquote>
 <p><strong>Important (JAGS 5.x vs. JAGS 4.x):</strong> Current <code>rjags</code> (<code>5-5</code>) on CRAN requires <strong>JAGS 5.x</strong> (<code>JAGS &gt;= 5.0.0</code>).</p>
-<p>If your system only provides <strong>JAGS 4.3.2</strong> (such as standard Ubuntu/Debian <code>apt</code> packages) and you do not want to compile JAGS 5 from source, install the matching archived <code>rjags 4-18</code> package <em>before</em> installing <code>because</code>:</p>
+<p><strong>macOS users:</strong> CRAN does not yet publish macOS binaries for <code>rjags 5-5</code> (<code>install.packages("rjags")</code> currently pulls <code>4-18</code>). After installing <strong>JAGS 5.0.2</strong>, install <code>rjags 5-5</code> <em>before</em> installing <code>because</code> (and restart R afterward) from the JAGS maintainer’s repository (Apple Silicon, R 4.6) or from CRAN source (requires <code>xcode-select --install</code>):</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"rjags"</span>, repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://ku-awdc.github.io/drat"</span>, <span class="st">"https://cloud.r-project.org"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Or build from CRAN source:</span></span>
+<span><span class="co"># install.packages("rjags", type = "source")</span></span></code></pre></div>
+<p><strong>JAGS 4.3.2 systems (e.g., Ubuntu/Debian <code>apt</code>):</strong> If your system only provides <strong>JAGS 4.3.2</strong> and you do not want to compile JAGS 5 from source, install the matching archived <code>rjags 4-18</code> package <em>before</em> installing <code>because</code>:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"https://cran.r-project.org/src/contrib/Archive/rjags/rjags_4-18.tar.gz"</span>, repos <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="st">"source"</span><span class="op">)</span></span></code></pre></div>
 </blockquote>
 </div>
@@ -153,13 +158,13 @@
 <h3 id="numpyro-python-based-engine">NumPyro (Python-based Engine)<a class="anchor" aria-label="anchor" href="#numpyro-python-based-engine"></a>
 </h3>
 <p>NumPyro is an optional backend built on JAX, recommended for large datasets or GPU-accelerated sampling. It runs from R via the <code>reticulate</code> package. NumPyro requires Python 3.8 or later and the <code>reticulate</code> R package. Start by installing <code>reticulate</code> if you don’t have it yet:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"reticulate"</span><span class="op">)</span></span></code></pre></div>
 <p>If you do not already have Python installed on your system, you can skip installing it separately: <code>reticulate</code> can install Miniconda, which bundles Python and conda together:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/install_miniconda.html" class="external-link">install_miniconda</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># skip if Python is already installed</span></span></code></pre></div>
 <p><strong>One-step setup</strong>: <code>because</code> provides a built-in helper that installs all required Python packages (<code>numpyro</code>, <code>jax</code>, <code>jaxlib</code>, and the <code>because_py</code> companion module):</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/install_because_numpyro.html">install_because_numpyro</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>If you encounter any issues finding your Python environment (or if you are using Miniconda/Conda), we highly recommend referring to the <strong><a href="https://because-pkg.github.io/because_py/articles/installation.html">because NumPyro (because_py) Installation Guide</a></strong> for comprehensive troubleshooting and dedicated environment setups.</p>
 </div>
@@ -168,13 +173,13 @@
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
 <p>To cite <code>because</code> in publications, please use:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode bibtex"><code class="sourceCode bibtex"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="va">@Manual</span>{,</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="dt">title</span> = {because: Bayesian Estimation of Causal Effects},</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="dt">author</span> = {Achaz von Hardenberg},</span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="dt">year</span> = {2026},</span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="dt">note</span> = {R package version 1.10.0},</span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="dt">url</span> = {https://because-pkg.github.io},</span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>}</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bibtex"><code class="sourceCode bibtex"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="va">@Manual</span>{,</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="dt">title</span> = {because: Bayesian Estimation of Causal Effects},</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="dt">author</span> = {Achaz von Hardenberg},</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="dt">year</span> = {2026},</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>  <span class="dt">note</span> = {R package version 1.10.0},</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  <span class="dt">url</span> = {https://because-pkg.github.io},</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>}</span></code></pre></div>
 <p>In text: &gt; von Hardenberg, A. (2026). <em>because: Bayesian Estimation of Causal Effects</em>. R package version 1.10.0, <a href="https://github.com/achazhardenberg/because" class="external-link uri">https://github.com/achazhardenberg/because</a>.</p>
 </div>
 </div>
