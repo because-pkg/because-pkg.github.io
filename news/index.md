@@ -1,11 +1,6 @@
 # Changelog
 
-## because 1.9.0 (2026-11-11)
-
-> All notable changes to `because` are documented in this file. The
-> format is based on [Keep a
-> Changelog](https://keepachangelog.com/en/2.0.0/), and this project
-> adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## because 1.10.0 (2026-11-23)
 
 ### New Features & Improvements
 
@@ -80,7 +75,29 @@
   - [`summary()`](https://rdrr.io/r/base/summary.html) appends an
     informative footnote documenting standardized and latent liability
     evaluation.
-- **Vectorized Diagnostics & Fast Ensemble Summaries**:
+- **Monitor-Aware NumPyro Sample Retention & Random-Effect Summaries**:
+  - [`because()`](https://because-pkg.github.io/because/reference/because.md)
+    now forwards `monitor` (`"interpretable"`, `"all"`, or custom
+    parameter names) to
+    [`run_numpyro_pipeline()`](https://because-pkg.github.io/because/reference/run_numpyro_pipeline.md)
+    and
+    [`format_numpyro_samples()`](https://because-pkg.github.io/because/reference/format_numpyro_samples.md).
+  - Replaced the fixed `<= 20` vector length cutoff in
+    [`format_numpyro_samples()`](https://because-pkg.github.io/because/reference/format_numpyro_samples.md)
+    with name- and `monitor`-aware filtering: structural vectors
+    (`alpha`, `beta`, `sigma`, `tau`, `lambda`, `rho`, `psi`, `r_`,
+    `cutpoint`, `K_`) are retained at any length, grouped random-effect
+    vectors (`u_*`) up to 500 levels are retained by default, and any
+    high-dimensional vectors omitted under `monitor = "interpretable"`
+    now trigger an informative message explaining how to retain them
+    rather than dropping silently.
+  - `summary.because(..., show_random = TRUE)` now recomputes summaries
+    when cached structural summaries omit `u_*`, hides redundant
+    auxiliary `u_std_*` draws when scaled `u_*` draws are present, and
+    warns explicitly if no `u_*` estimates exist in the fitted samples.
+- **Vectorized Diagnostics, Ensemble ESS/Rhat &
+  [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md)
+  Refinements**:
   - Vectorized
     [`coda::effectiveSize()`](https://rdrr.io/pkg/coda/man/effectiveSize.html)
     and
@@ -88,33 +105,184 @@
     across candidate trees in
     [`summary.because()`](https://because-pkg.github.io/because/reference/summary.because.md),
     restricting recalculation strictly to structural parameters
-    (`alpha`, `beta`, `sigma`, `rho`, `lambda`).
-  - Summaries of large multiPhylo ensembles (30+ trees, 60+ chains) now
-    execute in under 0.1 seconds rather than minutes.
-  - Primary summary tables now present within-tree \hat{R} and
-    worst-case tree \hat{R}\_{\text{max}}, leaving between-tree
-    sensitivity (\hat{R}\_{\text{tree}}) to
+    (`alpha`, `beta`, `sigma`, `rho`, `lambda`); summaries of large
+    `multiPhylo` ensembles (30+ trees, 60+ chains) execute in under 0.1
+    seconds.
+  - Primary summary tables present within-tree \hat{R}, worst-case tree
+    \hat{R}\_{\text{max}}, and ensemble-summed ESS across
+    [`summary()`](https://rdrr.io/r/base/summary.html) and `dsep`,
+    leaving between-tree sensitivity (\hat{R}\_{\text{tree}}) to
     [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md).
+  - Updated
+    [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md)
+    variance decomposition reporting to `Pct_within_tree`,
+    `Pct_between_trees`, and `Pct_backbone` with explanatory footnotes,
+    adopted an Okabe-Ito colorblind-friendly palette in
+    `plot.check_multicov()`, and documented its relationship to
+    `because.phybase::check_multiphylo()`.
 - **Memory-Safe WAIC & *A Posteriori* Evaluation
   ([`because_waic()`](https://because-pkg.github.io/because/reference/because_waic.md))**:
   - [`because_waic()`](https://because-pkg.github.io/because/reference/because_waic.md)
-    now returns precomputed `model$WAIC` directly when available, and
+    returns precomputed `model$WAIC` directly when available and
     supports manual *a posteriori* evaluation on fitted NumPyro ensemble
     models without requiring MCMC refitting.
   - Wrapped WAIC formatting in exception handling in
     [`run_numpyro_pipeline()`](https://because-pkg.github.io/because/reference/run_numpyro_pipeline.md)
-    to ensure formatting or memory issues issue a warning rather than
-    discarding completed MCMC samples.
-- **Distributional Parsimony Rule for d-Separation**:
+    to prevent formatting or memory errors from discarding completed
+    MCMC samples.
+- **Distributional Parsimony Rule & Structured Covariance Preservation
+  in d-Separation**:
   - When testing auxiliary conditional independences between continuous
     and discrete/categorical variables, the continuous variable is
-    prioritized as the regression response. This routes the test to fast
-    ANOVA / linear mixed models, bypassing slow discrete links while
-    preserving exact d-separation topology.
-- **Liability-Scale Pagel’s Lambda for Binary Traits**:
-  - In JAGS models with phylogenetic structures and binomial traits,
-    Pagel’s \lambda is now evaluated on the continuous latent liability
-    scale using the theoretical \pi^2/3 disturbance variance.
+    prioritized as the regression response, routing tests to fast
+    ANOVA/linear mixed models while preserving exact d-separation
+    topology.
+  - Preserved covariance structures during d-separation for
+    flat/comparative models and disabled `dsep_max_obs` subsampling when
+    phylogenetic or structured correlation matrices are present.
+- **Liability-Scale Structural Variance Partitioning (\lambda) for
+  Binomial Traits**:
+  - In JAGS/NIMBLE models with binomial responses and covariance
+    structures (`phylo`, `multiPhylo`, `spatial`, or custom matrices),
+    structural variance partitioning `lambda_<response>_<structure>` is
+    evaluated on the continuous latent liability scale using the
+    theoretical \pi^2/3 logistic disturbance variance (and across
+    multiple active variance components when present). For
+    `because.phybase` phylogenetic structures, this emits
+    `lambda_<response>_phylo` / `lambda_<response>_multiPhylo`
+    (liability-scale Pagel’s \lambda).
+    [`check_residual_structure()`](https://because-pkg.github.io/because/reference/check_residual_structure.md)
+    likewise uses \pi^2/3 for logit-link responses.
+- **Multi-Response Q-Q Envelope Diagnostics
+  ([`plot_qq()`](https://because-pkg.github.io/because/reference/plot_qq.md))**:
+  - Calling `plot_qq(fit)` or `check_normality(fit)` on a fitted SEM
+    automatically checks all endogenous response variables when
+    `resp = NULL`, rendering a multi-panel faceted grid with empirical
+    50% (interquartile) and 95% credible simulation envelopes ([Landwehr
+    et al. 1984](https://doi.org/10.1080/01621459.1984.10478048)).
+    Evaluates randomized quantile residuals via the probability integral
+    transform (PIT against y^{\text{rep}}, [Dunn & Smyth
+    1996](https://doi.org/10.1080/10618600.1996.10474708)) with
+    posterior predictive skewness and kurtosis realized discrepancies
+    ([Gelman et al. 1996](https://www.jstor.org/stable/24306036)).
+    Single responses (e.g. `resp = "Y1"`) and custom subsets remain
+    fully supported.
+- **Conditional Posterior Predictive Checks for SEM Latent Measurement
+  Blocks (`conditional = "auto"`)**:
+  - In SEMs with unmeasured latent variables or induced residual
+    covariances (e.g., `Y1 ~ Factor`, `Y2 ~ Factor` via the MAG
+    framework),
+    [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)
+    and
+    [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
+    automatically condition on correlated companion traits using the
+    closed-form conditional multivariate Gaussian distribution (y_1 \mid
+    \mathbf{y}\_C^{\text{obs}}), with informative conditioning subtitles
+    in
+    [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md).
+- **Custom Edge Curvatures in
+  [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
+  (`curvatures`)**:
+  - Added `curvatures` argument to
+    [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
+    and
+    [`build_dag_data()`](https://because-pkg.github.io/because/reference/build_dag_data.md)
+    to specify custom numeric edge curvatures for individual directed
+    paths (e.g., `curvatures = c("X -> Y" = 0.35)`).
+- **Automatic JAX Core Configuration & `because_py` Version
+  Enforcement**:
+  - Auto-configures `XLA_FLAGS` on load so JAX detects available CPU
+    cores for parallel chains, and updated `.target_numpyro_version` to
+    `1.0.0`.
+- **JAGS 5 Support & Updated Installation Recommendations**:
+  - `because` now recommends **JAGS 5.x** (matching current CRAN `rjags`
+    `5-5`, which uses native chain multithreading and
+    `bugs::EllipticalSlice` sampling for correlated random effects),
+    while documenting the archived `rjags 4-18` option in `README.md`
+    for systems staying on JAGS 4.3.2.
+- **KaTeX Math Rendering in Reference Documentation**:
+  - Added `math-rendering: katex` to `_pkgdown.yml` and added
+    [`standardize()`](https://because-pkg.github.io/because/reference/standardize.md)
+    to the pkgdown reference index.
+
+### Bug Fixes
+
+- **Regularized Multinomial & Ordinal Default Priors for JAGS 5
+  Initialization**: Replaced legacy `dgamma(0.001, 0.001)` precision
+  priors on multinomial/ordinal structural and random effects (whose
+  random draws under JAGS 5 underflowed near zero and caused `sigma`
+  blowups) and `dnorm(0, 0.01)` multinomial intercepts/slopes with
+  link-appropriate `dgamma(10, 10)` and `dnorm(0, 1)` priors routed
+  through
+  [`get_prior()`](https://because-pkg.github.io/because/reference/get_prior.md)
+  and
+  [`get_precision_prior()`](https://because-pkg.github.io/because/reference/get_precision_prior.md)
+  (supporting array-base custom prior overrides).
+- **Preserved Distinct Multiscale Structures**: Only flatten compatible
+  structure collections into ensembles, keeping distinct hierarchical
+  scale structures separate
+  ([`process_because_structures()`](https://because-pkg.github.io/because/reference/process_because_structures.md)
+  /
+  [`because()`](https://because-pkg.github.io/because/reference/because.md)),
+  and require all members of a `structure_collection` to be `phylo`
+  objects before delegating phylogenetic prep.
+- **Preserved Isolated Nodes in DAG Conversion**: Retained degree-zero
+  observed vertices in `dagitty` conversion so d-separation preserves
+  isolated observed nodes while excluding latent nodes from test pairs.
+- **Measurement Error Variables Excluded from MAG Latents**: Prevented
+  variables with `variability` observation models (`_se`, `_sd`, `_obs`,
+  `_mean`) from being misclassified as MAG latent indicators, retained
+  variability columns during preprocessing, and skipped irrelevant
+  variability sub-models during d-separation.
+- **NumPyro Installation & Version Validation**: Bypassed pip cache in
+  [`install_because_numpyro()`](https://because-pkg.github.io/because/reference/install_because_numpyro.md)
+  and validated installed `because_py` version/capabilities cleanly
+  before execution.
+- **Multi-Model Facet Node Rendering & Ordering in
+  [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)**:
+  Grouped node deduplication by `distinct(model_label, name)` and
+  preserved input model order in faceted layout factor levels.
+- **Full Parameter Axis Label Rendering in `plot.check_multicov()`**:
+  Added `gap.axis = -1`, dynamic font scaling, margin expansion, and
+  legend overflow fixes so all parameter labels render cleanly across
+  engines.
+- **NumPyro Memory Optimization & Emergency Checkpointing**: Reduced
+  returned MCMC object sizes on large multi-tree ensembles from \>
+  20\text{ GB} to \< 10\text{ MB} by filtering nuisance observation
+  vectors (`u_std_*`, `err_res_*`, `z_*`), setting `mem.maxVSize(Inf)`,
+  and writing `because_checkpoint_samples.rds` after sampling.
+- **Robust Standardization for Large Ensemble Draws
+  ([`standardize()`](https://because-pkg.github.io/because/reference/standardize.md))**:
+  Dynamically trims unmarginalized observation vectors on-the-fly
+  (`ncol > 100`), fixes matrix/`mcmc.list` dimensions during
+  d-separation standardization, and attaches inferred binary `family`
+  metadata in the NumPyro pipeline.
+- **MAG Indicator Variance Filtering in
+  [`summary.because()`](https://because-pkg.github.io/because/reference/summary.because.md)**:
+  Excluded undefined univariate `lambda_*` and redundant variance
+  components (`sigma_*`, `sigma_tot_*`) for pure MAG indicator variables
+  while retaining `sigma_obs_*`, `sigma_res_*`, and `rho_*`.
+- **Preserved Variance for Marginalized Random Effects in Posterior
+  Predictions**: When species-level phylogenetic or hierarchical random
+  effects are analytically marginalized during MCMC without storing
+  individual species vectors u_i,
+  [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)
+  incorporates their sampled variance (\sigma\_{\text{phylo}}^2) into
+  predictive noise instead of collapsing toward zero.
+- **Standardized d-Sep Summary Schema & Baseline ROPE Segment**: Removed
+  redundant `Rhat_tree` from d-sep output schemas across backends and
+  removed redundant baseline segments in
+  [`plot_rope()`](https://because-pkg.github.io/because/reference/plot_rope.md).
+- **Roxygen Topic Association for Residuals**: Moved internal `%||%`
+  before the roxygen block in `R/residuals.R` so reference docs cleanly
+  index `residuals.because` and `fitted.because`.
+
+------------------------------------------------------------------------
+
+## because 1.9.0 (2026-11-08)
+
+### New Features & Improvements
+
 - **Universal Multi-Structure Covariance Ensembles**: `structure` now
   natively accepts direct named lists of candidate covariance structures
   across any domain (e.g., phylogenetic backbones
@@ -130,9 +298,8 @@
   [`check_multicov()`](https://because-pkg.github.io/because/reference/check_multicov.md)
   to evaluate MCMC convergence and structural sensitivity for any model
   fitted with multiple candidate covariance structures across all
-  engines (NumPyro, JAGS, and NIMBLE; in `because.phybase`,
-  `check_multiphylo()` serves as a phylogenetic convenience alias).
-  Computes a 3-tier variance decomposition:
+  engines (NumPyro, JAGS, and NIMBLE). Computes a 3-tier variance
+  decomposition:
   - \hat{R}\_{\text{MCMC}}: Within-structure MCMC convergence across
     replicate chains (\max_k \hat{R}\_k).
   - \hat{R}\_{\text{within\\group}}: Parameter sensitivity across
@@ -169,93 +336,9 @@
   preserve `fit$structure`, `fit$structures`, and `fit$input$structure`
   with their attached metadata attributes (`"group"`, `"backbone"`,
   `"tree_method"`, `"n.chains"`).
-- **Multi-Response Q-Q Envelope Diagnostics
-  ([`plot_qq()`](https://because-pkg.github.io/because/reference/plot_qq.md))**:
-  Calling `plot_qq(fit)` or `check_normality(fit)` on a fitted SEM now
-  automatically checks all endogenous response variables when
-  `resp = NULL`, rendering a multi-panel faceted grid with empirical 50%
-  (interquartile) and 95% credible simulation envelopes ([Landwehr et
-  al. 1984](https://doi.org/10.1080/01621459.1984.10478048)). Evaluates
-  randomized quantile residuals via the probability integral transform
-  (PIT against y^{\text{rep}}, [Dunn & Smyth
-  1996](https://doi.org/10.1080/10618600.1996.10474708)) with posterior
-  predictive skewness and kurtosis realized discrepancies ([Gelman et
-  al. 1996](https://www.jstor.org/stable/24306036)). Single responses
-  (e.g. `resp = "Y1"`) or custom subsets (e.g. `resp = c("Y1", "Y2")`)
-  remain fully supported.
-- **Conditional Posterior Predictive Checks for SEM Latent Measurement
-  Blocks (`conditional = "auto"`)**: In structural equation models with
-  unmeasured latent variables or induced residual covariances (e.g.,
-  `Y1 ~ Factor`, `Y2 ~ Factor` via the MAG framework),
-  [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)
-  and
-  [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
-  now automatically condition on correlated companion traits using the
-  closed-form conditional multivariate Gaussian distribution (y_1 \mid
-  \mathbf{y}\_C^{\text{obs}}). This resolves the issue where marginal
-  root-node simulations produced an artificial single bell curve against
-  bimodal or multi-modal trait distributions. Controlled via
-  `conditional = "auto"` (default), `conditional = TRUE`, or
-  `conditional = FALSE` (pure unconditional forward causal generation),
-  with optional explicit `condition_on`.
-- **Informative Conditioning Labels in
-  [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)**:
-  When conditional predictions are active,
-  [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
-  automatically documents the conditioning traits in the plot subtitle
-  (e.g. `Type: dens_overlay | draws: 50 | Conditional on: Y2, Y3`),
-  making diagnostic displays transparent for publication and reviewer
-  evaluation.
-- **Custom Edge Curvatures in
-  [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
-  (`curvatures`)**: Added `curvatures` argument to
-  [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
-  and
-  [`build_dag_data()`](https://because-pkg.github.io/because/reference/build_dag_data.md),
-  allowing users to specify custom numeric edge curvatures for
-  individual directed paths (e.g., `curvatures = c("X -> Y" = 0.35)`).
-- **KaTeX Math Rendering in Reference Documentation**: Added
-  `math-rendering: katex` to `_pkgdown.yml`, ensuring LaTeX equations in
-  roxygen references (such as mathematical formulas for quantile
-  residuals, VIF thresholds, and variance decompositions) render cleanly
-  in online documentation.
 
 ### Bug Fixes
 
-- **Multi-Model Facet Node Rendering in
-  [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)**:
-  Fixed an issue in
-  [`plot_dag()`](https://because-pkg.github.io/because/reference/plot_dag.md)
-  where `dplyr::distinct(name)` dropped node shapes and labels on all
-  panels after the first when plotting multiple models simultaneously
-  via `facet_wrap(~model_label)`. Node deduplication is now grouped by
-  `distinct(model_label, name)`.
-- **Full Parameter Axis Label Rendering in `plot.check_multicov()`**:
-  Fixed an issue where base R’s
-  [`axis()`](https://rdrr.io/r/graphics/axis.html) dropped alternating
-  parameter labels on the vertical axis when plotting models with many
-  parameters (\> 15). Added `gap.axis = -1` to disable automatic label
-  suppression, along with dynamic font scaling (`cex.axis`) and dynamic
-  left margin expansion based on parameter name length, ensuring every
-  parameter label renders legibly across all engines (NumPyro, JAGS,
-  NIMBLE).
-- **NumPyro Memory Optimization & Latent Vector Filtering**: Filtered
-  high-dimensional observation-level random effect vectors (`u_*`,
-  `z_*`, `err_res_*`) in
-  [`format_numpyro_samples()`](https://because-pkg.github.io/because/reference/format_numpyro_samples.md),
-  reducing returned MCMC object size from \> 20\text{ GB} to \< 10\text{
-  MB} (~2,000x reduction) for models with non-Gaussian links and
-  structured covariance matrices. Automatically unlimits vector memory
-  via `mem.maxVSize(Inf)` on macOS and saves an emergency checkpoint
-  (`because_checkpoint_samples.rds`) prior to R object conversion to
-  prevent data loss.
-- **Robust Standardization for Large Ensemble Draws
-  ([`standardize()`](https://because-pkg.github.io/because/reference/standardize.md))**:
-  Enhanced
-  [`standardize()`](https://because-pkg.github.io/because/reference/standardize.md)
-  to dynamically trim legacy unmarginalized observation vectors
-  on-the-fly (`ncol > 100`) and corrected matrix/`mcmc.list` dimension
-  handling during d-separation standardization across all engines.
 - **Exact Attribute Matching for Structure Dimensions**: Fixed a partial
   matching bug in
   [`process_because_structures()`](https://because-pkg.github.io/because/reference/process_because_structures.md)
@@ -267,23 +350,6 @@
   structure data returned as nested lists of matrices/arrays (e.g.,
   `list(eigvals = ..., eigvecs = ...)` in NumPyro) is now unpacked when
   inferring structure observation dimensions N.
-- **Preserved Variance for Marginalized Random Effects in Posterior
-  Predictions**: When species-level phylogenetic or hierarchical random
-  effects are analytically marginalized during MCMC (such as `dmnorm` or
-  spectral marginalization) without storing individual species vectors
-  u_i,
-  [`posterior_predict()`](https://because-pkg.github.io/because/reference/posterior_predict.md)
-  now automatically incorporates their sampled variance
-  (\sigma\_{\text{phylo}}^2) into predictive simulation noise instead of
-  discarding it. This prevents
-  [`pp_check()`](https://because-pkg.github.io/because/reference/pp_check.md)
-  and
-  [`plot_qq()`](https://because-pkg.github.io/because/reference/plot_qq.md)
-  from collapsing into artificial zero-width needles at x = 0.
-- **Roxygen Topic Association for Residuals**: Moved internal helper
-  `%||%` before the roxygen comment block in `R/residuals.R`, ensuring
-  that the reference index correctly documents `residuals.because` and
-  `fitted.because` rather than exposing the internal operator.
 
 ------------------------------------------------------------------------
 

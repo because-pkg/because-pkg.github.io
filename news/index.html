@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,12 +34,9 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="1.9.0" id="because-190-2026-11-11">because 1.9.0 (2026-11-11)<a class="anchor" aria-label="anchor" href="#because-190-2026-11-11"></a></h2>
-<blockquote>
-<p>All notable changes to <code>because</code> are documented in this file. The format is based on <a href="https://keepachangelog.com/en/2.0.0/" class="external-link">Keep a Changelog</a>, and this project adheres to <a href="https://semver.org/spec/v2.0.0.html" class="external-link">Semantic Versioning</a>.</p>
-</blockquote>
+<h2 class="pkg-version" data-toc-text="1.10.0" id="because-1100-2026-11-23">because 1.10.0 (2026-11-23)<a class="anchor" aria-label="anchor" href="#because-1100-2026-11-23"></a></h2>
 <div class="section level3">
-<h3 id="new-features--improvements-1-9-0">New Features &amp; Improvements<a class="anchor" aria-label="anchor" href="#new-features--improvements-1-9-0"></a></h3>
+<h3 id="new-features--improvements-1-10-0">New Features &amp; Improvements<a class="anchor" aria-label="anchor" href="#new-features--improvements-1-10-0"></a></h3>
 <ul><li>
 <strong>Standardization on Latent Liability and Common SD Scale (<code><a href="../reference/standardize.html">standardize()</a></code>)</strong>:
 <ul><li>Added S3 generic and method <code><a href="../reference/standardize.html">standardize()</a></code> to rescale path coefficients from fitted models and d-separation test objects onto a common, dimensionless standard deviation metric.</li>
@@ -72,29 +69,98 @@
 <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> appends an informative footnote documenting standardized and latent liability evaluation.</li>
 </ul></li>
 <li>
-<strong>Vectorized Diagnostics &amp; Fast Ensemble Summaries</strong>:
-<ul><li>Vectorized <code><a href="https://rdrr.io/pkg/coda/man/effectiveSize.html" class="external-link">coda::effectiveSize()</a></code> and <code><a href="https://rdrr.io/pkg/coda/man/gelman.diag.html" class="external-link">coda::gelman.diag()</a></code> across candidate trees in <code><a href="../reference/summary.because.html">summary.because()</a></code>, restricting recalculation strictly to structural parameters (<code>alpha</code>, <code>beta</code>, <code>sigma</code>, <code>rho</code>, <code>lambda</code>).</li>
-<li>Summaries of large multiPhylo ensembles (30+ trees, 60+ chains) now execute in under 0.1 seconds rather than minutes.</li>
-<li>Primary summary tables now present within-tree <span class="math inline">\hat{R}</span> and worst-case tree <span class="math inline">\hat{R}_{\text{max}}</span>, leaving between-tree sensitivity (<span class="math inline">\hat{R}_{\text{tree}}</span>) to <code><a href="../reference/check_multicov.html">check_multicov()</a></code>.</li>
+<strong>Monitor-Aware NumPyro Sample Retention &amp; Random-Effect Summaries</strong>:
+<ul><li>
+<code><a href="../reference/because.html">because()</a></code> now forwards <code>monitor</code> (<code>"interpretable"</code>, <code>"all"</code>, or custom parameter names) to <code><a href="../reference/run_numpyro_pipeline.html">run_numpyro_pipeline()</a></code> and <code><a href="../reference/format_numpyro_samples.html">format_numpyro_samples()</a></code>.</li>
+<li>Replaced the fixed <code>&lt;= 20</code> vector length cutoff in <code><a href="../reference/format_numpyro_samples.html">format_numpyro_samples()</a></code> with name- and <code>monitor</code>-aware filtering: structural vectors (<code>alpha</code>, <code>beta</code>, <code>sigma</code>, <code>tau</code>, <code>lambda</code>, <code>rho</code>, <code>psi</code>, <code>r_</code>, <code>cutpoint</code>, <code>K_</code>) are retained at any length, grouped random-effect vectors (<code>u_*</code>) up to 500 levels are retained by default, and any high-dimensional vectors omitted under <code>monitor = "interpretable"</code> now trigger an informative message explaining how to retain them rather than dropping silently.</li>
+<li>
+<code>summary.because(..., show_random = TRUE)</code> now recomputes summaries when cached structural summaries omit <code>u_*</code>, hides redundant auxiliary <code>u_std_*</code> draws when scaled <code>u_*</code> draws are present, and warns explicitly if no <code>u_*</code> estimates exist in the fitted samples.</li>
+</ul></li>
+<li>
+<strong>Vectorized Diagnostics, Ensemble ESS/Rhat &amp; <code><a href="../reference/check_multicov.html">check_multicov()</a></code> Refinements</strong>:
+<ul><li>Vectorized <code><a href="https://rdrr.io/pkg/coda/man/effectiveSize.html" class="external-link">coda::effectiveSize()</a></code> and <code><a href="https://rdrr.io/pkg/coda/man/gelman.diag.html" class="external-link">coda::gelman.diag()</a></code> across candidate trees in <code><a href="../reference/summary.because.html">summary.because()</a></code>, restricting recalculation strictly to structural parameters (<code>alpha</code>, <code>beta</code>, <code>sigma</code>, <code>rho</code>, <code>lambda</code>); summaries of large <code>multiPhylo</code> ensembles (30+ trees, 60+ chains) execute in under 0.1 seconds.</li>
+<li>Primary summary tables present within-tree <span class="math inline">\hat{R}</span>, worst-case tree <span class="math inline">\hat{R}_{\text{max}}</span>, and ensemble-summed ESS across <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code>dsep</code>, leaving between-tree sensitivity (<span class="math inline">\hat{R}_{\text{tree}}</span>) to <code><a href="../reference/check_multicov.html">check_multicov()</a></code>.</li>
+<li>Updated <code><a href="../reference/check_multicov.html">check_multicov()</a></code> variance decomposition reporting to <code>Pct_within_tree</code>, <code>Pct_between_trees</code>, and <code>Pct_backbone</code> with explanatory footnotes, adopted an Okabe-Ito colorblind-friendly palette in <code>plot.check_multicov()</code>, and documented its relationship to <code>because.phybase::check_multiphylo()</code>.</li>
 </ul></li>
 <li>
 <strong>Memory-Safe WAIC &amp; <em>A Posteriori</em> Evaluation (<code><a href="../reference/because_waic.html">because_waic()</a></code>)</strong>:
 <ul><li>
-<code><a href="../reference/because_waic.html">because_waic()</a></code> now returns precomputed <code>model$WAIC</code> directly when available, and supports manual <em>a posteriori</em> evaluation on fitted NumPyro ensemble models without requiring MCMC refitting.</li>
-<li>Wrapped WAIC formatting in exception handling in <code><a href="../reference/run_numpyro_pipeline.html">run_numpyro_pipeline()</a></code> to ensure formatting or memory issues issue a warning rather than discarding completed MCMC samples.</li>
+<code><a href="../reference/because_waic.html">because_waic()</a></code> returns precomputed <code>model$WAIC</code> directly when available and supports manual <em>a posteriori</em> evaluation on fitted NumPyro ensemble models without requiring MCMC refitting.</li>
+<li>Wrapped WAIC formatting in exception handling in <code><a href="../reference/run_numpyro_pipeline.html">run_numpyro_pipeline()</a></code> to prevent formatting or memory errors from discarding completed MCMC samples.</li>
 </ul></li>
 <li>
-<strong>Distributional Parsimony Rule for d-Separation</strong>:
-<ul><li>When testing auxiliary conditional independences between continuous and discrete/categorical variables, the continuous variable is prioritized as the regression response. This routes the test to fast ANOVA / linear mixed models, bypassing slow discrete links while preserving exact d-separation topology.</li>
+<strong>Distributional Parsimony Rule &amp; Structured Covariance Preservation in d-Separation</strong>:
+<ul><li>When testing auxiliary conditional independences between continuous and discrete/categorical variables, the continuous variable is prioritized as the regression response, routing tests to fast ANOVA/linear mixed models while preserving exact d-separation topology.</li>
+<li>Preserved covariance structures during d-separation for flat/comparative models and disabled <code>dsep_max_obs</code> subsampling when phylogenetic or structured correlation matrices are present.</li>
 </ul></li>
 <li>
-<strong>Liability-Scale Pagel’s Lambda for Binary Traits</strong>:
-<ul><li>In JAGS models with phylogenetic structures and binomial traits, Pagel’s <span class="math inline">\lambda</span> is now evaluated on the continuous latent liability scale using the theoretical <span class="math inline">\pi^2/3</span> disturbance variance.</li>
+<strong>Liability-Scale Structural Variance Partitioning (<span class="math inline">\lambda</span>) for Binomial Traits</strong>:
+<ul><li>In JAGS/NIMBLE models with binomial responses and covariance structures (<code>phylo</code>, <code>multiPhylo</code>, <code>spatial</code>, or custom matrices), structural variance partitioning <code>lambda_&lt;response&gt;_&lt;structure&gt;</code> is evaluated on the continuous latent liability scale using the theoretical <span class="math inline">\pi^2/3</span> logistic disturbance variance (and across multiple active variance components when present). For <code>because.phybase</code> phylogenetic structures, this emits <code>lambda_&lt;response&gt;_phylo</code> / <code>lambda_&lt;response&gt;_multiPhylo</code> (liability-scale Pagel’s <span class="math inline">\lambda</span>). <code><a href="../reference/check_residual_structure.html">check_residual_structure()</a></code> likewise uses <span class="math inline">\pi^2/3</span> for logit-link responses.</li>
 </ul></li>
 <li>
+<strong>Multi-Response Q-Q Envelope Diagnostics (<code><a href="../reference/plot_qq.html">plot_qq()</a></code>)</strong>:
+<ul><li>Calling <code>plot_qq(fit)</code> or <code>check_normality(fit)</code> on a fitted SEM automatically checks all endogenous response variables when <code>resp = NULL</code>, rendering a multi-panel faceted grid with empirical 50% (interquartile) and 95% credible simulation envelopes (<a href="https://doi.org/10.1080/01621459.1984.10478048" class="external-link">Landwehr et al. 1984</a>). Evaluates randomized quantile residuals via the probability integral transform (PIT against <span class="math inline">y^{\text{rep}}</span>, <a href="https://doi.org/10.1080/10618600.1996.10474708" class="external-link">Dunn &amp; Smyth 1996</a>) with posterior predictive skewness and kurtosis realized discrepancies (<a href="https://www.jstor.org/stable/24306036" class="external-link">Gelman et al. 1996</a>). Single responses (e.g. <code>resp = "Y1"</code>) and custom subsets remain fully supported.</li>
+</ul></li>
+<li>
+<strong>Conditional Posterior Predictive Checks for SEM Latent Measurement Blocks (<code>conditional = "auto"</code>)</strong>:
+<ul><li>In SEMs with unmeasured latent variables or induced residual covariances (e.g., <code>Y1 ~ Factor</code>, <code>Y2 ~ Factor</code> via the MAG framework), <code><a href="../reference/posterior_predict.html">posterior_predict()</a></code> and <code><a href="../reference/pp_check.html">pp_check()</a></code> automatically condition on correlated companion traits using the closed-form conditional multivariate Gaussian distribution (<span class="math inline">y_1 \mid \mathbf{y}_C^{\text{obs}}</span>), with informative conditioning subtitles in <code><a href="../reference/pp_check.html">pp_check()</a></code>.</li>
+</ul></li>
+<li>
+<strong>Custom Edge Curvatures in <code><a href="../reference/plot_dag.html">plot_dag()</a></code> (<code>curvatures</code>)</strong>:
+<ul><li>Added <code>curvatures</code> argument to <code><a href="../reference/plot_dag.html">plot_dag()</a></code> and <code><a href="../reference/build_dag_data.html">build_dag_data()</a></code> to specify custom numeric edge curvatures for individual directed paths (e.g., <code>curvatures = c("X -&gt; Y" = 0.35)</code>).</li>
+</ul></li>
+<li>
+<strong>Automatic JAX Core Configuration &amp; <code>because_py</code> Version Enforcement</strong>:
+<ul><li>Auto-configures <code>XLA_FLAGS</code> on load so JAX detects available CPU cores for parallel chains, and updated <code>.target_numpyro_version</code> to <code>1.0.0</code>.</li>
+</ul></li>
+<li>
+<strong>JAGS 5 Support &amp; Updated Installation Recommendations</strong>:
+<ul><li>
+<code>because</code> now recommends <strong>JAGS 5.x</strong> (matching current CRAN <code>rjags</code> <code>5-5</code>, which uses native chain multithreading and <code>bugs::EllipticalSlice</code> sampling for correlated random effects), while documenting the archived <code>rjags 4-18</code> option in <code>README.md</code> for systems staying on JAGS 4.3.2.</li>
+</ul></li>
+<li>
+<strong>KaTeX Math Rendering in Reference Documentation</strong>:
+<ul><li>Added <code>math-rendering: katex</code> to <code>_pkgdown.yml</code> and added <code><a href="../reference/standardize.html">standardize()</a></code> to the pkgdown reference index.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-1-10-0">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-1-10-0"></a></h3>
+<ul><li>
+<strong>Regularized Multinomial &amp; Ordinal Default Priors for JAGS 5 Initialization</strong>: Replaced legacy <code>dgamma(0.001, 0.001)</code> precision priors on multinomial/ordinal structural and random effects (whose random draws under JAGS 5 underflowed near zero and caused <code>sigma</code> blowups) and <code>dnorm(0, 0.01)</code> multinomial intercepts/slopes with link-appropriate <code>dgamma(10, 10)</code> and <code>dnorm(0, 1)</code> priors routed through <code><a href="../reference/get_prior.html">get_prior()</a></code> and <code><a href="../reference/get_precision_prior.html">get_precision_prior()</a></code> (supporting array-base custom prior overrides).</li>
+<li>
+<strong>Preserved Distinct Multiscale Structures</strong>: Only flatten compatible structure collections into ensembles, keeping distinct hierarchical scale structures separate (<code><a href="../reference/process_because_structures.html">process_because_structures()</a></code> / <code><a href="../reference/because.html">because()</a></code>), and require all members of a <code>structure_collection</code> to be <code>phylo</code> objects before delegating phylogenetic prep.</li>
+<li>
+<strong>Preserved Isolated Nodes in DAG Conversion</strong>: Retained degree-zero observed vertices in <code>dagitty</code> conversion so d-separation preserves isolated observed nodes while excluding latent nodes from test pairs.</li>
+<li>
+<strong>Measurement Error Variables Excluded from MAG Latents</strong>: Prevented variables with <code>variability</code> observation models (<code>_se</code>, <code>_sd</code>, <code>_obs</code>, <code>_mean</code>) from being misclassified as MAG latent indicators, retained variability columns during preprocessing, and skipped irrelevant variability sub-models during d-separation.</li>
+<li>
+<strong>NumPyro Installation &amp; Version Validation</strong>: Bypassed pip cache in <code><a href="../reference/install_because_numpyro.html">install_because_numpyro()</a></code> and validated installed <code>because_py</code> version/capabilities cleanly before execution.</li>
+<li>
+<strong>Multi-Model Facet Node Rendering &amp; Ordering in <code><a href="../reference/plot_dag.html">plot_dag()</a></code></strong>: Grouped node deduplication by <code>distinct(model_label, name)</code> and preserved input model order in faceted layout factor levels.</li>
+<li>
+<strong>Full Parameter Axis Label Rendering in <code>plot.check_multicov()</code></strong>: Added <code>gap.axis = -1</code>, dynamic font scaling, margin expansion, and legend overflow fixes so all parameter labels render cleanly across engines.</li>
+<li>
+<strong>NumPyro Memory Optimization &amp; Emergency Checkpointing</strong>: Reduced returned MCMC object sizes on large multi-tree ensembles from <span class="math inline">&gt; 20\text{ GB}</span> to <span class="math inline">&lt; 10\text{ MB}</span> by filtering nuisance observation vectors (<code>u_std_*</code>, <code>err_res_*</code>, <code>z_*</code>), setting <code>mem.maxVSize(Inf)</code>, and writing <code>because_checkpoint_samples.rds</code> after sampling.</li>
+<li>
+<strong>Robust Standardization for Large Ensemble Draws (<code><a href="../reference/standardize.html">standardize()</a></code>)</strong>: Dynamically trims unmarginalized observation vectors on-the-fly (<code>ncol &gt; 100</code>), fixes matrix/<code>mcmc.list</code> dimensions during d-separation standardization, and attaches inferred binary <code>family</code> metadata in the NumPyro pipeline.</li>
+<li>
+<strong>MAG Indicator Variance Filtering in <code><a href="../reference/summary.because.html">summary.because()</a></code></strong>: Excluded undefined univariate <code>lambda_*</code> and redundant variance components (<code>sigma_*</code>, <code>sigma_tot_*</code>) for pure MAG indicator variables while retaining <code>sigma_obs_*</code>, <code>sigma_res_*</code>, and <code>rho_*</code>.</li>
+<li>
+<strong>Preserved Variance for Marginalized Random Effects in Posterior Predictions</strong>: When species-level phylogenetic or hierarchical random effects are analytically marginalized during MCMC without storing individual species vectors <span class="math inline">u_i</span>, <code><a href="../reference/posterior_predict.html">posterior_predict()</a></code> incorporates their sampled variance (<span class="math inline">\sigma_{\text{phylo}}^2</span>) into predictive noise instead of collapsing toward zero.</li>
+<li>
+<strong>Standardized d-Sep Summary Schema &amp; Baseline ROPE Segment</strong>: Removed redundant <code>Rhat_tree</code> from d-sep output schemas across backends and removed redundant baseline segments in <code><a href="../reference/plot_rope.html">plot_rope()</a></code>.</li>
+<li>
+<strong>Roxygen Topic Association for Residuals</strong>: Moved internal <code>%||%</code> before the roxygen block in <code>R/residuals.R</code> so reference docs cleanly index <code>residuals.because</code> and <code>fitted.because</code>.</li>
+</ul><hr></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.9.0" id="because-190-2026-11-08">because 1.9.0 (2026-11-08)<a class="anchor" aria-label="anchor" href="#because-190-2026-11-08"></a></h2>
+<div class="section level3">
+<h3 id="new-features--improvements-1-9-0">New Features &amp; Improvements<a class="anchor" aria-label="anchor" href="#new-features--improvements-1-9-0"></a></h3>
+<ul><li>
 <strong>Universal Multi-Structure Covariance Ensembles</strong>: <code>structure</code> now natively accepts direct named lists of candidate covariance structures across any domain (e.g., phylogenetic backbones <code>list(Jetz = jetz_trees, McTavish = mctav_trees)</code>, spatial dispersal kernels, genomic relationship matrices, or animal social networks). When a named list of structures or collections is supplied, <code>because</code> automatically flattens candidate structures into a unified collection, assigns group/backbone attributes, and partitions chains across candidate structures without requiring explicit control wrappers.</li>
 <li>
-<strong>Universal Multi-Structure Convergence &amp; Sensitivity Diagnostic (<code><a href="../reference/check_multicov.html">check_multicov()</a></code>)</strong>: Added <code><a href="../reference/check_multicov.html">check_multicov()</a></code> to evaluate MCMC convergence and structural sensitivity for any model fitted with multiple candidate covariance structures across all engines (NumPyro, JAGS, and NIMBLE; in <code>because.phybase</code>, <code>check_multiphylo()</code> serves as a phylogenetic convenience alias). Computes a 3-tier variance decomposition:
+<strong>Universal Multi-Structure Convergence &amp; Sensitivity Diagnostic (<code><a href="../reference/check_multicov.html">check_multicov()</a></code>)</strong>: Added <code><a href="../reference/check_multicov.html">check_multicov()</a></code> to evaluate MCMC convergence and structural sensitivity for any model fitted with multiple candidate covariance structures across all engines (NumPyro, JAGS, and NIMBLE). Computes a 3-tier variance decomposition:
 <ul><li>
 <span class="math inline">\hat{R}_{\text{MCMC}}</span>: Within-structure MCMC convergence across replicate chains (<span class="math inline">\max_k \hat{R}_k</span>).</li>
 <li>
@@ -112,35 +178,13 @@
 <strong>Unified <code>n.chains</code> Parameter Across Multi-Structure Engines</strong>: Standardized <code>n.chains</code> across all structure handlers, model compiler routines, and documentation.</li>
 <li>
 <strong>Preserved Structure and Group Metadata on Fitted Models</strong>: Fitted <code>because</code> model objects in NumPyro, JAGS, and NIMBLE now consistently preserve <code>fit$structure</code>, <code>fit$structures</code>, and <code>fit$input$structure</code> with their attached metadata attributes (<code>"group"</code>, <code>"backbone"</code>, <code>"tree_method"</code>, <code>"n.chains"</code>).</li>
-<li>
-<strong>Multi-Response Q-Q Envelope Diagnostics (<code><a href="../reference/plot_qq.html">plot_qq()</a></code>)</strong>: Calling <code>plot_qq(fit)</code> or <code>check_normality(fit)</code> on a fitted SEM now automatically checks all endogenous response variables when <code>resp = NULL</code>, rendering a multi-panel faceted grid with empirical 50% (interquartile) and 95% credible simulation envelopes (<a href="https://doi.org/10.1080/01621459.1984.10478048" class="external-link">Landwehr et al. 1984</a>). Evaluates randomized quantile residuals via the probability integral transform (PIT against <span class="math inline">y^{\text{rep}}</span>, <a href="https://doi.org/10.1080/10618600.1996.10474708" class="external-link">Dunn &amp; Smyth 1996</a>) with posterior predictive skewness and kurtosis realized discrepancies (<a href="https://www.jstor.org/stable/24306036" class="external-link">Gelman et al. 1996</a>). Single responses (e.g. <code>resp = "Y1"</code>) or custom subsets (e.g. <code>resp = c("Y1", "Y2")</code>) remain fully supported.</li>
-<li>
-<strong>Conditional Posterior Predictive Checks for SEM Latent Measurement Blocks (<code>conditional = "auto"</code>)</strong>: In structural equation models with unmeasured latent variables or induced residual covariances (e.g., <code>Y1 ~ Factor</code>, <code>Y2 ~ Factor</code> via the MAG framework), <code><a href="../reference/posterior_predict.html">posterior_predict()</a></code> and <code><a href="../reference/pp_check.html">pp_check()</a></code> now automatically condition on correlated companion traits using the closed-form conditional multivariate Gaussian distribution (<span class="math inline">y_1 \mid \mathbf{y}_C^{\text{obs}}</span>). This resolves the issue where marginal root-node simulations produced an artificial single bell curve against bimodal or multi-modal trait distributions. Controlled via <code>conditional = "auto"</code> (default), <code>conditional = TRUE</code>, or <code>conditional = FALSE</code> (pure unconditional forward causal generation), with optional explicit <code>condition_on</code>.</li>
-<li>
-<strong>Informative Conditioning Labels in <code><a href="../reference/pp_check.html">pp_check()</a></code></strong>: When conditional predictions are active, <code><a href="../reference/pp_check.html">pp_check()</a></code> automatically documents the conditioning traits in the plot subtitle (e.g. <code>Type: dens_overlay | draws: 50 | Conditional on: Y2, Y3</code>), making diagnostic displays transparent for publication and reviewer evaluation.</li>
-<li>
-<strong>Custom Edge Curvatures in <code><a href="../reference/plot_dag.html">plot_dag()</a></code> (<code>curvatures</code>)</strong>: Added <code>curvatures</code> argument to <code><a href="../reference/plot_dag.html">plot_dag()</a></code> and <code><a href="../reference/build_dag_data.html">build_dag_data()</a></code>, allowing users to specify custom numeric edge curvatures for individual directed paths (e.g., <code>curvatures = c("X -&gt; Y" = 0.35)</code>).</li>
-<li>
-<strong>KaTeX Math Rendering in Reference Documentation</strong>: Added <code>math-rendering: katex</code> to <code>_pkgdown.yml</code>, ensuring LaTeX equations in roxygen references (such as mathematical formulas for quantile residuals, VIF thresholds, and variance decompositions) render cleanly in online documentation.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-1-9-0">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-1-9-0"></a></h3>
 <ul><li>
-<strong>Multi-Model Facet Node Rendering in <code><a href="../reference/plot_dag.html">plot_dag()</a></code></strong>: Fixed an issue in <code><a href="../reference/plot_dag.html">plot_dag()</a></code> where <code>dplyr::distinct(name)</code> dropped node shapes and labels on all panels after the first when plotting multiple models simultaneously via <code>facet_wrap(~model_label)</code>. Node deduplication is now grouped by <code>distinct(model_label, name)</code>.</li>
-<li>
-<strong>Full Parameter Axis Label Rendering in <code>plot.check_multicov()</code></strong>: Fixed an issue where base R’s <code><a href="https://rdrr.io/r/graphics/axis.html" class="external-link">axis()</a></code> dropped alternating parameter labels on the vertical axis when plotting models with many parameters (&gt; 15). Added <code>gap.axis = -1</code> to disable automatic label suppression, along with dynamic font scaling (<code>cex.axis</code>) and dynamic left margin expansion based on parameter name length, ensuring every parameter label renders legibly across all engines (NumPyro, JAGS, NIMBLE).</li>
-<li>
-<strong>NumPyro Memory Optimization &amp; Latent Vector Filtering</strong>: Filtered high-dimensional observation-level random effect vectors (<code>u_*</code>, <code>z_*</code>, <code>err_res_*</code>) in <code><a href="../reference/format_numpyro_samples.html">format_numpyro_samples()</a></code>, reducing returned MCMC object size from <span class="math inline">&gt; 20\text{ GB}</span> to <span class="math inline">&lt; 10\text{ MB}</span> (~2,000x reduction) for models with non-Gaussian links and structured covariance matrices. Automatically unlimits vector memory via <code>mem.maxVSize(Inf)</code> on macOS and saves an emergency checkpoint (<code>because_checkpoint_samples.rds</code>) prior to R object conversion to prevent data loss.</li>
-<li>
-<strong>Robust Standardization for Large Ensemble Draws (<code><a href="../reference/standardize.html">standardize()</a></code>)</strong>: Enhanced <code><a href="../reference/standardize.html">standardize()</a></code> to dynamically trim legacy unmarginalized observation vectors on-the-fly (<code>ncol &gt; 100</code>) and corrected matrix/<code>mcmc.list</code> dimension handling during d-separation standardization across all engines.</li>
-<li>
 <strong>Exact Attribute Matching for Structure Dimensions</strong>: Fixed a partial matching bug in <code><a href="../reference/process_because_structures.html">process_because_structures()</a></code> where base R <code>attr(structure_obj, "n")</code> inadvertently matched <code>attr(structure_obj, "n.chains")</code> because <code>exact = TRUE</code> was omitted, causing dimension mismatch errors when fitting multi-chain ensembles.</li>
 <li>
 <strong>Safe Unpacking of Multi-Array Structure Data</strong>: In <code><a href="../reference/process_because_structures.html">process_because_structures()</a></code>, structure data returned as nested lists of matrices/arrays (e.g., <code>list(eigvals = ..., eigvecs = ...)</code> in NumPyro) is now unpacked when inferring structure observation dimensions <span class="math inline">N</span>.</li>
-<li>
-<strong>Preserved Variance for Marginalized Random Effects in Posterior Predictions</strong>: When species-level phylogenetic or hierarchical random effects are analytically marginalized during MCMC (such as <code>dmnorm</code> or spectral marginalization) without storing individual species vectors <span class="math inline">u_i</span>, <code><a href="../reference/posterior_predict.html">posterior_predict()</a></code> now automatically incorporates their sampled variance (<span class="math inline">\sigma_{\text{phylo}}^2</span>) into predictive simulation noise instead of discarding it. This prevents <code><a href="../reference/pp_check.html">pp_check()</a></code> and <code><a href="../reference/plot_qq.html">plot_qq()</a></code> from collapsing into artificial zero-width needles at <span class="math inline">x = 0</span>.</li>
-<li>
-<strong>Roxygen Topic Association for Residuals</strong>: Moved internal helper <code>%||%</code> before the roxygen comment block in <code>R/residuals.R</code>, ensuring that the reference index correctly documents <code>residuals.because</code> and <code>fitted.because</code> rather than exposing the internal operator.</li>
 </ul><hr></div>
 </div>
     <div class="section level2">

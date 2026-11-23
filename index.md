@@ -63,11 +63,11 @@ NumPyro code from standard R formulas. Key features include:
 
 ## Installation
 
-To install the **stable release** (`v1.9.0`), run:
+To install the **stable release** (`v1.10.0`), run:
 
 ``` r
 
-remotes::install_github("because-pkg/because@v1.9.0")
+remotes::install_github("because-pkg/because@v1.10.0")
 ```
 
 To install the **latest development version**, run:
@@ -99,28 +99,29 @@ Before using `because`, you need to have an inference engine installed.
 
 ### JAGS (Primary Engine)
 
-- **macOS**: Download the **JAGS 4.3.2** installer from [SourceForge
-  (JAGS
-  4.x)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Mac%20OS%20X/)
-  *(recommended; note that `brew install jags` now installs JAGS 5.0—see
-  note below)*.
-- **Windows**: Download the **JAGS 4.3.2** installer from [SourceForge
-  (JAGS
-  4.x)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/).
-- **Linux**: `sudo apt-get install jags`.
+- **macOS**: Download the **JAGS 5.0.2** universal installer
+  (`JAGS-5.0.2-universal.pkg`) from [SourceForge (JAGS
+  5.x)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/5.x/macOS/)
+  (or install via `brew install jags`).
+- **Windows**: Download the **JAGS 5.0.2** installer
+  (`Rtools45/JAGS-5.0.2.exe` for R 4.5+) from [SourceForge (JAGS
+  5.x)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/5.x/Windows/).
+- **Linux**: Install **JAGS 5.x** from [SourceForge (JAGS 5.x
+  Source)](https://sourceforge.net/projects/mcmc-jags/files/JAGS/5.x/Source/)
+  if your distribution’s repository only provides JAGS 4.3.2
+  (`sudo apt-get install jags`).
 
-> **Important (JAGS 4.x vs. JAGS 5.0):** We currently recommend
-> installing **JAGS 4.x (e.g., 4.3.2)** because the version of `rjags`
-> on CRAN is built for JAGS 4.x and will fail to load with JAGS 5.0.
+> **Important (JAGS 5.x vs. JAGS 4.x):** Current `rjags` (`5-5`) on CRAN
+> requires **JAGS 5.x** (`JAGS >= 5.0.0`).
 >
-> If you have already installed **JAGS 5.0** (for example via
-> `brew install jags` on macOS), you must install the matching
-> `rjags 5.0` package from the developer repository *before* installing
-> `because`:
+> If your system only provides **JAGS 4.3.2** (such as standard
+> Ubuntu/Debian `apt` packages) and you do not want to compile JAGS 5
+> from source, install the matching archived `rjags 4-18` package
+> *before* installing `because`:
 >
 > ``` r
 >
-> install.packages("rjags", repos = c("https://ku-awdc.github.io/drat", "https://cloud.r-project.org"))
+> install.packages("https://cran.r-project.org/src/contrib/Archive/rjags/rjags_4-18.tar.gz", repos = NULL, type = "source")
 > ```
 
 ### NIMBLE (High-Performance Engine)
@@ -179,11 +180,11 @@ To cite `because` in publications, please use:
   title = {because: Bayesian Estimation of Causal Effects},
   author = {Achaz von Hardenberg},
   year = {2026},
-  note = {R package version 1.9.0},
+  note = {R package version 1.10.0},
   url = {https://because-pkg.github.io},
 }
 ```
 
 In text: \> von Hardenberg, A. (2026). *because: Bayesian Estimation of
-Causal Effects*. R package version 1.9.0,
+Causal Effects*. R package version 1.10.0,
 <https://github.com/achazhardenberg/because>.

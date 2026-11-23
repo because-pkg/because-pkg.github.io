@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="index.html">because</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -109,9 +109,9 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>To install the <strong>stable release</strong> (<code>v1.9.0</code>), run:</p>
+<p>To install the <strong>stable release</strong> (<code>v1.10.0</code>), run:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because@v1.9.0"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because@v1.10.0"</span><span class="op">)</span></span></code></pre></div>
 <p>To install the <strong>latest development version</strong>, run:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"because-pkg/because"</span><span class="op">)</span></span></code></pre></div>
@@ -131,17 +131,17 @@
 </h3>
 <ul>
 <li>
-<strong>macOS</strong>: Download the <strong>JAGS 4.3.2</strong> installer from <a href="https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Mac%20OS%20X/" class="external-link">SourceForge (JAGS 4.x)</a> <em>(recommended; note that <code>brew install jags</code> now installs JAGS 5.0—see note below)</em>.</li>
+<strong>macOS</strong>: Download the <strong>JAGS 5.0.2</strong> universal installer (<code>JAGS-5.0.2-universal.pkg</code>) from <a href="https://sourceforge.net/projects/mcmc-jags/files/JAGS/5.x/macOS/" class="external-link">SourceForge (JAGS 5.x)</a> (or install via <code>brew install jags</code>).</li>
 <li>
-<strong>Windows</strong>: Download the <strong>JAGS 4.3.2</strong> installer from <a href="https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Windows/" class="external-link">SourceForge (JAGS 4.x)</a>.</li>
+<strong>Windows</strong>: Download the <strong>JAGS 5.0.2</strong> installer (<code>Rtools45/JAGS-5.0.2.exe</code> for R 4.5+) from <a href="https://sourceforge.net/projects/mcmc-jags/files/JAGS/5.x/Windows/" class="external-link">SourceForge (JAGS 5.x)</a>.</li>
 <li>
-<strong>Linux</strong>: <code>sudo apt-get install jags</code>.</li>
+<strong>Linux</strong>: Install <strong>JAGS 5.x</strong> from <a href="https://sourceforge.net/projects/mcmc-jags/files/JAGS/5.x/Source/" class="external-link">SourceForge (JAGS 5.x Source)</a> if your distribution’s repository only provides JAGS 4.3.2 (<code>sudo apt-get install jags</code>).</li>
 </ul>
 <blockquote>
-<p><strong>Important (JAGS 4.x vs. JAGS 5.0):</strong> We currently recommend installing <strong>JAGS 4.x (e.g., 4.3.2)</strong> because the version of <code>rjags</code> on CRAN is built for JAGS 4.x and will fail to load with JAGS 5.0.</p>
-<p>If you have already installed <strong>JAGS 5.0</strong> (for example via <code>brew install jags</code> on macOS), you must install the matching <code>rjags 5.0</code> package from the developer repository <em>before</em> installing <code>because</code>:</p>
+<p><strong>Important (JAGS 5.x vs. JAGS 4.x):</strong> Current <code>rjags</code> (<code>5-5</code>) on CRAN requires <strong>JAGS 5.x</strong> (<code>JAGS &gt;= 5.0.0</code>).</p>
+<p>If your system only provides <strong>JAGS 4.3.2</strong> (such as standard Ubuntu/Debian <code>apt</code> packages) and you do not want to compile JAGS 5 from source, install the matching archived <code>rjags 4-18</code> package <em>before</em> installing <code>because</code>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"rjags"</span>, repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://ku-awdc.github.io/drat"</span>, <span class="st">"https://cloud.r-project.org"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"https://cran.r-project.org/src/contrib/Archive/rjags/rjags_4-18.tar.gz"</span>, repos <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="st">"source"</span><span class="op">)</span></span></code></pre></div>
 </blockquote>
 </div>
 <div class="section level3">
@@ -172,10 +172,10 @@
 <span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="dt">title</span> = {because: Bayesian Estimation of Causal Effects},</span>
 <span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="dt">author</span> = {Achaz von Hardenberg},</span>
 <span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="dt">year</span> = {2026},</span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="dt">note</span> = {R package version 1.9.0},</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="dt">note</span> = {R package version 1.10.0},</span>
 <span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="dt">url</span> = {https://because-pkg.github.io},</span>
 <span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>}</span></code></pre></div>
-<p>In text: &gt; von Hardenberg, A. (2026). <em>because: Bayesian Estimation of Causal Effects</em>. R package version 1.9.0, <a href="https://github.com/achazhardenberg/because" class="external-link uri">https://github.com/achazhardenberg/because</a>.</p>
+<p>In text: &gt; von Hardenberg, A. (2026). <em>because: Bayesian Estimation of Causal Effects</em>. R package version 1.10.0, <a href="https://github.com/achazhardenberg/because" class="external-link uri">https://github.com/achazhardenberg/because</a>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
