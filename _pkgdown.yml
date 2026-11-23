@@ -49,6 +49,7 @@ reference:
       - because_model
       - because_continue
       - update.because
+      - standardize
   - title: "Causal Evaluation & d-Separation"
     desc: "Tools for evaluating causal DAG consistency and testing conditional independencies."
     contents:
