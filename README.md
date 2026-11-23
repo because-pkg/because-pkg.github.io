@@ -61,7 +61,14 @@ Before using `because`, you need to have an inference engine installed.
 
 > **Important (JAGS 5.x vs. JAGS 4.x):** Current `rjags` (`5-5`) on CRAN requires **JAGS 5.x** (`JAGS >= 5.0.0`).
 >
-> If your system only provides **JAGS 4.3.2** (such as standard Ubuntu/Debian `apt` packages) and you do not want to compile JAGS 5 from source, install the matching archived `rjags 4-18` package *before* installing `because`:
+> **macOS users:** CRAN does not yet publish macOS binaries for `rjags 5-5` (`install.packages("rjags")` currently pulls `4-18`). After installing **JAGS 5.0.2**, install `rjags 5-5` *before* installing `because` (and restart R afterward) from the JAGS maintainer's repository (Apple Silicon, R 4.6) or from CRAN source (requires `xcode-select --install`):
+> ``` r
+> install.packages("rjags", repos = c("https://ku-awdc.github.io/drat", "https://cloud.r-project.org"))
+> # Or build from CRAN source:
+> # install.packages("rjags", type = "source")
+> ```
+>
+> **JAGS 4.3.2 systems (e.g., Ubuntu/Debian `apt`):** If your system only provides **JAGS 4.3.2** and you do not want to compile JAGS 5 from source, install the matching archived `rjags 4-18` package *before* installing `because`:
 > ``` r
 > install.packages("https://cran.r-project.org/src/contrib/Archive/rjags/rjags_4-18.tar.gz", repos = NULL, type = "source")
 > ```
